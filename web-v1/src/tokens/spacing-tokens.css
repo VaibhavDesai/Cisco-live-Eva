@@ -1,0 +1,24 @@
+/*
+ * Spacing Tokens
+ * Auto-extracted from Figma: 💎 Theme - Spacing
+ *
+ * Based on a 4px grid system.
+ * Use increments of 4 to define dimensions, padding, and margins.
+ */
+
+:root {
+  --spacing-none: 0px;
+  --spacing-micro: 2px;
+  --spacing-xxx-small: 4px;
+  --spacing-xx-small: 8px;
+  --spacing-x-small: 12px;
+  --spacing-small: 16px;
+  --spacing-medium: 20px;
+  --spacing-large: 24px;
+  --spacing-x-large: 32px;
+  --spacing-xx-large: 40px;
+  --spacing-xxx-large: 52px;
+  --spacing-big: 64px;
+  --spacing-x-big: 80px;
+  --spacing-xx-big: 100px;
+}

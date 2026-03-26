@@ -14,6 +14,7 @@
   "dependencies": {
     "@momentum-design/components": "^0.129.51",
     "@momentum-design/fonts": "^0.2.5",
+    "@momentum-design/icons": "^0.50.0",
     "@momentum-design/tokens": "^0.9.0",
     "react": "^19.2.0",
     "react-dom": "^19.2.0",

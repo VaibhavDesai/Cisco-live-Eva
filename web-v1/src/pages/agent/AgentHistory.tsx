@@ -6,9 +6,9 @@ import Button from '../../components/shared/Button';
 import Badge from '../../components/shared/Badge';
 
 const CHANGELOG = [
-  { 
-    version: 'v2.4.0', 
-    status: 'Published', 
+  {
+    version: 'v2.4.0',
+    status: 'Published',
     current: true,
     date: 'Jan 28, 2026, 3:45 PM',
     author: 'Sarah Chen',
@@ -18,8 +18,8 @@ const CHANGELOG = [
       'Fixed response formatting issue'
     ]
   },
-  { 
-    version: 'v2.3.0', 
+  {
+    version: 'v2.3.0',
     status: 'Previous',
     date: 'Jan 25, 2026, 11:20 AM',
     author: 'Marcus Developer',
@@ -28,8 +28,8 @@ const CHANGELOG = [
       'Enhanced error handling'
     ]
   },
-  { 
-    version: 'v2.2.0', 
+  {
+    version: 'v2.2.0',
     status: 'Previous',
     date: 'Jan 20, 2026, 2:15 PM',
     author: 'Sarah Chen',
@@ -40,11 +40,10 @@ const CHANGELOG = [
   },
 ];
 
-export default function AgentChangelog() {
+export default function AgentHistory() {
   const { agentId } = useParams();
   const { agents, currentAgent, selectAgent } = useApp();
 
-  // If no current agent or different agent, select it
   if (!currentAgent || currentAgent.id !== agentId) {
     const agent = agents[agentId];
     if (agent) {
@@ -59,16 +58,16 @@ export default function AgentChangelog() {
 
   return (
     <div className="primary-content">
-      <AgentHeader agent={agent} activeTab="changelog" showPublishButton={false} />
+      <AgentHeader agent={agent} activeTab="history" showPublishButton={false} />
 
       <div className="secondary-content">
         <Card style={{ padding: 0 }}>
           {CHANGELOG.map((entry, index) => (
-            <div 
+            <div
               key={entry.version}
               className="changelog-entry"
-              style={{ 
-                borderBottom: index < CHANGELOG.length - 1 ? '1px solid var(--border-color)' : 'none' 
+              style={{
+                borderBottom: index < CHANGELOG.length - 1 ? '1px solid var(--border-color)' : 'none'
               }}
             >
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '12px' }}>

@@ -1,0 +1,9 @@
+<svg preserveAspectRatio="xMidYMid meet" overflow="visible" style="display: block;" viewBox="0 0 102.989 74.5" fill="none" xmlns="http://www.w3.org/2000/svg">
+<path id="apply-style-here" d="M58.4903 73.25H83.4903C85.6903 73.25 87.4903 71.45 87.4903 69.25V25.25L101.39 4.35C102.29 3.05 101.29 1.25 99.6903 1.25H69.6903C68.3903 1.25 67.0903 1.95 66.3903 3.05L52.8903 23.25C51.9903 24.55 51.5903 26.15 51.5903 27.65V69.25C51.5903 71.45 49.7903 73.25 47.5903 73.25H19.5903C17.3903 73.25 15.5903 71.45 15.5903 69.25V25.25M47.4903 19.25L36.6903 3.05C35.9903 1.95 34.6903 1.25 33.3903 1.25H3.29026C1.69026 1.25 0.690261 3.05 1.59026 4.45L15.4903 25.35M59.4903 25.25H80.4903M22.4903 25.25H44.4903" stroke="url(#paint0_linear_0_4)" stroke-width="2.5" stroke-miterlimit="10" stroke-linecap="round" stroke-linejoin="round"/>
+<defs>
+<linearGradient id="paint0_linear_0_4" x1="51.4903" y1="1.25" x2="51.4903" y2="73.25" gradientUnits="userSpaceOnUse">
+<stop stop-color="#93C437"/>
+<stop offset="1" stop-color="#279BE8"/>
+</linearGradient>
+</defs>
+</svg>

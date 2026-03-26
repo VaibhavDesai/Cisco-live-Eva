@@ -1,0 +1,59 @@
+/**
+ * App-level design tokens only: :root CSS custom properties (aliases + app variables).
+ * No selectors / component rules — those live in components.css.
+ */
+
+:root {
+  /* Momentum Design System Token Aliases */
+  /* These map to the Momentum tokens from mds-theme-stable-darkWebex */
+  --bg-primary: var(--mds-color-theme-background-solid-primary-normal, #000000);
+  --bg-secondary: var(--mds-color-theme-background-solid-secondary-normal, #1a1a1a);
+  --bg-sidebar: var(--mds-color-theme-background-solid-primary-normal, #000000);
+  --bg-glass: var(--mds-color-theme-background-glass-normal, rgba(255,255,255,0.05));
+  --bg-glass-light: var(--mds-color-theme-background-glass-light, rgba(0,0,0,0.4));
+  --bg-card: var(--mds-color-theme-background-glass-normal, rgba(255,255,255,0.05));
+  --text-primary: var(--mds-color-theme-text-primary-normal, rgba(255,255,255,0.95));
+  --text-secondary: var(--mds-color-theme-text-secondary-normal, rgba(255,255,255,0.70));
+  --text-muted: var(--mds-color-theme-text-primary-disabled, rgba(255,255,255,0.40));
+  --border-color: var(--mds-color-theme-outline-secondary-normal, rgba(255,255,255,0.20));
+  --outline-color: var(--mds-color-theme-outline-primary-normal, rgba(255,255,255,0.40));
+  --accent-color: var(--mds-color-theme-text-accent-normal, #64b4fa);
+  --accent-bg: var(--mds-color-theme-background-accent-normal, #1170cf);
+  --accent-hover: var(--mds-color-theme-text-accent-hover, #bfe3ff);
+  --success-color: var(--mds-color-theme-text-success-normal, #3cc29a);
+  --success-bg: var(--mds-color-theme-background-alert-success-normal, #0e2b20);
+  --warning-color: var(--mds-color-theme-text-warning-normal, #f2990a);
+  --warning-bg: var(--mds-color-theme-background-alert-warning-normal, #36220c);
+  --danger-color: var(--mds-color-theme-text-error-normal, #fc8b98);
+  --danger-bg: var(--mds-color-theme-background-alert-error-normal, #4f0e10);
+  --info-bg: var(--mds-color-theme-background-alert-theme-normal, #0a274a);
+  --bg-tertiary: var(--mds-color-theme-background-solid-tertiary-normal, #262626);
+  --button-secondary-bg: var(--mds-color-theme-button-secondary-normal, transparent);
+  --button-secondary-hover: var(--color-theme-button-secondary-hover, rgba(255, 255, 255, 0.07));
+  --button-secondary-active: var(--mds-color-theme-button-secondary-pressed, rgba(255,255,255,0.20));
+  --outline-input: var(--color-theme-outline-primary-normal, rgba(255, 255, 255, 0.40));
+  --outline-input-hover: rgba(255, 255, 255, 0.70);
+  --outline-input-disabled: rgba(255, 255, 255, 0.30);
+  --outline-button: var(--color-theme-outline-button-normal, rgba(255, 255, 255, 0.50));
+
+  /* Overlay tokens */
+  --overlay-secondary: var(--color-theme-common-overlays-secondary-normal, rgba(0, 0, 0, 0.4));
+
+  /* Elevation / shadow tokens — matches Figma elevation.3 */
+  --elevation-3: 0px 6px 24px 0px rgba(0, 0, 0, 0.25);
+
+  /* Border radius tokens */
+  --border-radius-pill: 9999px;
+
+  /* Custom visual effects - preserved */
+  --gradient-divider: linear-gradient(90deg, rgba(255,255,255,0) 0%, rgba(255,255,255,0.2) 22%, rgba(255,255,255,0.2) 78%, rgba(255,255,255,0) 100%);
+
+  /*
+   * Popover / Tooltip — Tonal surface (Figma .Popover Base; SVG in TooltipTonalBackdrop.tsx)
+   * Set on shell: --fill-0, --stroke-0 (consumed by inlined SVG paths).
+   */
+  --surface-tooltip-tonal-fill: var(--color-theme-background-solid-secondary-normal);
+  --surface-tooltip-tonal-stroke: #ffffff;
+  --surface-tooltip-tonal-shadow: 0 6px 24px rgba(0, 0, 0, 0.25);
+  --surface-tooltip-tonal-arrow-fill: var(--color-theme-background-solid-secondary-normal);
+}

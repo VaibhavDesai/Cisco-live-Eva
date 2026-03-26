@@ -1,9 +1,10 @@
 import { useNavigate } from 'react-router-dom';
 import Badge from '../shared/Badge';
 import Button from '../shared/Button';
+import Tabs, { Tab } from '../shared/Tabs';
 import { useApp } from '../../contexts/AppContext';
 
-export default function AgentHeader({ agent, activeTab, showPublishButton = true }) {
+export default function AgentHeader({ agent, activeTab, showPublishButton = true, headerRight = null }) {
   const navigate = useNavigate();
   const { toggleAgentPublish, showToast } = useApp();
 
@@ -14,16 +15,16 @@ export default function AgentHeader({ agent, activeTab, showPublishButton = true
   };
 
   const tabs = [
-    { id: 'overview', label: 'Overview', path: '' },
-    { id: 'configure', label: 'Configure', path: '/configure' },
-    { id: 'monitor', label: 'Monitor', path: '/monitor' },
-    { id: 'changelog', label: 'Changelog', path: '/changelog' },
+    { id: 'configure', label: 'Configuration', path: '/configure' },
+    { id: 'sessions', label: 'Sessions', path: '/sessions' },
+    { id: 'history', label: 'History', path: '/history' },
+    { id: 'analytics', label: 'Analytics', path: '/analytics' },
   ];
 
   const handlePublishToggle = () => {
     const action = agent.status === 'Published' ? 'unpublished' : 'published';
     toggleAgentPublish(agent.id);
-    showToast(`Agent ${action} successfully`);
+    showToast(`Agent ${action} successfully`, 'success');
   };
 
   return (
@@ -44,6 +45,7 @@ export default function AgentHeader({ agent, activeTab, showPublishButton = true
           </div>
           <div className="agent-meta">{agent.meta}</div>
         </div>
+        {headerRight}
         {showPublishButton && (
           <Button 
             variant={agent.status === 'Published' ? 'secondary' : 'primary'}
@@ -54,17 +56,17 @@ export default function AgentHeader({ agent, activeTab, showPublishButton = true
         )}
       </div>
 
-      <div className="tabs" style={{ marginBottom: '16px' }}>
+      <Tabs variant="glass" aria-label="Agent navigation" style={{ marginBottom: '16px' }}>
         {tabs.map(tab => (
-          <div
+          <Tab
             key={tab.id}
-            className={`tab ${activeTab === tab.id ? 'active' : ''}`}
+            active={activeTab === tab.id}
             onClick={() => navigate(`/agents/${agent.id}${tab.path}`)}
           >
             {tab.label}
-          </div>
+          </Tab>
         ))}
-      </div>
+      </Tabs>
     </>
   );
 }

@@ -1,0 +1,40 @@
+/*
+ * Font / Typography Tokens
+ * Auto-extracted from Figma: 💎 Core - Type (Applications)
+ *
+ * Type scale: font-10 … font-80
+ * Categories: body (small/midsize/large), heading (small/midsize/large/xlarge), headline (small)
+ * Weights: light (300), regular (400), medium (500), bold (700)
+ */
+
+:root {
+
+  /* --- Font Family --- */
+  --font-family-primary: 'CiscoSansTT', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+
+  /* --- Font Weights --- */
+  --font-weight-light: 300;
+  --font-weight-regular: 400;
+  --font-weight-medium: 500;
+  --font-weight-bold: 700;
+
+  /* --- Font Sizes --- */
+  --font-size-body-small: 12px;          /* font-10 */
+  --font-size-body-midsize: 14px;        /* font-20 */
+  --font-size-body-large: 16px;          /* font-30 */
+  --font-size-heading-small: 20px;       /* font-40 */
+  --font-size-heading-midsize: 24px;     /* font-50 */
+  --font-size-heading-large: 32px;       /* font-60 */
+  --font-size-heading-xlarge: 40px;      /* font-70 */
+  --font-size-headline-small: 52px;      /* font-80 */
+
+  /* --- Line Heights --- */
+  --font-lineheight-body-small: 16px;    /* font-10 */
+  --font-lineheight-body-midsize: 20px;  /* font-20 */
+  --font-lineheight-body-large: 24px;    /* font-30 */
+  --font-lineheight-heading-small: 28px; /* font-40 */
+  --font-lineheight-heading-midsize: 32px; /* font-50 */
+  --font-lineheight-heading-large: 40px; /* font-60 */
+  --font-lineheight-heading-xlarge: 52px; /* font-70 */
+  --font-lineheight-headline-small: 64px; /* font-80 */
+}

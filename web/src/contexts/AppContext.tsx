@@ -21,6 +21,16 @@ export interface AgentsMap {
   [key: string]: Agent;
 }
 
+export interface AiEngine {
+  id: string;
+  name: string;
+  description: string;
+  createdBy: string;
+  lastUpdated: string;
+  type: 'Custom' | 'System';
+  editable: boolean;
+}
+
 export interface AppContextValue {
   agents: AgentsMap;
   currentAgent: Agent | null;
@@ -30,10 +40,14 @@ export interface AppContextValue {
   closeAgentNav: (agentId: string) => void;
   addAgent: (newAgent: Partial<Agent>) => Agent;
   toggleAgentPublish: (agentId: string) => void;
-  toast: string | null;
-  showToast: (message: string) => void;
+  toast: { message: string; type?: 'default' | 'info' | 'success' | 'warning' | 'error' } | null;
+  showToast: (message: string, type?: 'default' | 'info' | 'success' | 'warning' | 'error') => void;
   isCreateModalOpen: boolean;
   setIsCreateModalOpen: (open: boolean) => void;
+  aiEngines: AiEngine[];
+  addAiEngine: (engine: Omit<AiEngine, 'id' | 'lastUpdated' | 'type' | 'editable'>) => void;
+  updateAiEngine: (id: string, data: { name: string; description: string }) => void;
+  removeAiEngine: (id: string) => void;
 }
 
 // Initial agents data
@@ -97,10 +111,75 @@ export function AppProvider({ children }: AppProviderProps) {
   const [openAgents, setOpenAgents] = useState<string[]>([]);
   
   // Toast state
-  const [toast, setToast] = useState<string | null>(null);
+  const [toast, setToast] = useState<{ message: string; type?: 'default' | 'info' | 'success' | 'warning' | 'error' } | null>(null);
   
   // Modal state
   const [isCreateModalOpen, setIsCreateModalOpen] = useState<boolean>(false);
+
+  // Shared AI engine list
+  const [aiEngines, setAiEngines] = useState<AiEngine[]>([
+    {
+      id: 'sys-1',
+      name: 'Webex AI Pro-US 1.0',
+      description: 'US-region optimized Webex AI engine',
+      createdBy: 'System',
+      lastUpdated: "28 Feb' 25, 1:08 AM",
+      type: 'System',
+      editable: false,
+    },
+    {
+      id: 'sys-2',
+      name: 'Webex AI Pro 1.0',
+      description: 'General-purpose Webex AI engine',
+      createdBy: 'System',
+      lastUpdated: "28 Feb' 25, 1:08 AM",
+      type: 'System',
+      editable: false,
+    },
+    {
+      id: 'custom-1',
+      name: 'Custom engine name',
+      description: 'Custom LLM integration for tailored AI workflows',
+      createdBy: 'Claire K',
+      lastUpdated: "28 Feb' 25, 1:08 AM",
+      type: 'Custom',
+      editable: true,
+    },
+  ]);
+
+  const addAiEngine = useCallback((engine: Omit<AiEngine, 'id' | 'lastUpdated' | 'type' | 'editable'>) => {
+    const newEngine: AiEngine = {
+      ...engine,
+      id: String(Date.now()),
+      lastUpdated: new Date().toLocaleString('en-US', {
+        day: '2-digit', month: 'short', year: '2-digit',
+        hour: 'numeric', minute: '2-digit',
+      }),
+      type: 'Custom',
+      editable: true,
+    };
+    setAiEngines(prev => [newEngine, ...prev]);
+  }, []);
+
+  const updateAiEngine = useCallback((id: string, data: { name: string; description: string }) => {
+    setAiEngines(prev => prev.map(e =>
+      e.id === id
+        ? {
+            ...e,
+            name: data.name,
+            description: data.description,
+            lastUpdated: new Date().toLocaleString('en-US', {
+              day: '2-digit', month: 'short', year: '2-digit',
+              hour: 'numeric', minute: '2-digit',
+            }),
+          }
+        : e
+    ));
+  }, []);
+
+  const removeAiEngine = useCallback((id: string) => {
+    setAiEngines(prev => prev.filter(e => e.id !== id));
+  }, []);
 
   // Select an agent (navigates to agent overview)
   const selectAgent = useCallback((agentId: string) => {
@@ -136,8 +215,8 @@ export function AppProvider({ children }: AppProviderProps) {
   }, [currentAgent]);
 
   // Show toast message
-  const showToast = useCallback((message: string) => {
-    setToast(message);
+  const showToast = useCallback((message: string, type?: 'default' | 'info' | 'success' | 'warning' | 'error') => {
+    setToast({ message, type });
     setTimeout(() => setToast(null), 3000);
   }, []);
 
@@ -213,7 +292,13 @@ export function AppProvider({ children }: AppProviderProps) {
     
     // Modal
     isCreateModalOpen,
-    setIsCreateModalOpen
+    setIsCreateModalOpen,
+
+    // AI engines
+    aiEngines,
+    addAiEngine,
+    updateAiEngine,
+    removeAiEngine,
   };
 
   return (

@@ -4,14 +4,7 @@ import { useApp } from '../../contexts/AppContext';
 import { AgentHeader } from '../../components/agents';
 import { Card, CardTitle } from '../../components/shared/Card';
 import { Table, TableHead, TableBody, TableRow, TableHeader, TableCell } from '../../components/shared/Table';
-
-const RECENT_SESSIONS = [
-  { id: 'SES-001', time: '2 min ago', messages: 8, duration: '4m 32s', outcome: 'Resolved' },
-  { id: 'SES-002', time: '15 min ago', messages: 12, duration: '6m 18s', outcome: 'Transferred' },
-  { id: 'SES-003', time: '32 min ago', messages: 5, duration: '2m 45s', outcome: 'Resolved' },
-  { id: 'SES-004', time: '1 hour ago', messages: 15, duration: '8m 12s', outcome: 'Resolved' },
-  { id: 'SES-005', time: '2 hours ago', messages: 3, duration: '1m 23s', outcome: 'Abandoned' },
-];
+import Dropdown from '../../components/shared/Dropdown';
 
 const TOP_INTENTS = [
   { name: 'Order Status', count: 342, percentage: 28 },
@@ -60,12 +53,12 @@ const RECENT_LOGS = [
   { id: 8, timestamp: '14:33:01', level: 'error', message: 'Knowledge base query timeout', source: 'KnowledgeEngine' },
 ];
 
-export default function AgentMonitor() {
+export default function AgentAnalytics() {
   const { agentId } = useParams();
   const { agents, currentAgent, selectAgent } = useApp();
-  const [activeSection, setActiveSection] = useState('sessions');
+  const [activeSection, setActiveSection] = useState('analytics');
+  const [logLevelFilter, setLogLevelFilter] = useState('all');
 
-  // If no current agent or different agent, select it
   if (!currentAgent || currentAgent.id !== agentId) {
     const agent = agents[agentId];
     if (agent) {
@@ -80,22 +73,16 @@ export default function AgentMonitor() {
 
   return (
     <div className="primary-content">
-      <AgentHeader agent={agent} activeTab="monitor" showPublishButton={false} />
+      <AgentHeader agent={agent} activeTab="analytics" showPublishButton={false} />
 
       <div className="subtabs">
-        <div 
-          className={`subtab ${activeSection === 'sessions' ? 'active' : ''}`}
-          onClick={() => setActiveSection('sessions')}
-        >
-          Sessions
-        </div>
-        <div 
+        <div
           className={`subtab ${activeSection === 'analytics' ? 'active' : ''}`}
           onClick={() => setActiveSection('analytics')}
         >
           Analytics
         </div>
-        <div 
+        <div
           className={`subtab ${activeSection === 'testing' ? 'active' : ''}`}
           onClick={() => setActiveSection('testing')}
         >
@@ -104,54 +91,8 @@ export default function AgentMonitor() {
       </div>
 
       <div className="secondary-content">
-        {/* Sessions Section */}
-        {activeSection === 'sessions' && (
-          <Card>
-            <div className="filter-bar" style={{ marginBottom: '16px' }}>
-              <input type="text" placeholder="Search sessions..." />
-              <select>
-                <option>All Outcomes</option>
-                <option>Resolved</option>
-                <option>Transferred</option>
-                <option>Abandoned</option>
-              </select>
-            </div>
-            <Table>
-              <TableHead>
-                <TableRow>
-                  <TableHeader>Session ID</TableHeader>
-                  <TableHeader>Time</TableHeader>
-                  <TableHeader>Messages</TableHeader>
-                  <TableHeader>Duration</TableHeader>
-                  <TableHeader>Outcome</TableHeader>
-                </TableRow>
-              </TableHead>
-              <TableBody>
-                {RECENT_SESSIONS.map(session => (
-                  <TableRow key={session.id}>
-                    <TableCell><strong>{session.id}</strong></TableCell>
-                    <TableCell>{session.time}</TableCell>
-                    <TableCell>{session.messages}</TableCell>
-                    <TableCell>{session.duration}</TableCell>
-                    <TableCell>
-                      <span style={{ 
-                        color: session.outcome === 'Resolved' ? 'var(--success-color)' : 
-                               session.outcome === 'Transferred' ? 'var(--accent-color)' : 'var(--warning-color)'
-                      }}>
-                        {session.outcome}
-                      </span>
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </Card>
-        )}
-
-        {/* Analytics Section */}
         {activeSection === 'analytics' && (
           <>
-            {/* Key Metrics */}
             <div className="grid grid-4" style={{ marginBottom: '24px' }}>
               <div className="stat-card">
                 <div className="stat-label">Total Sessions</div>
@@ -176,20 +117,19 @@ export default function AgentMonitor() {
             </div>
 
             <div className="grid grid-2" style={{ marginBottom: '24px' }}>
-              {/* Weekly Trend */}
               <Card>
                 <CardTitle style={{ marginBottom: '16px' }}>Weekly Session Trend</CardTitle>
                 <div className="analytics-chart">
-                  {DAILY_TRENDS.map((day, i) => (
+                  {DAILY_TRENDS.map((day) => (
                     <div key={day.day} className="chart-bar-group">
                       <div className="chart-bars">
-                        <div 
-                          className="chart-bar chart-bar-primary" 
+                        <div
+                          className="chart-bar chart-bar-primary"
                           style={{ height: `${(day.sessions / 200) * 100}%` }}
                           title={`${day.sessions} sessions`}
                         />
-                        <div 
-                          className="chart-bar chart-bar-secondary" 
+                        <div
+                          className="chart-bar chart-bar-secondary"
                           style={{ height: `${(day.resolved / 200) * 100}%` }}
                           title={`${day.resolved} resolved`}
                         />
@@ -204,7 +144,6 @@ export default function AgentMonitor() {
                 </div>
               </Card>
 
-              {/* Top Intents */}
               <Card>
                 <CardTitle style={{ marginBottom: '16px' }}>Top Intents</CardTitle>
                 <div className="analytics-list">
@@ -216,8 +155,8 @@ export default function AgentMonitor() {
                       </div>
                       <div className="analytics-list-stats">
                         <div className="analytics-progress-bar">
-                          <div 
-                            className="analytics-progress-fill" 
+                          <div
+                            className="analytics-progress-fill"
                             style={{ width: `${intent.percentage}%` }}
                           />
                         </div>
@@ -231,15 +170,14 @@ export default function AgentMonitor() {
             </div>
 
             <div className="grid grid-2">
-              {/* Hourly Activity */}
               <Card>
                 <CardTitle style={{ marginBottom: '16px' }}>Hourly Activity</CardTitle>
                 <div className="analytics-chart hourly">
                   {HOURLY_DATA.map((hour) => (
                     <div key={hour.hour} className="chart-bar-group">
                       <div className="chart-bars">
-                        <div 
-                          className="chart-bar chart-bar-accent" 
+                        <div
+                          className="chart-bar chart-bar-accent"
                           style={{ height: `${(hour.sessions / 100) * 100}%` }}
                           title={`${hour.sessions} sessions`}
                         />
@@ -250,7 +188,6 @@ export default function AgentMonitor() {
                 </div>
               </Card>
 
-              {/* Outcome Breakdown */}
               <Card>
                 <CardTitle style={{ marginBottom: '16px' }}>Outcome Breakdown</CardTitle>
                 <div className="outcome-breakdown">
@@ -293,11 +230,9 @@ export default function AgentMonitor() {
           </>
         )}
 
-        {/* Testing Section */}
         {activeSection === 'testing' && (
           <>
             <div className="grid grid-2" style={{ marginBottom: '24px' }}>
-              {/* Test Chat */}
               <Card style={{ display: 'flex', flexDirection: 'column', height: '400px' }}>
                 <CardTitle style={{ marginBottom: '16px' }}>Test Chat</CardTitle>
                 <div className="test-chat-container">
@@ -325,7 +260,6 @@ export default function AgentMonitor() {
                 </div>
               </Card>
 
-              {/* Test Scenarios */}
               <Card>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
                   <CardTitle>Test Scenarios</CardTitle>
@@ -351,17 +285,20 @@ export default function AgentMonitor() {
               </Card>
             </div>
 
-            {/* Logs Viewer */}
             <Card>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
                 <CardTitle>Logs</CardTitle>
-                <div style={{ display: 'flex', gap: '8px' }}>
-                  <select className="log-filter-select">
-                    <option>All Levels</option>
-                    <option>Info</option>
-                    <option>Warning</option>
-                    <option>Error</option>
-                  </select>
+                <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                  <Dropdown
+                    options={[
+                      { value: 'all', label: 'All Levels' },
+                      { value: 'info', label: 'Info' },
+                      { value: 'warning', label: 'Warning' },
+                      { value: 'error', label: 'Error' }
+                    ]}
+                    value={logLevelFilter}
+                    onChange={setLogLevelFilter}
+                  />
                   <button className="log-clear-btn">Clear</button>
                 </div>
               </div>

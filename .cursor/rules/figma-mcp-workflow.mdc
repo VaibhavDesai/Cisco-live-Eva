@@ -1,0 +1,18 @@
+---
+description: Auto-fetch Figma designs via MCP when user provides Figma URLs
+alwaysApply: true
+---
+
+# Figma Design-to-Code Workflow
+
+When the user provides a Figma URL (figma.com/design/...) and asks to build, update, or reference a component:
+
+1. **Immediately call the Figma MCP** — use `get_design_context` (primary) or `get_screenshot` (fallback) without asking for permission. If the server responds that nothing is selected (desktop plugin), use **`get_metadata`** with the same `fileKey` and `nodeId` to read layer names and structure, then implement from tokens + `design_system_rules.mdc`.
+2. **Extract URL parts automatically**:
+   - `fileKey`: the segment after `/design/` (or use `branchKey` if `/branch/` is present)
+   - `nodeId`: from `node-id=X-Y` query param, convert `-` to `:` (e.g., `14178-50458` → `14178:50458`)
+3. **Always set** `clientLanguages: "html,css,typescript"` and `clientFrameworks: "react"`.
+4. **If `get_design_context` fails**, retry with `forceCode: true` or fall back to `get_screenshot`.
+5. **Adapt the Figma output** to the project's design system — convert Tailwind classes to CSS variables from `tokens.css` / `web/src/tokens/*` and component rules in `components.css` (both loaded via `index.css`), use the `<Icon>` component instead of inline SVGs, and follow `design_system_rules.mdc`.
+
+Never ask "should I fetch the Figma design?" — just do it.

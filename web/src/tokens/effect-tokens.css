@@ -1,0 +1,16 @@
+/*
+ * Effect Tokens (Blur)
+ * Auto-extracted from Figma: 💎 Tokens - Effects
+ *
+ * blur-20:  Contextual blur — use sparingly for context behind layout objects
+ * blur-200: Primary blur — general purpose layer blur
+ * blur-800: Background blur — use on primary layout objects for accessibility
+ *
+ * Values are CSS backdrop-filter blur() values (Figma radius / 2).
+ */
+
+:root {
+  --blur-20: 10px;
+  --blur-200: 100px;
+  --blur-800: 400px;
+}

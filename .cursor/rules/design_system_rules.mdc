@@ -1,269 +1,486 @@
-# Webex AI Agent Studio - Design System Rules
+# Webex AI Agent Studio — Design System Rules
 
-## Overview
+## CRITICAL DIRECTIVE: Single Source of Truth
 
-This document defines the design system for the Webex AI Agent Studio prototype. Use these guidelines when integrating Figma designs or making UI changes.
+**Design tokens are the Single Source of Truth**, delivered through `web/src/index.css` imports:
+
+Do NOT rely on hardcoded hex values, arbitrary pixel values, or invented CSS variables. You MUST read all color, typography, background, spacing, blur, border-radius, and border-width tokens from the token chain below:
+
+```
+web/src/index.css
+  ├── @import './tokens/color-tokens.css'
+  ├── @import './tokens/font-tokens.css'
+  ├── @import './tokens/effect-tokens.css'
+  ├── @import './tokens/border-radius-tokens.css'
+  ├── @import './tokens/border-width-tokens.css'
+  ├── @import './tokens/spacing-tokens.css'
+  ├── @import './tokens.css'         # App :root aliases only (--bg-*, --text-*, …)
+  ├── @import './app-background.css' # Full-app shell backgrounds (Brand Visuals Library)
+  └── @import './components.css'    # Layout + component class rules (not variables)
+```
+
+**`web/src/tokens.css`** holds **only** the `:root` semantic aliases (pure variables). **`web/src/components.css`** holds **all** selectors (`.btn`, `.card`, layout, etc.).
+
+**Never** invent new CSS variables. If a token does not exist, use the closest semantic token already defined. When in doubt, open the token file and find the exact variable name.
 
 ---
 
-## 1. Token Definitions
+## 1. Token Architecture
 
-### Color Tokens
+All design tokens originate from the Figma design system and are extracted into dedicated CSS files. The `:root` block in **`tokens.css`** maps Momentum Design System tokens (`--mds-*`) to shorter semantic aliases (`--bg-*`, `--text-*`, `--accent-*`, etc.). You MUST use these aliases throughout the application.
 
-Design tokens are defined as CSS custom properties in `:root`:
+### Semantic Aliases (defined in `tokens.css` `:root`)
 
-```css
-:root {
-  /* Backgrounds */
-  --bg-primary: #f5f7fa;      /* Main background */
-  --bg-secondary: #ffffff;    /* Card/surface background */
-  --bg-sidebar: #1a1a2e;      /* Dark sidebar background */
+| Category | Variable | Resolves To |
+|---|---|---|
+| **Backgrounds** | `var(--bg-primary)` | `var(--mds-color-theme-background-solid-primary-normal)` |
+| | `var(--bg-secondary)` | `var(--mds-color-theme-background-solid-secondary-normal)` |
+| | `var(--bg-sidebar)` | `var(--mds-color-theme-background-solid-primary-normal)` |
+| | `var(--bg-glass)` | `var(--mds-color-theme-background-glass-normal)` |
+| | `var(--bg-glass-light)` | `var(--mds-color-theme-background-glass-light)` |
+| | `var(--bg-card)` | `var(--mds-color-theme-background-glass-normal)` |
+| **Text** | `var(--text-primary)` | `var(--mds-color-theme-text-primary-normal)` |
+| | `var(--text-secondary)` | `var(--mds-color-theme-text-secondary-normal)` |
+| | `var(--text-muted)` | `var(--mds-color-theme-text-primary-disabled)` |
+| **Borders** | `var(--border-color)` | `var(--mds-color-theme-outline-secondary-normal)` |
+| | `var(--outline-color)` | `var(--mds-color-theme-outline-primary-normal)` |
+| **Accent** | `var(--accent-color)` | `var(--mds-color-theme-text-accent-normal)` |
+| | `var(--accent-bg)` | `var(--mds-color-theme-background-accent-normal)` |
+| | `var(--accent-hover)` | `var(--mds-color-theme-text-accent-hover)` |
+| **Semantic** | `var(--success-color)` | `var(--mds-color-theme-text-success-normal)` |
+| | `var(--success-bg)` | `var(--mds-color-theme-background-alert-success-normal)` |
+| | `var(--warning-color)` | `var(--mds-color-theme-text-warning-normal)` |
+| | `var(--warning-bg)` | `var(--mds-color-theme-background-alert-warning-normal)` |
+| | `var(--danger-color)` | `var(--mds-color-theme-text-error-normal)` |
+| | `var(--danger-bg)` | `var(--mds-color-theme-background-alert-error-normal)` |
+| **Buttons** | `var(--button-secondary-bg)` | `var(--mds-color-theme-button-secondary-normal)` |
+| | `var(--button-secondary-active)` | `var(--mds-color-theme-button-secondary-pressed)` |
+| **Effects** | `var(--gradient-divider)` | Custom linear-gradient for divider lines |
 
-  /* Text Colors */
-  --text-primary: #1a1a2e;    /* Primary text */
-  --text-secondary: #64748b;  /* Secondary/muted text */
-  --text-muted: #94a3b8;      /* Disabled/hint text */
+### Typography Tokens (`font-tokens.css`)
 
-  /* UI Colors */
-  --border-color: #e2e8f0;    /* Borders and dividers */
-  --accent-color: #0066cc;    /* Primary action color (Webex blue) */
-  --accent-hover: #0052a3;    /* Hover state for accent */
+| Variable | Value |
+|---|---|
+| `var(--font-family-primary)` | `'CiscoSansTT', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif` |
+| `var(--font-weight-light)` | `300` |
+| `var(--font-weight-regular)` | `400` |
+| `var(--font-weight-medium)` | `500` |
+| `var(--font-weight-bold)` | `700` |
+| `var(--font-size-body-small)` | `12px` |
+| `var(--font-size-body-midsize)` | `14px` |
+| `var(--font-size-body-large)` | `16px` |
+| `var(--font-size-heading-small)` | `20px` |
+| `var(--font-size-heading-midsize)` | `24px` |
+| `var(--font-size-heading-large)` | `32px` |
+| `var(--font-size-heading-xlarge)` | `40px` |
+| `var(--font-size-headline-small)` | `52px` |
 
-  /* Semantic Colors */
-  --success-color: #10b981;   /* Success states */
-  --warning-color: #f59e0b;   /* Warning states */
-  --danger-color: #ef4444;    /* Error/danger states */
-}
-```
+### Spacing Tokens (`spacing-tokens.css`)
 
-### Gradient Tokens
+Based on a 4px grid. Always use these instead of arbitrary pixel values.
 
-Used for agent avatars and decorative elements:
+| Variable | Value |
+|---|---|
+| `var(--spacing-none)` | `0px` |
+| `var(--spacing-micro)` | `2px` |
+| `var(--spacing-xxx-small)` | `4px` |
+| `var(--spacing-xx-small)` | `8px` |
+| `var(--spacing-x-small)` | `12px` |
+| `var(--spacing-small)` | `16px` |
+| `var(--spacing-medium)` | `20px` |
+| `var(--spacing-large)` | `24px` |
+| `var(--spacing-x-large)` | `32px` |
+| `var(--spacing-xx-large)` | `40px` |
+| `var(--spacing-xxx-large)` | `52px` |
+| `var(--spacing-big)` | `64px` |
 
-```css
-/* Primary gradient (purple) */
-background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+### Border Radius Tokens (`border-radius-tokens.css`)
 
-/* Success gradient (green) */
-background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%);
+| Variable | Value | Usage |
+|---|---|---|
+| `var(--border-radius-none)` | `0px` | — |
+| `var(--border-radius-small)` | `4px` | Badges, inputs, chips |
+| `var(--border-radius-medium)` | `8px` | Tabs, form inputs |
+| `var(--border-radius-large)` | `12px` | Cards, modals, content areas |
+| `var(--border-radius-half-height)` | `50%` | Avatars, circular elements |
 
-/* Info gradient (blue) */
-background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+Note: Pill-shaped elements (buttons, segment controls) use `border-radius: 100px`.
 
-/* Accent gradient (pink) */
-background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+### Border Width Tokens (`border-width-tokens.css`)
 
-/* Warm gradient (orange-yellow) */
-background: linear-gradient(135deg, #fa709a 0%, #fee140 100%);
-```
+| Variable | Value |
+|---|---|
+| `var(--border-width-none)` | `0px` |
+| `var(--border-width-small)` | `1px` |
+| `var(--border-width-medium)` | `2px` |
+| `var(--border-width-large)` | `3px` |
 
-### Typography
+### Blur / Effect Tokens (`effect-tokens.css`)
 
-```css
-/* Font Family */
-font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', sans-serif;
+| Variable | Value | Usage |
+|---|---|---|
+| `var(--blur-20)` | `10px` | Contextual blur — sparingly |
+| `var(--blur-200)` | `100px` | Primary blur — general layers |
+| `var(--blur-800)` | `400px` | Background blur — primary layout objects |
 
-/* Font Sizes */
---font-xs: 11px;     /* Labels, captions */
---font-sm: 12px;     /* Small text, badges */
---font-base: 14px;   /* Body text (default) */
---font-md: 16px;     /* Card titles */
---font-lg: 18px;     /* Section headers */
---font-xl: 24px;     /* Page titles */
---font-2xl: 28px;    /* Large stat values */
+### Theming
 
-/* Line Height */
-line-height: 1.5;
-```
+The system supports dark (default) and light themes. Color tokens in `color-tokens.css` are defined under:
+- `:root, [data-theme="dark"]` — dark theme (default)
+- `[data-theme="light"]` — light theme
+- `@media (prefers-color-scheme: light)` — OS-level auto-detection
 
-### Spacing Scale
+All semantic aliases in `tokens.css` resolve through Momentum tokens (`--mds-*`) which are theme-aware. Do NOT hardcode theme-specific hex values.
 
-```css
-/* Spacing values used throughout */
-4px   /* Tight spacing */
-8px   /* Element gaps */
-12px  /* Component padding */
-16px  /* Card padding, section gaps */
-20px  /* Larger padding */
-24px  /* Page padding, major sections */
-32px  /* Large gaps */
-```
+### Application shell background
 
-### Border Radius
+**Figma:** [WxCC-6290 — .Core - App Shell](https://www.figma.com/design/N2MRxdIlw8NiWTmVXwgFUL/WxCC-6290-BYO-LLM-for-AI-Agent?node-id=38116-24598) (`38116-24598`).
 
-```css
-4px   /* Small elements (badges, inputs) */
-6px   /* Buttons, small cards */
-8px   /* Cards, containers */
-12px  /* Large cards, modals */
-50%   /* Circular elements (avatars) */
-```
+**Code:** `web/src/app-background.css` + `web/src/assets/app-shell-bg.png`.
+
+**Structure (matches Figma exactly):**
+1. `.app-background` — `position: fixed; inset: 0; z-index: 0` with solid black base (`--color-theme-background-solid-primary-normal`)
+2. `.app-background__image` — the gradient image at `opacity: 0.9`, covering the full viewport
+3. Header and sidebar are **transparent** — the gradient image shows through seamlessly
+4. `.primary-content` (Figma `.Page Content`) — glass overlay: `backdrop-filter: blur(400px)` + `background: rgba(0,0,0,0.4)` + `border-radius: 16px 0 0 0` (top-left only)
+
+### Brand logos (Brand Visuals Library)
+
+**Figma:** [🖼 Brand Visuals Library — Logos](https://www.figma.com/design/V1fC9JCxKYJ5aFzC8pbKis/%F0%9F%96%BC-Brand-Visuals-Library?node-id=421-2344) (`421-2344`).
+
+**Code:** `web/src/components/brand/` — React components only (no raster). Typography uses **`var(--mds-font-family-primary)`** / CiscoSans; SVG marks use **`currentColor`** or **`tone`**: `inherit` | `onDark` | `onLight`. For **pixel-perfect** artwork, replace inline SVG / text with **paths exported from Figma** for the same node.
+
+| Export / symbol (typical) | Component | Notes |
+|---|---|---|
+| Cisco bridge / logomark | `CiscoBridgeMark` | Vertical bars; `tone` sets fill |
+| Webex wordmark | `WebexWordmark` | Typographic `webex`; swap for outlined SVG if needed |
+| Cisco + Webex lockup | `CiscoWebexLockup` | `layout="horizontal"` \| `"stacked"` |
+| App shell lockup | `WebexAgentStudioLockup` | Wordmark + divider + product line (used in `Header.tsx`) |
+| AI ring mark | `CiscoAiSymbolMark` | Header AI control; uses `--color-theme-text-accent-normal` |
+| Compact symbol / badge | `WebexSymbolBadge` | Placeholder geometry until Figma path is pasted |
+
+**Import:** `import { CiscoBridgeMark, WebexWordmark, … } from './components/brand'` (adjust path).
 
 ---
 
 ## 2. Component Library
 
 ### Location
-All components are defined inline in:
-- **Prototype**: `/ia-deliverables/prototype/index.html`
-- **Wireframes**: `/ia-deliverables/wireframes/wireframe-styles.css`
+Component and layout **class rules** live in **`web/src/components.css`** (imported by `index.css`). **Variables** live in **`tokens.css`** and `./tokens/*.css`. Momentum Design web components (`mdc-button`, `mdc-badge`, `mdc-toggle`, etc.) are available via `@momentum-design/components`.
 
-### Core Components
+### Buttons
 
-#### Buttons
+Pill-shaped buttons with full-radius corners. Primary buttons use inverted colors (light text on dark, dark text on light).
 
 ```css
 .btn {
-  padding: 8px 16px;
-  border-radius: 8px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 8px 20px;
+  border-radius: 100px;
   font-size: 14px;
   font-weight: 500;
+  cursor: pointer;
+  border: 1px solid transparent;
+  transition: all 0.15s;
 }
 
 .btn-primary {
-  background: var(--accent-color);
-  color: white;
+  background: var(--text-primary);
+  color: var(--bg-primary);
 }
 
 .btn-secondary {
-  background: var(--bg-primary);
+  background: transparent;
   color: var(--text-primary);
-  border: 1px solid var(--border-color);
+  border: 1px solid var(--outline-color);
+}
+
+.btn-secondary:hover {
+  background: var(--button-secondary-active);
 }
 
 .btn-sm {
-  padding: 6px 12px;
+  padding: 6px 16px;
   font-size: 13px;
 }
 ```
 
-#### Cards
+### Cards
+
+Glass-effect cards with subtle borders. Nested cards inside `.secondary-content` use transparent backgrounds.
 
 ```css
 .card {
-  background: var(--bg-secondary);
+  background: var(--bg-glass);
   border: 1px solid var(--border-color);
-  border-radius: 12px;
+  border-radius: 16px;
   padding: 20px;
+  margin-bottom: 16px;
+}
+
+.secondary-content .card {
+  background: transparent;
+  border: none;
+  padding: 0;
+  margin-bottom: 0;
 }
 ```
 
-#### Badges
+### Badges
+
+Compact semantic indicators with alert-colored backgrounds and borders.
 
 ```css
 .badge {
-  padding: 4px 10px;
-  border-radius: 12px;
-  font-size: 12px;
-  font-weight: 500;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 8px;
+  border-radius: 4px;
+  font-size: 14px;
+  font-weight: 400;
+  line-height: 20px;
+  border: 1px solid;
+  color: var(--text-primary);
 }
 
-.badge-success { background: #dcfce7; color: #166534; }
-.badge-warning { background: #fef3c7; color: #92400e; }
-.badge-danger  { background: #fee2e2; color: #dc2626; }
+.badge-success { background: var(--success-bg); border-color: var(--success-color); }
+.badge-warning { background: var(--warning-bg); border-color: var(--warning-color); }
+.badge-danger  { background: var(--danger-bg);  border-color: var(--danger-color); }
+.badge-info    { background: var(--color-theme-background-alert-theme-normal); border-color: var(--accent-color); }
 ```
 
-#### Toggle Switches
+### Label Chips
+
+Color-coded labels using the Momentum label palette (cobalt, violet, purple, pink, orange, gold, lime, mint, slate). Each uses `--color-theme-background-label-{color}-normal` and `--color-theme-outline-label-{color}` tokens from `color-tokens.css`.
+
+### Alert Chips
+
+Semantic alert chips with matching icon colors (default, error, warning, success, info). Use alert background tokens from `color-tokens.css`.
+
+### Toggle Switches
 
 ```css
-.capability-toggle {
-  width: 44px;
-  height: 24px;
-}
-
 .toggle-slider {
-  background-color: #cbd5e1;  /* Off state */
-  border-radius: 24px;
+  width: 40px;
+  height: 22px;
+  background-color: rgba(255, 255, 255, 0.2);
+  border-radius: 11px;
 }
 
-input:checked + .toggle-slider {
-  background-color: var(--accent-color);  /* On state */
+.toggle-input:checked + .toggle-slider {
+  background-color: var(--accent-color);
 }
 ```
 
-#### Segment Control (Pills)
+### Segment Control (Pills)
+
+Pill-shaped segmented control with glass background.
 
 ```css
 .segment-control {
   display: inline-flex;
-  background: var(--bg-primary);
-  border-radius: 8px;
+  background: var(--bg-glass);
+  border: 1px solid var(--border-color);
+  border-radius: 20px;
   padding: 4px;
   gap: 4px;
 }
 
 .segment-item {
-  padding: 8px 16px;
-  font-size: 13px;
-  border-radius: 6px;
+  padding: 6px 16px;
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--text-secondary);
+  border-radius: 16px;
 }
 
 .segment-item.active {
-  background: white;
-  box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+  background: var(--button-secondary-active);
+  color: var(--text-primary);
 }
 ```
 
-#### Tables
+### Tabs (Pill Style)
+
+Momentum Design pill tabs. Active state uses solid tertiary background. No underline.
+
+```css
+.tab {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  height: 32px;
+  padding: 0 12px;
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--text-secondary);
+  border-radius: 8px;
+  background: transparent;
+  border: none;
+}
+
+.tab.active {
+  color: var(--text-primary);
+  background: var(--color-theme-background-solid-tertiary-normal);
+}
+
+.tab:focus-visible {
+  outline: 2px solid var(--color-theme-outline-theme-normal);
+  outline-offset: 2px;
+}
+```
+
+Tab badges use `var(--color-theme-background-accent-normal)` background with `100px` border-radius.
+
+### Tables
 
 ```css
 .table-container {
-  background: var(--bg-secondary);
-  border: 1px solid var(--border-color);
-  border-radius: 12px;
   overflow: hidden;
 }
 
-table th {
-  background: var(--bg-primary);
+th {
   font-size: 12px;
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.5px;
-}
-
-table td {
-  padding: 14px 20px;
-}
-```
-
-#### Tabs
-
-```css
-.tabs {
-  display: flex;
-  border-bottom: 1px solid var(--border-color);
-  margin-bottom: 16px;
-}
-
-.tab {
-  padding: 14px 20px;
   color: var(--text-secondary);
-  border-bottom: 2px solid transparent;
 }
 
-.tab.active {
-  color: var(--accent-color);
-  border-bottom-color: var(--accent-color);
-  font-weight: 500;
+th, td {
+  padding: 14px 16px;
+  border-bottom: 1px solid var(--border-color);
+}
+
+tbody tr:hover {
+  background: var(--button-secondary-active);
 }
 ```
 
-#### Form Inputs
+### Radio
+
+React: `Radio`, `RadioGroup` from `web/src/components/shared/Radio.tsx`. Classes: `.radio`, `.radio-input`, `.radio-circle`, `.radio-label`, `.radio-group`.
+
+### Progress Bar
+
+React: `ProgressBar` from `web/src/components/shared/ProgressBar.tsx`. Classes: `.progress-bar`, `.progress-bar--inline`, `.progress-bar__track`, `.progress-bar__fill`, status modifiers `.progress-bar--success` / `.progress-bar--failed`. Track/fill colors use `var(--accent-color)`, `var(--success-color)`, `var(--danger-color)` and neutral track grays in `components.css`.
+
+### Popover
+
+React: `Popover` from `web/src/components/shared/Popover.tsx` (portal + anchor positioning). Classes: `.popover-backdrop`, `.popover-surface`, `.popover-surface--tonal`, `.popover-surface--contrast`, `.popover-close`, `.popover-body`.
+
+### Pagination
+
+React: `Pagination` from `web/src/components/shared/Pagination.tsx`. Classes: `.pagination`, `.pagination-capacity`, `.pagination-nav`, `.pagination-icon-btn`, `.pagination-pill-btn`, `.pagination-select`, `.pagination-jump`. Uses `.form-input` on compact selects.
+
+### Tooltip & Toggle Tip
+
+[Figma — Momentum Web Tooltip](https://www.figma.com/design/9qhjTsC97Q3W8ZsbnTiZho/%F0%9F%A7%A9-Momentum-Web---Component-Library?node-id=46-2331) (`46-2331`): **Popover – Tonal** shell (Figma `.Popover Base` vector: rounded rect + soft edge). Implemented as **`TooltipTonalBackdrop`** (inlined SVG so `--fill-0` / `--stroke-0` resolve from `tokens.css`). Shell uses `12px` padding, inner `gap: 8px`, text **14px / 20px**, `max-width: 400px`, `var(--surface-tooltip-tonal-shadow)`.
+
+React: `Tooltip`, `ToggleTip` from `Tooltip.tsx`; tonal SVG layer from `TooltipTonalBackdrop.tsx`. `Popover` (tonal) and `Slider` value tooltip reuse the same backdrop.
+
+| Piece | Classes |
+|--------|---------|
+| Hover/focus bubble | `.tooltip-wrapper`, `.tooltip-bubble`, `.tooltip-text` |
+| Click-to-toggle (link + close) | `.tooltip-bubble.tooltip-interactive`, `.toggletip-content`, `.toggletip-link`, `.toggletip-close` |
+| Arrow | `.tooltip-bubble::after` + `[data-placement=*]` |
+
+Styling lives in **`components.css`** (radius `var(--border-radius-large)`, border `var(--outline-color)`). Documentation: [Momentum Tooltip — Storybook](https://momentum-design.github.io/momentum-design/storybook-static/index.html?path=/docs/components-tooltip--docs).
+
+### Figma → code map (Momentum Web Component Library)
+
+| Figma node | Page / component | React + CSS |
+|------------|------------------|-------------|
+| [32132-4116](https://www.figma.com/design/9qhjTsC97Q3W8ZsbnTiZho/%F0%9F%A7%A9-Momentum-Web---Component-Library?node-id=32132-4116) | Accordion, Accordion Group | `AccordionGroup`, `AccordionItem` · `.accordion*` |
+| [43610-72381](https://www.figma.com/design/9qhjTsC97Q3W8ZsbnTiZho/%F0%9F%A7%A9-Momentum-Web---Component-Library?node-id=43610-72381) | Announcement Dialog | `AnnouncementDialog` · `.announcement-dialog*` |
+| [46-2308](https://www.figma.com/design/9qhjTsC97Q3W8ZsbnTiZho/%F0%9F%A7%A9-Momentum-Web---Component-Library?node-id=46-2308) | Avatar | `Avatar` · `.avatar`, `.avatar-wrap`, `.avatar__badge` |
+| [46-2309](https://www.figma.com/design/9qhjTsC97Q3W8ZsbnTiZho/%F0%9F%A7%A9-Momentum-Web---Component-Library?node-id=46-2309) | App Header | `AppHeader` · `.app-header*` |
+| [24964-19982](https://www.figma.com/design/9qhjTsC97Q3W8ZsbnTiZho/%F0%9F%A7%A9-Momentum-Web---Component-Library?node-id=24964-19982) | Date Picker | `DatePicker` · `.date-picker*` (popover + grid) |
+| [46-2318](https://www.figma.com/design/9qhjTsC97Q3W8ZsbnTiZho/%F0%9F%A7%A9-Momentum-Web---Component-Library?node-id=46-2318) | Decorator (dividers, bullets, markers, grabbers) | `Divider`, `Bullet`, `Marker`, `GrabberDivider`, `DividerWithLabel` · `.decorator-*` |
+| [46-2322](https://www.figma.com/design/9qhjTsC97Q3W8ZsbnTiZho/%F0%9F%A7%A9-Momentum-Web---Component-Library?node-id=46-2322) | Dialog / Modal sizes | `Dialog` · `.modal` + `.dialog--sm|md|lg`, `.dialog--promotional`; compose with `ModalHeader` / `ModalBody` / `ModalFooter` |
+| [523-182039](https://www.figma.com/design/pFZzJ2lp02Ix6FYLwpHrXq/%E2%9A%A0%EF%B8%8F--WIP--Momentum-Web-Library?node-id=523-182039) | Filter (WIP) | `FilterPill` · `.filter-pill*` |
+| [22-25107](https://www.figma.com/design/pFZzJ2lp02Ix6FYLwpHrXq/%E2%9A%A0%EF%B8%8F--WIP--Momentum-Web-Library?node-id=22-25107) | Empty State (WIP) | `EmptyState` · `.empty-state*` |
+| [1617-1544](https://www.figma.com/design/pFZzJ2lp02Ix6FYLwpHrXq/%E2%9A%A0%EF%B8%8F--WIP--Momentum-Web-Library?node-id=1617-1544) | Empty State symbols (L/M/S × vertical/horizontal) | `EmptyState` with **`global`** · `.empty-state-global-host`, `.empty-state--global`, width caps `.empty-state--global-w-{lg|md|sm}` |
+| [46864-23490](https://www.figma.com/design/9qhjTsC97Q3W8ZsbnTiZho/%F0%9F%A7%A9-Momentum-Web---Component-Library?node-id=46864-23490) | Standalone Link & Inline Link (sizes + states + icon) | `TextLink` · `.text-link`, `.text-link--standalone|inline`, `.text-link--sm|md|lg` |
+
+### Text link (Standalone & Inline)
+
+[Figma — Link sticker sheet](https://www.figma.com/design/9qhjTsC97Q3W8ZsbnTiZho/%F0%9F%A7%A9-Momentum-Web---Component-Library?node-id=46864-23490) (`46864-23490`): **Standalone Link** and **Inline Link**, repeated for theme sticker columns; size rows ~24px / 20px / 16px line height; optional wider variant with trailing icon.
+
+React: `TextLink` from `web/src/components/shared/TextLink.tsx`. Use **`variant="standalone"`** for isolated links, **`variant="inline"`** inside paragraphs. Pass **`iconTrailing`** (Momentum `IconName`) for the icon variant. **`target="_blank"`** merges user **`rel`** with **`noopener`** / **`noreferrer`**. **`disabled`** renders `<span role="link" aria-disabled>` (no navigation).
+
+**Global empty state:** pass `global` to center the block in the main region; `graphicSize` maps to Figma max width **496px** (large) or **316px** (medium/small). Use `layout="horizontal"` for horizontal symbols.
+
+`get_design_context` from Figma MCP may require a selected layer in the desktop plugin; **`get_metadata`** with `fileKey` + `nodeId` works for structure when implementing from node IDs.
+
+### Form Inputs (Momentum Design)
 
 ```css
 .form-input {
   width: 100%;
-  padding: 10px 12px;
-  border: 1px solid var(--border-color);
-  border-radius: 6px;
+  height: 32px;
+  padding: 5px 6px 5px 12px;
+  border: 1px solid var(--outline-color);
+  border-radius: 8px;
+  background: transparent;
+  color: var(--text-primary);
   font-size: 14px;
 }
 
 .form-input:focus {
-  border-color: var(--accent-color);
-  box-shadow: 0 0 0 3px rgba(0, 102, 204, 0.1);
+  border-color: var(--outline-color);
+  box-shadow:
+    0 0 0 2px var(--bg-primary),
+    0 0 0 4px var(--accent-color),
+    0 0 0 5px rgba(100, 180, 250, 0.35);
 }
+
+/* Error state */
+.form-input.error { border-color: var(--danger-color); }
+.form-input.success { border-color: var(--success-color); }
+.form-input.warning { border-color: var(--warning-color); }
+```
+
+### Modals
+
+```css
+.modal-overlay {
+  position: fixed;
+  background: var(--color-theme-background-overlay-normal);
+  z-index: 1000;
+}
+
+.modal {
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+  border-radius: 16px;
+  width: 640px;
+  max-height: 90vh;
+}
+
+.modal-header { padding: 20px 24px; border-bottom: 1px solid var(--border-color); }
+.modal-body   { padding: 24px; max-height: 60vh; overflow-y: auto; }
+.modal-footer { padding: 16px 24px; border-top: 1px solid var(--border-color); }
+```
+
+### Stat Cards
+
+```css
+.stat-card {
+  background: var(--bg-glass);
+  border: 1px solid var(--border-color);
+  border-radius: 16px;
+  padding: 20px;
+}
+
+.stat-value { font-size: 32px; font-weight: 700; }
+.stat-label { font-size: 14px; color: var(--text-secondary); }
+.stat-change.positive { color: var(--success-color); }
+.stat-change.negative { color: var(--danger-color); }
 ```
 
 ---
@@ -273,16 +490,25 @@ table td {
 ### App Layout
 
 ```
-┌──────────────────────────────────────────────────────┐
-│  Header (56px fixed)                                 │
-├────────────┬─────────────────────────────────────────┤
-│            │                                         │
-│  Sidebar   │  Main Content Area                      │
-│  (220px)   │  (padding: 24px)                        │
-│  fixed     │                                         │
-│            │                                         │
-└────────────┴─────────────────────────────────────────┘
+┌──────────────────────────────────────────────────────────┐
+│  Header (56px fixed, transparent, z-index: 100)          │
+├────────────┬─────────────────────────────────────────────┤
+│            │  Primary Content                            │
+│  Sidebar   │  ┌──────────────────────────────────────┐   │
+│  (240px)   │  │ Layer 1: primary-content             │   │
+│  fixed     │  │ (bg: rgba(0,0,0,0.4), radius: 12px)│   │
+│  top: 56px │  │  ┌────────────────────────────────┐  │   │
+│  z-index:  │  │  │ Layer 2: secondary-content     │  │   │
+│  90        │  │  │ (bg: glass 0.05, radius: 12px) │  │   │
+│            │  │  └────────────────────────────────┘  │   │
+│            │  └──────────────────────────────────────┘   │
+└────────────┴─────────────────────────────────────────────┘
 ```
+
+- **Header**: 56px height, transparent background, no border. Contains logo, wordmark, divider, spacer, and action buttons (32px pill-shaped).
+- **Sidebar**: 240px fixed width, transparent background, starts below header at `top: 56px`. Uses pill-shaped nav items with left-edge active indicator (4px white bar). Nav items have `border-radius: 0 24px 24px 0`.
+- **Main content**: `margin-left: 240px; margin-top: 56px; padding: 12px 12px 24px 12px`. Contains a layered card system (primary → secondary content).
+- **Gradient background**: Fixed full-viewport `gradient-bg` element with background image at z-index 0.
 
 ### Grid System
 
@@ -298,36 +524,49 @@ table td {
 ## 4. Icon System
 
 ### Implementation
-Icons are implemented as inline SVGs for flexibility and styling:
 
-```html
-<!-- Example: Help icon -->
-<svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor">
-  <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10..."/>
-</svg>
+Icons use the **Momentum Design Icon System** via `@momentum-design/icons` and the `mdc-icon` web component. A typed React wrapper is available at `web/src/icons/Icon.tsx`.
+
+```tsx
+import { Icon } from '../icons';
+
+<Icon name="search" weight="bold" size="lg" />
+<Icon name="camera" weight="regular" size={40} color="var(--accent-color)" />
+<Icon name="alert" weight="bold" size="sm" ariaLabel="Alert" />
 ```
+
+Requires `<IconProvider iconSet="momentum-icons">` ancestor (already configured in `App.tsx`).
 
 ### Icon Sizing
 
+| Preset | Pixels | CSS Utility Class |
+|--------|--------|-------------------|
+| `xs` | 12px | `.icon-xs` |
+| `sm` | 16px | `.icon-sm` |
+| `md` | 20px | `.icon-md` |
+| `lg` | 24px | `.icon-lg` |
+| `xl` | 32px | `.icon-xl` |
+
+### Icon Color Utilities
+
 ```css
-/* Small icons (buttons, badges) */
-width: 16px; height: 16px;
-
-/* Default icons (navigation, actions) */
-width: 18px; height: 18px;
-
-/* Medium icons (cards, features) */
-width: 20px; height: 20px;
-
-/* Large icons (empty states, features) */
-width: 24px - 48px;
+mdc-icon { --mdc-icon-fill-color: currentColor; }
+.icon-accent  { --mdc-icon-fill-color: var(--mds-color-theme-text-accent-normal); }
+.icon-success { --mdc-icon-fill-color: var(--mds-color-theme-text-success-normal); }
+.icon-warning { --mdc-icon-fill-color: var(--mds-color-theme-text-warning-normal); }
+.icon-error   { --mdc-icon-fill-color: var(--mds-color-theme-text-error-normal); }
+.icon-muted   { --mdc-icon-fill-color: var(--mds-color-theme-text-secondary-normal); }
 ```
 
+### Icon Types
+
+895 icons available with `regular` and `bold` weight variants. Full TypeScript types are in `web/src/icons/types.ts`. Categories (Action, AI, Alerts, Audio & Video, Brand, Chat, Communication, Content, Emoji, Feedback, Formatting, Layout, Navigation, Objects, People, Presence) are in `web/src/icons/catalog.ts`.
+
 ### Common Icons Used
-- Navigation: Dashboard, Agents, Knowledge, Connections, Settings
-- Actions: Add, Edit, Delete, Configure, Close
-- Status: Checkmark, Warning, Error, Info
-- UI: Search, Bell (notifications), Help, Chevron
+- **Navigation**: `dashboard`, `bot`, `document`, `connect`, `settings`
+- **Actions**: `plus`, `edit`, `delete`, `search`, `filter`, `close-space`
+- **Status**: `check-circle`, `warning`, `error-legacy`, `info-circle`
+- **UI**: `search`, `alert`, `help-circle`, `arrow-down`, `more`
 
 ---
 
@@ -341,33 +580,38 @@ width: 24px - 48px;
     <h1 class="page-title">Page Title</h1>
     <p class="page-subtitle">Description text</p>
   </div>
-  <button class="btn btn-primary">+ Primary Action</button>
+  <button class="btn btn-primary">
+    <Icon name="plus" weight="bold" size="sm" /> Primary Action
+  </button>
 </div>
 ```
+
+`.page-title` uses `font-size: 24px; font-weight: 700; color: var(--text-primary)`.
+`.page-subtitle` uses `font-size: 14px; color: var(--text-secondary)`.
 
 ### Agent Page Header
 
 ```html
 <div class="agent-header">
-  <div class="agent-avatar" style="background: [gradient]">CS</div>
+  <div class="agent-avatar">CS</div>
   <div class="agent-info">
-    <div class="agent-name">Agent Name</div>
+    <div class="agent-name-row">
+      <div class="agent-name">Agent Name</div>
+      <span class="badge badge-success">Published</span>
+    </div>
     <div class="agent-meta">Description • metadata</div>
   </div>
-  <span class="badge badge-success">Status</span>
   <button class="btn btn-primary">Action</button>
 </div>
 ```
 
-### Filter Bar
+Agent avatar: 64px circle with gradient background (`linear-gradient(135deg, #667eea 0%, #764ba2 100%)`).
 
-```html
-<div class="filter-bar">
-  <input type="text" placeholder="Search...">
-  <select><!-- Filter options --></select>
-  <button class="btn btn-primary" style="margin-left: auto;">Action</button>
-</div>
-```
+### Content Layering
+
+Every page follows a two-layer card system:
+1. **`.primary-content`** — Dark glass container (`rgba(0,0,0,0.4)`, 12px radius, 24px padding)
+2. **`.secondary-content`** — Light glass container (`rgba(255,255,255,0.05)`, 12px radius, 20px padding) nested inside
 
 ---
 
@@ -377,76 +621,92 @@ width: 24px - 48px;
 
 | Status | Badge Class | Button |
 |--------|-------------|--------|
-| Published | `badge-success` | "Unpublish" (secondary) |
-| Ready to Publish | `badge-warning` | "Publish" (primary) |
-| In Development | `badge-warning` | "Publish" (primary) |
+| Published | `.badge-success` | "Unpublish" (secondary) |
+| Ready to Publish | `.badge-warning` | "Publish" (primary) |
+| In Development | `.badge-warning` | "Publish" (primary) |
 
 ### Interactive States
 
 ```css
-/* Hover */
-:hover { background: var(--bg-primary); }
+/* Hover - uses button secondary active token */
+:hover { background: var(--button-secondary-active); }
 
-/* Active/Selected */
-.active { 
-  color: var(--accent-color);
-  background: rgba(0, 102, 204, 0.1);
+/* Active/Selected - uses accent bg */
+.active {
+  color: var(--text-primary);
+  background: var(--color-theme-background-solid-tertiary-normal);
 }
 
 /* Disabled */
 :disabled {
-  opacity: 0.5;
+  opacity: 0.4;
   cursor: not-allowed;
+  pointer-events: none;
 }
 ```
+
+### Semantic Status Colors
+
+| Status | Text Color | Background |
+|--------|------------|------------|
+| Success | `var(--success-color)` | `var(--success-bg)` |
+| Warning | `var(--warning-color)` | `var(--warning-bg)` |
+| Error/Danger | `var(--danger-color)` | `var(--danger-bg)` |
+| Info | `var(--accent-color)` | `var(--color-theme-background-alert-theme-normal)` |
 
 ---
 
 ## 7. Modal Pattern
 
+Modals use the secondary background with glass border, centered with overlay backdrop.
+
 ```css
 .modal-overlay {
   position: fixed;
-  background: rgba(0, 0, 0, 0.5);
+  inset: 0;
+  background: var(--color-theme-background-overlay-normal);
   z-index: 1000;
 }
 
 .modal {
-  background: white;
-  border-radius: 12px;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+  border-radius: 16px;
   width: 640px;
   max-height: 90vh;
 }
 
 .modal-header { padding: 20px 24px; border-bottom: 1px solid var(--border-color); }
-.modal-body { padding: 24px; max-height: 60vh; overflow-y: auto; }
+.modal-body   { padding: 24px; max-height: 60vh; overflow-y: auto; }
 .modal-footer { padding: 16px 24px; border-top: 1px solid var(--border-color); }
 ```
+
+Modal close button: 32px, rounded, transparent background, hover uses `var(--button-secondary-active)`.
 
 ---
 
 ## 8. Animation Tokens
 
 ```css
-/* Standard transition */
+/* Standard transition for all interactive elements */
 transition: all 0.15s ease;
 
 /* Modal entrance */
 @keyframes modalIn {
   from { opacity: 0; transform: scale(0.95) translateY(-10px); }
-  to { opacity: 1; transform: scale(1) translateY(0); }
+  to   { opacity: 1; transform: scale(1) translateY(0); }
 }
 
 /* Toast slide in */
 @keyframes slideIn {
   from { transform: translateY(20px); opacity: 0; }
-  to { transform: translateY(0); opacity: 1; }
+  to   { transform: translateY(0); opacity: 1; }
 }
 
 /* Pulse (for syncing indicators) */
 @keyframes pulse {
   0%, 100% { opacity: 1; }
-  50% { opacity: 0.4; }
+  50%      { opacity: 0.4; }
 }
 ```
 
@@ -456,45 +716,75 @@ transition: all 0.15s ease;
 
 When implementing designs from Figma:
 
-1. **Match tokens exactly** - Use the CSS variables defined above
-2. **Use semantic colors** - Map Figma colors to our semantic tokens
-3. **Maintain component patterns** - Follow the component structures defined here
-4. **Preserve spacing** - Use the spacing scale (4, 8, 12, 16, 20, 24px)
-5. **Icons as inline SVGs** - Convert Figma icons to inline SVG format
-6. **Border radius consistency** - Use 4/6/8/12px based on component size
+1. **Match tokens exactly** — Use CSS variables from `tokens.css` / `./tokens/*` (via `index.css`). Never hardcode hex values from the Figma inspector.
+2. **Use semantic aliases** — Map Figma colors to the semantic aliases in `:root` (e.g., Figma's "text/primary/normal" → `var(--text-primary)`).
+3. **Maintain component patterns** — Follow the component structures defined in Section 2.
+4. **Preserve spacing** — Use `var(--spacing-*)` tokens from `spacing-tokens.css`.
+5. **Use the Icon system** — Import from `web/src/icons` with `<Icon name="..." weight="bold" />`. Do NOT use inline SVGs for standard icons.
+6. **Border radius consistency** — Use `var(--border-radius-*)` tokens. Cards/modals use `16px` (exception to the `12px` token — this is by design). Buttons use `100px` (full pill).
+7. **Layer system** — Respect the primary-content → secondary-content nesting pattern.
+8. **Theming** — All new styles must work across dark and light themes via token variables.
 
 ---
 
 ## 10. File Structure
 
 ```
-/ia-deliverables/
-├── prototype/
-│   └── index.html          # Main interactive prototype (all-in-one)
-├── wireframes/
-│   ├── wireframe-styles.css # Shared wireframe styles
-│   └── *.html               # Individual wireframe pages
-├── validation/
-│   ├── user-personas.md
-│   └── workflow-validation.md
-└── README.md
+web/src/
+├── index.css                    # Entry: imports tokens + tokens.css + components.css
+├── tokens.css                   # App :root aliases only (semantic variables)
+├── components.css               # Resets, layout, .btn/.card/.wizard-step, etc.
+├── tokens/
+│   ├── color-tokens.css         # Dark + Light theme colors (from Figma)
+│   ├── font-tokens.css          # Type scale, weights, line heights
+│   ├── effect-tokens.css        # Blur values
+│   ├── border-radius-tokens.css # Radius scale
+│   ├── border-width-tokens.css  # Border widths
+│   └── spacing-tokens.css       # 4px grid spacing scale
+├── icons/
+│   ├── Icon.tsx                 # Typed React Icon component
+│   ├── types.ts                 # IconName + IconWeight types (895 icons)
+│   ├── catalog.ts               # Category groupings + helpers
+│   └── index.ts                 # Barrel exports
+├── components/
+│   ├── layout/                  # Header, Sidebar, MainLayout
+│   └── shared/                  # Dropdown, reusable components
+├── pages/                       # Route pages
+├── contexts/                    # React contexts (AppContext)
+└── App.tsx                      # Root: ThemeProvider + IconProvider + Router
 ```
 
 ---
 
 ## Quick Reference
 
-| Element | Key Property |
-|---------|--------------|
-| Primary color | `#0066cc` |
-| Background | `#f5f7fa` |
-| Card background | `#ffffff` |
-| Sidebar | `#1a1a2e` |
-| Border | `#e2e8f0` |
-| Border radius (cards) | `12px` |
-| Border radius (buttons) | `8px` |
-| Button padding | `8px 16px` |
+| Element | CSS Variable / Value |
+|---------|---------------------|
+| Primary background | `var(--bg-primary)` |
+| Secondary background | `var(--bg-secondary)` |
+| Glass background | `var(--bg-glass)` |
+| Card background | `var(--bg-card)` |
+| Primary text | `var(--text-primary)` |
+| Secondary text | `var(--text-secondary)` |
+| Muted text | `var(--text-muted)` |
+| Accent color | `var(--accent-color)` |
+| Accent background | `var(--accent-bg)` |
+| Success color | `var(--success-color)` |
+| Warning color | `var(--warning-color)` |
+| Danger color | `var(--danger-color)` |
+| Border color | `var(--border-color)` |
+| Outline color | `var(--outline-color)` |
+| Button secondary hover | `var(--button-secondary-active)` |
+| Border radius (cards) | `16px` |
+| Border radius (tabs/inputs) | `var(--border-radius-medium)` = `8px` |
+| Border radius (buttons) | `100px` (pill) |
+| Border radius (badges/chips) | `var(--border-radius-small)` = `4px` |
+| Button padding | `8px 20px` |
 | Card padding | `20px` |
-| Page padding | `24px` |
-| Sidebar width | `220px` |
+| Page content padding | `12px 12px 24px 12px` |
+| Sidebar width | `240px` |
 | Header height | `56px` |
+| Standard transition | `all 0.15s ease` |
+| Font family | `var(--font-family-primary)` |
+| Body font size | `var(--font-size-body-midsize)` = `14px` |
+| Page title size | `var(--font-size-heading-midsize)` = `24px` |

@@ -1,0 +1,11 @@
+# UI & Design System Standards
+
+You are strictly bound to the existing design system defined in this project. 
+
+## 1. Styling Constraints
+* **NEVER invent new hex codes, rgb values, or arbitrary pixel values.** * All colors, typography, spacing, and border-radii MUST be referenced from the `tailwind.config.ts` (or your specific css variables file).
+* If a requested UI element requires a color or spacing not present in the configuration, you must STOP and ask me for the correct token name before proceeding.
+
+## 2. Component Architecture
+* Prioritize re-using existing components found in the `/components/ui` directory.
+* Do not build a custom button, input, or card if a foundational component already exists. Import and compose them.
