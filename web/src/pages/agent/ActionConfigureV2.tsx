@@ -547,14 +547,14 @@ export default function ActionConfigureV2() {
 
           {activeSection === 'Profile' && (
             <div className="v2-profile-layout">
-              <aside className="sidebar-guidelines">
-                <h3 className="sidebar-guidelines-title">Goal and instruction tips</h3>
-                <div className="sidebar-guidelines-card">
-                  <div className="sidebar-guidelines-item">Explain what the agent's purpose is.</div>
-                  <div className="sidebar-guidelines-item">Break down the overall goal into specific, sequential steps and tasks.</div>
-                  <div className="sidebar-guidelines-item">Reference the actions at each step that are used to fulfil each step and task.</div>
-                  <div className="sidebar-guidelines-item">Define the personality and expertise of the AI agent, e.g. friendly, formal, or casual.</div>
-                </div>
+              <aside className="v2-profile-tips">
+                <h3 className="v2-profile-tips-title">Goal and instruction tips</h3>
+                <ul className="v2-profile-tips-list">
+                  <li>Explain what the agent's purpose is.</li>
+                  <li>Break down the overall goal into specific, sequential steps and tasks.</li>
+                  <li>Reference the actions at each step that are used to fulfil each step and task.</li>
+                  <li>Define the personality and expertise of the AI agent, e.g. friendly, formal, or casual.</li>
+                </ul>
               </aside>
 
               <div className="v2-profile-form">
@@ -739,15 +739,15 @@ export default function ActionConfigureV2() {
 
           {activeSection === 'Instructions' && (
             <div className="instructions-layout">
-              <aside className="sidebar-guidelines">
-                <h3 className="sidebar-guidelines-title">Instructions <span className="sidebar-guidelines-required">(required)</span></h3>
-                <div className="sidebar-guidelines-card">
-                  <div className="sidebar-guidelines-item">Explain in detail what the agent needs to do and what actions it is capable of.</div>
-                  <div className="sidebar-guidelines-item">Use markdown to help the AI agent understand structure, sequence and importance.</div>
-                  <div className="sidebar-guidelines-item">Consider including instructions for personality, response style, context, error handling, connecting to other systems, and completing actions, based on your agent's goals.</div>
-                  <div className="sidebar-guidelines-item">Use the syntax {'{{variable}}'} to insert dynamic content.</div>
-                  <div className="sidebar-guidelines-item">Use the optimize instructions tool to help write a better instruction.</div>
-                </div>
+              <aside className="instructions-sidebar">
+                <h3 className="instructions-sidebar-title">Instructions <span className="instructions-required">(required)</span></h3>
+                <ul className="instructions-guidelines">
+                  <li>Explain in detail what the agent needs to do and what actions it is capable of.</li>
+                  <li>Use markdown to help the AI agent understand structure, sequence and importance.</li>
+                  <li>Consider including instructions for personality, response style, context, error handling, connecting to other systems, and completing actions, based on your agent's goals.</li>
+                  <li>Use the syntax {'{{variable}}'} to insert dynamic content.</li>
+                  <li>Use the optimize instructions tool to help write a better instruction.</li>
+                </ul>
               </aside>
               <div className="instructions-editor">
                 <div className="instructions-toolbar">

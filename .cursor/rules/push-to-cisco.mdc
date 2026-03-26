@@ -1,0 +1,26 @@
+---
+description: Push code to Cisco GitHub instance via SSH
+globs: 
+alwaysApply: false
+---
+
+# Push to Cisco GitHub Instance
+
+When the user says "push the code to Cisco instance" (or similar phrasing), follow these steps:
+
+1. **Stage and commit** all changes with a descriptive commit message (if there are uncommitted changes).
+2. **Ensure the remote** `origin` points to the Cisco SSH host:
+   ```
+   git remote set-url origin git@github-cisco:webexdesign/ai-agent-studio.git
+   ```
+   The `github-cisco` host alias is defined in `~/.ssh/config` and uses the Cisco EMU SSH key (`~/.ssh/id_ed25519_cisco`).
+3. **Push** to the remote:
+   ```
+   git push -u origin main
+   ```
+
+Key details:
+- SSH host alias: `github-cisco` (maps to `github.com` with the Cisco identity)
+- Org/repo: `webexdesign/ai-agent-studio`
+- Branch: `main`
+- Never use `github.com` directly — always use `github-cisco` so the correct SSH key is selected.
