@@ -9,6 +9,9 @@ applications:
         build:
           commands:
             - npm run build
+        postBuild:
+          commands:
+            - aws amplify update-app --app-id $AWS_APP_ID --region $AWS_DEFAULT_REGION --custom-rules '[{"source":"</^[^.]+$|\\.(?!(css|gif|ico|jpg|js|png|txt|svg|woff|woff2|ttf|map|json|webp)$)([^.]+$)/>","status":"200","target":"/index.html","condition":null}]'
       artifacts:
         baseDirectory: dist
         files:
