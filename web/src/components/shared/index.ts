@@ -33,14 +33,7 @@ export type { SpinnerProps, SpinnerSize, SpinnerColor } from './Spinner';
 export { Tooltip, ToggleTip } from './Tooltip';
 export { TooltipTonalBackdrop } from './TooltipTonalBackdrop';
 export type { TooltipProps, TooltipAction, ToggleTipProps, TooltipPlacement, ToggleTipLink } from './Tooltip';
-export {
-  SideNav, SideNavUpper, SideNavLower, SideNavSection, SideNavDivider,
-  SideNavItem, SideNavSubMenu, SideNavSubMenuItem,
-} from './SideNav';
-export type {
-  SideNavProps, SideNavUpperProps, SideNavLowerProps, SideNavSectionProps,
-  SideNavItemProps, SideNavSubMenuProps, SideNavSubMenuItemProps,
-} from './SideNav';
+export { default as SideNav } from './SideNav';
 export { ListItem, ListItemTrailingCopy, ListHeader, List } from './ListItem';
 export type {
   ListItemProps, ListItemVariant, ListItemTrailingCopyProps,
@@ -66,8 +59,7 @@ export type {
 } from './Accordion';
 export { AnnouncementDialog } from './AnnouncementDialog';
 export type { AnnouncementDialogProps } from './AnnouncementDialog';
-export { AppHeader } from './AppHeader';
-export type { AppHeaderProps, AppHeaderVariant } from './AppHeader';
+export { default as AppHeader } from './AppHeader';
 export { DatePicker } from './DatePicker';
 export type { DatePickerProps } from './DatePicker';
 export {
@@ -97,5 +89,38 @@ export { EmptyState } from './EmptyState';
 export type { EmptyStateProps, EmptyStateGraphicSize, EmptyStateLayout } from './EmptyState';
 export { Illustration } from '../../assets/illustrations';
 export type { IllustrationName, IllustrationProps } from '../../assets/illustrations';
+export { default as MomentumIllustration } from './Illustration';
 export { TextLink } from './TextLink';
 export type { TextLinkProps, TextLinkVariant, TextLinkSize } from './TextLink';
+
+/* ── Newly consolidated from ds/ ─────────────────────────────────── */
+export { default as ThemeToggle } from './ThemeToggle';
+export { default as SearchField } from './SearchField';
+export { default as PasswordInput } from './PasswordInput';
+export { default as TimePicker } from './TimePicker';
+export { default as Toolbar } from './Toolbar';
+export { default as ProductSelector } from './ProductSelector';
+export { default as Projects } from './Projects';
+export { default as DeleteThreadDialog } from './DeleteThreadDialog';
+export { default as RenameThreadDialog } from './RenameThreadDialog';
+export { default as ComponentShowcase } from './Dashboard';
+
+/* ── AI Chat components (shared/ai/) ─────────────────────────────── */
+export {
+  AiAssistant,
+  AiShell,
+  AiConversation,
+  AiChatTextArea,
+  AiContainerHeader,
+  AiFooter,
+  AiNavRail,
+  AiNotification,
+  AiNotifications,
+  AiResponseMessage,
+  AiSymbol,
+  AiThreadPanel,
+  AiUserMessage,
+  AiWelcome,
+  AiPromptButton,
+  AiPromptCardButton,
+} from './ai';

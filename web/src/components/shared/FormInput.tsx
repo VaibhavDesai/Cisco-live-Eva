@@ -14,20 +14,37 @@ const VALIDATION_ICON: Record<string, { name: IconName; color: string }> = {
 
 export interface InputProps
   extends Omit<React.InputHTMLAttributes<HTMLInputElement>, 'prefix'> {
+  /** Visible label text above the field */
   label?: string;
+  /** When true, shows a required asterisk in the label */
   required?: boolean;
+  /** Helper or validation message shown below the field */
   hint?: string;
+  /** Applies validation styling and an icon in the hint row */
   validation?: ValidationState;
+  /** HTML maxlength forwarded to the input */
   maxLength?: number;
+  /** Shows current length vs maxLength in the helper row */
   showCharCount?: boolean;
+  /** Icon displayed at the start of the input */
   leadingIcon?: IconName;
+  /** Icon displayed at the end of the input */
   trailingIcon?: IconName;
+  /** Shows a clear control when the field has a value */
   clearable?: boolean;
+  /** Handler invoked when the clear control is pressed */
   onClear?: () => void;
+  /** Classes applied to the outer form-group wrapper */
   className?: string;
+  /** Classes merged onto the native input element */
   inputClassName?: string;
 }
 
+/**
+ * Single-line text field with optional label, icons, validation hint, and character count.
+ * @example
+ * <Input label="Email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} />
+ */
 export const Input = forwardRef<HTMLInputElement, InputProps>(
   (
     {
@@ -155,18 +172,31 @@ Input.displayName = 'Input';
 
 export interface TextareaProps
   extends React.TextareaHTMLAttributes<HTMLTextAreaElement> {
+  /** Visible label text above the field */
   label?: string;
+  /** When true, shows a required asterisk in the label */
   required?: boolean;
+  /** Helper or validation message shown below the field */
   hint?: string;
+  /** Applies validation styling and an icon in the hint row */
   validation?: ValidationState;
+  /** HTML maxlength forwarded to the textarea */
   maxLength?: number;
+  /** Shows current length vs maxLength */
   showCharCount?: boolean;
-  /** Show character count inside the field (bottom-right) instead of below */
+  /** Character count inside the field (bottom-right) instead of below */
   inlineCharCount?: boolean;
+  /** Classes applied to the outer form-group wrapper */
   className?: string;
+  /** Classes merged onto the native textarea element */
   inputClassName?: string;
 }
 
+/**
+ * Multi-line text field with optional label, validation hint, and character count.
+ * @example
+ * <Textarea label="Description" value={text} onChange={(e) => setText(e.target.value)} />
+ */
 export const Textarea = forwardRef<HTMLTextAreaElement, TextareaProps>(
   (
     {
@@ -272,14 +302,27 @@ Textarea.displayName = 'Textarea';
 
 export interface SelectProps
   extends React.SelectHTMLAttributes<HTMLSelectElement> {
+  /** Visible label text above the field */
   label?: string;
+  /** When true, shows a required asterisk in the label */
   required?: boolean;
+  /** Helper or validation message shown below the field */
   hint?: string;
+  /** Applies validation styling and an icon in the hint */
   validation?: ValidationState;
+  /** Classes applied to the outer form-group wrapper */
   className?: string;
+  /** Classes merged onto the native select element */
   inputClassName?: string;
 }
 
+/**
+ * Styled native select with optional label and validation hint.
+ * @example
+ * <Select label="Country" value={country} onChange={(e) => setCountry(e.target.value)}>
+ *   <Option value="ca">Canada</Option>
+ * </Select>
+ */
 export const Select = forwardRef<HTMLSelectElement, SelectProps>(
   (
     {
@@ -344,6 +387,11 @@ Select.displayName = 'Select';
 
 /* ─── Option ──────────────────────────────────────────────────── */
 
+/**
+ * Thin wrapper around a native `<option>` for use inside `Select`.
+ * @example
+ * <Option value="east">East</Option>
+ */
 export function Option({
   value,
   children,
@@ -358,23 +406,41 @@ export function Option({
 
 /* ─── Compound helpers ────────────────────────────────────────── */
 
+/**
+ * Wraps related controls with shared `form-group` spacing.
+ * @example
+ * <FormGroup>
+ *   <FormLabel htmlFor="user">Username</FormLabel>
+ *   <input id="user" className="form-input" />
+ * </FormGroup>
+ */
 export function FormGroup({
   children,
   className = '',
 }: {
+  /** Group contents (labels, inputs, hints) */
   children: React.ReactNode;
+  /** Extra classes appended to `form-group` */
   className?: string;
 }) {
   return <div className={`form-group ${className}`}>{children}</div>;
 }
 
+/**
+ * Stand-alone label using form typography and optional required marker.
+ * @example
+ * <FormLabel htmlFor="email" required>Work email</FormLabel>
+ */
 export function FormLabel({
   children,
   required = false,
   htmlFor,
 }: {
+  /** Label text or elements */
   children: React.ReactNode;
+  /** When true, renders the required asterisk */
   required?: boolean;
+  /** Associated control id for accessibility */
   htmlFor?: string;
 }) {
   return (
@@ -384,11 +450,18 @@ export function FormLabel({
   );
 }
 
+/**
+ * Inline helper or validation text with optional status icon.
+ * @example
+ * <FormHint validation="error">Enter a valid phone number.</FormHint>
+ */
 export function FormHint({
   children,
   validation,
 }: {
+  /** Helper or error message content */
   children: React.ReactNode;
+  /** Drives icon and color treatment */
   validation?: ValidationState;
 }) {
   const cls = ['form-hint', validation].filter(Boolean).join(' ');
@@ -407,7 +480,19 @@ export function FormHint({
   );
 }
 
-export function FormHelperRow({ children }: { children: React.ReactNode }) {
+/**
+ * Horizontal row for hints, character counts, and other accessory copy under fields.
+ * @example
+ * <FormHelperRow>
+ *   <FormHint>Optional</FormHint>
+ * </FormHelperRow>
+ */
+export function FormHelperRow({
+  children,
+}: {
+  /** Hint text, counters, or other accessory nodes */
+  children: React.ReactNode;
+}) {
   return <div className="form-helper-row">{children}</div>;
 }
 

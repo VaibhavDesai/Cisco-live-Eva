@@ -15,32 +15,39 @@ import {
 /* ------------------------------------------------------------------ */
 
 export interface SliderProps {
-  /** Current value (single) or [min, max] tuple (range) */
+  /** Current value or [start, end] tuple for range mode */
   value: number | [number, number];
+  /** Called when the value changes from pointer or keyboard */
   onChange: (value: number | [number, number]) => void;
+  /** Minimum bound of the track */
   min?: number;
+  /** Maximum bound of the track */
   max?: number;
+  /** Step increment for snapping and keyboard nudges */
   step?: number;
-  /** Label shown above the track */
+  /** Optional label rendered above the track */
   label?: ReactNode;
-  /** Show min/max text labels below the track */
+  /** Show min, optional mid, and max labels under the track */
   showValueLabels?: boolean;
-  /** Custom min label (defaults to `min`) */
+  /** Custom text for the minimum value label */
   minLabel?: string;
-  /** Custom max label (defaults to `max`) */
+  /** Custom text for the maximum value label */
   maxLabel?: string;
-  /** Custom mid-point label shown between min and max */
+  /** Optional label between min and max when showValueLabels */
   midLabel?: string;
-  /** Show tick marks (stepped mode) */
+  /** Render tick marks along the stepped track */
   showTicks?: boolean;
-  /** Show step value labels below the track */
+  /** Show numeric labels for each step under the track */
   showStepLabels?: boolean;
-  /** Show tooltip on drag */
+  /** Show a tooltip while dragging or hovering a thumb */
   showTooltip?: boolean;
-  /** Format the tooltip value */
+  /** Format thumb values shown in the tooltip */
   formatTooltip?: (value: number) => string;
+  /** Disables pointer and keyboard interaction */
   disabled?: boolean;
+  /** Additional CSS class on the slider root */
   className?: string;
+  /** Accessible name for the slider control(s) */
   'aria-label'?: string;
 }
 
@@ -67,6 +74,12 @@ function pct(val: number, min: number, max: number) {
 /*  Slider                                                             */
 /* ------------------------------------------------------------------ */
 
+/**
+ * Single-thumb or range slider with pointer and keyboard support, optional ticks and labels.
+ *
+ * @example
+ * <Slider value={volume} onChange={setVolume} aria-label="Volume" />
+ */
 export const Slider = forwardRef<HTMLDivElement, SliderProps>(
   function Slider(
     {

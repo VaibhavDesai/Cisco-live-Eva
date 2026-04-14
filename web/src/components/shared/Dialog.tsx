@@ -4,19 +4,28 @@ export type DialogSize = 'sm' | 'md' | 'lg';
 export type DialogVariant = 'default' | 'promotional';
 
 export interface DialogProps {
+  /** Dialog body (e.g. ModalHeader, ModalBody, ModalFooter) */
   children: ReactNode;
+  /** Called when the user clicks the overlay (unless prevented) */
   onClose?: () => void;
-  /** Match Figma Modal Dialog sizes (46-2322) */
+  /** Modal width preset (sm, md, lg); matches Figma Modal Dialog */
   size?: DialogSize;
+  /** Default vs promotional dialog styling */
   variant?: DialogVariant;
+  /** Appended to the dialog class list */
   className?: string;
-  /** When true, overlay click does not close */
+  /** When true, overlay clicks do not invoke onClose */
   preventBackdropClose?: boolean;
 }
 
 /**
  * Momentum Web — Modal Dialog shell (Figma `46-2322`).
  * Compose with `ModalHeader`, `ModalBody`, `ModalFooter` from `./Modal`.
+ *
+ * @example
+ * <Dialog onClose={handleClose}>
+ *   <ModalHeader title="Confirm" />
+ * </Dialog>
  */
 export function Dialog({
   children,

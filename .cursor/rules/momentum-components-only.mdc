@@ -6,6 +6,6 @@ alwaysApply: true
 
 # Momentum Components Only
 
-1. **Every component must use a master from the Momentum library** — check `web/src/components/shared/` and `web/src/ds/components/` first. Refer to the component table in `.cursor/skills/react-component-builder/SKILL.md` for the full inventory.
+1. **Every component must use a master from the Momentum library** — check `web/src/components/shared/` first (including `web/src/components/shared/ai/` for AI chat components). Refer to the component table in `.cursor/skills/react-component-builder/SKILL.md` for the full inventory.
 2. **Do not customize any components** — use them as-is with their existing props, variants, and styles. No one-off CSS overrides or wrapper hacks to alter a shared component's appearance.
 3. **If a needed component does not exist in the library, stop and ask the user before building it.** Do not create new shared components, one-off styled divs, or inline replacements without explicit approval.

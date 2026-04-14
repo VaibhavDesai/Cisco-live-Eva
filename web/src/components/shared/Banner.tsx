@@ -6,21 +6,32 @@ import type { IconName } from '../../icons/types';
 /*  Banner                                                              */
 /* ------------------------------------------------------------------ */
 
+/** Semantic tone controlling icon, colors, and banner styling */
 export type BannerType = 'info' | 'warning' | 'success' | 'error';
 
 export interface BannerAction {
+  /** Visible button label */
   label: string;
+  /** Invoked when the action is clicked */
   onClick: () => void;
+  /** Button visual style in the banner action area */
   variant?: 'ghost' | 'outline';
 }
 
 export interface BannerProps {
+  /** Banner tone (icon and color treatment) */
   type?: BannerType;
+  /** Primary heading text */
   title: string;
+  /** Supporting content below the title */
   subtitle?: ReactNode;
+  /** Optional ghost or outline buttons */
   actions?: BannerAction[];
+  /** When true, shows the dismiss control */
   dismissable?: boolean;
+  /** Invoked when the dismiss control is clicked */
   onDismiss?: () => void;
+  /** Extra classes merged onto the banner root */
   className?: string;
 }
 
@@ -31,6 +42,11 @@ const TYPE_CONFIG: Record<BannerType, { icon: IconName; className: string }> = {
   error: { icon: 'error-legacy', className: 'banner-error' },
 };
 
+/**
+ * Inline status banner with icon, optional actions, and dismiss control.
+ * @example
+ * <Banner type="warning" title="Heads up" subtitle="Your trial ends soon." />
+ */
 export function Banner({
   type = 'info',
   title,
@@ -95,16 +111,29 @@ export function Banner({
 /* ------------------------------------------------------------------ */
 
 export interface PromoBannerProps {
+  /** Primary heading text */
   title: string;
+  /** Supporting content below the title */
   subtitle?: ReactNode;
+  /** Optional ghost or outline buttons */
   actions?: BannerAction[];
+  /** Custom content in the left slot */
   leftSlot?: ReactNode;
+  /** Custom content in the right slot */
   rightSlot?: ReactNode;
+  /** When true, shows the dismiss control */
   dismissable?: boolean;
+  /** Invoked when the dismiss control is clicked */
   onDismiss?: () => void;
+  /** Extra classes merged onto the banner root */
   className?: string;
 }
 
+/**
+ * Promotional banner with optional side slots, actions, and dismiss control.
+ * @example
+ * <PromoBanner title="Upgrade" actions={[{ label: 'Learn more', onClick: openPricing }]} />
+ */
 export function PromoBanner({
   title,
   subtitle,

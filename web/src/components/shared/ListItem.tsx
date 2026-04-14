@@ -27,31 +27,47 @@ function BulletSeparator() {
 /* ------------------------------------------------------------------ */
 
 export interface ListItemProps {
+  /** Primary row content (title) */
   children: ReactNode;
-  /** Secondary label text or array of strings (joined with bullet separators) */
+  /** Secondary line; string arrays render with bullet separators */
   secondaryLabel?: ReactNode | string[];
-  /** Tertiary label text or array of strings (joined with bullet separators) */
+  /** Tertiary line; string arrays render with bullet separators */
   tertiaryLabel?: ReactNode | string[];
-  /** Slot for leading content (icon, avatar, checkbox, etc.) */
+  /** Leading slot (icon, avatar, checkbox, etc.) */
   leading?: ReactNode;
-  /** Slot for trailing content (text, icon, badge, button, etc.) */
+  /** Trailing slot (text, icon, badge, button, etc.) */
   trailing?: ReactNode;
-  /** Selected / active state */
+  /** Highlights the row as selected or active */
   active?: boolean;
+  /** Disables interaction and dims the row */
   disabled?: boolean;
-  /** 'inset' (rounded 8px) or 'full-width' (no radius) */
+  /** Layout: inset (rounded) or edge-to-edge full-width */
   variant?: ListItemVariant;
-  /** Expanded content shown below the main row */
+  /** Optional body rendered below the main row when expanded */
   expandedContent?: ReactNode;
+  /** Invoked on click (also Enter/Space when focusable) */
   onClick?: (e: MouseEvent<HTMLDivElement>) => void;
+  /** Extra CSS class on the root */
   className?: string;
+  /** WAI-ARIA role override */
   role?: string;
+  /** Accessible name when the row is interactive */
   'aria-label'?: string;
+  /** Selection state for listbox-style patterns */
   'aria-selected'?: boolean;
+  /** Disabled state exposed to assistive technologies */
   'aria-disabled'?: boolean;
+  /** Tab order; defaults when `onClick` is provided */
   tabIndex?: number;
 }
 
+/**
+ * Styled list row with optional leading/trailing slots, metadata lines, and expansion.
+ * @example
+ * <ListItem leading={<Icon name="meetings" />} onClick={open}>
+ *   Team standup
+ * </ListItem>
+ */
 export const ListItem = forwardRef<HTMLDivElement, ListItemProps>(
   function ListItem(
     {
@@ -166,10 +182,17 @@ function LabelRow({
 /* ------------------------------------------------------------------ */
 
 export interface ListItemTrailingCopyProps {
+  /** Primary trailing label */
   header: string;
+  /** Optional secondary line under the header */
   subline?: string;
 }
 
+/**
+ * Trailing column preset with a header line and optional subline.
+ * @example
+ * <ListItem trailing={<ListItemTrailingCopy header="5:00 PM" subline="Today" />} />
+ */
 export function ListItemTrailingCopy({
   header,
   subline,
@@ -189,18 +212,27 @@ export function ListItemTrailingCopy({
 /* ------------------------------------------------------------------ */
 
 export interface ListHeaderProps {
+  /** Section title text */
   children: ReactNode;
-  /** Optional leading icon */
+  /** Optional leading Momentum icon */
   leadingIcon?: IconName;
-  /** Optional trailing icon */
+  /** Optional trailing Momentum icon */
   trailingIcon?: IconName;
-  /** Trailing slot for custom content (button, icon, etc.) */
+  /** Trailing slot for custom content (button, menu trigger, etc.) */
   trailing?: ReactNode;
+  /** Disables header styling/interaction affordances */
   disabled?: boolean;
+  /** Matches list row inset or full-width layout */
   variant?: ListItemVariant;
+  /** Extra CSS class on the root */
   className?: string;
 }
 
+/**
+ * Sticky-style section header for grouped list content.
+ * @example
+ * <ListHeader leadingIcon="meetings">Meetings</ListHeader>
+ */
 export function ListHeader({
   children,
   leadingIcon,
@@ -242,12 +274,21 @@ export function ListHeader({
 /* ------------------------------------------------------------------ */
 
 export interface ListProps {
+  /** List rows or grouped sections */
   children: ReactNode;
+  /** Extra CSS class on the container */
   className?: string;
+  /** Landmark role; defaults to `list` */
   role?: string;
+  /** Accessible name for the list region */
   'aria-label'?: string;
 }
 
+/**
+ * Scrollable list container with list semantics.
+ * @example
+ * <List aria-label="Threads">{rows}</List>
+ */
 export function List({
   children,
   className = '',

@@ -754,7 +754,9 @@ web/src/
 │   └── index.ts                 # Barrel exports
 ├── components/
 │   ├── layout/                  # Header, Sidebar, MainLayout
-│   └── shared/                  # Dropdown, reusable components
+│   └── shared/                  # All reusable components (single canonical library)
+│       ├── ai/                  # AI chat components (AiShell, AiConversation, etc.)
+│       └── *.tsx / *.jsx        # Buttons, Cards, Modals, Forms, etc.
 ├── pages/                       # Route pages
 ├── contexts/                    # React contexts (AppContext)
 └── App.tsx                      # Root: ThemeProvider + IconProvider + Router

@@ -1,8 +1,11 @@
 import { useId } from 'react';
 
 /**
- * Figma Popover - Tonal shell (.Popover Base). Inlined so --fill-0 / --stroke-0
- * on an ancestor (.tooltip-bubble, .popover-surface--tonal, .slider-tooltip) resolve.
+ * Tonal popover shell backdrop (Figma Popover base) inlined so `--fill-0` and `--stroke-0`
+ * resolve from ancestors such as `.tooltip-bubble`, `.popover-surface--tonal`, or `.slider-tooltip`.
+ *
+ * @example
+ * <span className="tooltip-bubble"><TooltipTonalBackdrop />Label</span>
  */
 export function TooltipTonalBackdrop() {
   const rid = useId().replace(/:/g, '');

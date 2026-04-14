@@ -1,24 +1,29 @@
 import { type ReactNode } from 'react';
 import { Illustration, type IllustrationName } from '../../assets/illustrations';
 
+/** Artwork sizing token for the empty-state graphic region */
 export type EmptyStateGraphicSize = 'sm' | 'md' | 'lg';
+/** Stacks the graphic above text or arranges graphic and text horizontally */
 export type EmptyStateLayout = 'vertical' | 'horizontal';
 
 export interface EmptyStateProps {
+  /** Primary heading text */
   title: string;
+  /** Supporting body copy below the title */
   description?: string;
-  /** Custom graphic ReactNode. Overrides `illustration` if both provided. */
+  /** Custom artwork node; overrides illustration when both are provided */
   graphic?: ReactNode;
-  /** Named illustration from the Momentum Illustration Library (Empty-Primary). */
+  /** Named Empty-Primary illustration from the Momentum illustration set */
   illustration?: IllustrationName;
+  /** Graphic frame size (sm / md / lg) */
   graphicSize?: EmptyStateGraphicSize;
+  /** Layout direction for graphic and text */
   layout?: EmptyStateLayout;
+  /** Actions row (for example buttons) rendered beneath the description */
   actions?: ReactNode;
+  /** Extra class names merged onto the root empty-state element */
   className?: string;
-  /**
-   * Full-area empty state (Figma WIP **Empty State** `1617-1544`): centers in the content
-   * region, applies symbol max-width (496px large / 316px medium & small).
-   */
+  /** Centers in the content region with global max-width constraints when true */
   global?: boolean;
 }
 
@@ -29,8 +34,11 @@ const GLOBAL_WIDTH_CLASS: Record<EmptyStateGraphicSize, string> = {
 };
 
 /**
- * Empty State — WIP Momentum Web Library (`22-25107`, symbols under `1617-1544`).
- * Use `global` for page-level / primary content empty patterns.
+ * Renders Momentum empty-state content with optional illustration or custom graphic, actions, and global centering.
+ * Aligns with WIP Momentum Web Library (`22-25107`, symbols under `1617-1544`); use `global` for page-level empties.
+ *
+ * @example
+ * <EmptyState title="No items" illustration="empty-primary" actions={<Button>New</Button>} />
  */
 export function EmptyState({
   title,

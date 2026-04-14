@@ -18,15 +18,27 @@ import type { IconName } from '../../icons/types';
 /* ------------------------------------------------------------------ */
 
 export interface MenuOverlayProps {
+  /** When true, the menu portal is shown and positioned */
   open: boolean;
+  /** Element whose bounding box anchors the overlay */
   anchorRef: React.RefObject<HTMLElement | null>;
+  /** Called on outside click, Escape, or other close paths */
   onClose: () => void;
+  /** Menu sections, items, and dividers */
   children: ReactNode;
+  /** Extra CSS class on the overlay root */
   className?: string;
-  /** Preferred alignment: 'left' (default) or 'right' */
+  /** Horizontal alignment relative to the anchor */
   align?: 'left' | 'right';
 }
 
+/**
+ * Portaled menu anchored under a trigger with outside-dismiss and arrow-key roving focus.
+ * @example
+ * <MenuOverlay open={open} anchorRef={anchorRef} onClose={close}>
+ *   <MenuItem label="Rename" onClick={onRename} />
+ * </MenuOverlay>
+ */
 export function MenuOverlay({
   open,
   anchorRef,
@@ -125,10 +137,19 @@ export function MenuOverlay({
 /* ------------------------------------------------------------------ */
 
 export interface MenuSectionProps {
+  /** Optional visible section label */
   header?: string;
+  /** Menu items grouped under the header */
   children: ReactNode;
 }
 
+/**
+ * Groups menu items under an optional titled section (`role="group"`).
+ * @example
+ * <MenuSection header="Actions">
+ *   <MenuItem label="Edit" onClick={onEdit} />
+ * </MenuSection>
+ */
 export function MenuSection({ header, children }: MenuSectionProps) {
   return (
     <div className="menu-section" role="group" aria-label={header}>
@@ -142,6 +163,13 @@ export function MenuSection({ header, children }: MenuSectionProps) {
 /*  MenuDivider                                                        */
 /* ------------------------------------------------------------------ */
 
+/**
+ * Visual separator between menu sections or dense item groups.
+ * @example
+ * <MenuItem label="Copy" />
+ * <MenuDivider />
+ * <MenuItem label="Delete" danger />
+ */
 export function MenuDivider() {
   return <div className="menu-divider" role="separator" />;
 }
@@ -151,22 +179,31 @@ export function MenuDivider() {
 /* ------------------------------------------------------------------ */
 
 export interface MenuItemProps {
+  /** Primary label for the action */
   label: string;
-  /** Leading icon name */
+  /** Leading Momentum icon */
   icon?: IconName;
-  /** Trailing keyboard shortcut text */
+  /** Trailing keyboard shortcut hint */
   shortcut?: string;
-  /** Shows a checkmark on the right */
+  /** Shows a trailing checkmark when toggled on */
   selected?: boolean;
-  /** Indicates this item opens a sub-menu */
+  /** Shows a submenu affordance chevron */
   hasSubmenu?: boolean;
+  /** Disables activation */
   disabled?: boolean;
-  /** Danger styling (red text) */
+  /** Applies destructive (danger) styling */
   danger?: boolean;
+  /** Invoked on click */
   onClick?: (e: MouseEvent<HTMLButtonElement>) => void;
+  /** Extra CSS class on the button */
   className?: string;
 }
 
+/**
+ * Single `role="menuitem"` row with optional icon, shortcut, selection, and danger styles.
+ * @example
+ * <MenuItem label="Edit" icon="edit" onClick={onEdit} />
+ */
 export const MenuItem = forwardRef<HTMLButtonElement, MenuItemProps>(
   function MenuItem(
     {
@@ -232,6 +269,11 @@ export const MenuItem = forwardRef<HTMLButtonElement, MenuItemProps>(
 /*  useMenu — convenience hook for trigger + overlay wiring            */
 /* ------------------------------------------------------------------ */
 
+/**
+ * Local state and refs for pairing a trigger with `MenuOverlay`.
+ * @example
+ * const { open, anchorRef, toggle, close } = useMenu();
+ */
 export function useMenu() {
   const [open, setOpen] = useState(false);
   const anchorRef = useRef<HTMLElement>(null);

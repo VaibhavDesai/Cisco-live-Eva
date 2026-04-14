@@ -3,24 +3,43 @@ import { createPortal } from 'react-dom';
 import { Icon } from '../../icons';
 
 export interface DropdownOption {
+  /** Value passed to `onChange` when this option is selected */
   value: string;
+  /** Visible label in the menu and trigger */
   label: string;
+  /** When true, the option cannot be selected */
   disabled?: boolean;
 }
 
 interface DropdownProps {
+  /** Choices shown in the listbox */
   options: DropdownOption[];
+  /** Currently selected option value */
   value: string;
+  /** Called with the new value when selection changes */
   onChange: (value: string) => void;
+  /** Trigger text when no option matches `value` */
   placeholder?: string;
+  /** Optional label rendered above the trigger */
   label?: string;
+  /** Shows a required indicator with the label */
   required?: boolean;
+  /** Helper text below the trigger */
   hint?: string;
+  /** Disables opening the menu and changing the value */
   disabled?: boolean;
+  /** Extra class on the root `form-group` wrapper */
   className?: string;
+  /** Trigger size variant */
   size?: 'default' | 'compact';
 }
 
+/**
+ * Single-select dropdown with a portal menu, typeahead-friendly keyboard navigation, and field chrome.
+ *
+ * @example
+ * <Dropdown options={[{ value: 'a', label: 'A' }]} value={v} onChange={setV} label="Choose" />
+ */
 export default function Dropdown({
   options,
   value,

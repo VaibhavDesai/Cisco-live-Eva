@@ -30,24 +30,33 @@ const SIZE_PX: Record<AvatarSizeToken, number> = {
 export type AvatarVariant = 'photo' | 'initials' | 'icon';
 
 export interface AvatarProps extends Omit<HTMLAttributes<HTMLDivElement>, 'children'> {
+  /** Photo, initials, or icon presentation */
   variant?: AvatarVariant;
+  /** Design token size or pixel diameter */
   size?: AvatarSizeToken | number;
-  /** Profile image URL (variant photo) */
+  /** Profile image URL when variant is photo */
   src?: string;
+  /** Alternative text for the profile image */
   alt?: string;
+  /** Extra attributes for the inner img (not src, alt, className, or style) */
   imgProps?: Omit<ImgHTMLAttributes<HTMLImageElement>, 'src' | 'alt' | 'className' | 'style'>;
-  /** Initials text (variant initials) */
+  /** Initials text when variant is initials (or fallback) */
   initials?: string;
-  /** Momentum icon name (variant icon) */
+  /** Momentum icon name when variant is icon */
   icon?: IconName;
-  /** Numeric badge e.g. unread count */
+  /** Optional numeric badge (e.g. unread count) */
   badgeCount?: number;
+  /** Additional CSS class on the avatar root */
   className?: string;
+  /** Inline styles merged onto the avatar root */
   style?: CSSProperties;
 }
 
 /**
  * Momentum Web Avatar (`46-2308`) — photo, initials, or icon; optional counter badge.
+ *
+ * @example
+ * <Avatar variant="photo" src="/avatar.png" alt="Jane Doe" size="small" />
  */
 export default function Avatar({
   variant = 'photo',

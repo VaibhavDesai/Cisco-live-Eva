@@ -11,18 +11,23 @@ export type TextLinkVariant = 'standalone' | 'inline';
 export type TextLinkSize = 'sm' | 'md' | 'lg';
 
 export interface TextLinkProps extends Omit<AnchorHTMLAttributes<HTMLAnchorElement>, 'children'> {
+  /** Link label or rich content */
   children: ReactNode;
-  /** Standalone = block-level affordance; Inline = within body copy */
+  /** Block standalone link vs inline within prose */
   variant?: TextLinkVariant;
-  /** Matches Figma link sizes (row heights ~16 / 20 / 24) */
+  /** Typography and hit-target size (sm, md, lg) */
   size?: TextLinkSize;
-  /** Trailing icon (wider hit target in Figma ~62px vs ~42px text-only) */
+  /** Optional trailing icon */
   iconTrailing?: IconName;
+  /** Renders as a non-interactive span when true */
   disabled?: boolean;
 }
 
 /**
  * Momentum Web text links — Standalone & Inline (`46864-23490` sticker sheet).
+ *
+ * @example
+ * <TextLink href="/docs">Documentation</TextLink>
  */
 export const TextLink = forwardRef<HTMLAnchorElement, TextLinkProps>(function TextLink(
   {

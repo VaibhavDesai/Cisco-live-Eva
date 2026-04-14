@@ -55,12 +55,19 @@ function clampToGrid(monthCursor: Date): { cells: { date: Date; inMonth: boolean
 }
 
 export interface DatePickerProps {
+  /** Selected date, or null when empty */
   value: Date | null;
+  /** Called when the user selects a date */
   onChange: (date: Date | null) => void;
+  /** Dates before this day are disabled */
   minDate?: Date;
+  /** Dates after this day are disabled */
   maxDate?: Date;
+  /** Shown on the trigger when value is null */
   placeholder?: string;
+  /** Prevents opening the calendar */
   disabled?: boolean;
+  /** Appended to the trigger wrapper class list */
   className?: string;
   /** Optional id for label association */
   id?: string;
@@ -69,6 +76,10 @@ export interface DatePickerProps {
 /**
  * Date picker with calendar popover (Figma `24964-19982`).
  * Uses browser-local `Date` only — wire your own persistence / APIs.
+ *
+ * @example
+ * const [date, setDate] = useState<Date | null>(null);
+ * return <DatePicker value={date} onChange={setDate} />;
  */
 export function DatePicker({
   value,

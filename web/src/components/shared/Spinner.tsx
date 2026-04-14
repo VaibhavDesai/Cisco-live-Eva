@@ -8,12 +8,13 @@ export type SpinnerSize = 'small' | 'midsize' | 'large';
 export type SpinnerColor = 'default' | 'inverted';
 
 export interface SpinnerProps {
-  /** small=24px, midsize=48px, large=96px */
+  /** Preset size (small, midsize, or large) */
   size?: SpinnerSize;
-  /** default=accent blue, inverted=white */
+  /** Stroke color: default accent or inverted for dark backgrounds */
   color?: SpinnerColor;
-  /** Accessible label for screen readers */
+  /** Accessible name announced for the status indicator */
   'aria-label'?: string;
+  /** Additional CSS classes on the root */
   className?: string;
 }
 
@@ -37,6 +38,11 @@ const DASH_OFFSET = CIRCUMFERENCE - ARC_LENGTH;
 /*  Component                                                          */
 /* ------------------------------------------------------------------ */
 
+/**
+ * Accessible loading spinner with preset sizes and color variants.
+ * @example
+ * <Spinner size="small" aria-label="Loading results" />
+ */
 const Spinner = forwardRef<HTMLDivElement, SpinnerProps>(function Spinner(
   {
     size = 'midsize',

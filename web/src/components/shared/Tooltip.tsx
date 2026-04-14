@@ -16,6 +16,7 @@ import { TooltipTonalBackdrop } from './TooltipTonalBackdrop';
 /*  Shared types                                                       */
 /* ------------------------------------------------------------------ */
 
+/** Bubble position and alignment relative to the anchor */
 export type TooltipPlacement =
   | 'top'
   | 'top-start'
@@ -81,24 +82,35 @@ function computePosition(
 /* ------------------------------------------------------------------ */
 
 export interface TooltipAction {
+  /** Label for the optional action pill */
   label: string;
+  /** Called when the action button is pressed */
   onClick?: () => void;
 }
 
 export interface TooltipProps {
-  /** Text content shown inside the tooltip */
+  /** Text or nodes shown inside the tooltip bubble */
   content: ReactNode;
+  /** Preferred placement of the bubble relative to the child */
   placement?: TooltipPlacement;
-  /** Delay before showing (ms). Default 200 */
+  /** Delay in ms before the bubble appears; default 200 */
   delay?: number;
-  /** Keep tooltip open when hovering the bubble itself */
+  /** Keeps the bubble open while hovering it (also implied when `action` is set) */
   interactive?: boolean;
-  /** Optional pill button rendered below the content */
+  /** Optional pill button rendered under the main text */
   action?: TooltipAction;
+  /** Single React element that receives hover/focus listeners */
   children: ReactElement;
+  /** Extra classes on the bubble element */
   className?: string;
 }
 
+/**
+ * Hover/focus-triggered tooltip that portals a positioned bubble to `document.body`.
+ *
+ * @example
+ * <Tooltip content="Saved"><button type="button">Hover me</button></Tooltip>
+ */
 export function Tooltip({
   content,
   placement = 'bottom',
@@ -211,19 +223,33 @@ export function Tooltip({
 /* ------------------------------------------------------------------ */
 
 export interface ToggleTipLink {
+  /** Anchor text shown in the optional link row */
   label: string;
+  /** URL for a standard navigation link */
   href?: string;
+  /** Called instead of navigation when `href` is omitted or prevented */
   onClick?: () => void;
 }
 
 export interface ToggleTipProps {
+  /** Main rich text inside the popover */
   content: ReactNode;
+  /** Optional trailing link with external icon */
   link?: ToggleTipLink;
+  /** Preferred placement of the bubble relative to the child */
   placement?: TooltipPlacement;
+  /** Element whose click toggles the bubble open/closed */
   children: ReactElement;
+  /** Extra classes on the bubble element */
   className?: string;
 }
 
+/**
+ * Click-triggered popover with optional link, close control, and outside/Escape dismissal.
+ *
+ * @example
+ * <ToggleTip content="Details here"><button type="button">Info</button></ToggleTip>
+ */
 export const ToggleTip = forwardRef<HTMLDivElement, ToggleTipProps>(
   function ToggleTip(
     { content, link, placement = 'bottom', children, className = '' },

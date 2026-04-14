@@ -3,19 +3,29 @@ import { type ReactNode, type MouseEvent } from 'react';
 import { Icon } from '../../icons/Icon';
 
 export interface AnnouncementDialogProps {
+  /** Renders the dialog in a portal when true */
   open: boolean;
+  /** Called when the user dismisses the dialog */
   onClose: () => void;
+  /** Dialog heading */
   title: string;
+  /** Optional supporting copy below the title */
   description?: string;
-  /** Illustration or custom graphic (Figma Type=Illustration | Custom) */
+  /** Illustration or custom graphic (Figma illustration or custom slot) */
   visual?: ReactNode;
+  /** Primary action slot (e.g. primary button) */
   primaryAction?: ReactNode;
+  /** Secondary action slot (e.g. secondary button) */
   secondaryAction?: ReactNode;
+  /** Appended to the dialog container class list */
   className?: string;
 }
 
 /**
  * Figma Announcement Dialog (`43610-72381`) — ~712×494 promotional shell.
+ *
+ * @example
+ * <AnnouncementDialog open title="What's new" onClose={() => {}} primaryAction={<button type="button">OK</button>} />
  */
 export function AnnouncementDialog({
   open,

@@ -14,7 +14,7 @@ When the user provides a screenshot or image of UI:
 
 ## How to apply
 
-- Look up existing shared components in `web/src/components/shared/` and `web/src/ds/components/` before building custom markup.
+- Look up existing shared components in `web/src/components/shared/` (including `shared/ai/` for AI chat components) before building custom markup.
 - Use design tokens from `tokens.css` / `web/src/tokens/*` and component classes from `components.css`.
 - Refer to the component table in `.cursor/skills/react-component-builder/SKILL.md` for the available shared components.
 

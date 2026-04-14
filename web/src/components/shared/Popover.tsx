@@ -57,24 +57,40 @@ function computePopoverPosition(
   return { top, left };
 }
 
+/** Popover surface color treatment (tonal vs contrast) */
 export type PopoverVariant = 'tonal' | 'contrast';
 
 export interface PopoverProps {
+  /** Whether the popover is visible */
   open: boolean;
+  /** Called when open state should change (backdrop, Escape, close control) */
   onOpenChange: (open: boolean) => void;
-  /** Element to align the popover to */
+  /** DOM element used as the positioning anchor */
   anchorRef: RefObject<HTMLElement | null>;
+  /** Placement of the surface relative to the anchor */
   placement?: TooltipPlacement;
+  /** Visual variant for surface styling */
   variant?: PopoverVariant;
+  /** Shows a close affordance in the surface chrome */
   showCloseButton?: boolean;
-  /** When true, clicking outside closes the popover */
+  /** Renders a full-screen backdrop that dismisses on click when true */
   closeOnBackdrop?: boolean;
+  /** Popover body content */
   children: ReactNode;
+  /** Extra class names merged onto the surface */
   className?: string;
-  /** Accessible label for the dialog pattern */
+  /** Accessible name for the dialog surface */
   'aria-label'?: string;
 }
 
+/**
+ * Portals a positioned popover to `document.body`, anchored to a ref with scroll/resize repositioning.
+ *
+ * @example
+ * <Popover open={open} onOpenChange={setOpen} anchorRef={btnRef} aria-label="Options">
+ *   <p>Content</p>
+ * </Popover>
+ */
 export function Popover({
   open,
   onOpenChange,

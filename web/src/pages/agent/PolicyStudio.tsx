@@ -2,7 +2,7 @@ import { useState, useRef, useEffect, useCallback, type ReactNode } from 'react'
 import { createPortal } from 'react-dom';
 import { Button, Badge, Dropdown, Input, Modal, ModalHeader, ModalFooter } from '../../components/shared';
 import { Icon } from '../../icons';
-import Illustration from '../../ds/components/Illustration';
+import Illustration from '../../components/shared/Illustration';
 import { sendPolicyChat } from '../../api/ciscoAi';
 import type { ChatMessage } from '../../api/ciscoAi';
 

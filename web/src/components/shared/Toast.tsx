@@ -16,37 +16,53 @@ import Button from './Button';
 /*  Types                                                              */
 /* ------------------------------------------------------------------ */
 
+/** Visual tone and default icon mapping for a toast */
 export type ToastType = 'default' | 'info' | 'success' | 'warning' | 'error';
 
 export interface ToastAction {
+  /** Button label text */
   label: string;
+  /** Invoked when the action is activated */
   onClick: () => void;
+  /** Visual variant for the action button */
   variant?: 'primary' | 'secondary' | 'tertiary';
 }
 
 export interface ToastOptions {
-  /** Unique id — auto-generated if omitted */
+  /** Stable toast id; generated when omitted */
   id?: string;
+  /** Semantic tone controlling icon and styling */
   type?: ToastType;
-  /** Optional leading icon override (defaults by type) */
+  /** Leading icon override; defaults from `type` when omitted */
   icon?: IconName;
+  /** Bold headline above the message */
   title?: string;
+  /** Body content under the title */
   message?: ReactNode;
+  /** Optional footer action buttons */
   actions?: ToastAction[];
-  /** Custom slot rendered between message and actions */
+  /** Custom region between the message block and actions */
   slot?: ReactNode;
-  /** Auto-dismiss delay in ms. `0` = persist. Default 5000 */
+  /** Auto-dismiss delay in ms; `0` keeps the toast until dismissed */
   duration?: number;
+  /** When false, hides the dismiss control */
   dismissable?: boolean;
 }
 
 interface ToastEntry extends Required<Pick<ToastOptions, 'id' | 'type' | 'dismissable'>> {
+  /** Leading icon override */
   icon?: IconName;
+  /** Bold headline */
   title?: string;
+  /** Body content */
   message?: ReactNode;
+  /** Footer action buttons */
   actions?: ToastAction[];
+  /** Slot between message and actions */
   slot?: ReactNode;
+  /** Auto-dismiss duration in ms */
   duration: number;
+  /** When true, plays exit animation before removal */
   exiting?: boolean;
 }
 
@@ -55,12 +71,20 @@ interface ToastEntry extends Required<Pick<ToastOptions, 'id' | 'type' | 'dismis
 /* ------------------------------------------------------------------ */
 
 interface ToastContextValue {
+  /** Enqueues a toast and returns its id */
   notify: (options: ToastOptions) => string;
+  /** Removes a toast by id */
   dismiss: (id: string) => void;
 }
 
 const ToastContext = createContext<ToastContextValue | null>(null);
 
+/**
+ * Accesses `notify` and `dismiss` from the nearest `ToastProvider`.
+ * @example
+ * const { notify } = useToast();
+ * notify({ title: 'Saved', message: 'Your changes were applied.' });
+ */
 export function useToast(): ToastContextValue {
   const ctx = useContext(ToastContext);
   if (!ctx) throw new Error('useToast must be used within <ToastProvider>');
@@ -162,6 +186,13 @@ function ToastItem({
 
 let idCounter = 0;
 
+/**
+ * Supplies toast helpers to descendants and portals the toast stack to `document.body`.
+ * @example
+ * <ToastProvider>
+ *   <App />
+ * </ToastProvider>
+ */
 export function ToastProvider({ children }: { children: ReactNode }) {
   const [toasts, setToasts] = useState<ToastEntry[]>([]);
 

@@ -6,12 +6,22 @@ export type AccordionStyleVariant = 'default' | 'borderless';
 export type AccordionGroupType = 'stack' | 'borderless' | 'contained';
 
 export interface AccordionGroupProps {
+  /** AccordionItem nodes to lay out as a group */
   children: ReactNode;
-  /** Stack: shared border; Borderless: spaced items; Contained: glass background per item */
+  /** Stack, borderless, or contained group chrome */
   type?: AccordionGroupType;
+  /** Additional CSS class on the group root */
   className?: string;
 }
 
+/**
+ * Wraps accordion items with shared stack, borderless, or contained layout.
+ *
+ * @example
+ * <AccordionGroup type="stack">
+ *   <AccordionItem title="Section">Panel</AccordionItem>
+ * </AccordionGroup>
+ */
 export function AccordionGroup({
   children,
   type = 'stack',
@@ -25,19 +35,36 @@ export function AccordionGroup({
 }
 
 export interface AccordionItemProps {
+  /** Stable id for header and panel ARIA wiring */
   id?: string;
+  /** Header label content for the toggle button */
   title: ReactNode;
+  /** Panel content shown when expanded */
   children: ReactNode;
-  /** Controlled open state (use with multiple items to enforce single-expand in parent) */
+  /** Controlled open state (parent owns expansion) */
   expanded?: boolean;
+  /** Uncontrolled initial expanded state */
   defaultExpanded?: boolean;
+  /** Called when expanded state changes after user toggle */
   onExpandedChange?: (open: boolean) => void;
+  /** Disables toggle interaction */
   disabled?: boolean;
+  /** Visual size preset */
   size?: AccordionSize;
+  /** Default or borderless surface style */
   styleVariant?: AccordionStyleVariant;
+  /** Additional CSS class on the item root */
   className?: string;
 }
 
+/**
+ * Single expandable accordion with a header button and collapsible region.
+ *
+ * @example
+ * <AccordionItem title="Details" defaultExpanded>
+ *   <p>More information</p>
+ * </AccordionItem>
+ */
 export function AccordionItem({
   id: idProp,
   title,

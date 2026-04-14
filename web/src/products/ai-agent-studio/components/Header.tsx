@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react';
-import ThemeToggle from '../../../ds/components/ThemeToggle';
-import AppHeader from '../../../ds/components/AppHeader';
+import ThemeToggle from '../../../components/shared/ThemeToggle';
+import AppHeader from '../../../components/shared/AppHeader';
 import webexAiAgentStudioWordmark from '../../../assets/webex-ai-agent-studio-wordmark.svg';
 
 export interface StudioHeaderProps {

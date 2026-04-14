@@ -15,11 +15,19 @@ export type BadgeVariant =
   | 'info';
 
 export interface BadgeProps {
+  /** Badge label or inner content */
   children?: ReactNode;
+  /** Visual tone (semantic color) */
   variant?: BadgeVariant;
+  /** Additional CSS class */
   className?: string;
 }
 
+/**
+ * Text pill badge for compact labels and status (legacy-compatible classes).
+ * @example
+ * <Badge variant="success">Active</Badge>
+ */
 export default function Badge({
   children,
   variant = 'default',
@@ -47,6 +55,7 @@ export type BadgeIndicatorType =
   | 'error';
 
 export interface BadgeIndicatorProps {
+  /** Indicator presentation (dot, counter, icon, or validation state) */
   type: BadgeIndicatorType;
   /** Count value for 'counter' type */
   count?: number;
@@ -54,7 +63,9 @@ export interface BadgeIndicatorProps {
   maxCount?: number;
   /** Icon name for 'icon' type */
   icon?: IconName;
+  /** Additional CSS class */
   className?: string;
+  /** Accessible name override for the indicator */
   'aria-label'?: string;
 }
 
@@ -64,6 +75,11 @@ const VALIDATION_ICONS: Record<string, IconName> = {
   error: 'error-legacy',
 };
 
+/**
+ * Small status marker: unread dot, numeric counter, custom icon, or validation glyph.
+ * @example
+ * <BadgeIndicator type="counter" count={3} />
+ */
 export function BadgeIndicator({
   type,
   count = 0,
@@ -133,11 +149,19 @@ export function BadgeIndicator({
 /* ------------------------------------------------------------------ */
 
 export interface BadgeOverlayProps {
+  /** Wrapped trigger or anchor element */
   children: ReactNode;
+  /** Badge or indicator rendered in the overlay slot */
   badge: ReactNode;
+  /** Additional CSS class on the wrapper */
   className?: string;
 }
 
+/**
+ * Wraps content and positions a badge or indicator in the corner (e.g. on icons).
+ * @example
+ * <BadgeOverlay badge={<BadgeIndicator type="dot" />}><Icon name="chat" /></BadgeOverlay>
+ */
 export function BadgeOverlay({
   children,
   badge,

@@ -12,20 +12,36 @@ import { Icon } from '../../icons/Icon';
 /* ------------------------------------------------------------------ */
 
 export interface ToggleProps {
+  /** Current on/off state */
   checked?: boolean;
+  /** Called when the switch value changes */
   onChange?: (e: ChangeEvent<HTMLInputElement>) => void;
+  /** Prevents interaction and dims the control */
   disabled?: boolean;
+  /** Shows state but ignores user-driven toggles */
   readOnly?: boolean;
+  /** Primary label beside the switch */
   label?: ReactNode;
+  /** Secondary hint below the label */
   helperText?: ReactNode;
-  /** 'default' (48×24) or 'compact' (32×16, no handle icon) */
+  /** Switch size: default (48×24) or compact (32×16, no handle icon) */
   size?: 'default' | 'compact';
+  /** Extra classes on the root label */
   className?: string;
+  /** DOM id for the input (and label `htmlFor`) */
   id?: string;
+  /** Form field name for the underlying checkbox */
   name?: string;
+  /** Accessible name when there is no visible label */
   'aria-label'?: string;
 }
 
+/**
+ * Checkbox-based switch with optional label, helper text, and compact sizing.
+ *
+ * @example
+ * <Toggle checked={on} onChange={(e) => setOn(e.target.checked)} label="Notifications" />
+ */
 const Toggle = forwardRef<HTMLInputElement, ToggleProps>(
   function Toggle(
     {
@@ -109,13 +125,26 @@ export default Toggle;
 /* ------------------------------------------------------------------ */
 
 export interface ToggleGroupProps {
+  /** Group heading shown above the toggles */
   label?: ReactNode;
+  /** Secondary hint for the whole group */
   helperText?: ReactNode;
+  /** Shows a required asterisk next to the group label */
   required?: boolean;
+  /** Toggle components belonging to this group */
   children: ReactNode;
+  /** Extra classes on the group wrapper */
   className?: string;
 }
 
+/**
+ * Wraps related toggles with a labeled `role="group"` region and optional required marker.
+ *
+ * @example
+ * <ToggleGroup label="Preferences" required>
+ *   <Toggle label="Email" checked />
+ * </ToggleGroup>
+ */
 export function ToggleGroup({
   label,
   helperText,

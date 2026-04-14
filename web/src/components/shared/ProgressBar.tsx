@@ -1,18 +1,24 @@
 import { Icon } from '../../icons/Icon';
 
+/** Layout density: full default chrome vs compact inline track */
 export type ProgressBarVariant = 'default' | 'inline';
+/** Semantic completion state for color and optional helper icons */
 export type ProgressBarStatus = 'in-progress' | 'complete' | 'failed';
 
 export interface ProgressBarProps {
-  /** 0–100 */
+  /** Filled portion as a percentage from 0 to 100 */
   value: number;
+  /** Chooses default stacked layout vs inline label-with-track */
   variant?: ProgressBarVariant;
+  /** Drives success, failure, or in-progress presentation */
   status?: ProgressBarStatus;
+  /** Primary label beside or above the track */
   label?: string;
-  /** Shown below the track in default variant */
+  /** Secondary copy shown below the track on the default variant */
   helperText?: string;
-  /** Show numeric percent (default variant); inline hides by default */
+  /** Toggles the numeric percent readout (inline defaults differ) */
   showPercent?: boolean;
+  /** Extra class names on the root element */
   className?: string;
 }
 
@@ -21,6 +27,12 @@ function clampPct(n: number) {
   return Math.min(100, Math.max(0, n));
 }
 
+/**
+ * Renders an accessible progress track with optional label, percent, and helper row.
+ *
+ * @example
+ * <ProgressBar value={75} label="Syncing" status="in-progress" helperText="Do not close this window." />
+ */
 export function ProgressBar({
   value,
   variant = 'default',
@@ -88,4 +100,5 @@ export function ProgressBar({
   );
 }
 
+/** Default export alias for {@link ProgressBar} */
 export default ProgressBar;

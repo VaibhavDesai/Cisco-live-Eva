@@ -13,6 +13,7 @@ import type { IconName } from '../../icons/types';
 /*  Types                                                              */
 /* ------------------------------------------------------------------ */
 
+/** Visual style of the tab list */
 export type TabVariant = 'pill' | 'glass' | 'line' | 'vertical';
 
 /* ------------------------------------------------------------------ */
@@ -20,14 +21,26 @@ export type TabVariant = 'pill' | 'glass' | 'line' | 'vertical';
 /* ------------------------------------------------------------------ */
 
 export interface TabsProps {
+  /** Tab triggers (and any inline chrome) inside the tablist */
   children: ReactNode;
-  /** Visual variant. Default 'pill' */
+  /** Visual style; defaults to pill */
   variant?: TabVariant;
+  /** Extra classes on the tablist container */
   className?: string;
+  /** Inline styles on the tablist container */
   style?: React.CSSProperties;
+  /** Accessible name for the tablist */
   'aria-label'?: string;
 }
 
+/**
+ * Tablist container with arrow/Home/End keyboard navigation between enabled tabs.
+ *
+ * @example
+ * <Tabs aria-label="Settings">
+ *   <Tab active>General</Tab>
+ * </Tabs>
+ */
 export default function Tabs({
   children,
   variant = 'pill',
@@ -107,17 +120,32 @@ export default function Tabs({
 /* ------------------------------------------------------------------ */
 
 export interface TabProps {
+  /** Tab label text */
   children: ReactNode;
+  /** Whether this tab is the selected tab */
   active?: boolean;
+  /** Disables the tab button */
   disabled?: boolean;
+  /** Optional leading icon name */
   icon?: IconName;
+  /** Optional numeric badge after the label */
   badge?: number;
+  /** Invoked when the tab is activated (ignored when disabled) */
   onClick?: () => void;
+  /** Extra classes on the tab button */
   className?: string;
+  /** DOM id for the tab element */
   id?: string;
+  /** Id of the tabpanel this tab controls */
   'aria-controls'?: string;
 }
 
+/**
+ * Individual `role="tab"` button for use inside `Tabs`.
+ *
+ * @example
+ * <Tabs><Tab active aria-controls="panel-1">Overview</Tab></Tabs>
+ */
 export const Tab = forwardRef<HTMLButtonElement, TabProps>(function Tab(
   {
     children,
@@ -174,13 +202,24 @@ export const Tab = forwardRef<HTMLButtonElement, TabProps>(function Tab(
 /* ------------------------------------------------------------------ */
 
 export interface TabPanelProps {
+  /** Panel body shown when `active` */
   children: ReactNode;
+  /** When false, renders nothing */
   active?: boolean;
+  /** DOM id for the tabpanel */
   id?: string;
+  /** Id of the tab that labels this panel */
   'aria-labelledby'?: string;
+  /** Extra classes on the panel root */
   className?: string;
 }
 
+/**
+ * `role="tabpanel"` region that mounts only while its tab is active.
+ *
+ * @example
+ * <TabPanel id="panel-1" aria-labelledby="tab-1" active={tab === 1}>…</TabPanel>
+ */
 export function TabPanel({
   children,
   active = true,
@@ -208,11 +247,20 @@ export function TabPanel({
 /* ------------------------------------------------------------------ */
 
 export interface SegmentControlProps {
+  /** Segment buttons inside the view switcher */
   children: ReactNode;
+  /** Extra classes on the wrapper */
   className?: string;
+  /** Inline styles on the wrapper */
   style?: React.CSSProperties;
 }
 
+/**
+ * Legacy segmented control wrapper (view switcher layout).
+ *
+ * @example
+ * <SegmentControl><SegmentItem active>One</SegmentItem></SegmentControl>
+ */
 export function SegmentControl({
   children,
   className = '',
@@ -226,12 +274,22 @@ export function SegmentControl({
 }
 
 export interface SegmentItemProps {
+  /** Button label */
   children: ReactNode;
+  /** Applies the active segment styling */
   active?: boolean;
+  /** Invoked when the segment is clicked */
   onClick?: () => void;
+  /** Extra classes on the button */
   className?: string;
 }
 
+/**
+ * Single segment button for use inside `SegmentControl`.
+ *
+ * @example
+ * <SegmentItem active onClick={() => setView('a')}>Alpha</SegmentItem>
+ */
 export function SegmentItem({
   children,
   active = false,

@@ -1,19 +1,27 @@
 import { Icon } from '../../icons/Icon';
 
 export interface PaginationProps {
-  /** 1-based current page */
+  /** Current page index (1-based) */
   page: number;
-  /** Total number of pages (≥ 1) */
+  /** Total number of pages (at least 1) */
   pageCount: number;
+  /** Called when the active page should change */
   onPageChange: (page: number) => void;
-  /** Items per page (for range summary) */
+  /** Page size used for range math and the items-per-page control */
   pageSize?: number;
+  /** Allowed values for the items-per-page dropdown */
   pageSizeOptions?: number[];
+  /** Called when the user selects a new page size */
   onPageSizeChange?: (pageSize: number) => void;
+  /** Total item count for the range summary */
   totalItems?: number;
+  /** Shows the capacity block when controls or totals apply */
   showCapacityControls?: boolean;
+  /** Shows the jump-to-page control when pages exist */
   showJumpToPage?: boolean;
+  /** Label text beside the items-per-page select */
   itemsPerPageLabel?: string;
+  /** Extra class names on the pagination nav root */
   className?: string;
 }
 
@@ -22,6 +30,12 @@ function clampPage(p: number, max: number) {
   return Math.min(Math.max(1, p), m);
 }
 
+/**
+ * Renders pagination controls with first/prev/next/last, jump-to-page, and optional capacity summary.
+ *
+ * @example
+ * <Pagination page={current} pageCount={pages} onPageChange={setPage} totalItems={count} />
+ */
 export function Pagination({
   page,
   pageCount,
@@ -145,4 +159,5 @@ export function Pagination({
   );
 }
 
+/** Default export alias for {@link Pagination} */
 export default Pagination;

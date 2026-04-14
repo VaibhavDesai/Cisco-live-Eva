@@ -14,6 +14,7 @@ description: >-
 1. **Read the design system rule** at `.cursor/rules/design_system_rules.mdc` for the full token reference.
 2. **Read `web/src/tokens.css`** (variables) and **`web/src/components.css`** (classes) — or search via `index.css`, which imports both — to confirm exact class names and CSS variable names.
 3. **Read `web/src/components/shared/index.ts`** to see what reusable components already exist — reuse before reinventing.
+4. **Read `web/src/components/shared/COMPONENTS.md`** for do/don't guidance, usage examples, and the full component catalog with prop references.
 
 ## Execution Steps
 
@@ -46,6 +47,18 @@ Before writing code, map every visual decision to an existing token or class.
 | Form fields | `Input`, `Textarea`, `Select`, `Option` |
 | Custom select | `Dropdown` (`size="default" \| "compact"`) |
 | Links | CSS class `.link` (`.link--standalone` \| `.link--inline`, `.link--lg` \| `.link--md` \| `.link--sm`, `.link--disabled`) |
+| Banners | `Banner` (`type="info" \| "warning" \| "error" \| "success"`) |
+| Accordions | `AccordionGroup`, `AccordionItem` |
+| Side Navigation | `SideNav` (compound: `.Upper`, `.Section`, `.Item`, `.Divider`, `.Footer`) |
+| App Header | `AppHeader` (wordmark, search, AI button, utilities, avatar) |
+| Theme Toggle | `ThemeToggle` |
+| Illustrations (static) | `Illustration` (from `assets/illustrations`) |
+| Illustrations (dynamic) | `Illustration` (from `shared/Illustration` — Momentum npm loader) |
+| Search | `SearchField` |
+| Password | `PasswordInput` |
+| Time Picker | `TimePicker` |
+| Toolbar | `Toolbar` |
+| AI Chat (subfolder) | `shared/ai/` — `AiShell`, `AiConversation`, `AiAssistant`, `AiButton`, etc. |
 
 **Map colors — never hardcode hex/rgba:**
 
@@ -120,7 +133,7 @@ export default function MyComponent({ ...props }: MyComponentProps) {
 }
 ```
 
-**File placement:** `web/src/components/shared/` for reusable components, `web/src/components/` subdirectories for feature-specific components.
+**File placement:** `web/src/components/shared/` for reusable components (with `shared/ai/` for AI chat components), `web/src/components/` subdirectories for feature-specific components. `web-v1/` is archived and not the active codebase.
 
 ### Step 4 — Write the Code (Constraints)
 
@@ -207,6 +220,7 @@ export default function StatCard({ label, value, change }: StatCardProps) {
 ## Additional Resources
 
 - Full token reference: [design_system_rules.mdc](../../../.cursor/rules/design_system_rules.mdc)
+- **Component catalog with do/don't examples:** [COMPONENTS.md](../../../web/src/components/shared/COMPONENTS.md)
 - Stylesheet entry: [index.css](../../../web/src/index.css) · variables: [tokens.css](../../../web/src/tokens.css) · classes: [components.css](../../../web/src/components.css)
 - Icon system types: [icons/types.ts](../../../web/src/icons/types.ts)
 - Icon catalog: [icons/catalog.ts](../../../web/src/icons/catalog.ts)

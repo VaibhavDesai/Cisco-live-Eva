@@ -8,13 +8,27 @@ export type CardVariant = 'border' | 'ghost';
 export type CardLayout = 'vertical' | 'horizontal';
 
 export interface CardProps extends React.HTMLAttributes<HTMLDivElement> {
+  /** Bordered surface or minimal ghost chrome */
   variant?: CardVariant;
+  /** Vertical stack or horizontal media + body layout */
   layout?: CardLayout;
+  /** Whole card acts as a button (keyboard and click) */
   clickable?: boolean;
+  /** Selected visual state */
   selected?: boolean;
+  /** Blocks interaction when the card is clickable */
   disabled?: boolean;
 }
 
+/**
+ * Grouped content surface; compose with header, body, and footer slots.
+ * @example
+ * <Card>
+ *   <CardHeader title="Project" />
+ *   <CardBody>Description</CardBody>
+ *   <CardFooter>Actions</CardFooter>
+ * </Card>
+ */
 export const Card = forwardRef<HTMLDivElement, CardProps>(
   (
     {
@@ -70,10 +84,17 @@ Card.displayName = 'Card';
 /* ─── CardImage ───────────────────────────────────────────────── */
 
 export interface CardImageProps extends React.HTMLAttributes<HTMLDivElement> {
+  /** Image URL; when omitted, children render inside the frame */
   src?: string;
+  /** Accessible description when `src` is set */
   alt?: string;
 }
 
+/**
+ * Top media region; renders an `<img>` from `src` or custom `children`.
+ * @example
+ * <CardImage src="/cover.png" alt="Cover art" />
+ */
 export function CardImage({
   src,
   alt = '',
@@ -91,6 +112,11 @@ export function CardImage({
 
 /* ─── CardBodyWrapper ────────────────────────────────────────── */
 
+/**
+ * Inner wrapper that aligns body sections within the card layout.
+ * @example
+ * <CardBodyWrapper>{sections}</CardBodyWrapper>
+ */
 export function CardBodyWrapper({
   children,
   className = '',
@@ -106,12 +132,21 @@ export function CardBodyWrapper({
 /* ─── CardHeader ──────────────────────────────────────────────── */
 
 export interface CardHeaderProps extends React.HTMLAttributes<HTMLDivElement> {
+  /** Leading Momentum icon */
   icon?: IconName;
+  /** Primary heading text */
   title?: string;
+  /** Secondary line under the title */
   subtitle?: string;
+  /** Trailing toolbar or controls */
   actions?: React.ReactNode;
 }
 
+/**
+ * Preset header (icon, title, subtitle, actions) or fully custom `children`.
+ * @example
+ * <CardHeader title="Team" subtitle="12 members" icon="active-speaker" />
+ */
 export function CardHeader({
   icon,
   title,
@@ -151,6 +186,11 @@ export function CardHeader({
 
 export interface CardTitleProps extends React.HTMLAttributes<HTMLHeadingElement> {}
 
+/**
+ * Standalone card-styled heading when not using `CardHeader` presets.
+ * @example
+ * <CardTitle>Release notes</CardTitle>
+ */
 export function CardTitle({
   children,
   className = '',
@@ -165,6 +205,11 @@ export function CardTitle({
 
 /* ─── CardBody ────────────────────────────────────────────────── */
 
+/**
+ * Main textual or rich content area of the card.
+ * @example
+ * <CardBody>{details}</CardBody>
+ */
 export function CardBody({
   children,
   className = '',
@@ -179,6 +224,11 @@ export function CardBody({
 
 /* ─── CardFooter ──────────────────────────────────────────────── */
 
+/**
+ * Bottom slot for actions, links, or metadata.
+ * @example
+ * <CardFooter><span>Updated today</span></CardFooter>
+ */
 export function CardFooter({
   children,
   className = '',
@@ -195,9 +245,15 @@ export function CardFooter({
 
 export interface CardFooterLinkProps
   extends React.AnchorHTMLAttributes<HTMLAnchorElement> {
+  /** Trailing Momentum icon */
   icon?: IconName;
 }
 
+/**
+ * Footer link styled for cards, with optional trailing icon.
+ * @example
+ * <CardFooterLink href="/more" icon="arrow-right">View all</CardFooterLink>
+ */
 export function CardFooterLink({
   icon,
   children,

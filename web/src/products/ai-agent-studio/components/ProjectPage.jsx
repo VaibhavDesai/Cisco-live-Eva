@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import Icon from '../../../ds/components/Icon'
+import { Icon } from '../../../icons/Icon'
 
 const TABS = [
   { id: 'project', label: 'Project' },
@@ -34,7 +34,7 @@ export default function ProjectPage() {
       {activeTab === 'analytics' && (
         <div className="ai-project-tab-content">
           <div className="card" style={{ padding: 'var(--spacing-large)', textAlign: 'center' }}>
-            <Icon name="analysis-bold" size={32} />
+            <Icon name="analysis" size={32} />
             <p style={{ color: 'var(--text-secondary)', marginTop: 'var(--spacing-x-small)' }}>
               Analytics dashboard coming soon
             </p>
@@ -45,7 +45,7 @@ export default function ProjectPage() {
       {activeTab === 'settings' && (
         <div className="ai-project-tab-content">
           <div className="card" style={{ padding: 'var(--spacing-large)', textAlign: 'center' }}>
-            <Icon name="settings-bold" size={32} />
+            <Icon name="settings" size={32} />
             <p style={{ color: 'var(--text-secondary)', marginTop: 'var(--spacing-x-small)' }}>
               Project settings coming soon
             </p>

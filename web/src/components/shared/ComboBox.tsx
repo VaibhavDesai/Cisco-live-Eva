@@ -12,27 +12,48 @@ const VALIDATION_ICON: Record<string, { name: IconName; color: string }> = {
 };
 
 export interface ComboBoxOption {
+  /** Stable value submitted when this option is chosen */
   value: string;
+  /** Human-readable label shown in the list and input when selected */
   label: string;
+  /** When true, the option cannot be selected */
   disabled?: boolean;
 }
 
 export interface ComboBoxProps {
+  /** Selectable values shown in the dropdown */
   options: ComboBoxOption[];
+  /** Currently selected option value */
   value: string;
+  /** Called when the user picks a new option */
   onChange: (value: string) => void;
+  /** Called when the filter text changes while typing */
   onInputChange?: (query: string) => void;
+  /** Placeholder shown when the input has no display value */
   placeholder?: string;
+  /** Visible label above the field */
   label?: string;
+  /** Shows a required indicator with the label */
   required?: boolean;
+  /** Helper or validation text below the field */
   hint?: string;
+  /** Visual validation state for the field */
   validation?: ValidationState;
+  /** Disables opening the list and editing the input */
   disabled?: boolean;
+  /** Prevents editing while keeping focus affordances */
   readOnly?: boolean;
+  /** Extra CSS class on the root element */
   className?: string;
+  /** Explicit id for the input; falls back to `useId` when omitted */
   id?: string;
 }
 
+/**
+ * Filterable combobox with a portaled listbox, typeahead, and keyboard navigation.
+ * @example
+ * <ComboBox options={countries} value={country} onChange={setCountry} label="Country" />
+ */
 export default function ComboBox({
   options,
   value,

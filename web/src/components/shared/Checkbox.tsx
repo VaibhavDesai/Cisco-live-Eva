@@ -16,13 +16,23 @@ import { Icon } from '../../icons/Icon';
 
 export interface CheckboxProps
   extends Omit<InputHTMLAttributes<HTMLInputElement>, 'type' | 'onChange'> {
+  /** Visible label next to the control */
   label?: ReactNode;
+  /** Secondary hint shown under the label */
   helperText?: string;
+  /** Renders indeterminate (dash) state instead of checked */
   indeterminate?: boolean;
+  /** Validation styling for helper text and icon */
   validation?: 'error' | 'warning' | 'success';
+  /** Called with the new checked state when the user toggles the input */
   onChange?: (checked: boolean, event: ChangeEvent<HTMLInputElement>) => void;
 }
 
+/**
+ * Checkbox input with Momentum styling, optional label, helper text, and validation.
+ * @example
+ * <Checkbox label="Remember me" checked={on} onChange={(c) => setOn(c)} />
+ */
 export const Checkbox = forwardRef<HTMLInputElement, CheckboxProps>(
   function Checkbox(
     {
@@ -127,14 +137,27 @@ export const Checkbox = forwardRef<HTMLInputElement, CheckboxProps>(
 /* ------------------------------------------------------------------ */
 
 export interface CheckboxGroupProps {
+  /** Legend text shown above the group */
   label?: string;
+  /** Helper text describing the group */
   helperText?: string;
+  /** When true, shows a required indicator on the legend */
   required?: boolean;
+  /** Validation styling for the group helper */
   validation?: 'error' | 'warning' | 'success';
+  /** Checkbox controls rendered inside the group */
   children: ReactNode;
+  /** Additional CSS classes on the fieldset */
   className?: string;
 }
 
+/**
+ * Fieldset that labels and optionally validates a set of related checkboxes.
+ * @example
+ * <CheckboxGroup label="Features" required>
+ *   <Checkbox label="Beta" />
+ * </CheckboxGroup>
+ */
 export function CheckboxGroup({
   label,
   helperText,

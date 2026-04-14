@@ -1,8 +1,8 @@
 import type { MouseEvent } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useApp } from '../../../contexts/AppContext';
-import SideNav from '../../../ds/components/SideNav';
-import Icon from '../../../ds/components/Icon';
+import SideNav from '../../../components/shared/SideNav';
+import { Icon } from '../../../icons/Icon';
 
 interface NavItem {
   path: string;
@@ -112,7 +112,7 @@ export default function Sidebar() {
                             title="Remove shortcut"
                             aria-label={`Close ${agent.name}`}
                           >
-                            <Icon name="cancel-bold" size={12} />
+                            <Icon name="cancel" size={12} />
                           </span>
                         </button>
                       </div>
@@ -132,7 +132,7 @@ export default function Sidebar() {
           title="Organization settings"
         >
           <span className="sidebar-org-pill__icon" aria-hidden>
-            <Icon name="company-bold" size={16} />
+            <Icon name="company" size={16} />
           </span>
           <span className="sidebar-org-pill__label">{ORGANIZATION_NAME}</span>
         </button>
