@@ -926,6 +926,58 @@ body {
   border-radius: var(--spacing-medium);
 }
 
+/* ── Guideline modal (numbered list — matches example-modal-tips) ── */
+.guideline-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+
+.guideline-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 12px 0;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.guideline-item:last-child {
+  border-bottom: none;
+}
+
+.guideline-number {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 24px;
+  height: 24px;
+  font-size: var(--font-size-body-small);
+  font-weight: var(--font-weight-bold);
+  color: var(--text-secondary);
+}
+
+.guideline-content {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.guideline-title {
+  margin: 0;
+  font-size: var(--font-size-body-midsize);
+  font-weight: var(--font-weight-bold);
+  line-height: var(--font-lineheight-body-midsize);
+  color: var(--text-primary);
+}
+
+.guideline-description {
+  margin: 2px 0 0;
+  font-size: var(--font-size-body-midsize);
+  line-height: var(--font-lineheight-body-midsize);
+  color: var(--text-secondary);
+}
+
 .fpmodal-back-btn {
   display: inline-flex;
   align-items: center;
