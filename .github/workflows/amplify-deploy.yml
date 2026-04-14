@@ -1,6 +1,8 @@
 name: AWS Amplify Deploy
 
 on:
+  push:
+    branches: [main]
   workflow_dispatch:
     inputs:
       access_control:
@@ -86,16 +88,16 @@ jobs:
   deploy-amplify:
     uses: webexdesign/.github/.github/workflows/amplify-deploy.yml@main
     with:
-      app_name: ${{ inputs.app_name || github.event.repository.name }} 
-      access_control: ${{ inputs.access_control }}
-      basic_auth_username: ${{ inputs.basic_auth_username }}
-      basic_auth_password: ${{ inputs.basic_auth_password }}
-      action: ${{ inputs.action }}
-      branch: ${{ inputs.branch }}
-      aws_region: ${{ inputs.aws_region }}
-      framework: ${{ inputs.framework }}
-      build_command: ${{ inputs.build_command }}
-      output_dir: ${{ inputs.output_dir }}
-      environment_variables_json: ${{ inputs.environment_variables_json }}
-      enable_branch_auto_build: ${{ inputs.enable_branch_auto_build }}
+      app_name: ${{ inputs.app_name || github.event.repository.name }}
+      access_control: ${{ inputs.access_control || 'public' }}
+      basic_auth_username: ${{ inputs.basic_auth_username || '' }}
+      basic_auth_password: ${{ inputs.basic_auth_password || '' }}
+      action: ${{ inputs.action || 'create-or-update' }}
+      branch: ${{ inputs.branch || 'main' }}
+      aws_region: ${{ inputs.aws_region || 'us-west-2' }}
+      framework: ${{ inputs.framework || 'React - Vite' }}
+      build_command: ${{ inputs.build_command || 'npm run build' }}
+      output_dir: ${{ inputs.output_dir || 'dist' }}
+      environment_variables_json: ${{ inputs.environment_variables_json || '{}' }}
+      enable_branch_auto_build: ${{ inputs.enable_branch_auto_build == '' && true || inputs.enable_branch_auto_build }}
     secrets: inherit
