@@ -1,0 +1,36 @@
+name: Configure Amplify SPA Redirects
+
+on:
+  workflow_dispatch:
+
+permissions:
+  id-token: write
+  contents: read
+
+jobs:
+  configure-redirects:
+    runs-on: ${{ github.repository_owner }}-amd64-runners
+    env:
+      FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+    steps:
+      - name: Configure AWS credentials
+        uses: cisco-actions/configure-aws-credentials@1a221e28f5827bb587dec3ac0ba9a95d01e806e8
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+          aws-region: us-west-2
+
+      - name: Set SPA redirect rules
+        run: |
+          set -euo pipefail
+          APP_ID=$(aws amplify list-apps --query "apps[?name=='${{ github.event.repository.name }}'].appId" --output text)
+          if [ -z "$APP_ID" ] || [ "$APP_ID" = "None" ]; then
+            echo "::error::Could not find Amplify app"
+            exit 1
+          fi
+          echo "Found Amplify app: $APP_ID"
+
+          aws amplify update-app \
+            --app-id "$APP_ID" \
+            --custom-rules '[{"source":"</^[^.]+$|\\.(?!(css|gif|ico|jpg|js|png|txt|svg|woff|woff2|ttf|map|json|webp)$)([^.]+$)/>","status":"200","target":"/index.html","condition":null}]'
+
+          echo "✅ SPA redirect rules configured — all client-side routes will now serve index.html"
