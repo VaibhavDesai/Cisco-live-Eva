@@ -1,993 +1,885 @@
-/*
- * Color Tokens Library
- * Auto-extracted from Figma Design System: 💎 Token - Color
- * 
- * Usage:
- *   - Dark theme (default): applied via :root
- *   - Light theme: applied via [data-theme="light"] or @media (prefers-color-scheme: light)
- *   - Token naming: --color-{category}-{variant}-{state}
+/**
+ * Color tokens — Momentum Design System
+ * Source: Figma "Token — Color" (yYfvFEEr3UkW1yUKkW7zEH)
  *
- * Categories: theme/text, theme/background, theme/button, theme/outline,
- *             theme/control, theme/indicator, theme/avatar, theme/scrollbar, etc.
+ * Light theme = :root default  (node 17345-15603)
+ * Dark  theme = [data-theme='dark']  (node 19769-9135)
+ *
+ * tokens.css references these --mds-color-theme-* / --color-theme-* variables.
+ * Switching themes only requires setting data-theme="dark" on <html>.
  */
 
-
-/* ==========================================================================
-   DARK THEME (Default)
-   ========================================================================== */
+/* ═══════════════════════════════════════════════════════════════
+   LIGHT THEME (default)
+   ═══════════════════════════════════════════════════════════════ */
 
 :root,
-[data-theme="dark"] {
+[data-theme='light'] {
 
-  /* --- Text --- */
-  --color-theme-text-primary-normal: #fffffff2;
-  --color-theme-text-primary-disabled: #ffffff66;
-  --color-theme-text-secondary-normal: #ffffffb2;
-  --color-theme-text-error-normal: #fc8b98;
-  --color-theme-text-error-hover: #ffd4da;
-  --color-theme-text-error-active: #ffd4da;
-  --color-theme-text-success-normal: #3cc29a;
-  --color-theme-text-success-hover: #9fedd8;
-  --color-theme-text-success-active: #9fedd8;
-  --color-theme-text-warning-normal: #f2990a;
-  --color-theme-text-warning-hover: #ffda94;
-  --color-theme-text-warning-active: #ffda94;
-  --color-theme-text-highlight: #063a75;
-  --color-theme-text-accent-normal: #64b4fa;
-  --color-theme-text-accent-hover: #bfe3ff;
-  --color-theme-text-accent-active: #bfe3ff;
-  --color-theme-text-teamdefault-normal: #ffffffb2;
-  --color-theme-text-teamdefault-hover: #ffffffb2;
-  --color-theme-text-teamdefault-active: #fffffff2;
-  --color-theme-text-alert-purple-normal: #f294f1;
-  --color-theme-text-alert-purple-hover: #fce1fc;
-  --color-theme-text-alert-purple-active: #fce1fc;
-  --color-theme-text-alert-orange-normal: #fd884e;
-  --color-theme-text-alert-orange-hover: #fed5ac;
-  --color-theme-text-alert-orange-active: #fed5ac;
+  /* ── Text ───────────────────────────────────────────────────── */
+  --mds-color-theme-text-primary-normal:      rgba(0, 0, 0, 0.95);
+  --mds-color-theme-text-primary-disabled:    rgba(0, 0, 0, 0.40);
+  --mds-color-theme-text-secondary-normal:    rgba(0, 0, 0, 0.70);
+  --mds-color-theme-text-error-normal:        #ab0a15;
+  --mds-color-theme-text-error-hover:         #4f0e10;
+  --mds-color-theme-text-error-active:        #4f0e10;
+  --mds-color-theme-text-success-normal:      #185e46;
+  --mds-color-theme-text-success-hover:       #0e2b20;
+  --mds-color-theme-text-success-active:      #0e2b20;
+  --mds-color-theme-text-warning-normal:      #7d4705;
+  --mds-color-theme-text-warning-hover:       #36220c;
+  --mds-color-theme-text-warning-active:      #36220c;
+  --mds-color-theme-text-accent-normal:       #0353a8;
+  --mds-color-theme-text-accent-hover:        #0a274a;
+  --mds-color-theme-text-accent-active:       #0a274a;
+  --mds-color-theme-text-highlight:           #bfe3ff;
+  --mds-color-theme-text-teamdefault-normal:  rgba(0, 0, 0, 0.70);
+  --mds-color-theme-text-teamdefault-hover:   rgba(0, 0, 0, 0.70);
+  --mds-color-theme-text-teamdefault-active:  rgba(0, 0, 0, 0.95);
+  --mds-color-theme-text-alert-purple-normal: #932099;
+  --mds-color-theme-text-alert-purple-hover:  #3b1840;
+  --mds-color-theme-text-alert-purple-active: #3b1840;
+  --mds-color-theme-text-alert-orange-normal: #9c3202;
+  --mds-color-theme-text-alert-orange-hover:  #411b04;
+  --mds-color-theme-text-alert-orange-active: #411b04;
+  --mds-color-theme-text-team-cobalt-normal:  #08599c;
+  --mds-color-theme-text-team-cobalt-hover:   #08599c;
+  --mds-color-theme-text-team-cobalt-active:  #12283d;
+  --mds-color-theme-text-team-cyan-normal:    #066070;
+  --mds-color-theme-text-team-cyan-hover:     #0b2a30;
+  --mds-color-theme-text-team-cyan-active:    #0b2a30;
+  --mds-color-theme-text-team-mint-normal:    #12615a;
+  --mds-color-theme-text-team-mint-hover:     #102b2a;
+  --mds-color-theme-text-team-mint-active:    #102b2a;
+  --mds-color-theme-text-team-lime-normal:    #416116;
+  --mds-color-theme-text-team-lime-hover:     #416116;
+  --mds-color-theme-text-team-lime-active:    #1e2b10;
+  --mds-color-theme-text-team-gold-normal:    #735107;
+  --mds-color-theme-text-team-gold-hover:     #735107;
+  --mds-color-theme-text-team-gold-active:    #30240d;
+  --mds-color-theme-text-team-orange-normal:  #9c3202;
+  --mds-color-theme-text-team-orange-hover:   #9c3202;
+  --mds-color-theme-text-team-orange-active:  #411b04;
+  --mds-color-theme-text-team-pink-normal:    #a12a3a;
+  --mds-color-theme-text-team-pink-hover:     #a12a3a;
+  --mds-color-theme-text-team-pink-active:    #3b1e21;
+  --mds-color-theme-text-team-purple-normal:  #932099;
+  --mds-color-theme-text-team-purple-hover:   #932099;
+  --mds-color-theme-text-team-purple-active:  #3b1840;
+  --mds-color-theme-text-team-violet-normal:  #643abd;
+  --mds-color-theme-text-team-violet-hover:   #643abd;
+  --mds-color-theme-text-team-violet-active:  #29223d;
+  --mds-color-theme-text-team-slate-normal:   #535573;
+  --mds-color-theme-text-team-slate-hover:    #535573;
+  --mds-color-theme-text-team-slate-active:   #26262b;
 
-  /* --- Text / Team Colors --- */
-  --color-theme-text-team-cobalt-normal: #5ebff7;
-  --color-theme-text-team-cobalt-hover: #5ebff7;
-  --color-theme-text-team-cobalt-active: #c7eeff;
-  --color-theme-text-team-cyan-normal: #22c7d6;
-  --color-theme-text-team-cyan-hover: #22c7d6;
-  --color-theme-text-team-cyan-active: #b2f4f7;
-  --color-theme-text-team-mint-normal: #30c9b0;
-  --color-theme-text-team-mint-hover: #baf5e7;
-  --color-theme-text-team-mint-active: #baf5e7;
-  --color-theme-text-team-lime-normal: #93c437;
-  --color-theme-text-team-lime-hover: #93c437;
-  --color-theme-text-team-lime-active: #ddf2ae;
-  --color-theme-text-team-gold-normal: #d6b220;
-  --color-theme-text-team-gold-hover: #d6b220;
-  --color-theme-text-team-gold-active: #f5eaa2;
-  --color-theme-text-team-orange-normal: #fd884e;
-  --color-theme-text-team-orange-hover: #fd884e;
-  --color-theme-text-team-orange-active: #fed5ac;
-  --color-theme-text-team-pink-normal: #fc97aa;
-  --color-theme-text-team-pink-hover: #fc97aa;
-  --color-theme-text-team-pink-active: #ffe0e7;
-  --color-theme-text-team-purple-normal: #f294f1;
-  --color-theme-text-team-purple-hover: #f294f1;
-  --color-theme-text-team-purple-active: #fce1fc;
-  --color-theme-text-team-violet-normal: #c7a5fa;
-  --color-theme-text-team-violet-hover: #c7a5fa;
-  --color-theme-text-team-violet-active: #f0e3fc;
-  --color-theme-text-team-slate-normal: #b0b4d9;
-  --color-theme-text-team-slate-hover: #b0b4d9;
-  --color-theme-text-team-slate-active: #e3e7fa;
+  /* ── Common Text (legacy alias) ────────────────────────────── */
+  --color-theme-common-text-primary-normal:   rgba(0, 0, 0, 0.95);
 
-  /* --- Background / Primary --- */
-  --color-theme-background-primary-ghost: #ffffff00;
-  --color-theme-background-primary-hover: #ffffff12;
-  --color-theme-background-primary-active: #ffffff1c;
-  --color-theme-background-primary-disabled: #ffffff00;
+  /* ── Background – Solid ─────────────────────────────────────── */
+  --mds-color-theme-background-solid-primary-normal:    #ffffff;
+  --mds-color-theme-background-solid-secondary-normal:  #f7f7f7;
+  --mds-color-theme-background-solid-tertiary-normal:   #ededed;
+  --mds-color-theme-background-solid-quaternary-normal: #ffffff;
+  --color-theme-background-solid-primary-normal:        #ffffff;
+  --color-theme-background-solid-secondary-normal:      #f7f7f7;
+  --color-theme-background-solid-tertiary-normal:       #ededed;
 
-  /* --- Background / Solid --- */
-  --color-theme-background-solid-primary-normal: #000000;
-  --color-theme-background-solid-secondary-normal: #1a1a1a;
-  --color-theme-background-solid-tertiary-normal: #262626;
-  --color-theme-background-solid-quaternary-normal: #3b3b3b;
+  /* ── Background – Glass ─────────────────────────────────────── */
+  --mds-color-theme-background-glass-normal:  rgba(255, 255, 255, 0.40);
+  --mds-color-theme-background-glass-light:   rgba(255, 255, 255, 0.40);
+  --mds-color-theme-background-glass-medium:  rgba(255, 255, 255, 0.60);
+  --mds-color-theme-background-glass-heavy:   rgba(255, 255, 255, 0.80);
 
-  /* --- Background / Secondary --- */
-  --color-theme-background-secondary-normal: #ffffff1c;
-  --color-theme-background-secondary-hover: #ffffff33;
-  --color-theme-background-secondary-active: #ffffff4d;
-  --color-theme-background-secondary-disabled: #ffffff00;
+  /* ── Background – Interaction ───────────────────────────────── */
+  --mds-color-theme-background-primary-ghost:    transparent;
+  --mds-color-theme-background-primary-hover:    rgba(0, 0, 0, 0.07);
+  --mds-color-theme-background-primary-active:   rgba(0, 0, 0, 0.11);
+  --mds-color-theme-background-primary-disabled: transparent;
+  --color-theme-background-primary-hover:        rgba(0, 0, 0, 0.07);
 
-  /* --- Background / Accent --- */
-  --color-theme-background-accent-normal: #1170cf;
-  --color-theme-background-accent-active: #64b4fa;
+  /* ── Background – Secondary ───────────────────────────────── */
+  --mds-color-theme-background-secondary-normal:   rgba(0, 0, 0, 0.11);
+  --mds-color-theme-background-secondary-subtle:   rgba(0, 0, 0, 0.07);
+  --mds-color-theme-background-secondary-hover:    rgba(0, 0, 0, 0.20);
+  --mds-color-theme-background-secondary-active:   rgba(0, 0, 0, 0.30);
+  --mds-color-theme-background-secondary-disabled: transparent;
 
-  /* --- Background / Alert --- */
-  --color-theme-background-alert-default-normal: #3b3b3b;
-  --color-theme-background-alert-default-hover: #3b3b3b;
-  --color-theme-background-alert-default-active: #545454;
-  --color-theme-background-alert-success-normal: #0e2b20;
-  --color-theme-background-alert-success-hover: #0e2b20;
-  --color-theme-background-alert-success-active: #134231;
-  --color-theme-background-alert-warning-normal: #36220c;
-  --color-theme-background-alert-warning-hover: #36220c;
-  --color-theme-background-alert-warning-active: #57330a;
-  --color-theme-background-alert-error-normal: #4f0e10;
-  --color-theme-background-alert-error-hover: #4f0e10;
-  --color-theme-background-alert-error-active: #780d13;
-  --color-theme-background-alert-theme-normal: #0a274a;
-  --color-theme-background-alert-theme-hover: #0a274a;
-  --color-theme-background-alert-theme-active: #063a75;
-  --color-theme-background-alert-purple-normal: #3b1840;
-  --color-theme-background-alert-purple-hover: #3b1840;
-  --color-theme-background-alert-purple-active: #601e66;
-  --color-theme-background-alert-orange-normal: #411b04;
-  --color-theme-background-alert-orange-hover: #411b04;
-  --color-theme-background-alert-orange-active: #682601;
+  /* ── Background – Accent ────────────────────────────────────── */
+  --mds-color-theme-background-accent-normal: #1170cf;
+  --mds-color-theme-background-accent-active: #0353a8;
 
-  /* --- Background / Label --- */
-  --color-theme-background-label-cobalt-normal: #12283d;
-  --color-theme-background-label-cobalt-hover: #103c63;
-  --color-theme-background-label-cobalt-active: #08599c;
-  --color-theme-background-label-gold-normal: #30240d;
-  --color-theme-background-label-gold-hover: #4d370c;
-  --color-theme-background-label-gold-active: #735107;
-  --color-theme-background-label-lime-normal: #1e2b10;
-  --color-theme-background-label-lime-hover: #2d4214;
-  --color-theme-background-label-lime-active: #416116;
-  --color-theme-background-label-mint-normal: #102b2a;
-  --color-theme-background-label-mint-hover: #12423f;
-  --color-theme-background-label-mint-active: #12615a;
-  --color-theme-background-label-orange-normal: #411b04;
-  --color-theme-background-label-orange-hover: #682601;
-  --color-theme-background-label-orange-active: #9c3202;
-  --color-theme-background-label-pink-normal: #3b1e21;
-  --color-theme-background-label-pink-hover: #66262d;
-  --color-theme-background-label-pink-active: #a12a3a;
-  --color-theme-background-label-purple-normal: #3b1840;
-  --color-theme-background-label-purple-hover: #601e66;
-  --color-theme-background-label-purple-active: #932099;
-  --color-theme-background-label-slate-normal: #26262b;
-  --color-theme-background-label-slate-hover: #393a47;
-  --color-theme-background-label-slate-active: #535573;
-  --color-theme-background-label-violet-normal: #29223d;
-  --color-theme-background-label-violet-hover: #432c78;
-  --color-theme-background-label-violet-active: #643abd;
+  /* ── Background – Alert ─────────────────────────────────────── */
+  --mds-color-theme-background-alert-default-normal:  #dedede;
+  --mds-color-theme-background-alert-default-hover:   #dedede;
+  --mds-color-theme-background-alert-default-active:  #c9c9c9;
+  --mds-color-theme-background-alert-success-normal:  #cef5eb;
+  --mds-color-theme-background-alert-success-hover:   #cef5eb;
+  --mds-color-theme-background-alert-success-active:  #9fedd8;
+  --mds-color-theme-background-alert-warning-normal:  #ffebc2;
+  --mds-color-theme-background-alert-warning-hover:   #ffebc2;
+  --mds-color-theme-background-alert-warning-active:  #ffda94;
+  --mds-color-theme-background-alert-error-normal:    #ffe8ea;
+  --mds-color-theme-background-alert-error-hover:     #ffe8ea;
+  --mds-color-theme-background-alert-error-active:    #ffd4da;
+  --mds-color-theme-background-alert-theme-normal:    #dbf0ff;
+  --mds-color-theme-background-alert-theme-hover:     #dbf0ff;
+  --mds-color-theme-background-alert-theme-active:    #bfe3ff;
+  --mds-color-theme-background-alert-purple-normal:   #fcf2fc;
+  --mds-color-theme-background-alert-purple-hover:    #fcf2fc;
+  --mds-color-theme-background-alert-purple-active:   #fce1fc;
+  --mds-color-theme-background-alert-orange-normal:   #feebd7;
+  --mds-color-theme-background-alert-orange-hover:    #feebd7;
+  --mds-color-theme-background-alert-orange-active:   #fed5ac;
 
-  /* --- Background / Gradient --- */
-  --color-theme-background-gradient-primary-normal-0: #1a1a1a;
-  --color-theme-background-gradient-primary-normal-1: #0f0f0f;
-  --color-theme-background-gradient-secondary-normal-0: #262626;
-  --color-theme-background-gradient-secondary-normal-1: #0f0f0f;
-  --color-theme-background-reaction-normal-0: #1a1a1ae5;
-  --color-theme-background-reaction-normal-1: #1a1a1a00;
+  /* ── Background – Label (default & error) ─────────────────── */
+  --mds-color-theme-background-label-default-normal: #ededed;
+  --mds-color-theme-background-label-default-hover:  #dedede;
+  --mds-color-theme-background-label-default-active: #c9c9c9;
+  --mds-color-theme-background-label-error-normal:   #ffe8ea;
+  --mds-color-theme-background-label-error-hover:    #ffd4da;
+  --mds-color-theme-background-label-error-active:   #ab0a15;
 
-  /* --- Background / Misc --- */
-  --color-theme-background-skeleton-normal: #707070;
-  --color-theme-background-glass-normal: #ffffff0d;
-  --color-theme-background-glass-light: #00000066;
-  --color-theme-background-glass-medium: #00000099;
-  --color-theme-background-glass-heavy: #000000cc;
-  --color-theme-background-overlay-normal: #07101cb2;
+  /* ── Background – Label (colors) ──────────────────────────── */
+  --mds-color-theme-background-label-cobalt-normal:  #e5f8ff;
+  --mds-color-theme-background-label-cobalt-hover:   #c7eeff;
+  --mds-color-theme-background-label-cobalt-active:  #99ddff;
+  --mds-color-theme-background-label-gold-normal:    #f7f6dc;
+  --mds-color-theme-background-label-gold-hover:     #f5eaa2;
+  --mds-color-theme-background-label-gold-active:    #ebd460;
+  --mds-color-theme-background-label-lime-normal:    #f3f7e9;
+  --mds-color-theme-background-label-lime-hover:     #ddf2ae;
+  --mds-color-theme-background-label-lime-active:    #bce36f;
+  --mds-color-theme-background-label-mint-normal:    #e9f7f3;
+  --mds-color-theme-background-label-mint-hover:     #baf5e7;
+  --mds-color-theme-background-label-mint-active:    #74e8d1;
+  --mds-color-theme-background-label-orange-normal:  #feebd7;
+  --mds-color-theme-background-label-orange-hover:   #fed5ac;
+  --mds-color-theme-background-label-orange-active:  #feba7f;
+  --mds-color-theme-background-label-pink-normal:    #fff2f5;
+  --mds-color-theme-background-label-pink-hover:     #ffe0e7;
+  --mds-color-theme-background-label-pink-active:    #ffc7d2;
+  --mds-color-theme-background-label-purple-normal:  #fcf2fc;
+  --mds-color-theme-background-label-purple-hover:   #fce1fc;
+  --mds-color-theme-background-label-purple-active:  #fac3f8;
+  --mds-color-theme-background-label-slate-normal:   #f2f4ff;
+  --mds-color-theme-background-label-slate-hover:    #e3e7fa;
+  --mds-color-theme-background-label-slate-active:   #ced2ed;
+  --mds-color-theme-background-label-violet-normal:  #f8f2fc;
+  --mds-color-theme-background-label-violet-hover:   #f0e3fc;
+  --mds-color-theme-background-label-violet-active:  #e2cafc;
 
-  /* --- Button --- */
-  --color-theme-button-primary-normal: #fffffff2;
-  --color-theme-button-primary-hover: #ffffffcc;
-  --color-theme-button-primary-pressed: #ffffffb2;
-  --color-theme-button-primary-disabled: #ffffff33;
-  --color-theme-button-secondary-normal: #ffffff00;
-  --color-theme-button-secondary-hover: #ffffff12;
-  --color-theme-button-secondary-pressed: #ffffff33;
-  --color-theme-button-secondary-disabled: #ffffff00;
-  --color-theme-button-secondary-active-normal: #ffffff33;
-  --color-theme-button-secondary-active-hover: #ffffff4d;
-  --color-theme-button-secondary-active-pressed: #ffffff66;
-  --color-theme-button-secondary-active-disabled: #ffffff1c;
-  --color-theme-button-join-normal: #1d805f;
-  --color-theme-button-join-hover: #185e46;
-  --color-theme-button-join-pressed: #134231;
-  --color-theme-button-cancel-normal: #db1f2e;
-  --color-theme-button-cancel-hover: #ab0a15;
-  --color-theme-button-cancel-pressed: #780d13;
-  --color-theme-button-accent-normal: #1170cf;
-  --color-theme-button-accent-hover: #0353a8;
-  --color-theme-button-accent-pressed: #063a75;
+  /* ── Background – Name Label ──────────────────────────────── */
+  --mds-color-theme-background-namelabel-normal: rgba(0, 0, 0, 0.70);
 
-  /* --- Inverted --- */
-  --color-theme-inverted-text-primary-normal: #000000f2;
-  --color-theme-inverted-text-primary-disabled: #00000066;
-  --color-theme-inverted-text-secondary-normal: #000000b2;
-  --color-theme-inverted-text-accent-normal: #0353a8;
-  --color-theme-inverted-text-accent-hover: #0a274a;
-  --color-theme-inverted-background-normal: #ffffff;
-  --color-theme-inverted-button-primary-normal: #000000f2;
-  --color-theme-inverted-button-primary-hover: #000000cc;
-  --color-theme-inverted-button-primary-pressed: #000000b2;
-  --color-theme-inverted-button-primary-disabled: #00000033;
-  --color-theme-inverted-button-secondary-normal: #00000000;
-  --color-theme-inverted-button-secondary-hover: #00000012;
-  --color-theme-inverted-button-secondary-pressed: #00000033;
-  --color-theme-inverted-button-secondary-disabled: #00000000;
-  --color-theme-inverted-outline-button-normal: #00000080;
-  --color-theme-inverted-outline-primary-normal: #00000075;
-  --color-theme-inverted-outline-input-normal: #00000080;
-  --color-theme-inverted-outline-disabled-normal: #00000033;
-  --color-theme-inverted-outline-theme-normal: #1170cf;
-  --color-theme-inverted-control-active-normal: #1170cf;
-  --color-theme-inverted-control-active-hover: #0353a8;
-  --color-theme-inverted-control-active-pressed: #063a75;
-  --color-theme-inverted-control-active-active: #063a75;
-  --color-theme-inverted-control-active-disabled: #00000033;
-  --color-theme-inverted-control-inactive-normal: #0000001c;
-  --color-theme-inverted-control-inactive-hover: #0000004d;
-  --color-theme-inverted-control-inactive-pressed: #00000066;
-  --color-theme-inverted-control-inactive-disabled: #00000033;
+  /* ── Background – Gradient ────────────────────────────────── */
+  --mds-color-theme-background-gradient-primary-normal:   linear-gradient(180deg, #f0f0f0 0%, #ffffff 100%);
+  --mds-color-theme-background-gradient-secondary-normal: linear-gradient(180deg, #fafafa 0%, #ffffff 100%);
 
-  /* --- Control --- */
-  --color-theme-control-active-normal: #64b4fa;
-  --color-theme-control-active-hover: #3492eb;
-  --color-theme-control-active-pressed: #1170cf;
-  --color-theme-control-active-disabled: #ffffff33;
-  --color-theme-control-indicator-inactive-normal: #8f8f8f;
-  --color-theme-control-inactive-hover: #ffffff33;
-  --color-theme-control-inactive-pressed: #ffffff4d;
+  /* ── Background – Reaction ────────────────────────────────── */
+  --mds-color-theme-background-reaction-normal: linear-gradient(90deg, rgba(255, 255, 255, 0.90) 0%, rgba(255, 255, 255, 0) 100%);
 
-  /* --- Outline --- */
-  --color-theme-outline-primary-normal: #ffffff66;
-  --color-theme-outline-primary-disabled: #ffffff33;
-  --color-theme-outline-theme-normal: #64b4fa;
-  --color-theme-outline-secondary-normal: #ffffff33;
-  --color-theme-outline-input-active: #ffffffe5;
-  --color-theme-outline-button-normal: #ffffff80;
-  --color-theme-outline-join-normal: #3cc29a;
-  --color-theme-outline-cancel-normal: #fc8b98;
-  --color-theme-outline-share-selected: #27a17a;
-  --color-theme-outline-share-active: #ec6400;
-  --color-theme-outline-share-inactive: #8f8f8f;
-  --color-theme-outline-overlay-normal: #adadad;
-  --color-theme-outline-high-contrast-focus: #ffffff;
+  /* ── Background – Skeleton ────────────────────────────────── */
+  --mds-color-theme-background-skeleton-normal: #8f8f8f;
 
-  /* --- Outline / Label --- */
-  --color-theme-outline-label-cobalt: #5ebff7;
-  --color-theme-outline-label-gold: #d6b220;
-  --color-theme-outline-label-lime: #93c437;
-  --color-theme-outline-label-mint: #30c9b0;
-  --color-theme-outline-label-orange: #fd884e;
-  --color-theme-outline-label-pink: #fc97aa;
-  --color-theme-outline-label-purple: #f294f1;
-  --color-theme-outline-label-slate: #b0b4d9;
-  --color-theme-outline-label-violet: #c7a5fa;
+  /* ── Background – Overlay ─────────────────────────────────── */
+  --mds-color-theme-background-overlay-normal: rgba(7, 16, 28, 0.40);
 
-  /* --- Outline / Promotion --- */
-  --color-theme-outline-promotion-normal-0: #c233c4;
-  --color-theme-outline-promotion-normal-1: #d43b52;
+  /* ── Button ─────────────────────────────────────────────────── */
+  --mds-color-theme-button-primary-normal:    rgba(0, 0, 0, 0.95);
+  --color-theme-button-primary-normal:        rgba(0, 0, 0, 0.95);
+  --mds-color-theme-button-primary-hover:     rgba(0, 0, 0, 0.80);
+  --mds-color-theme-button-primary-pressed:   rgba(0, 0, 0, 0.70);
+  --mds-color-theme-button-primary-disabled:  rgba(0, 0, 0, 0.20);
+  --mds-color-theme-button-secondary-normal:  transparent;
+  --color-theme-button-secondary-normal:      transparent;
+  --mds-color-theme-button-secondary-hover:   rgba(0, 0, 0, 0.07);
+  --color-theme-button-secondary-hover:       rgba(0, 0, 0, 0.07);
+  --mds-color-theme-button-secondary-pressed: rgba(0, 0, 0, 0.20);
+  --mds-color-theme-button-secondary-disabled: transparent;
+  --mds-color-theme-button-secondary-active-normal:   rgba(0, 0, 0, 0.20);
+  --mds-color-theme-button-secondary-active-hover:    rgba(0, 0, 0, 0.30);
+  --mds-color-theme-button-secondary-active-pressed:  rgba(0, 0, 0, 0.40);
+  --mds-color-theme-button-secondary-active-disabled: rgba(0, 0, 0, 0.11);
+  --mds-color-theme-button-join-normal:       #1d805f;
+  --mds-color-theme-button-join-hover:        #185e46;
+  --mds-color-theme-button-join-pressed:      #134231;
+  --mds-color-theme-button-cancel-normal:     #db1f2e;
+  --mds-color-theme-button-cancel-hover:      #ab0a15;
+  --mds-color-theme-button-cancel-pressed:    #780d13;
+  --mds-color-theme-button-accent-normal:     #1170cf;
+  --mds-color-theme-button-accent-hover:      #0353a8;
+  --mds-color-theme-button-accent-pressed:    #063a75;
+  --mds-color-theme-button-glass-primary-normal:  rgba(0, 0, 0, 0.80);
+  --mds-color-theme-button-glass-primary-hover:   rgba(0, 0, 0, 0.70);
+  --mds-color-theme-button-glass-primary-pressed: rgba(0, 0, 0, 0.60);
 
-  /* --- Outline / Gradient Active --- */
-  --color-theme-outline-gradient-active-normal-0: #3492eb;
-  --color-theme-outline-gradient-active-normal-1: #22c7d6;
-  --color-theme-outline-gradient-active-normal-2: #68debd;
+  /* ── Inverted ───────────────────────────────────────────────── */
+  --color-theme-inverted-text-primary-normal: rgba(255, 255, 255, 0.95);
+  --mds-color-theme-inverted-text-primary-normal:    rgba(255, 255, 255, 0.95);
+  --mds-color-theme-inverted-text-primary-disabled:  rgba(255, 255, 255, 0.40);
+  --mds-color-theme-inverted-text-secondary-normal:  rgba(255, 255, 255, 0.70);
+  --mds-color-theme-inverted-text-accent-normal:     #64b4fa;
+  --mds-color-theme-inverted-text-accent-hover:      #bfe3ff;
+  --mds-color-theme-inverted-text-accent-active:     #bfe3ff;
+  --mds-color-theme-inverted-background-normal:      #000000;
+  --mds-color-theme-inverted-button-primary-normal:    rgba(255, 255, 255, 0.95);
+  --mds-color-theme-inverted-button-primary-hover:     rgba(255, 255, 255, 0.80);
+  --mds-color-theme-inverted-button-primary-pressed:   rgba(255, 255, 255, 0.70);
+  --mds-color-theme-inverted-button-primary-disabled:  rgba(255, 255, 255, 0.20);
+  --mds-color-theme-inverted-button-secondary-normal:    transparent;
+  --mds-color-theme-inverted-button-secondary-hover:     rgba(255, 255, 255, 0.07);
+  --mds-color-theme-inverted-button-secondary-pressed:   rgba(255, 255, 255, 0.20);
+  --mds-color-theme-inverted-button-secondary-disabled:  transparent;
+  --mds-color-theme-inverted-outline-button-normal:    rgba(255, 255, 255, 0.50);
+  --mds-color-theme-inverted-outline-primary-normal:   rgba(255, 255, 255, 0.40);
+  --mds-color-theme-inverted-outline-disabled-normal:  rgba(255, 255, 255, 0.20);
+  --mds-color-theme-inverted-outline-theme-normal:     #64b4fa;
+  --mds-color-theme-inverted-outline-input-normal:     rgba(255, 255, 255, 0.50);
+  --mds-color-theme-inverted-control-active-normal:    #64b4fa;
+  --mds-color-theme-inverted-control-active-hover:     #3492eb;
+  --mds-color-theme-inverted-control-active-pressed:   #1170cf;
+  --mds-color-theme-inverted-control-active-disabled:  rgba(255, 255, 255, 0.20);
+  --mds-color-theme-inverted-control-inactive-normal:  rgba(255, 255, 255, 0.11);
+  --mds-color-theme-inverted-control-inactive-hover:   rgba(255, 255, 255, 0.30);
+  --mds-color-theme-inverted-control-inactive-pressed: rgba(255, 255, 255, 0.40);
+  --mds-color-theme-inverted-control-inactive-disabled: rgba(255, 255, 255, 0.20);
 
-  /* --- Outline / Glass --- */
-  --color-theme-outline-glass-0: #ffffff1c;
-  --color-theme-outline-glass-1: #ffffff0d;
+  /* ── Outline ────────────────────────────────────────────────── */
+  --mds-color-theme-outline-primary-normal:   rgba(0, 0, 0, 0.46);
+  --mds-color-theme-outline-primary-disabled: rgba(0, 0, 0, 0.20);
+  --mds-color-theme-outline-theme-normal:     #1170cf;
+  --mds-color-theme-outline-secondary-normal: rgba(0, 0, 0, 0.20);
+  --mds-color-theme-outline-input-active:     rgba(0, 0, 0, 0.90);
+  --mds-color-theme-outline-button-normal:    rgba(0, 0, 0, 0.50);
+  --mds-color-theme-outline-join-normal:      #185e46;
+  --mds-color-theme-outline-cancel-normal:    #ab0a15;
+  --mds-color-theme-outline-warning-normal:   #7d4705;
+  --mds-color-theme-outline-share-selected:   #27a17a;
+  --mds-color-theme-outline-share-active:     #ec6400;
+  --mds-color-theme-outline-share-inactive:   #8f8f8f;
+  --mds-color-theme-outline-overlay-normal:   #707070;
+  --mds-color-theme-outline-high-contrast-focus: #000000;
+  --mds-color-theme-outline-glass-normal:     rgba(0, 0, 0, 0.06);
+  --mds-color-theme-outline-promotion-normal: #c233c4;
+  --color-theme-outline-primary-normal:       rgba(0, 0, 0, 0.46);
+  --color-theme-outline-button-normal:        rgba(0, 0, 0, 0.50);
 
-  /* --- Indicator --- */
-  --color-theme-indicator-unstable: #ec6400;
-  --color-theme-indicator-attention: #f55868;
-  --color-theme-indicator-stable: #27a17a;
-  --color-theme-indicator-locked: #8f8f8f;
-  --color-theme-indicator-caution: #cf7900;
-  --color-theme-indicator-secure: #3492eb;
+  /* ── Outline – Label ────────────────────────────────────────── */
+  --mds-color-theme-outline-label-cobalt:     #0a78cc;
+  --mds-color-theme-outline-label-gold:       #996e00;
+  --mds-color-theme-outline-label-lime:       #588219;
+  --mds-color-theme-outline-label-mint:       #148579;
+  --mds-color-theme-outline-label-orange:     #c94403;
+  --mds-color-theme-outline-label-pink:       #d43b52;
+  --mds-color-theme-outline-label-purple:     #c233c4;
+  --mds-color-theme-outline-label-slate:      #6f739e;
+  --mds-color-theme-outline-label-violet:     #875ae0;
 
-  /* --- Overlay --- */
-  --color-theme-overlay-meetings-normal: #000000b2;
-  --color-theme-overlay-button-secondary-normal: #0f0f0f;
-  --color-theme-overlay-button-secondary-hover: #262626;
-  --color-theme-overlay-button-secondary-pressed: #3b3b3b;
+  /* ── Control ────────────────────────────────────────────────── */
+  --mds-color-theme-control-active-normal:    #1170cf;
+  --mds-color-theme-control-active-hover:     #0353a8;
+  --mds-color-theme-control-active-pressed:   #063a75;
+  --mds-color-theme-control-active-disabled:  rgba(0, 0, 0, 0.20);
+  --mds-color-theme-control-indicator-inactive-normal: #707070;
+  --mds-color-theme-control-inactive-normal:  rgba(0, 0, 0, 0.11);
+  --mds-color-theme-control-inactive-hover:   rgba(0, 0, 0, 0.20);
+  --mds-color-theme-control-inactive-pressed: rgba(0, 0, 0, 0.30);
+  --mds-color-theme-control-inactive-disabled: rgba(0, 0, 0, 0.07);
+  --color-theme-control-active-normal:        #1170cf;
+  --color-theme-text-warning-normal:          #7d4705;
+  --color-theme-text-error-normal:            #ab0a15;
 
-  /* --- Scrollbar --- */
-  --color-theme-scrollbar-button-normal: #ffffff66;
-  --color-theme-scrollbar-button-hover: #ffffff80;
-  --color-theme-scrollbar-button-pressed: #ffffff99;
-  --color-theme-scrollbar-arrow-normal: #ffffffb2;
-  --color-theme-scrollbar-arrow-background-normal: #ffffff00;
-  --color-theme-scrollbar-arrow-background-hover: #ffffff33;
-  --color-theme-scrollbar-arrow-background-pressed: #ffffff4d;
-  --color-theme-scrollbar-background-secondary-ghost: #ffffff00;
-  --color-theme-scrollbar-background-secondary-normal: #ffffff1c;
+  /* ── Indicator ──────────────────────────────────────────────── */
+  --mds-color-theme-indicator-unstable:       #c94403;
+  --mds-color-theme-indicator-attention:      #db1f2e;
+  --mds-color-theme-indicator-stable:         #1d805f;
+  --mds-color-theme-indicator-locked:         #707070;
+  --mds-color-theme-indicator-caution:        #a65e00;
+  --mds-color-theme-indicator-secure:         #1170cf;
 
-  /* --- Gradient Divider --- */
-  --color-theme-gradientdivider-default-normal-0: #ffffff00;
-  --color-theme-gradientdivider-default-normal-1: #ffffff33;
-  --color-theme-gradientdivider-default-hover-0: #ffffff00;
-  --color-theme-gradientdivider-default-hover-1: #ffffff99;
-  --color-theme-gradientdivider-error-normal-0: #fc8b9800;
-  --color-theme-gradientdivider-error-normal-1: #fc8b9899;
-  --color-theme-gradientdivider-error-hover-0: #fc8b9800;
-  --color-theme-gradientdivider-error-hover-1: #fc8b98e5;
-  --color-theme-gradientdivider-warning-normal-0: #f2990a00;
-  --color-theme-gradientdivider-warning-normal-1: #f2990a99;
-  --color-theme-gradientdivider-warning-hover-0: #f2990a00;
-  --color-theme-gradientdivider-warning-hover-1: #f2990ae5;
-  --color-theme-gradientdivider-announce-normal-0: #64b4fa00;
-  --color-theme-gradientdivider-announce-normal-1: #64b4fa99;
-  --color-theme-gradientdivider-announce-hover-0: #64b4fa00;
-  --color-theme-gradientdivider-announce-hover-1: #64b4fae5;
-  --color-theme-gradientdivider-success-normal-0: #3cc29a00;
-  --color-theme-gradientdivider-success-normal-1: #3cc29a99;
-  --color-theme-gradientdivider-success-hover-0: #3cc29a00;
-  --color-theme-gradientdivider-success-hover-1: #3cc29ae5;
-  --color-theme-gradientdivider-orange-normal-0: #fd884e00;
-  --color-theme-gradientdivider-orange-normal-1: #fd884e99;
-  --color-theme-gradientdivider-orange-hover-0: #fd884e00;
-  --color-theme-gradientdivider-orange-hover-1: #fd884ee5;
-  --color-theme-gradientdivider-purple-normal-0: #f294f100;
-  --color-theme-gradientdivider-purple-normal-1: #f294f199;
-  --color-theme-gradientdivider-purple-hover-0: #f294f100;
-  --color-theme-gradientdivider-purple-hover-1: #f294f1e5;
+  /* ── Focus ──────────────────────────────────────────────────── */
+  --color-theme-focus-default-0:  #ffffff;
+  --color-theme-focus-default-1:  #1170cf;
+  --color-theme-focus-default-2:  rgba(17, 112, 207, 0.35);
 
-  /* --- Global Tint --- */
-  --color-theme-globaltint-normal: #3492eb;
-  --color-theme-globaltint-selected: #1170cf;
+  /* ── Overlay ────────────────────────────────────────────────── */
+  --mds-color-theme-overlay-meetings-normal:  rgba(255, 255, 255, 0.80);
+  --mds-color-theme-overlay-button-secondary-normal:  #ffffff;
+  --mds-color-theme-overlay-button-secondary-hover:   #ededed;
+  --mds-color-theme-overlay-button-secondary-pressed: #dedede;
 
-  /* --- Grouped Background --- */
-  --color-theme-groupedbackground-primary-normal: #000000;
-  --color-theme-groupedbackground-secondary-normal: #1a1a1a;
-  --color-theme-groupedbackground-tertiary-normal: #262626;
-  --color-theme-groupedbackground-quaternary-normal: #3b3b3b;
+  /* ── Scrollbar ────────────────────────────────────────────────── */
+  --mds-color-theme-scrollbar-button-normal:              rgba(0, 0, 0, 0.46);
+  --mds-color-theme-scrollbar-button-hover:               rgba(0, 0, 0, 0.50);
+  --mds-color-theme-scrollbar-button-pressed:             rgba(0, 0, 0, 0.60);
+  --mds-color-theme-scrollbar-arrow-normal:               rgba(0, 0, 0, 0.60);
+  --mds-color-theme-scrollbar-arrow-background-normal:    transparent;
+  --mds-color-theme-scrollbar-arrow-background-hover:     rgba(0, 0, 0, 0.20);
+  --mds-color-theme-scrollbar-arrow-background-pressed:   rgba(0, 0, 0, 0.30);
+  --mds-color-theme-scrollbar-background-secondary-ghost: transparent;
+  --mds-color-theme-scrollbar-background-secondary-normal: rgba(0, 0, 0, 0.11);
 
-  /* --- Illustrations --- */
-  --color-theme-illustrations-empty-primary-0: #93c437;
-  --color-theme-illustrations-empty-primary-1: #279be8;
-  --color-theme-illustrations-empty-secondary-0: #279be8;
-  --color-theme-illustrations-empty-secondary-1: #875ae0;
-  --color-theme-illustrations-onboarding-primary-0: #ffbe4f;
-  --color-theme-illustrations-onboarding-primary-1: #93c437;
-  --color-theme-illustrations-onboarding-secondary-0: #f55868;
-  --color-theme-illustrations-onboarding-secondary-1: #875ae0;
-  --color-theme-illustrations-onboarding-tertiary-0: #ffbe4f;
-  --color-theme-illustrations-onboarding-tertiary-1: #ec6400;
-  --color-theme-illustrations-onboarding-quartenary-0: #93c437;
-  --color-theme-illustrations-onboarding-quartenary-1: #279be8;
-  --color-theme-illustrations-onboarding-quinary-0: #279be8;
-  --color-theme-illustrations-onboarding-quinary-1: #875ae0;
-  --color-theme-illustrations-success-0: #3cc29a;
-  --color-theme-illustrations-success-1: #93c437;
-  --color-theme-illustrations-error-0: #f0677e;
-  --color-theme-illustrations-error-1: #db1f2e;
-  --color-theme-illustrations-default: #ffffff;
+  /* ── Gradient Divider ─────────────────────────────────────────── */
+  --mds-color-theme-gradientdivider-default-normal:  linear-gradient(90deg, rgba(0,0,0,0) 0%, rgba(0,0,0,0.20) 22.4%, rgba(0,0,0,0.20) 72.4%, rgba(0,0,0,0) 100%);
+  --mds-color-theme-gradientdivider-default-hover:   linear-gradient(90deg, rgba(0,0,0,0) 0%, rgba(0,0,0,0.60) 22.4%, rgba(0,0,0,0.60) 72.4%, rgba(0,0,0,0) 100%);
+  --mds-color-theme-gradientdivider-error-normal:    linear-gradient(90deg, rgba(252,139,152,0) 0%, rgba(252,139,152,0.60) 22.4%, rgba(252,139,152,0.60) 76%, rgba(252,139,152,0) 100%);
+  --mds-color-theme-gradientdivider-error-hover:     linear-gradient(90deg, rgba(171,10,21,0) 0%, rgba(171,10,21,0.90) 22.4%, rgba(171,10,21,0.90) 76%, rgba(171,10,21,0) 100%);
+  --mds-color-theme-gradientdivider-warning-normal:  linear-gradient(90deg, rgba(125,71,5,0) 0%, rgba(125,71,5,0.60) 22.4%, rgba(125,71,5,0.60) 76%, rgba(125,71,5,0) 100%);
+  --mds-color-theme-gradientdivider-warning-hover:   linear-gradient(90deg, rgba(125,71,5,0) 0%, rgba(125,71,5,0.90) 22.4%, rgba(125,71,5,0.90) 76%, rgba(125,71,5,0) 100%);
+  --mds-color-theme-gradientdivider-announce-normal: linear-gradient(90deg, rgba(3,83,168,0) 0%, rgba(3,83,168,0.60) 22.4%, rgba(3,83,168,0.60) 76%, rgba(3,83,168,0) 100%);
+  --mds-color-theme-gradientdivider-announce-hover:  linear-gradient(90deg, rgba(3,83,168,0) 0%, rgba(3,83,168,0.90) 22.4%, rgba(3,83,168,0.90) 76%, rgba(3,83,168,0) 100%);
+  --mds-color-theme-gradientdivider-success-normal:  linear-gradient(90deg, rgba(24,94,70,0) 0%, rgba(24,94,70,0.60) 22.4%, rgba(24,94,70,0.60) 76%, rgba(24,94,70,0) 100%);
+  --mds-color-theme-gradientdivider-success-hover:   linear-gradient(90deg, rgba(24,94,70,0) 0%, rgba(24,94,70,0.90) 22.4%, rgba(24,94,70,0.90) 76%, rgba(24,94,70,0) 100%);
+  --mds-color-theme-gradientdivider-orange-normal:   linear-gradient(90deg, rgba(156,50,2,0) 0%, rgba(156,50,2,0.60) 22.4%, rgba(156,50,2,0.60) 76%, rgba(156,50,2,0) 100%);
+  --mds-color-theme-gradientdivider-orange-hover:    linear-gradient(90deg, rgba(156,50,2,0) 0%, rgba(156,50,2,0.90) 22.4%, rgba(156,50,2,0.90) 76%, rgba(156,50,2,0) 100%);
+  --mds-color-theme-gradientdivider-purple-normal:   linear-gradient(90deg, rgba(147,32,153,0) 0%, rgba(147,32,153,0.60) 22.4%, rgba(147,32,153,0.60) 76%, rgba(147,32,153,0) 100%);
+  --mds-color-theme-gradientdivider-purple-hover:    linear-gradient(90deg, rgba(147,32,153,0) 0%, rgba(147,32,153,0.90) 22.4%, rgba(147,32,153,0.90) 76%, rgba(147,32,153,0) 100%);
+  --mds-color-theme-gradientdivider-vertical-normal: linear-gradient(0deg, rgba(0,0,0,0) 0%, rgba(0,0,0,0.20) 22.4%, rgba(0,0,0,0.20) 72.4%, rgba(0,0,0,0) 100%);
+  --mds-color-theme-gradientdivider-vertical-hover:  linear-gradient(0deg, rgba(0,0,0,0) 0%, rgba(0,0,0,0.60) 22.4%, rgba(0,0,0,0.60) 72.4%, rgba(0,0,0,0) 100%);
 
-  /* --- Avatar --- */
-  --color-theme-avatar-default: #545454;
-  --color-theme-avatar-cobalt: #08599c;
-  --color-theme-avatar-cyan: #066070;
-  --color-theme-avatar-gold: #735107;
-  --color-theme-avatar-lime: #416116;
-  --color-theme-avatar-mint: #12615a;
-  --color-theme-avatar-orange: #9c3202;
-  --color-theme-avatar-pink: #a12a3a;
-  --color-theme-avatar-purple: #932099;
-  --color-theme-avatar-slate: #535573;
-  --color-theme-avatar-violet: #643abd;
-  --color-theme-avatar-yellow: #7d4705;
-  --color-theme-avatar-ghost: #ffffff00;
+  /* ── Global Tint ──────────────────────────────────────────────── */
+  --mds-color-theme-globaltint-normal:   #1170cf;
+  --mds-color-theme-globaltint-selected: #1170cf;
 
-  /* --- Focus --- */
-  --color-theme-focus-0: #000000;
-  --color-theme-focus-1: #64b4fa;
-  --color-theme-focus-2: #64b4fa59;
+  /* ── Grouped Background ───────────────────────────────────────── */
+  --mds-color-theme-groupedbackground-primary-normal:    #f7f7f7;
+  --mds-color-theme-groupedbackground-secondary-normal:  #ffffff;
+  --mds-color-theme-groupedbackground-tertiary-normal:   #f7f7f7;
+  --mds-color-theme-groupedbackground-quaternary-normal: #ffffff;
+
+  /* ── Illustrations ────────────────────────────────────────────── */
+  --mds-color-theme-illustrations-empty-primary-0:          #93c437;
+  --mds-color-theme-illustrations-empty-primary-1:          #279be8;
+  --mds-color-theme-illustrations-empty-secondary-0:        #279be8;
+  --mds-color-theme-illustrations-empty-secondary-1:        #875ae0;
+  --mds-color-theme-illustrations-onboarding-primary-0:     #ffbe4f;
+  --mds-color-theme-illustrations-onboarding-primary-1:     #93c437;
+  --mds-color-theme-illustrations-onboarding-secondary-0:   #f55868;
+  --mds-color-theme-illustrations-onboarding-secondary-1:   #875ae0;
+  --mds-color-theme-illustrations-onboarding-tertiary-0:    #ffbe4f;
+  --mds-color-theme-illustrations-onboarding-tertiary-1:    #ec6400;
+  --mds-color-theme-illustrations-onboarding-quartenary-0:  #93c437;
+  --mds-color-theme-illustrations-onboarding-quartenary-1:  #279be8;
+  --mds-color-theme-illustrations-onboarding-quinary-0:     #279be8;
+  --mds-color-theme-illustrations-onboarding-quinary-1:     #875ae0;
+  --mds-color-theme-illustrations-success-0:                #3cc29a;
+  --mds-color-theme-illustrations-success-1:                #93c437;
+  --mds-color-theme-illustrations-error-0:                  #f0677e;
+  --mds-color-theme-illustrations-error-1:                  #db1f2e;
+  --mds-color-theme-illustrations-default:                  #000000;
+
+  /* ── Avatar ───────────────────────────────────────────────────── */
+  --mds-color-theme-avatar-default:      #545454;
+  --mds-color-theme-avatar-hover:        rgba(255, 255, 255, 0.07);
+  --mds-color-theme-avatar-pressed:      rgba(255, 255, 255, 0.20);
+  --mds-color-theme-avatar-cobalt:       #08599c;
+  --mds-color-theme-avatar-cyan:         #066070;
+  --mds-color-theme-avatar-gold:         #735107;
+  --mds-color-theme-avatar-lime:         #416116;
+  --mds-color-theme-avatar-mint:         #12615a;
+  --mds-color-theme-avatar-orange:       #9c3202;
+  --mds-color-theme-avatar-pink:         #a12a3a;
+  --mds-color-theme-avatar-purple:       #932099;
+  --mds-color-theme-avatar-slate:        #535573;
+  --mds-color-theme-avatar-violet:       #643abd;
+  --mds-color-theme-avatar-yellow:       #7d4705;
+  --mds-color-theme-avatar-glass-normal: rgba(0, 0, 0, 0.07);
+  --mds-color-theme-avatar-glass-active: rgba(255, 255, 255, 0.80);
+  --mds-color-theme-avatar-ghost:        transparent;
+
+  /* ── Common – Text ────────────────────────────────────────────── */
+  --mds-color-theme-common-text-primary-normal:    rgba(255, 255, 255, 0.95);
+  --mds-color-theme-common-text-primary-disabled:  rgba(255, 255, 255, 0.40);
+  --mds-color-theme-common-text-secondary-normal:  rgba(255, 255, 255, 0.70);
+  --mds-color-theme-common-text-success-normal:    #3cc29a;
+  --mds-color-theme-common-text-success-hover:     #9fedd8;
+  --mds-color-theme-common-text-error-normal:      #fc8b98;
+  --mds-color-theme-common-text-error-hover:       #ffd4da;
+  --mds-color-theme-common-text-warning-normal:    #f2990a;
+  --mds-color-theme-common-text-warning-hover:     #ffda94;
+
+  /* ── Common – Inverted ────────────────────────────────────────── */
+  --mds-color-theme-common-inverted-text-primary-normal:     rgba(0, 0, 0, 0.95);
+  --mds-color-theme-common-inverted-text-secondary-normal:   rgba(0, 0, 0, 0.60);
+  --mds-color-theme-common-inverted-text-primary-disabled:   rgba(0, 0, 0, 0.40);
+  --mds-color-theme-common-inverted-button-secondary-normal:   transparent;
+  --mds-color-theme-common-inverted-button-secondary-hover:    rgba(0, 0, 0, 0.07);
+  --mds-color-theme-common-inverted-button-secondary-pressed:  rgba(0, 0, 0, 0.20);
+  --mds-color-theme-common-inverted-button-secondary-disabled: transparent;
+
+  /* ── Common – Overlay ─────────────────────────────────────────── */
+  --mds-color-theme-common-overlays-primary-normal:   rgba(0, 0, 0, 0.90);
+  --mds-color-theme-common-overlays-secondary-normal: rgba(0, 0, 0, 0.40);
+  --color-theme-common-overlays-secondary-normal:     rgba(0, 0, 0, 0.40);
+
+  /* ── Common – Button ──────────────────────────────────────────── */
+  --mds-color-theme-common-button-primary-normal:    rgba(255, 255, 255, 0.95);
+  --mds-color-theme-common-button-primary-hover:     rgba(255, 255, 255, 0.80);
+  --mds-color-theme-common-button-primary-pressed:   rgba(255, 255, 255, 0.70);
+  --mds-color-theme-common-button-primary-disabled:  rgba(255, 255, 255, 0.20);
+  --mds-color-theme-common-button-secondary-normal:    transparent;
+  --mds-color-theme-common-button-secondary-hover:     rgba(255, 255, 255, 0.07);
+  --mds-color-theme-common-button-secondary-pressed:   rgba(255, 255, 255, 0.20);
+  --mds-color-theme-common-button-secondary-disabled:  transparent;
+  --mds-color-theme-common-button-secondary-active-normal:   rgba(255, 255, 255, 0.20);
+  --mds-color-theme-common-button-secondary-active-hover:    rgba(255, 255, 255, 0.30);
+  --mds-color-theme-common-button-secondary-active-pressed:  rgba(255, 255, 255, 0.40);
+  --mds-color-theme-common-button-secondary-active-disabled: rgba(255, 255, 255, 0.11);
+  --mds-color-theme-common-button-promotion-normal:  linear-gradient(45deg, #932099 0%, #a12a3a 100%);
+  --mds-color-theme-common-button-promotion-hover:   linear-gradient(45deg, #601e66 0%, #66262d 100%);
+  --mds-color-theme-common-button-promotion-active:  linear-gradient(45deg, #3b1840 0%, #3b1e21 100%);
+  --mds-color-theme-common-button-join-animated-gradient-normal: linear-gradient(90deg, #30c9b0 0%, #64b4fa 51%, #30c9b0 100%);
+
+  /* ── Common – Outline ─────────────────────────────────────────── */
+  --mds-color-theme-common-outline-button-normal:      rgba(255, 255, 255, 0.50);
+  --mds-color-theme-common-outline-primary-normal:     rgba(255, 255, 255, 0.40);
+  --mds-color-theme-common-outline-primary-disabled:   rgba(255, 255, 255, 0.20);
+  --mds-color-theme-common-outline-input-normal:       rgba(255, 255, 255, 0.50);
+  --mds-color-theme-common-outline-secondary-normal:   rgba(0, 0, 0, 0.20);
+  --mds-color-theme-common-outline-secondary-disabled: rgba(0, 0, 0, 0.20);
+  --mds-color-theme-common-outline-warning-normal:     #f2990a;
+
+  /* ── Common – Control ─────────────────────────────────────────── */
+  --mds-color-theme-common-control-share-content-selected: #3cc29a;
+  --mds-color-theme-common-control-share-content-active:   #c94403;
+  --mds-color-theme-common-control-share-content-inactive: #707070;
+  --mds-color-theme-common-control-inactive-normal:        rgba(0, 0, 0, 0.20);
+
+  /* ── Common – Background ──────────────────────────────────────── */
+  --mds-color-theme-common-background-alert-share-normal: #c94403;
+  --mds-color-theme-common-background-solid-dark:         #1a1a1a;
+  --mds-color-theme-common-background-solid-light:        #ffffff;
+
+  /* ── Common – Content ─────────────────────────────────────────── */
+  --mds-color-theme-common-content-pdf:        #ee0507;
+  --mds-color-theme-common-content-word:       #0078d6;
+  --mds-color-theme-common-content-powerpoint: #d93e17;
+  --mds-color-theme-common-content-excel:      #00893e;
+  --mds-color-theme-common-content-onenote:    #b839db;
+  --mds-color-theme-common-content-sheets:     #0f9d58;
+  --mds-color-theme-common-content-slides:     #f4b400;
+  --mds-color-theme-common-content-keynote:    #029cfb;
+  --mds-color-theme-common-content-doc:        #4285f4;
+
+  /* ── Common – Touchbar ────────────────────────────────────────── */
+  --mds-color-theme-common-touchbar-background-blue-normal:     #1170cf;
+  --mds-color-theme-common-touchbar-background-blue-pressed:    #063a75;
+  --mds-color-theme-common-touchbar-background-pink-normal:     #d43b52;
+  --mds-color-theme-common-touchbar-background-pink-pressed:    #66262d;
+  --mds-color-theme-common-touchbar-background-mint-normal:     #148579;
+  --mds-color-theme-common-touchbar-background-mint-pressed:    #12423f;
+  --mds-color-theme-common-touchbar-background-purple-normal:   #c233c4;
+  --mds-color-theme-common-touchbar-background-purple-pressed:  #601e66;
+  --mds-color-theme-common-touchbar-background-violet-normal:   #875ae0;
+  --mds-color-theme-common-touchbar-background-violet-pressed:  #432c78;
+  --mds-color-theme-common-touchbar-background-orange-normal:   #c94403;
+  --mds-color-theme-common-touchbar-background-orange-pressed:  #682601;
+  --mds-color-theme-common-touchbar-background-green-normal:    #1d805f;
+  --mds-color-theme-common-touchbar-background-green-pressed:   #134231;
+  --mds-color-theme-common-touchbar-background-red-normal:      #db1f2e;
+  --mds-color-theme-common-touchbar-background-red-pressed:     #780d13;
+  --mds-color-theme-common-touchbar-background-transparent:     transparent;
+  --mds-color-theme-common-touchbar-icon-attention:             #fc8b98;
+  --mds-color-theme-common-touchbar-icon-stable:                #27a17a;
+  --mds-color-theme-common-touchbar-icon-secure:                #64b4fa;
+
+  /* ── Common – Whiteboard ──────────────────────────────────────── */
+  --mds-color-theme-common-whiteboard-stickyNote-yellow: #ffbe4f;
+  --mds-color-theme-common-whiteboard-stickyNote-red:    #fc8b98;
+  --mds-color-theme-common-whiteboard-stickyNote-purple: #f294f1;
+  --mds-color-theme-common-whiteboard-stickyNote-cyan:   #22c7d6;
+  --mds-color-theme-common-whiteboard-stickyNote-mint:   #30c9b0;
+  --mds-color-theme-common-whiteboard-pen-black:         #0f0f0f;
+  --mds-color-theme-common-whiteboard-pen-red:           #f55868;
+  --mds-color-theme-common-whiteboard-pen-purple:        #c233c4;
+  --mds-color-theme-common-whiteboard-pen-blue:          #64b4fa;
+  --mds-color-theme-common-whiteboard-pen-green:         #3cc29a;
+  --mds-color-theme-common-whiteboard-pen-yellow:        #f2990a;
+  --mds-color-theme-common-whiteboard-pen-white:         #ffffff;
 }
 
 
-/* ==========================================================================
-   LIGHT THEME
-   ========================================================================== */
-
-[data-theme="light"] {
-
-  /* --- Text --- */
-  --color-theme-text-primary-normal: #000000f2;
-  --color-theme-text-primary-disabled: #00000066;
-  --color-theme-text-secondary-normal: #000000b2;
-  --color-theme-text-error-normal: #ab0a15;
-  --color-theme-text-error-hover: #4f0e10;
-  --color-theme-text-error-active: #4f0e10;
-  --color-theme-text-success-normal: #185e46;
-  --color-theme-text-success-hover: #0e2b20;
-  --color-theme-text-success-active: #0e2b20;
-  --color-theme-text-warning-normal: #7d4705;
-  --color-theme-text-warning-hover: #36220c;
-  --color-theme-text-warning-active: #36220c;
-  --color-theme-text-highlight: #bfe3ff;
-  --color-theme-text-accent-normal: #0353a8;
-  --color-theme-text-accent-hover: #0a274a;
-  --color-theme-text-accent-active: #0a274a;
-  --color-theme-text-teamdefault-normal: #000000b2;
-  --color-theme-text-teamdefault-hover: #000000b2;
-  --color-theme-text-teamdefault-active: #000000f2;
-  --color-theme-text-alert-purple-normal: #932099;
-  --color-theme-text-alert-purple-hover: #3b1840;
-  --color-theme-text-alert-purple-active: #3b1840;
-  --color-theme-text-alert-orange-normal: #9c3202;
-  --color-theme-text-alert-orange-hover: #411b04;
-  --color-theme-text-alert-orange-active: #411b04;
-
-  /* --- Text / Team Colors --- */
-  --color-theme-text-team-cobalt-normal: #08599c;
-  --color-theme-text-team-cobalt-hover: #08599c;
-  --color-theme-text-team-cobalt-active: #12283d;
-  --color-theme-text-team-cyan-normal: #066070;
-  --color-theme-text-team-cyan-hover: #0b2a30;
-  --color-theme-text-team-cyan-active: #0b2a30;
-  --color-theme-text-team-mint-normal: #12615a;
-  --color-theme-text-team-mint-hover: #102b2a;
-  --color-theme-text-team-mint-active: #102b2a;
-  --color-theme-text-team-lime-normal: #416116;
-  --color-theme-text-team-lime-hover: #416116;
-  --color-theme-text-team-lime-active: #1e2b10;
-  --color-theme-text-team-gold-normal: #735107;
-  --color-theme-text-team-gold-hover: #735107;
-  --color-theme-text-team-gold-active: #30240d;
-  --color-theme-text-team-orange-normal: #9c3202;
-  --color-theme-text-team-orange-hover: #9c3202;
-  --color-theme-text-team-orange-active: #411b04;
-  --color-theme-text-team-pink-normal: #a12a3a;
-  --color-theme-text-team-pink-hover: #a12a3a;
-  --color-theme-text-team-pink-active: #3b1e21;
-  --color-theme-text-team-purple-normal: #932099;
-  --color-theme-text-team-purple-hover: #932099;
-  --color-theme-text-team-purple-active: #3b1840;
-  --color-theme-text-team-violet-normal: #643abd;
-  --color-theme-text-team-violet-hover: #643abd;
-  --color-theme-text-team-violet-active: #29223d;
-  --color-theme-text-team-slate-normal: #535573;
-  --color-theme-text-team-slate-hover: #535573;
-  --color-theme-text-team-slate-active: #26262b;
-
-  /* --- Background / Primary --- */
-  --color-theme-background-primary-ghost: #00000000;
-  --color-theme-background-primary-hover: #00000012;
-  --color-theme-background-primary-active: #0000001c;
-  --color-theme-background-primary-disabled: #00000000;
-
-  /* --- Background / Solid --- */
-  --color-theme-background-solid-primary-normal: #ffffff;
-  --color-theme-background-solid-secondary-normal: #f7f7f7;
-  --color-theme-background-solid-tertiary-normal: #ededed;
-  --color-theme-background-solid-quaternary-normal: #ffffff;
-
-  /* --- Background / Secondary --- */
-  --color-theme-background-secondary-normal: #0000001c;
-  --color-theme-background-secondary-subtle: #00000012;
-  --color-theme-background-secondary-hover: #00000033;
-  --color-theme-background-secondary-active: #0000004d;
-  --color-theme-background-secondary-disabled: #00000000;
-
-  /* --- Background / Accent --- */
-  --color-theme-background-accent-normal: #1170cf;
-  --color-theme-background-accent-active: #0353a8;
-
-  /* --- Background / Alert --- */
-  --color-theme-background-alert-default-normal: #dedede;
-  --color-theme-background-alert-default-hover: #dedede;
-  --color-theme-background-alert-default-active: #c9c9c9;
-  --color-theme-background-alert-success-normal: #cef5eb;
-  --color-theme-background-alert-success-hover: #cef5eb;
-  --color-theme-background-alert-success-active: #9fedd8;
-  --color-theme-background-alert-warning-normal: #ffebc2;
-  --color-theme-background-alert-warning-hover: #ffebc2;
-  --color-theme-background-alert-warning-active: #ffda94;
-  --color-theme-background-alert-error-normal: #ffe8ea;
-  --color-theme-background-alert-error-hover: #ffe8ea;
-  --color-theme-background-alert-error-active: #ffd4da;
-  --color-theme-background-alert-theme-normal: #dbf0ff;
-  --color-theme-background-alert-theme-hover: #dbf0ff;
-  --color-theme-background-alert-theme-active: #bfe3ff;
-  --color-theme-background-alert-purple-normal: #fcf2fc;
-  --color-theme-background-alert-purple-hover: #fcf2fc;
-  --color-theme-background-alert-purple-active: #fce1fc;
-  --color-theme-background-alert-orange-normal: #feebd7;
-  --color-theme-background-alert-orange-hover: #feebd7;
-  --color-theme-background-alert-orange-active: #fed5ac;
-
-  /* --- Background / Label --- */
-  --color-theme-background-label-cobalt-normal: #e5f8ff;
-  --color-theme-background-label-cobalt-hover: #c7eeff;
-  --color-theme-background-label-cobalt-active: #99ddff;
-  --color-theme-background-label-gold-normal: #f7f6dc;
-  --color-theme-background-label-gold-hover: #f5eaa2;
-  --color-theme-background-label-gold-active: #ebd460;
-  --color-theme-background-label-lime-normal: #f3f7e9;
-  --color-theme-background-label-lime-hover: #ddf2ae;
-  --color-theme-background-label-lime-active: #bce36f;
-  --color-theme-background-label-mint-normal: #e9f7f3;
-  --color-theme-background-label-mint-hover: #baf5e7;
-  --color-theme-background-label-mint-active: #74e8d1;
-  --color-theme-background-label-orange-normal: #feebd7;
-  --color-theme-background-label-orange-hover: #fed5ac;
-  --color-theme-background-label-orange-active: #feba7f;
-  --color-theme-background-label-pink-normal: #fff2f5;
-  --color-theme-background-label-pink-hover: #ffe0e7;
-  --color-theme-background-label-pink-active: #ffc7d2;
-  --color-theme-background-label-purple-normal: #fcf2fc;
-  --color-theme-background-label-purple-hover: #fce1fc;
-  --color-theme-background-label-purple-active: #fac3f8;
-  --color-theme-background-label-slate-normal: #f2f4ff;
-  --color-theme-background-label-slate-hover: #e3e7fa;
-  --color-theme-background-label-slate-active: #ced2ed;
-  --color-theme-background-label-violet-normal: #f8f2fc;
-  --color-theme-background-label-violet-hover: #f0e3fc;
-  --color-theme-background-label-violet-active: #e2cafc;
-
-  /* --- Background / Gradient --- */
-  --color-theme-background-gradient-primary-normal-0: #f0f0f0;
-  --color-theme-background-gradient-primary-normal-1: #ffffff;
-  --color-theme-background-gradient-secondary-normal-0: #fafafa;
-  --color-theme-background-gradient-secondary-normal-1: #ffffff;
-  --color-theme-background-reaction-normal-0: #ffffffe5;
-  --color-theme-background-reaction-normal-1: #ffffff00;
-
-  /* --- Background / Misc --- */
-  --color-theme-background-namelabel-normal: #000000b2;
-  --color-theme-background-skeleton-normal: #8f8f8f;
-  --color-theme-background-glass-normal: #ffffff66;
-  --color-theme-background-glass-light: #ffffff66;
-  --color-theme-background-glass-medium: #ffffff99;
-  --color-theme-background-glass-heavy: #ffffffcc;
-  --color-theme-background-overlay-normal: #07101c66;
-
-  /* --- Button --- */
-  --color-theme-button-primary-normal: #000000f2;
-  --color-theme-button-primary-hover: #000000cc;
-  --color-theme-button-primary-pressed: #000000b2;
-  --color-theme-button-primary-disabled: #00000033;
-  --color-theme-button-secondary-normal: #00000000;
-  --color-theme-button-secondary-hover: #00000012;
-  --color-theme-button-secondary-pressed: #00000033;
-  --color-theme-button-secondary-disabled: #00000000;
-  --color-theme-button-secondary-active-normal: #00000033;
-  --color-theme-button-secondary-active-hover: #0000004d;
-  --color-theme-button-secondary-active-pressed: #00000066;
-  --color-theme-button-secondary-active-disabled: #0000001c;
-  --color-theme-button-join-normal: #1d805f;
-  --color-theme-button-join-hover: #185e46;
-  --color-theme-button-join-pressed: #134231;
-  --color-theme-button-cancel-normal: #db1f2e;
-  --color-theme-button-cancel-hover: #ab0a15;
-  --color-theme-button-cancel-pressed: #780d13;
-  --color-theme-button-accent-normal: #1170cf;
-  --color-theme-button-accent-hover: #0353a8;
-  --color-theme-button-accent-pressed: #063a75;
-
-  /* --- Inverted --- */
-  --color-theme-inverted-text-primary-normal: #fffffff2;
-  --color-theme-inverted-text-primary-disabled: #ffffff66;
-  --color-theme-inverted-text-secondary-normal: #ffffffb2;
-  --color-theme-inverted-text-accent-normal: #64b4fa;
-  --color-theme-inverted-text-accent-hover: #bfe3ff;
-  --color-theme-inverted-background-normal: #000000;
-  --color-theme-inverted-button-primary-normal: #fffffff2;
-  --color-theme-inverted-button-primary-hover: #ffffffcc;
-  --color-theme-inverted-button-primary-pressed: #ffffffb2;
-  --color-theme-inverted-button-primary-disabled: #ffffff33;
-  --color-theme-inverted-button-secondary-normal: #ffffff00;
-  --color-theme-inverted-button-secondary-hover: #ffffff12;
-  --color-theme-inverted-button-secondary-pressed: #ffffff33;
-  --color-theme-inverted-button-secondary-disabled: #ffffff00;
-  --color-theme-inverted-outline-button-normal: #ffffff80;
-  --color-theme-inverted-outline-primary-normal: #ffffff66;
-  --color-theme-inverted-outline-disabled-normal: #ffffff33;
-  --color-theme-inverted-outline-input-normal: #ffffff80;
-  --color-theme-inverted-outline-theme-normal: #64b4fa;
-  --color-theme-inverted-control-active-normal: #64b4fa;
-  --color-theme-inverted-control-active-hover: #3492eb;
-  --color-theme-inverted-control-active-pressed: #1170cf;
-  --color-theme-inverted-control-active-active: #1170cf;
-  --color-theme-inverted-control-active-disabled: #ffffff33;
-  --color-theme-inverted-control-inactive-normal: #ffffff1c;
-  --color-theme-inverted-control-inactive-hover: #ffffff4d;
-  --color-theme-inverted-control-inactive-pressed: #ffffff66;
-  --color-theme-inverted-control-inactive-disabled: #ffffff33;
-
-  /* --- Control --- */
-  --color-theme-control-active-normal: #1170cf;
-  --color-theme-control-active-hover: #0353a8;
-  --color-theme-control-active-pressed: #063a75;
-  --color-theme-control-active-disabled: #00000033;
-  --color-theme-control-indicator-inactive-normal: #707070;
-  --color-theme-control-inactive-normal: #0000001c;
-  --color-theme-control-inactive-hover: #00000033;
-  --color-theme-control-inactive-pressed: #0000004d;
-
-  /* --- Outline --- */
-  --color-theme-outline-primary-normal: #00000075;
-  --color-theme-outline-primary-disabled: #00000033;
-  --color-theme-outline-theme-normal: #1170cf;
-  --color-theme-outline-secondary-normal: #00000033;
-  --color-theme-outline-input-active: #000000e5;
-  --color-theme-outline-button-normal: #00000080;
-  --color-theme-outline-join-normal: #185e46;
-  --color-theme-outline-cancel-normal: #ab0a15;
-  --color-theme-outline-share-selected: #27a17a;
-  --color-theme-outline-share-active: #ec6400;
-  --color-theme-outline-share-inactive: #8f8f8f;
-  --color-theme-outline-overlay-normal: #707070;
-  --color-theme-outline-high-contrast-focus: #000000;
-
-  /* --- Outline / Label --- */
-  --color-theme-outline-label-cobalt: #0a78cc;
-  --color-theme-outline-label-gold: #996e00;
-  --color-theme-outline-label-lime: #588219;
-  --color-theme-outline-label-mint: #148579;
-  --color-theme-outline-label-orange: #c94403;
-  --color-theme-outline-label-pink: #d43b52;
-  --color-theme-outline-label-purple: #c233c4;
-  --color-theme-outline-label-slate: #6f739e;
-  --color-theme-outline-label-violet: #875ae0;
-
-  /* --- Outline / Promotion --- */
-  --color-theme-outline-promotion-normal-0: #c233c4;
-
-  /* --- Outline / Gradient Active --- */
-  --color-theme-outline-gradient-active-normal-0: #3492eb;
-  --color-theme-outline-gradient-active-normal-1: #00a3b5;
-  --color-theme-outline-gradient-active-normal-2: #3cc29a;
-
-  /* --- Outline / Glass --- */
-  --color-theme-outline-glass-0: #00000012;
-  --color-theme-outline-glass-1: #00000033;
-
-  /* --- Indicator --- */
-  --color-theme-indicator-unstable: #c94403;
-  --color-theme-indicator-attention: #db1f2e;
-  --color-theme-indicator-stable: #1d805f;
-  --color-theme-indicator-locked: #707070;
-  --color-theme-indicator-caution: #a65e00;
-  --color-theme-indicator-secure: #1170cf;
-
-  /* --- Overlay --- */
-  --color-theme-overlay-meetings-normal: #ffffffcc;
-  --color-theme-overlay-button-secondary-normal: #ffffff;
-  --color-theme-overlay-button-secondary-hover: #ededed;
-  --color-theme-overlay-button-secondary-pressed: #dedede;
-
-  /* --- Scrollbar --- */
-  --color-theme-scrollbar-button-normal: #00000075;
-  --color-theme-scrollbar-button-hover: #00000080;
-  --color-theme-scrollbar-button-pressed: #00000099;
-  --color-theme-scrollbar-arrow-normal: #00000099;
-  --color-theme-scrollbar-arrow-background-normal: #00000000;
-  --color-theme-scrollbar-arrow-background-hover: #00000033;
-  --color-theme-scrollbar-arrow-background-pressed: #0000004d;
-  --color-theme-scrollbar-background-secondary-ghost: #00000000;
-  --color-theme-scrollbar-background-secondary-normal: #0000001c;
-
-  /* --- Global Tint --- */
-  --color-theme-globaltint-normal: #1170cf;
-  --color-theme-globaltint-selected: #1170cf;
-
-  /* --- Grouped Background --- */
-  --color-theme-groupedbackground-primary-normal: #f7f7f7;
-  --color-theme-groupedbackground-secondary-normal: #ffffff;
-  --color-theme-groupedbackground-tertiary-normal: #f7f7f7;
-  --color-theme-groupedbackground-quaternary-normal: #ffffff;
-
-  /* --- Illustrations --- */
-  --color-theme-illustrations-default: #000000;
-
-  /* --- Avatar --- */
-  --color-theme-avatar-glass-active: #ffffffcc;
-  --color-theme-avatar-ghost: #00000000;
-
-  /* --- Focus --- */
-  --color-theme-focus-1: #1170cf;
-  --color-theme-focus-2: #1170cf59;
-}
-
-
-/* ==========================================================================
-   COMMON TOKENS (Same across both themes)
-   ========================================================================== */
-
-:root {
-
-  /* --- Core / AI --- */
-  --color-core-ai-mediumblue: #0051af;
-  --color-core-ai-skyblue: #00bceb;
-  --color-core-ai-aquablue: #63fff7;
-
-  /* --- Core / Alpha --- */
-  --color-core-white-alpha-7: #ffffff12;
-  --color-core-white-alpha-20: #ffffff33;
-  --color-core-white-alpha-60: #ffffff99;
-  --color-core-white-alpha-80: #ffffffcc;
-  --color-core-black-alpha-7: #00000012;
-  --color-core-black-alpha-60: #00000099;
-  --color-core-black-alpha-70: #000000b2;
-  --color-core-black-alpha-80: #000000cc;
-
-  /* --- Common / Whiteboard --- */
-  --color-theme-common-whiteboard-stickynote-yellow: #ffbe4f;
-  --color-theme-common-whiteboard-stickynote-red: #fc8b98;
-  --color-theme-common-whiteboard-stickynote-purple: #f294f1;
-  --color-theme-common-whiteboard-stickynote-cyan: #22c7d6;
-  --color-theme-common-whiteboard-stickynote-mint: #30c9b0;
-  --color-theme-common-whiteboard-pen-black: #0f0f0f;
-  --color-theme-common-whiteboard-pen-red: #f55868;
-  --color-theme-common-whiteboard-pen-purple: #c233c4;
-  --color-theme-common-whiteboard-pen-blue: #64b4fa;
-  --color-theme-common-whiteboard-pen-green: #3cc29a;
-  --color-theme-common-whiteboard-pen-yellow: #f2990a;
-  --color-theme-common-whiteboard-pen-white: #ffffff;
-
-  /* --- Common / Text (Dark-on-dark contexts) --- */
-  --color-theme-common-text-primary-normal: #fffffff2;
-  --color-theme-common-text-primary-disabled: #ffffff66;
-  --color-theme-common-text-secondary-normal: #ffffffb2;
-  --color-theme-common-text-success-normal: #3cc29a;
-  --color-theme-common-text-success-hover: #9fedd8;
-  --color-theme-common-text-error-normal: #fc8b98;
-  --color-theme-common-text-error-hover: #ffd4da;
-  --color-theme-common-text-warning-normal: #f2990a;
-  --color-theme-common-text-warning-hover: #ffda94;
-
-  /* --- Common / Inverted Text --- */
-  --color-theme-common-inverted-text-primary-normal: #000000f2;
-  --color-theme-common-inverted-text-secondary-normal: #00000099;
-  --color-theme-common-inverted-text-primary-disabled: #00000066;
-
-  /* --- Common / Inverted Button --- */
-  --color-theme-common-inverted-button-secondary-normal: #00000000;
-  --color-theme-common-inverted-button-secondary-hover: #00000012;
-  --color-theme-common-inverted-button-secondary-pressed: #00000033;
-  --color-theme-common-inverted-button-secondary-disabled: #00000000;
-
-  /* --- Common / Overlays --- */
-  --color-theme-common-overlays-primary-normal: #000000e5;
-  --color-theme-common-overlays-secondary-normal: #00000066;
-  --color-theme-common-overlays-meeting-normal-0: #00000000;
-  --color-theme-common-overlays-meeting-normal-1: #0000004d;
-  --color-theme-common-overlays-meeting-normal-2: #000000cc;
-
-  /* --- Common / Button --- */
-  --color-theme-common-button-primary-normal: #fffffff2;
-  --color-theme-common-button-primary-hover: #ffffffcc;
-  --color-theme-common-button-primary-pressed: #ffffffb2;
-  --color-theme-common-button-primary-disabled: #ffffff33;
-  --color-theme-common-button-secondary-normal: #ffffff00;
-  --color-theme-common-button-secondary-hover: #ffffff12;
-  --color-theme-common-button-secondary-pressed: #ffffff33;
-  --color-theme-common-button-secondary-disabled: #ffffff00;
-  --color-theme-common-button-secondary-active-normal: #ffffffb2;
-  --color-theme-common-button-secondary-active-hover: #ffffff4d;
-  --color-theme-common-button-secondary-active-pressed: #ffffff66;
-  --color-theme-common-button-secondary-active-disabled: #ffffff1c;
-
-  /* --- Common / Button Promotion --- */
-  --color-theme-common-button-promotion-normal-0: #932099;
-  --color-theme-common-button-promotion-normal-1: #a12a3a;
-  --color-theme-common-button-promotion-hover-0: #601e66;
-  --color-theme-common-button-promotion-hover-1: #66262d;
-  --color-theme-common-button-promotion-active-0: #3b1840;
-  --color-theme-common-button-promotion-active-1: #3b1e21;
-
-  /* --- Common / Button Join Animated --- */
-  --color-theme-common-button-join-animated-gradient-normal-0: #30c9b0;
-  --color-theme-common-button-join-animated-gradient-normal-1: #64b4fa;
-  --color-theme-common-button-join-animated-gradient-normal-2: #30c9b0;
-
-  /* --- Common / Outline --- */
-  --color-theme-common-outline-button-normal: #ffffff4d;
-  --color-theme-common-outline-primary-normal: #ffffff66;
-  --color-theme-common-outline-primary-disabled: #ffffff33;
-  --color-theme-common-outline-input-normal: #ffffff80;
-  --color-theme-common-outline-secondary-normal: #00000033;
-  --color-theme-common-outline-secondary-disabled: #00000033;
-  --color-theme-common-outline-warning-normal: #f2990a;
-
-  /* --- Common / Control --- */
-  --color-theme-common-control-share-content-selected: #3cc29a;
-  --color-theme-common-control-share-content-active: #c94403;
-  --color-theme-common-control-share-content-inactive: #707070;
-  --color-theme-common-control-inactive-normal: #00000033;
-
-  /* --- Common / Background --- */
-  --color-theme-common-background-alert-share-normal: #c94403;
-  --color-theme-common-background-solid-dark: #1a1a1a;
-  --color-theme-common-background-solid-light: #ffffff;
-
-  /* --- Common / Content (File Type Colors) --- */
-  --color-theme-common-content-pdf: #ee0507;
-  --color-theme-common-content-word: #0078d6;
-  --color-theme-common-content-powerpoint: #d93e17;
-  --color-theme-common-content-excel: #00893e;
-  --color-theme-common-content-onenote: #b839db;
-  --color-theme-common-content-sheets: #0f9d58;
-  --color-theme-common-content-slides: #f4b400;
-  --color-theme-common-content-keynote: #029cfb;
-  --color-theme-common-content-doc: #4285f4;
-
-  /* --- Common / Touchbar --- */
-  --color-theme-common-touchbar-background-blue-normal: #1170cf;
-  --color-theme-common-touchbar-background-blue-pressed: #063a75;
-  --color-theme-common-touchbar-background-pink-normal: #d43b52;
-  --color-theme-common-touchbar-background-pink-pressed: #66262d;
-  --color-theme-common-touchbar-background-mint-normal: #148579;
-  --color-theme-common-touchbar-background-mint-pressed: #12423f;
-  --color-theme-common-touchbar-background-purple-normal: #c233c4;
-  --color-theme-common-touchbar-background-purple-pressed: #601e66;
-  --color-theme-common-touchbar-background-violet-normal: #875ae0;
-  --color-theme-common-touchbar-background-violet-pressed: #432c78;
-  --color-theme-common-touchbar-background-orange-normal: #c94403;
-  --color-theme-common-touchbar-background-orange-pressed: #682601;
-  --color-theme-common-touchbar-background-green-normal: #1d805f;
-  --color-theme-common-touchbar-background-green-pressed: #134231;
-  --color-theme-common-touchbar-background-red-normal: #db1f2e;
-  --color-theme-common-touchbar-background-red-pressed: #780d13;
-  --color-theme-common-touchbar-background-transparent: #00000000;
-  --color-theme-common-touchbar-icon-attention: #fc8b98;
-  --color-theme-common-touchbar-icon-stable: #27a17a;
-  --color-theme-common-touchbar-icon-secure: #64b4fa;
-}
-
-
-/* ==========================================================================
-   OS-LEVEL THEME PREFERENCE
-   Applies light theme when user's OS prefers light, unless overridden
-   by an explicit data-theme attribute.
-   ========================================================================== */
-
-@media (prefers-color-scheme: light) {
-  :root:not([data-theme="dark"]) {
-
-    /* --- Text --- */
-    --color-theme-text-primary-normal: #000000f2;
-    --color-theme-text-primary-disabled: #00000066;
-    --color-theme-text-secondary-normal: #000000b2;
-    --color-theme-text-error-normal: #ab0a15;
-    --color-theme-text-error-hover: #4f0e10;
-    --color-theme-text-error-active: #4f0e10;
-    --color-theme-text-success-normal: #185e46;
-    --color-theme-text-success-hover: #0e2b20;
-    --color-theme-text-success-active: #0e2b20;
-    --color-theme-text-warning-normal: #7d4705;
-    --color-theme-text-warning-hover: #36220c;
-    --color-theme-text-warning-active: #36220c;
-    --color-theme-text-highlight: #bfe3ff;
-    --color-theme-text-accent-normal: #0353a8;
-    --color-theme-text-accent-hover: #0a274a;
-    --color-theme-text-accent-active: #0a274a;
-    --color-theme-text-teamdefault-normal: #000000b2;
-    --color-theme-text-teamdefault-hover: #000000b2;
-    --color-theme-text-teamdefault-active: #000000f2;
-    --color-theme-text-alert-purple-normal: #932099;
-    --color-theme-text-alert-purple-hover: #3b1840;
-    --color-theme-text-alert-purple-active: #3b1840;
-    --color-theme-text-alert-orange-normal: #9c3202;
-    --color-theme-text-alert-orange-hover: #411b04;
-    --color-theme-text-alert-orange-active: #411b04;
-
-    /* --- Background / Solid --- */
-    --color-theme-background-solid-primary-normal: #ffffff;
-    --color-theme-background-solid-secondary-normal: #f7f7f7;
-    --color-theme-background-solid-tertiary-normal: #ededed;
-    --color-theme-background-solid-quaternary-normal: #ffffff;
-
-    /* --- Background / Primary --- */
-    --color-theme-background-primary-ghost: #00000000;
-    --color-theme-background-primary-hover: #00000012;
-    --color-theme-background-primary-active: #0000001c;
-    --color-theme-background-primary-disabled: #00000000;
-
-    /* --- Background / Secondary --- */
-    --color-theme-background-secondary-normal: #0000001c;
-    --color-theme-background-secondary-hover: #00000033;
-    --color-theme-background-secondary-active: #0000004d;
-    --color-theme-background-secondary-disabled: #00000000;
-
-    /* --- Background / Accent --- */
-    --color-theme-background-accent-normal: #1170cf;
-    --color-theme-background-accent-active: #0353a8;
-
-    /* --- Background / Alert --- */
-    --color-theme-background-alert-default-normal: #dedede;
-    --color-theme-background-alert-default-hover: #dedede;
-    --color-theme-background-alert-default-active: #c9c9c9;
-    --color-theme-background-alert-success-normal: #cef5eb;
-    --color-theme-background-alert-success-hover: #cef5eb;
-    --color-theme-background-alert-success-active: #9fedd8;
-    --color-theme-background-alert-warning-normal: #ffebc2;
-    --color-theme-background-alert-warning-hover: #ffebc2;
-    --color-theme-background-alert-warning-active: #ffda94;
-    --color-theme-background-alert-error-normal: #ffe8ea;
-    --color-theme-background-alert-error-hover: #ffe8ea;
-    --color-theme-background-alert-error-active: #ffd4da;
-    --color-theme-background-alert-theme-normal: #dbf0ff;
-    --color-theme-background-alert-theme-hover: #dbf0ff;
-    --color-theme-background-alert-theme-active: #bfe3ff;
-    --color-theme-background-alert-purple-normal: #fcf2fc;
-    --color-theme-background-alert-purple-hover: #fcf2fc;
-    --color-theme-background-alert-purple-active: #fce1fc;
-    --color-theme-background-alert-orange-normal: #feebd7;
-    --color-theme-background-alert-orange-hover: #feebd7;
-    --color-theme-background-alert-orange-active: #fed5ac;
-
-    /* --- Background / Misc --- */
-    --color-theme-background-skeleton-normal: #8f8f8f;
-    --color-theme-background-glass-normal: #ffffff66;
-    --color-theme-background-glass-light: #ffffff66;
-    --color-theme-background-glass-medium: #ffffff99;
-    --color-theme-background-glass-heavy: #ffffffcc;
-    --color-theme-background-overlay-normal: #07101c66;
-
-    /* --- Button --- */
-    --color-theme-button-primary-normal: #000000f2;
-    --color-theme-button-primary-hover: #000000cc;
-    --color-theme-button-primary-pressed: #000000b2;
-    --color-theme-button-primary-disabled: #00000033;
-    --color-theme-button-secondary-normal: #00000000;
-    --color-theme-button-secondary-hover: #00000012;
-    --color-theme-button-secondary-pressed: #00000033;
-    --color-theme-button-secondary-disabled: #00000000;
-    --color-theme-button-secondary-active-normal: #00000033;
-    --color-theme-button-secondary-active-hover: #0000004d;
-    --color-theme-button-secondary-active-pressed: #00000066;
-    --color-theme-button-secondary-active-disabled: #0000001c;
-
-    /* --- Control --- */
-    --color-theme-control-active-normal: #1170cf;
-    --color-theme-control-active-hover: #0353a8;
-    --color-theme-control-active-pressed: #063a75;
-    --color-theme-control-active-disabled: #00000033;
-    --color-theme-control-indicator-inactive-normal: #707070;
-    --color-theme-control-inactive-normal: #0000001c;
-    --color-theme-control-inactive-hover: #00000033;
-    --color-theme-control-inactive-pressed: #0000004d;
-
-    /* --- Outline --- */
-    --color-theme-outline-primary-normal: #00000075;
-    --color-theme-outline-primary-disabled: #00000033;
-    --color-theme-outline-theme-normal: #1170cf;
-    --color-theme-outline-secondary-normal: #00000033;
-    --color-theme-outline-input-active: #000000e5;
-    --color-theme-outline-button-normal: #00000080;
-    --color-theme-outline-join-normal: #185e46;
-    --color-theme-outline-cancel-normal: #ab0a15;
-    --color-theme-outline-high-contrast-focus: #000000;
-
-    /* --- Indicator --- */
-    --color-theme-indicator-unstable: #c94403;
-    --color-theme-indicator-attention: #db1f2e;
-    --color-theme-indicator-stable: #1d805f;
-    --color-theme-indicator-locked: #707070;
-    --color-theme-indicator-caution: #a65e00;
-    --color-theme-indicator-secure: #1170cf;
-
-    /* --- Overlay --- */
-    --color-theme-overlay-meetings-normal: #ffffffcc;
-    --color-theme-overlay-button-secondary-normal: #ffffff;
-    --color-theme-overlay-button-secondary-hover: #ededed;
-    --color-theme-overlay-button-secondary-pressed: #dedede;
-
-    /* --- Scrollbar --- */
-    --color-theme-scrollbar-button-normal: #00000075;
-    --color-theme-scrollbar-button-hover: #00000080;
-    --color-theme-scrollbar-button-pressed: #00000099;
-    --color-theme-scrollbar-arrow-normal: #00000099;
-
-    /* --- Global Tint --- */
-    --color-theme-globaltint-normal: #1170cf;
-    --color-theme-globaltint-selected: #1170cf;
-
-    /* --- Grouped Background --- */
-    --color-theme-groupedbackground-primary-normal: #f7f7f7;
-    --color-theme-groupedbackground-secondary-normal: #ffffff;
-    --color-theme-groupedbackground-tertiary-normal: #f7f7f7;
-    --color-theme-groupedbackground-quaternary-normal: #ffffff;
-
-    /* --- Illustrations --- */
-    --color-theme-illustrations-default: #000000;
-
-    /* --- Focus --- */
-    --color-theme-focus-1: #1170cf;
-    --color-theme-focus-2: #1170cf59;
-  }
+/* ═══════════════════════════════════════════════════════════════
+   DARK THEME
+   ═══════════════════════════════════════════════════════════════ */
+
+[data-theme='dark'] {
+
+  /* ── Text ───────────────────────────────────────────────────── */
+  --mds-color-theme-text-primary-normal:      rgba(255, 255, 255, 0.95);
+  --mds-color-theme-text-primary-disabled:    rgba(255, 255, 255, 0.4);
+  --mds-color-theme-text-secondary-normal:    rgba(255, 255, 255, 0.7);
+  --mds-color-theme-text-error-normal:        #fc8b98;
+  --mds-color-theme-text-error-hover:         #ffd4da;
+  --mds-color-theme-text-error-active:        #ffd4da;
+  --mds-color-theme-text-success-normal:      #3cc29a;
+  --mds-color-theme-text-success-hover:       #9fedd8;
+  --mds-color-theme-text-success-active:      #9fedd8;
+  --mds-color-theme-text-warning-normal:      #f2990a;
+  --mds-color-theme-text-warning-hover:       #ffda94;
+  --mds-color-theme-text-warning-active:      #ffda94;
+  --mds-color-theme-text-accent-normal:       #64b4fa;
+  --mds-color-theme-text-accent-hover:        #bfe3ff;
+  --mds-color-theme-text-accent-active:       #bfe3ff;
+  --mds-color-theme-text-highlight:           #063a75;
+  --mds-color-theme-text-teamdefault-normal:  rgba(255, 255, 255, 0.7);
+
+  /* ── Common Text ────────────────────────────────────────────── */
+  --color-theme-common-text-primary-normal:   rgba(255, 255, 255, 0.95);
+
+  /* ── Background – Solid ─────────────────────────────────────── */
+  --mds-color-theme-background-solid-primary-normal:    #000000;
+  --mds-color-theme-background-solid-secondary-normal:  #1a1a1a;
+  --mds-color-theme-background-solid-tertiary-normal:   #262626;
+  --color-theme-background-solid-primary-normal:        #000000;
+  --color-theme-background-solid-secondary-normal:      #1a1a1a;
+  --color-theme-background-solid-tertiary-normal:       #262626;
+
+  /* ── Background – Glass ─────────────────────────────────────── */
+  --mds-color-theme-background-glass-normal:  rgba(255, 255, 255, 0.05);
+  --mds-color-theme-background-glass-light:   rgba(255, 255, 255, 0.08);
+  --mds-color-theme-background-glass-medium:  rgba(0, 0, 0, 0.60);
+  --mds-color-theme-background-glass-heavy:   rgba(0, 0, 0, 0.80);
+
+  /* ── Background – Interaction ───────────────────────────────── */
+  --mds-color-theme-background-primary-ghost:    transparent;
+  --mds-color-theme-background-primary-hover:    rgba(255, 255, 255, 0.07);
+  --mds-color-theme-background-primary-active:   rgba(255, 255, 255, 0.11);
+  --mds-color-theme-background-primary-disabled: transparent;
+  --color-theme-background-primary-hover:        rgba(255, 255, 255, 0.07);
+
+  /* ── Background – Solid ── (quaternary) ────────────────────── */
+  --mds-color-theme-background-solid-quaternary-normal: #3b3b3b;
+
+  /* ── Background – Secondary ───────────────────────────────── */
+  --mds-color-theme-background-secondary-normal:   rgba(255, 255, 255, 0.11);
+  --mds-color-theme-background-secondary-subtle:   rgba(255, 255, 255, 0.07);
+  --mds-color-theme-background-secondary-hover:    rgba(255, 255, 255, 0.20);
+  --mds-color-theme-background-secondary-active:   rgba(255, 255, 255, 0.30);
+  --mds-color-theme-background-secondary-disabled: transparent;
+
+  /* ── Background – Accent ────────────────────────────────────── */
+  --mds-color-theme-background-accent-normal: #1170cf;
+  --mds-color-theme-background-accent-active: #64b4fa;
+
+  /* ── Background – Alert ─────────────────────────────────────── */
+  --mds-color-theme-background-alert-default-normal:  #3b3b3b;
+  --mds-color-theme-background-alert-default-hover:   #3b3b3b;
+  --mds-color-theme-background-alert-default-active:  #545454;
+  --mds-color-theme-background-alert-success-normal:  #0e2b20;
+  --mds-color-theme-background-alert-success-hover:   #0e2b20;
+  --mds-color-theme-background-alert-success-active:  #134231;
+  --mds-color-theme-background-alert-warning-normal:  #36220c;
+  --mds-color-theme-background-alert-warning-hover:   #36220c;
+  --mds-color-theme-background-alert-warning-active:  #57330a;
+  --mds-color-theme-background-alert-error-normal:    #4f0e10;
+  --mds-color-theme-background-alert-error-hover:     #4f0e10;
+  --mds-color-theme-background-alert-error-active:    #780d13;
+  --mds-color-theme-background-alert-theme-normal:    #0a274a;
+  --mds-color-theme-background-alert-theme-hover:     #0a274a;
+  --mds-color-theme-background-alert-theme-active:    #063a75;
+  --mds-color-theme-background-alert-purple-normal:   #3b1840;
+  --mds-color-theme-background-alert-purple-hover:    #3b1840;
+  --mds-color-theme-background-alert-purple-active:   #601e66;
+  --mds-color-theme-background-alert-orange-normal:   #411b04;
+  --mds-color-theme-background-alert-orange-hover:    #411b04;
+  --mds-color-theme-background-alert-orange-active:   #682601;
+  --mds-color-theme-background-alert-promotion-normal: linear-gradient(46deg, #c233c4 0%, #d43b52 100%);
+
+  /* ── Background – Label (default & error) ─────────────────── */
+  --mds-color-theme-background-label-default-normal: #262626;
+  --mds-color-theme-background-label-default-hover:  #3b3b3b;
+  --mds-color-theme-background-label-default-active: #545454;
+  --mds-color-theme-background-label-error-normal:   #4f0e10;
+  --mds-color-theme-background-label-error-hover:    #780d13;
+  --mds-color-theme-background-label-error-active:   #ab0a15;
+
+  /* ── Background – Label (colors) ──────────────────────────── */
+  --mds-color-theme-background-label-cobalt-normal:  #12283d;
+  --mds-color-theme-background-label-cobalt-hover:   #103c63;
+  --mds-color-theme-background-label-cobalt-active:  #08599c;
+  --mds-color-theme-background-label-gold-normal:    #30240d;
+  --mds-color-theme-background-label-gold-hover:     #4d370c;
+  --mds-color-theme-background-label-gold-active:    #735107;
+  --mds-color-theme-background-label-lime-normal:    #1e2b10;
+  --mds-color-theme-background-label-lime-hover:     #2d4214;
+  --mds-color-theme-background-label-lime-active:    #416116;
+  --mds-color-theme-background-label-mint-normal:    #102b2a;
+  --mds-color-theme-background-label-mint-hover:     #12423f;
+  --mds-color-theme-background-label-mint-active:    #12615a;
+  --mds-color-theme-background-label-orange-normal:  #411b04;
+  --mds-color-theme-background-label-orange-hover:   #682601;
+  --mds-color-theme-background-label-orange-active:  #9c3202;
+  --mds-color-theme-background-label-pink-normal:    #3b1e21;
+  --mds-color-theme-background-label-pink-hover:     #66262d;
+  --mds-color-theme-background-label-pink-active:    #a12a3a;
+  --mds-color-theme-background-label-purple-normal:  #3b1840;
+  --mds-color-theme-background-label-purple-hover:   #601e66;
+  --mds-color-theme-background-label-purple-active:  #932099;
+  --mds-color-theme-background-label-slate-normal:   #26262b;
+  --mds-color-theme-background-label-slate-hover:    #393a47;
+  --mds-color-theme-background-label-slate-active:   #535573;
+  --mds-color-theme-background-label-violet-normal:  #29223d;
+  --mds-color-theme-background-label-violet-hover:   #432c78;
+  --mds-color-theme-background-label-violet-active:  #643abd;
+
+  /* ── Background – Gradient ────────────────────────────────── */
+  --mds-color-theme-background-gradient-primary-normal:   linear-gradient(180deg, #1a1a1a 0%, #0f0f0f 100%);
+  --mds-color-theme-background-gradient-secondary-normal: linear-gradient(180deg, #262626 0%, #0f0f0f 100%);
+
+  /* ── Background – Reaction ────────────────────────────────── */
+  --mds-color-theme-background-reaction-normal: linear-gradient(90deg, rgba(26, 26, 26, 0.9) 0%, rgba(26, 26, 26, 0) 100%);
+
+  /* ── Background – Skeleton ────────────────────────────────── */
+  --mds-color-theme-background-skeleton-normal: #707070;
+
+  /* ── Button ─────────────────────────────────────────────────── */
+  --mds-color-theme-button-primary-normal:    rgba(255, 255, 255, 0.95);
+  --color-theme-button-primary-normal:        rgba(255, 255, 255, 0.95);
+  --mds-color-theme-button-primary-hover:     rgba(255, 255, 255, 0.80);
+  --mds-color-theme-button-primary-pressed:   rgba(255, 255, 255, 0.70);
+  --mds-color-theme-button-primary-disabled:  rgba(255, 255, 255, 0.20);
+  --mds-color-theme-button-secondary-normal:  transparent;
+  --color-theme-button-secondary-normal:      transparent;
+  --mds-color-theme-button-secondary-hover:   rgba(255, 255, 255, 0.07);
+  --color-theme-button-secondary-hover:       rgba(255, 255, 255, 0.07);
+  --mds-color-theme-button-secondary-pressed: rgba(255, 255, 255, 0.20);
+  --mds-color-theme-button-secondary-disabled: transparent;
+  --mds-color-theme-button-secondary-active-normal:   rgba(255, 255, 255, 0.20);
+  --mds-color-theme-button-secondary-active-hover:    rgba(255, 255, 255, 0.30);
+  --mds-color-theme-button-secondary-active-pressed:  rgba(255, 255, 255, 0.40);
+  --mds-color-theme-button-secondary-active-disabled: rgba(255, 255, 255, 0.11);
+  --mds-color-theme-button-join-normal:       #1d805f;
+  --mds-color-theme-button-cancel-normal:     #db1f2e;
+  --mds-color-theme-button-accent-normal:     #1170cf;
+  --mds-color-theme-button-glass-primary-normal:  rgba(255, 255, 255, 0.80);
+  --mds-color-theme-button-glass-primary-hover:   rgba(255, 255, 255, 0.70);
+  --mds-color-theme-button-glass-primary-pressed: rgba(255, 255, 255, 0.60);
+
+  /* ── Inverted ───────────────────────────────────────────────── */
+  --color-theme-inverted-text-primary-normal: rgba(0, 0, 0, 0.95);
+  --mds-color-theme-inverted-text-primary-normal:    rgba(0, 0, 0, 0.95);
+  --mds-color-theme-inverted-text-primary-disabled:  rgba(0, 0, 0, 0.40);
+  --mds-color-theme-inverted-text-secondary-normal:  rgba(0, 0, 0, 0.70);
+  --mds-color-theme-inverted-text-accent-normal:     #0353a8;
+  --mds-color-theme-inverted-text-accent-hover:      #0a274a;
+  --mds-color-theme-inverted-text-accent-active:     #0a274a;
+  --mds-color-theme-inverted-background-normal:      #ffffff;
+  --mds-color-theme-inverted-button-primary-normal:    rgba(0, 0, 0, 0.95);
+  --mds-color-theme-inverted-button-primary-hover:     rgba(0, 0, 0, 0.80);
+  --mds-color-theme-inverted-button-primary-pressed:   rgba(0, 0, 0, 0.70);
+  --mds-color-theme-inverted-button-primary-disabled:  rgba(0, 0, 0, 0.20);
+  --mds-color-theme-inverted-button-secondary-normal:    transparent;
+  --mds-color-theme-inverted-button-secondary-hover:     rgba(0, 0, 0, 0.07);
+  --mds-color-theme-inverted-button-secondary-pressed:   rgba(0, 0, 0, 0.20);
+  --mds-color-theme-inverted-button-secondary-disabled:  transparent;
+  --mds-color-theme-inverted-outline-button-normal:    rgba(0, 0, 0, 0.50);
+  --mds-color-theme-inverted-outline-primary-normal:   rgba(0, 0, 0, 0.46);
+  --mds-color-theme-inverted-control-active-normal:    #1170cf;
+  --mds-color-theme-inverted-control-active-hover:     #0353a8;
+  --mds-color-theme-inverted-control-active-pressed:   #063a75;
+  --mds-color-theme-inverted-control-active-disabled:  rgba(0, 0, 0, 0.20);
+  --mds-color-theme-inverted-control-inactive-normal:  rgba(0, 0, 0, 0.11);
+  --mds-color-theme-inverted-control-inactive-disabled: rgba(0, 0, 0, 0.20);
+
+  /* ── Outline ────────────────────────────────────────────────── */
+  --mds-color-theme-outline-primary-normal:   rgba(255, 255, 255, 0.4);
+  --mds-color-theme-outline-primary-disabled: rgba(255, 255, 255, 0.20);
+  --mds-color-theme-outline-theme-normal:     #64b4fa;
+  --mds-color-theme-outline-secondary-normal: rgba(255, 255, 255, 0.2);
+  --mds-color-theme-outline-input-active:     rgba(255, 255, 255, 0.90);
+  --mds-color-theme-outline-button-normal:    rgba(255, 255, 255, 0.50);
+  --mds-color-theme-outline-join-normal:      #3cc29a;
+  --mds-color-theme-outline-cancel-normal:    #fc8b98;
+  --mds-color-theme-outline-warning-normal:   #f2990a;
+  --mds-color-theme-outline-share-selected:   #27a17a;
+  --mds-color-theme-outline-share-active:     #ec6400;
+  --mds-color-theme-outline-share-inactive:   #8f8f8f;
+  --mds-color-theme-outline-overlay-normal:   #adadad;
+  --mds-color-theme-outline-high-contrast-focus: #ffffff;
+  --mds-color-theme-outline-glass-normal:     rgba(255, 255, 255, 0.11);
+  --mds-color-theme-outline-promotion-normal: #c233c4;
+  --mds-color-theme-outline-label-cobalt:     #5ebff7;
+  --mds-color-theme-outline-label-gold:       #d6b220;
+  --mds-color-theme-outline-label-lime:       #93c437;
+  --mds-color-theme-outline-label-mint:       #30c9b0;
+  --mds-color-theme-outline-label-orange:     #fd884e;
+  --mds-color-theme-outline-label-pink:       #fc97aa;
+  --mds-color-theme-outline-label-purple:     #f294f1;
+  --mds-color-theme-outline-label-slate:      #b0b4d9;
+  --mds-color-theme-outline-label-violet:     #c7a5fa;
+  --color-theme-outline-primary-normal:       rgba(255, 255, 255, 0.4);
+  --color-theme-outline-button-normal:        rgba(255, 255, 255, 0.5);
+
+  /* ── Control ────────────────────────────────────────────────── */
+  --mds-color-theme-control-active-normal:    #64b4fa;
+  --mds-color-theme-control-active-hover:     #3492eb;
+  --mds-color-theme-control-active-pressed:   #1170cf;
+  --mds-color-theme-control-active-disabled:  rgba(255, 255, 255, 0.20);
+  --mds-color-theme-control-indicator-inactive-normal: #8f8f8f;
+  --mds-color-theme-control-inactive-normal:  rgba(255, 255, 255, 0.11);
+  --mds-color-theme-control-inactive-hover:   rgba(255, 255, 255, 0.20);
+  --mds-color-theme-control-inactive-pressed: rgba(255, 255, 255, 0.30);
+  --mds-color-theme-control-inactive-disabled: rgba(255, 255, 255, 0.07);
+  --color-theme-control-active-normal:        #64b4fa;
+  --color-theme-text-warning-normal:          #f2990a;
+  --color-theme-text-error-normal:            #fc8b98;
+
+  /* ── Indicator ──────────────────────────────────────────────── */
+  --mds-color-theme-indicator-unstable:       #ec6400;
+  --mds-color-theme-indicator-attention:      #f55868;
+  --mds-color-theme-indicator-stable:         #27a17a;
+  --mds-color-theme-indicator-locked:         #8f8f8f;
+  --mds-color-theme-indicator-caution:        #cf7900;
+  --mds-color-theme-indicator-secure:         #1170cf;
+
+  /* ── Focus ──────────────────────────────────────────────────── */
+  --color-theme-focus-default-0:  #000000;
+  --color-theme-focus-default-1:  #64b4fa;
+  --color-theme-focus-default-2:  rgba(100, 180, 250, 0.35);
+
+  /* ── Overlay ────────────────────────────────────────────────── */
+  --mds-color-theme-overlay-meetings-normal:  rgba(0, 0, 0, 0.70);
+  --mds-color-theme-overlay-button-secondary-normal:  #0f0f0f;
+  --mds-color-theme-overlay-button-secondary-hover:   #262626;
+  --mds-color-theme-overlay-button-secondary-pressed: #3b3b3b;
+  --color-theme-common-overlays-secondary-normal: rgba(0, 0, 0, 0.40);
+
+  /* ── Scrollbar ────────────────────────────────────────────────── */
+  --mds-color-theme-scrollbar-button-normal:              rgba(255, 255, 255, 0.40);
+  --mds-color-theme-scrollbar-button-hover:               rgba(255, 255, 255, 0.50);
+  --mds-color-theme-scrollbar-button-pressed:             rgba(255, 255, 255, 0.60);
+  --mds-color-theme-scrollbar-arrow-normal:               rgba(255, 255, 255, 0.70);
+  --mds-color-theme-scrollbar-arrow-background-normal:    transparent;
+  --mds-color-theme-scrollbar-arrow-background-hover:     rgba(255, 255, 255, 0.20);
+  --mds-color-theme-scrollbar-arrow-background-pressed:   rgba(255, 255, 255, 0.30);
+  --mds-color-theme-scrollbar-background-secondary-ghost: transparent;
+  --mds-color-theme-scrollbar-background-secondary-normal: rgba(255, 255, 255, 0.11);
+
+  /* ── Gradient Divider ─────────────────────────────────────────── */
+  --mds-color-theme-gradientdivider-default-normal:  linear-gradient(90deg, rgba(255,255,255,0) 0%, rgba(255,255,255,0.20) 22.4%, rgba(255,255,255,0.20) 72.4%, rgba(255,255,255,0) 100%);
+  --mds-color-theme-gradientdivider-default-hover:   linear-gradient(90deg, rgba(255,255,255,0) 0%, rgba(255,255,255,0.60) 22.4%, rgba(255,255,255,0.60) 72.4%, rgba(255,255,255,0) 100%);
+  --mds-color-theme-gradientdivider-error-normal:    linear-gradient(90deg, rgba(252,139,152,0) 0%, rgba(252,139,152,0.60) 22.4%, rgba(252,139,152,0.60) 76%, rgba(252,139,152,0) 100%);
+  --mds-color-theme-gradientdivider-error-hover:     linear-gradient(90deg, rgba(252,139,152,0) 0%, rgba(252,139,152,0.90) 22.4%, rgba(252,139,152,0.90) 76%, rgba(252,139,152,0) 100%);
+  --mds-color-theme-gradientdivider-warning-normal:  linear-gradient(90deg, rgba(242,153,10,0) 0%, rgba(242,153,10,0.60) 22.4%, rgba(242,153,10,0.60) 76%, rgba(242,153,10,0) 100%);
+  --mds-color-theme-gradientdivider-warning-hover:   linear-gradient(90deg, rgba(242,153,10,0) 0%, rgba(242,153,10,0.90) 22.4%, rgba(242,153,10,0.90) 76%, rgba(242,153,10,0) 100%);
+  --mds-color-theme-gradientdivider-announce-normal: linear-gradient(90deg, rgba(100,180,250,0) 0%, rgba(100,180,250,0.60) 22.4%, rgba(100,180,250,0.60) 76%, rgba(100,180,250,0) 100%);
+  --mds-color-theme-gradientdivider-announce-hover:  linear-gradient(90deg, rgba(100,180,250,0) 0%, rgba(100,180,250,0.90) 22.4%, rgba(100,180,250,0.90) 76%, rgba(100,180,250,0) 100%);
+
+  /* ── Global Tint ──────────────────────────────────────────────── */
+  --mds-color-theme-globaltint-normal:   #3492eb;
+  --mds-color-theme-globaltint-selected: #1170cf;
+
+  /* ── Grouped Background ───────────────────────────────────────── */
+  --mds-color-theme-groupedbackground-primary-normal:    #000000;
+  --mds-color-theme-groupedbackground-secondary-normal:  #1a1a1a;
+  --mds-color-theme-groupedbackground-tertiary-normal:   #262626;
+  --mds-color-theme-groupedbackground-quaternary-normal: #3b3b3b;
+
+  /* ── Illustrations ────────────────────────────────────────────── */
+  --mds-color-theme-illustrations-empty-primary-0:          #93c437;
+  --mds-color-theme-illustrations-empty-primary-1:          #279be8;
+  --mds-color-theme-illustrations-empty-secondary-0:        #279be8;
+  --mds-color-theme-illustrations-empty-secondary-1:        #875ae0;
+  --mds-color-theme-illustrations-onboarding-primary-0:     #ffbe4f;
+  --mds-color-theme-illustrations-onboarding-primary-1:     #93c437;
+  --mds-color-theme-illustrations-onboarding-secondary-0:   #f55868;
+  --mds-color-theme-illustrations-onboarding-secondary-1:   #875ae0;
+  --mds-color-theme-illustrations-onboarding-tertiary-0:    #ffbe4f;
+  --mds-color-theme-illustrations-onboarding-tertiary-1:    #ec6400;
+  --mds-color-theme-illustrations-onboarding-quartenary-0:  #93c437;
+  --mds-color-theme-illustrations-onboarding-quartenary-1:  #279be8;
+  --mds-color-theme-illustrations-onboarding-quinary-0:     #279be8;
+  --mds-color-theme-illustrations-onboarding-quinary-1:     #875ae0;
+  --mds-color-theme-illustrations-success-0:                #3cc29a;
+  --mds-color-theme-illustrations-success-1:                #93c437;
+  --mds-color-theme-illustrations-error-0:                  #f0677e;
+  --mds-color-theme-illustrations-error-1:                  #db1f2e;
+  --mds-color-theme-illustrations-default:                  #ffffff;
+
+  /* ── Avatar ───────────────────────────────────────────────────── */
+  --mds-color-theme-avatar-default:      #545454;
+  --mds-color-theme-avatar-hover:        rgba(255, 255, 255, 0.07);
+  --mds-color-theme-avatar-pressed:      rgba(255, 255, 255, 0.20);
+  --mds-color-theme-avatar-cobalt:       #08599c;
+  --mds-color-theme-avatar-cyan:         #066070;
+  --mds-color-theme-avatar-gold:         #735107;
+  --mds-color-theme-avatar-lime:         #416116;
+  --mds-color-theme-avatar-mint:         #12615a;
+  --mds-color-theme-avatar-orange:       #9c3202;
+  --mds-color-theme-avatar-pink:         #a12a3a;
+  --mds-color-theme-avatar-purple:       #932099;
+  --mds-color-theme-avatar-slate:        #535573;
+  --mds-color-theme-avatar-violet:       #643abd;
+  --mds-color-theme-avatar-yellow:       #7d4705;
+  --mds-color-theme-avatar-glass-normal: rgba(255, 255, 255, 0.07);
+
+  /* ── Common – Text ────────────────────────────────────────────── */
+  --mds-color-theme-common-text-primary-normal:   rgba(255, 255, 255, 0.95);
+  --mds-color-theme-common-text-primary-disabled:  rgba(255, 255, 255, 0.40);
+  --mds-color-theme-common-text-secondary-normal:  rgba(255, 255, 255, 0.70);
+  --mds-color-theme-common-text-success-normal:    #3cc29a;
+  --mds-color-theme-common-text-success-hover:     #9fedd8;
+  --mds-color-theme-common-text-error-normal:      #fc8b98;
+  --mds-color-theme-common-text-error-hover:       #ffd4da;
+  --mds-color-theme-common-text-warning-normal:    #f2990a;
+  --mds-color-theme-common-text-warning-hover:     #ffda94;
+
+  /* ── Common – Inverted ────────────────────────────────────────── */
+  --mds-color-theme-common-inverted-text-primary-normal:     rgba(0, 0, 0, 0.95);
+  --mds-color-theme-common-inverted-text-secondary-normal:   rgba(0, 0, 0, 0.60);
+  --mds-color-theme-common-inverted-text-primary-disabled:   rgba(0, 0, 0, 0.40);
+  --mds-color-theme-common-inverted-button-secondary-normal:   transparent;
+  --mds-color-theme-common-inverted-button-secondary-hover:    rgba(0, 0, 0, 0.07);
+  --mds-color-theme-common-inverted-button-secondary-pressed:  rgba(0, 0, 0, 0.20);
+  --mds-color-theme-common-inverted-button-secondary-disabled: transparent;
+
+  /* ── Common – Overlay ─────────────────────────────────────────── */
+  --mds-color-theme-common-overlays-primary-normal:   rgba(0, 0, 0, 0.90);
+  --mds-color-theme-common-overlays-secondary-normal: rgba(0, 0, 0, 0.40);
+
+  /* ── Common – Button ──────────────────────────────────────────── */
+  --mds-color-theme-common-button-primary-normal:    rgba(255, 255, 255, 0.95);
+  --mds-color-theme-common-button-primary-hover:     rgba(255, 255, 255, 0.80);
+  --mds-color-theme-common-button-primary-pressed:   rgba(255, 255, 255, 0.70);
+  --mds-color-theme-common-button-primary-disabled:  rgba(255, 255, 255, 0.20);
+  --mds-color-theme-common-button-secondary-normal:    transparent;
+  --mds-color-theme-common-button-secondary-hover:     rgba(255, 255, 255, 0.07);
+  --mds-color-theme-common-button-secondary-pressed:   rgba(255, 255, 255, 0.20);
+  --mds-color-theme-common-button-secondary-disabled:  transparent;
+  --mds-color-theme-common-button-secondary-active-normal:   rgba(255, 255, 255, 0.20);
+  --mds-color-theme-common-button-secondary-active-hover:    rgba(255, 255, 255, 0.30);
+  --mds-color-theme-common-button-secondary-active-pressed:  rgba(255, 255, 255, 0.40);
+  --mds-color-theme-common-button-secondary-active-disabled: rgba(255, 255, 255, 0.11);
+
+  /* ── Common – Outline ─────────────────────────────────────────── */
+  --mds-color-theme-common-outline-button-normal:    rgba(255, 255, 255, 0.50);
+  --mds-color-theme-common-outline-primary-normal:   rgba(255, 255, 255, 0.40);
+  --mds-color-theme-common-outline-primary-disabled: rgba(255, 255, 255, 0.20);
+
+  /* ── Common – Control ─────────────────────────────────────────── */
+  --mds-color-theme-common-control-share-content-selected: #3cc29a;
+  --mds-color-theme-common-control-share-content-active:   #c94403;
+  --mds-color-theme-common-control-share-content-inactive: #707070;
+  --mds-color-theme-common-control-inactive-normal:        rgba(0, 0, 0, 0.20);
+
+  /* ── Common – Background ──────────────────────────────────────── */
+  --mds-color-theme-common-background-alert-share-normal: #c94403;
+  --mds-color-theme-common-background-solid-dark:         #1a1a1a;
+  --mds-color-theme-common-background-solid-light:        #ffffff;
+
+  /* ── Common – Whiteboard ──────────────────────────────────────── */
+  --mds-color-theme-common-whiteboard-stickyNote-yellow: #ffbe4f;
+  --mds-color-theme-common-whiteboard-stickyNote-red:    #fc8b98;
+  --mds-color-theme-common-whiteboard-stickyNote-purple: #f294f1;
+  --mds-color-theme-common-whiteboard-stickyNote-cyan:   #22c7d6;
+  --mds-color-theme-common-whiteboard-stickyNote-mint:   #30c9b0;
+  --mds-color-theme-common-whiteboard-pen-black:         #0f0f0f;
+  --mds-color-theme-common-whiteboard-pen-red:           #f55868;
+  --mds-color-theme-common-whiteboard-pen-purple:        #c233c4;
+  --mds-color-theme-common-whiteboard-pen-blue:          #64b4fa;
+  --mds-color-theme-common-whiteboard-pen-green:         #3cc29a;
+  --mds-color-theme-common-whiteboard-pen-yellow:        #f2990a;
+  --mds-color-theme-common-whiteboard-pen-white:         #ffffff;
 }

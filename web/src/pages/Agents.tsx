@@ -4,6 +4,7 @@ import { useApp } from '../contexts/AppContext';
 import Button from '../components/shared/Button';
 import Badge from '../components/shared/Badge';
 import Dropdown from '../components/shared/Dropdown';
+import { Input } from '../components/shared/FormInput';
 import { Table, TableHead, TableBody, TableRow, TableHeader, TableCell } from '../components/shared/Table';
 import { AgentCard } from '../components/agents';
 import { Icon } from '../icons';
@@ -54,11 +55,14 @@ export default function Agents() {
       <div className="secondary-content">
         {/* Filter Bar */}
         <div className="filter-bar">
-          <input
-            type="text"
+          <Input
             placeholder="Search agents..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
+            leadingIcon="search"
+            clearable
+            onClear={() => setSearchQuery('')}
+            className="filter-bar-search"
           />
           <Dropdown
             options={[

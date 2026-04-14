@@ -1,5 +1,11 @@
 # Webex AI Agent Studio — Design System Rules
 
+## CRITICAL DIRECTIVE: No Custom Components
+
+**NEVER** build, customize, or modify any shared component (`web/src/components/shared/`) or its CSS without explicit user approval. **NEVER** create inline replacements, wrappers, or one-off versions of existing components. If a page needs a component or variant that does not exist in `components.css` or `web/src/components/shared/`, **STOP and flag it to the user** — do not improvise. Always use components exactly as they are.
+
+---
+
 ## CRITICAL DIRECTIVE: Single Source of Truth
 
 **Design tokens are the Single Source of Truth**, delivered through `web/src/index.css` imports:

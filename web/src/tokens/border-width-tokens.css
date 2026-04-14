@@ -1,11 +1,12 @@
-/*
- * Border Width Tokens
- * Auto-extracted from Figma: 💎 Theme - Border Width
+/**
+ * Border width tokens — Momentum Design System
+ *
+ * "When we use border width, we have a simple border width of 1px."
  */
 
 :root {
-  --border-width-none: 0px;
-  --border-width-small: 1px;
-  --border-width-medium: 2px;
-  --border-width-large: 3px;
+  --border-width-none:    0px;
+  --border-width-small:   1px;   /* Standard border size used in product */
+  --border-width-medium:  2px;
+  --border-width-large:   3px;
 }

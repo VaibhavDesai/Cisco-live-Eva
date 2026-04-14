@@ -1,0 +1,25 @@
+---
+description: When user provides screenshots, extract content only — never copy external UI styling
+globs: 
+alwaysApply: true
+---
+
+# Screenshots Are Content References, Not Style References
+
+When the user provides a screenshot or image of UI:
+
+1. **Extract content only** — text, labels, copy, data, structure.
+2. **Never replicate the visual style** from the screenshot. Always use the project's own design system components and tokens.
+3. **Only follow external UI styling** if the user explicitly says to match or copy the style from the screenshot.
+
+## How to apply
+
+- Look up existing shared components in `web/src/components/shared/` and `web/src/ds/components/` before building custom markup.
+- Use design tokens from `tokens.css` / `web/src/tokens/*` and component classes from `components.css`.
+- Refer to the component table in `.cursor/skills/react-component-builder/SKILL.md` for the available shared components.
+
+## Examples
+
+- User shares a screenshot of a banner with text → Use the existing `<Banner>` component with the text content.
+- User shares a screenshot of a modal → Use the existing `<Modal>` / `<ModalHeader>` / `<ModalBody>` / `<ModalFooter>` components.
+- User shares a screenshot and says "match this exact style" → Then follow the external styling.

@@ -1,7 +1,7 @@
 import { useEffect } from 'react';
 import { Outlet } from 'react-router-dom';
-import Header from './Header';
-import Sidebar from './Sidebar';
+import Header from '../../products/ai-agent-studio/components/Header';
+import Sidebar from '../../products/ai-agent-studio/components/Sidebar';
 import { ToastProvider, useToast } from '../shared/Toast';
 import CreateAgentModal from '../agents/CreateAgentModal';
 import { useApp } from '../../contexts/AppContext';
@@ -24,9 +24,9 @@ export default function MainLayout() {
 
   return (
     <ToastProvider>
-      <div className="app-background" aria-hidden />
+      <div className="app--ai__bg" aria-hidden />
       <Header />
-      <div className="app">
+      <div className="app app--ai">
         <Sidebar />
         <main className="main">
           <Outlet />

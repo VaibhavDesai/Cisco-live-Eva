@@ -4,9 +4,15 @@ import { Navigate, useParams, Link } from 'react-router-dom';
 import { useApp } from '../../contexts/AppContext';
 import { AgentHeader } from '../../components/agents';
 import Button from '../../components/shared/Button';
-import Tabs, { Tab } from '../../components/shared/Tabs';
+import Tabs, { Tab, SegmentControl, SegmentItem } from '../../components/shared/Tabs';
 import Toggle from '../../components/shared/Toggle';
 import Dropdown from '../../components/shared/Dropdown';
+import { Slider } from '../../components/shared/Slider';
+import { AccordionGroup, AccordionItem } from '../../components/shared/Accordion';
+import { Table, TableHead, TableBody, TableRow, TableHeader, TableCell } from '../../components/shared/Table';
+import Badge from '../../components/shared/Badge';
+import { Card, CardBody } from '../../components/shared/Card';
+import { Radio, RadioGroup } from '../../components/shared/Radio';
 import { Input, Textarea } from '../../components/shared/FormInput';
 import { EmptyState } from '../../components/shared/EmptyState';
 import { Illustration } from '../../assets/illustrations';
@@ -15,6 +21,7 @@ import { Banner } from '../../components/shared/Banner';
 import { Modal, ModalHeader, ModalFooter } from '../../components/shared/Modal';
 import CreateEngineModal from '../CreateEngineModal';
 import CreateFulfillmentModal from './CreateFulfillmentModal';
+import PolicyStudio from './PolicyStudio';
 import { Icon } from '../../icons';
 import {
   type UpdateStatus,
@@ -43,7 +50,7 @@ type ActionRow = {
   lastUpdated: string;
 };
 
-const ACTION_SECTIONS = ['Profile', 'Instructions', 'Guardrails', 'Knowledge', 'Action', 'Language'];
+const ACTION_SECTIONS = ['Profile', 'Instructions', 'Security', 'Knowledge', 'Action', 'Language'];
 
 const INSTRUCTION_EXAMPLES = [
   {
@@ -76,37 +83,105 @@ const SYSTEM_PROMPT_GUIDELINES = [
   { title: 'Guard sensitive data', description: 'Instruct the agent to never reveal full account numbers, SSNs, internal policies, or other customers\' data. Only confirm the last few digits when verification is needed.' },
 ];
 
-type GuardrailCategory = 'privacy' | 'scope' | 'tone' | 'escalation' | 'accuracy' | 'logging';
+/* ── Security tab data model ─────────────────────────────────────── */
 
-interface Guardrail {
+type Enforcement = 'monitor' | 'block';
+
+interface StandardGuardrail {
   id: string;
   name: string;
   description: string;
-  category: GuardrailCategory;
   enabled: boolean;
-  recommended?: boolean;
-  reasoning?: string;
-  custom?: boolean;
+  sensitivity: number;
+  enforcement: Enforcement;
 }
 
-const GUARDRAIL_CATEGORIES: { id: GuardrailCategory; label: string; icon: string }[] = [
-  { id: 'privacy', label: 'Privacy & Data Redaction', icon: 'shield' },
-  { id: 'scope', label: 'Scope Restriction', icon: 'blocked' },
-  { id: 'tone', label: 'Tone & Brand Consistency', icon: 'chat' },
-  { id: 'escalation', label: 'Escalation Triggers', icon: 'next' },
-  { id: 'accuracy', label: 'Hallucination / Accuracy Control', icon: 'check-circle' },
-  { id: 'logging', label: 'Logging & Audit Behavior', icon: 'document' },
+const DEFAULT_STANDARD_GUARDRAILS: StandardGuardrail[] = [
+  { id: 'std-toxicity', name: 'Toxicity', description: 'Detect and filter toxic language, insults, and abusive content in conversations.', enabled: true, sensitivity: 50, enforcement: 'monitor' },
+  { id: 'std-harm', name: 'Harm Detection', description: 'Identify requests or responses that could cause physical, emotional, or financial harm.', enabled: true, sensitivity: 50, enforcement: 'monitor' },
+  { id: 'std-jailbreak', name: 'Jailbreak', description: 'Detect prompt injection attempts designed to bypass agent instructions and safety rules.', enabled: false, sensitivity: 50, enforcement: 'block' },
+  { id: 'std-obfuscation', name: 'Obfuscation Detection', description: 'Hidden Intent Detection — identify encoded, disguised, or obfuscated inputs designed to evade other guardrails.', enabled: false, sensitivity: 50, enforcement: 'monitor' },
+  { id: 'std-multiturn', name: 'Multi-turn Jailbreak', description: 'Detect multi-step manipulation where users gradually steer the agent away from its guardrails across turns.', enabled: false, sensitivity: 50, enforcement: 'block' },
 ];
 
-const DEFAULT_GUARDRAILS: Guardrail[] = [
-  { id: 'gr-1', name: 'Redact PII from logs', description: 'Automatically redact personal identifiable information such as SSN, credit card numbers, and addresses from conversation logs and analytics.', category: 'privacy', enabled: false, recommended: true, reasoning: 'Your goal says \'maintain patient privacy\' — this reinforces HIPAA compliance.' },
-  { id: 'gr-2', name: 'Block medical advice', description: 'Prevent the agent from providing medical diagnoses, treatment recommendations, or drug interactions. Redirect users to qualified professionals.', category: 'scope', enabled: false, recommended: true, reasoning: 'Your instruction says \'requests medical advice or diagnosis, politely decline and redirect\'.' },
-  { id: 'gr-3', name: 'Block financial advice', description: 'Prevent the agent from providing specific investment, tax, or financial planning advice. Redirect to licensed advisors.', category: 'scope', enabled: false, recommended: true, reasoning: 'Your instruction says "Avoid sharing provider schedules or personal details of staff".' },
-  { id: 'gr-4', name: 'Enforce brand tone', description: 'Ensure all responses maintain the defined brand voice — warm, professional, and empathetic. Flag responses that deviate from tone guidelines.', category: 'tone', enabled: false, recommended: true, reasoning: 'Generic good-to-have guardrail to prevent looping on forbidden topics, reduce token spend.' },
-  { id: 'gr-5', name: 'Auto-escalate on frustration', description: 'Detect signs of user frustration (repeated questions, negative sentiment) and automatically offer transfer to a live agent.', category: 'escalation', enabled: false, recommended: true, reasoning: 'Your escalation rules mention detecting negative sentiment and handing off to a live agent.' },
-  { id: 'gr-6', name: 'Require source citation', description: 'When the agent provides factual claims, require it to reference a knowledge base article or source. Flag unsupported claims.', category: 'accuracy', enabled: false, recommended: true, reasoning: 'Your accuracy goals require all claims to reference a knowledge base article.' },
-  { id: 'gr-7', name: 'Log all escalations', description: 'Record detailed context for every conversation escalated to a live agent, including reason, sentiment score, and conversation summary.', category: 'logging', enabled: false, recommended: false },
-  { id: 'gr-8', name: 'Restrict off-topic conversations', description: 'Prevent the agent from engaging in conversations outside its defined support scope. Politely redirect to relevant topics.', category: 'scope', enabled: false, recommended: false },
+type Direction = 'prompt' | 'response';
+type AdvAction = 'block' | 'allow';
+type AdvancedGroupId = 'security' | 'privacy' | 'safety';
+
+interface AdvancedGuardrailItem {
+  id: string;
+  name: string;
+  description: string;
+  enabled: boolean;
+  direction: Direction;
+  action: AdvAction;
+}
+
+interface AdvancedGuardrailGroup {
+  id: AdvancedGroupId;
+  label: string;
+  icon: string;
+  items: AdvancedGuardrailItem[];
+}
+
+interface PolicyVersion {
+  version: string;
+  name: string;
+  description: string;
+  overview: import('./PolicyStudio').PolicyOverview;
+  createdAt: string;
+}
+
+interface CustomGuardrailItem {
+  id: string;
+  name: string;
+  description: string;
+  enabled: boolean;
+  createdBy: string;
+  createdAt: string;
+  overview: import('./PolicyStudio').PolicyOverview;
+  versions: PolicyVersion[];
+}
+
+const DEFAULT_ADVANCED_GROUPS: AdvancedGuardrailGroup[] = [
+  {
+    id: 'security', label: 'Security Guardrails', icon: 'shield',
+    items: [
+      { id: 'sec-prompt-injection', name: 'Prompt Injection', description: 'Detect attempts to manipulate the agent by injecting hidden instructions into user input.', enabled: true, direction: 'prompt', action: 'block' },
+      { id: 'sec-code-injection', name: 'Code Injection', description: 'Block inputs that attempt to execute arbitrary code through the agent.', enabled: true, direction: 'prompt', action: 'block' },
+      { id: 'sec-system-prompt', name: 'System Prompt Extraction', description: 'Prevent users from tricking the agent into revealing its system prompt or configuration.', enabled: true, direction: 'prompt', action: 'block' },
+      { id: 'sec-instruction-override', name: 'Instruction Override', description: 'Block attempts to override or replace the agent\u2019s original instructions.', enabled: true, direction: 'prompt', action: 'block' },
+      { id: 'sec-encoding-attack', name: 'Encoding Attack', description: 'Detect obfuscated payloads using Base64, Unicode, or other encoding schemes.', enabled: false, direction: 'prompt', action: 'block' },
+      { id: 'sec-sql-injection', name: 'SQL Injection', description: 'Identify inputs crafted to execute unauthorized database queries.', enabled: false, direction: 'prompt', action: 'block' },
+      { id: 'sec-xss', name: 'XSS Injection', description: 'Block cross-site scripting payloads embedded in user messages.', enabled: false, direction: 'prompt', action: 'block' },
+      { id: 'sec-resource-hijack', name: 'Resource Hijack', description: 'Prevent prompts designed to consume excessive compute or API resources.', enabled: false, direction: 'prompt', action: 'block' },
+    ],
+  },
+  {
+    id: 'privacy', label: 'Privacy Guardrails', icon: 'privacy-circle',
+    items: [
+      { id: 'priv-pii', name: 'PII Detection', description: 'Identify and flag personally identifiable information in agent responses.', enabled: true, direction: 'response', action: 'block' },
+      { id: 'priv-ssn', name: 'SSN Redaction', description: 'Automatically redact Social Security numbers from responses.', enabled: true, direction: 'response', action: 'block' },
+      { id: 'priv-credit-card', name: 'Credit Card Redaction', description: 'Strip credit card numbers from agent output before delivery.', enabled: true, direction: 'response', action: 'block' },
+      { id: 'priv-email', name: 'Email Redaction', description: 'Remove email addresses from responses to prevent data leakage.', enabled: false, direction: 'response', action: 'block' },
+      { id: 'priv-phone', name: 'Phone Number Redaction', description: 'Redact phone numbers from agent responses.', enabled: false, direction: 'response', action: 'block' },
+      { id: 'priv-address', name: 'Address Redaction', description: 'Strip physical addresses from responses to protect user privacy.', enabled: false, direction: 'response', action: 'block' },
+      { id: 'priv-ip', name: 'IP Address Redaction', description: 'Remove IP addresses from agent output.', enabled: false, direction: 'response', action: 'allow' },
+    ],
+  },
+  {
+    id: 'safety', label: 'Safety Guardrails', icon: 'check-circle',
+    items: [
+      { id: 'safe-toxicity', name: 'Toxicity', description: 'Detect and block toxic, abusive, or offensive language in responses.', enabled: true, direction: 'response', action: 'block' },
+      { id: 'safe-hate', name: 'Hate Speech', description: 'Block responses containing hate speech targeting protected groups.', enabled: true, direction: 'response', action: 'block' },
+      { id: 'safe-self-harm', name: 'Self-harm', description: 'Prevent responses that encourage or provide guidance on self-harm.', enabled: true, direction: 'response', action: 'block' },
+      { id: 'safe-violence', name: 'Violence', description: 'Block content that promotes, glorifies, or instructs on violence.', enabled: true, direction: 'response', action: 'block' },
+      { id: 'safe-sexual', name: 'Sexual Content', description: 'Filter sexually explicit or inappropriate content from responses.', enabled: true, direction: 'response', action: 'block' },
+      { id: 'safe-harassment', name: 'Harassment', description: 'Detect and block responses that harass, intimidate, or bully users.', enabled: false, direction: 'response', action: 'block' },
+      { id: 'safe-misinfo', name: 'Misinformation', description: 'Flag responses containing known false or misleading claims.', enabled: false, direction: 'response', action: 'block' },
+      { id: 'safe-radicalization', name: 'Radicalization', description: 'Block content that promotes extremist ideologies or recruitment.', enabled: false, direction: 'response', action: 'block' },
+    ],
+  },
 ];
 
 export default function ActionConfigureV2() {
@@ -146,16 +221,15 @@ export default function ActionConfigureV2() {
   const [acceptedSummary, setAcceptedSummary] = useState<{ changes: string[]; reasoning: string[] }>({ changes: [], reasoning: [] });
   const [preOptimizeText, setPreOptimizeText] = useState('');
 
-  // Guardrails tab state
-  const [guardrails, setGuardrails] = useState<Guardrail[]>(DEFAULT_GUARDRAILS);
-  const [guardrailFilter, setGuardrailFilter] = useState<GuardrailCategory | 'all'>('all');
-  const [showAddGuardrail, setShowAddGuardrail] = useState(false);
-  const [showAllGuardrails, setShowAllGuardrails] = useState(false);
-  const [editingGuardrailId, setEditingGuardrailId] = useState<string | null>(null);
-  const [newGuardrailName, setNewGuardrailName] = useState('');
-  const [newGuardrailDesc, setNewGuardrailDesc] = useState('');
-  const [newGuardrailCategory, setNewGuardrailCategory] = useState<GuardrailCategory>('scope');
-  const [deleteGuardrailId, setDeleteGuardrailId] = useState<string | null>(null);
+  // Security tab state
+  const [securityTier, setSecurityTier] = useState<'standard' | 'advanced'>('standard');
+  const [showObsBanner, setShowObsBanner] = useState(true);
+  const isPaidUser = true;
+  const [standardGuardrails, setStandardGuardrails] = useState<StandardGuardrail[]>(DEFAULT_STANDARD_GUARDRAILS);
+  const [advancedDefaultGroups, setAdvancedDefaultGroups] = useState<AdvancedGuardrailGroup[]>(DEFAULT_ADVANCED_GROUPS);
+  const [advancedCustomItems, setAdvancedCustomItems] = useState<CustomGuardrailItem[]>([]);
+  const [showPolicyStudio, setShowPolicyStudio] = useState(false);
+  const [editingProfileId, setEditingProfileId] = useState<string | null>(null);
 
   const handleOptimize = () => {
     setOriginalTextSnapshot(profileForm.instructions);
@@ -742,11 +816,12 @@ export default function ActionConfigureV2() {
               <aside className="instructions-sidebar">
                 <h3 className="instructions-sidebar-title">Instructions <span className="instructions-required">(required)</span></h3>
                 <ul className="instructions-guidelines">
-                  <li>Explain in detail what the agent needs to do and what actions it is capable of.</li>
-                  <li>Use markdown to help the AI agent understand structure, sequence and importance.</li>
-                  <li>Consider including instructions for personality, response style, context, error handling, connecting to other systems, and completing actions, based on your agent's goals.</li>
-                  <li>Use the syntax {'{{variable}}'} to insert dynamic content.</li>
-                  <li>Use the optimize instructions tool to help write a better instruction.</li>
+                  <li>Describe what the agent does and which actions it can take.</li>
+                  <li>Use markdown headers to organize role, goals, guardrails, and output rules.</li>
+                  <li>Set the tone, personality, and response style for the agent.</li>
+                  <li>Include error handling, escalation paths, and integration steps.</li>
+                  <li>Insert dynamic content with {'{{variable}}'} syntax.</li>
+                  <li>Try the optimize tool to tighten and restructure your instructions.</li>
                 </ul>
               </aside>
               <div className="instructions-editor">
@@ -802,88 +877,263 @@ export default function ActionConfigureV2() {
             </div>
           )}
 
-          {activeSection === 'Guardrails' && (
+          {activeSection === 'Security' && (
             <div className="guardrails-layout">
               <div className="guardrails-header">
                 <div className="guardrails-header-left">
-                  <h3 className="guardrails-title">AI Guardrails</h3>
-                  <p className="guardrails-subtitle">Define rules to control how your agent behaves, what it can say, and how it handles sensitive topics.</p>
+                  <h3 className="guardrails-title">Security</h3>
+                  <p className="guardrails-subtitle">Configure protection rules to control agent behavior, enforce safety policies, and prevent misuse.</p>
                 </div>
-                <Button variant="secondary" size="sm" onClick={() => { setEditingGuardrailId(null); setNewGuardrailName(''); setNewGuardrailDesc(''); setNewGuardrailCategory('scope'); setShowAddGuardrail(true); }}>
-                  <Icon name="plus" weight="bold" size={16} />Add guardrail
-                </Button>
               </div>
-              {guardrails.filter(g => g.recommended || g.enabled).length > 0 && (
-                <div className="guardrails-section">
-                  <div className="guardrails-section-header"><Icon name="sparkle" weight="bold" size={16} /><h4>Recommended based on your instructions</h4></div>
-                  <div className="guardrails-grid">
-                    {guardrails.filter(g => g.recommended || g.enabled).map((g) => (
-                      <div key={g.id} className={`guardrail-card${g.enabled ? ' enabled' : ''}`}>
-                        <div className="guardrail-card-title-row">
-                          <Toggle checked={g.enabled} onChange={() => setGuardrails(prev => prev.map(gr => gr.id === g.id ? { ...gr, enabled: !gr.enabled } : gr))} size="compact" />
-                          <Icon name={(GUARDRAIL_CATEGORIES.find(c => c.id === g.category)?.icon ?? 'info-circle') as any} weight="bold" size={16} />
-                          <h4 className="guardrail-card-name">{g.name}</h4>
-                          <div className="guardrail-card-actions">
-                            {g.reasoning && (
-                              <Tooltip content={<><strong>Reasoning</strong><br />{g.reasoning}</>} placement="bottom-end">
-                                <button type="button" className="guardrail-action-btn" aria-label="Reasoning"><Icon name="info-circle" weight="bold" size={14} /></button>
-                              </Tooltip>
-                            )}
-                            <button type="button" className="guardrail-action-btn" aria-label="Edit" onClick={() => { setEditingGuardrailId(g.id); setNewGuardrailName(g.name); setNewGuardrailDesc(g.description); setNewGuardrailCategory(g.category); setShowAddGuardrail(true); }}><Icon name="edit" weight="bold" size={14} /></button>
-                            <button type="button" className="guardrail-action-btn" aria-label="Delete" onClick={() => setDeleteGuardrailId(g.id)}><Icon name="delete" weight="bold" size={14} /></button>
+
+              {/* Tier selector */}
+              <div className="security-tier-selector">
+                <Card clickable selected={securityTier === 'standard'} onClick={() => setSecurityTier('standard')} className="security-tier-card">
+                  <CardBody>
+                    <div className="security-tier-card-inner">
+                      <Icon name="shield" weight="bold" size={24} />
+                      <div className="security-tier-card-text">
+                        <span className="security-tier-card-title">Standard Guardrails</span>
+                        <span className="security-tier-card-desc">Basic protection with toxicity, harm detection, and jailbreak prevention.</span>
+                        <span className="security-tier-card-count">{standardGuardrails.filter(g => g.enabled).length}/{standardGuardrails.length} enabled</span>
+                      </div>
+                    </div>
+                  </CardBody>
+                </Card>
+                <Card clickable selected={securityTier === 'advanced'} onClick={() => setSecurityTier('advanced')} className="security-tier-card">
+                  <CardBody>
+                    <div className="security-tier-card-inner">
+                      <Icon name="shield" weight="bold" size={24} />
+                      <div className="security-tier-card-text">
+                        <span className="security-tier-card-title">Advanced Guardrails <Badge variant="success" className="security-tier-badge">AI Defense</Badge></span>
+                        <span className="security-tier-card-desc">Comprehensive security, privacy, and safety guardrails with custom profiles.</span>
+                        <span className="security-tier-card-count">{advancedDefaultGroups.reduce((sum, gp) => sum + gp.items.filter(i => i.enabled).length, 0) + advancedCustomItems.filter(c => c.enabled).length}/{advancedDefaultGroups.reduce((sum, gp) => sum + gp.items.length, 0) + advancedCustomItems.length} enabled{advancedCustomItems.length > 0 ? ` · ${advancedCustomItems.length} custom` : ''}</span>
+                      </div>
+                    </div>
+                  </CardBody>
+                </Card>
+              </div>
+
+              {/* Observability banner */}
+              {showObsBanner && (
+                <Banner
+                  type="info"
+                  title="Observability & Logging"
+                  subtitle='All triggered rails are logged in the Sessions view. If a rail is set to "Monitor", the interaction continues but the violation is logged for admin review. This allows you to fine-tune confidence settings based on real-world data.'
+                  dismissable
+                  onDismiss={() => setShowObsBanner(false)}
+                />
+              )}
+
+              {/* ── Standard Guardrails ── */}
+              {securityTier === 'standard' && (
+                <div className="security-standard-list">
+                  <AccordionGroup type="contained">
+                    {standardGuardrails.map((g) => (
+                      <AccordionItem
+                        key={g.id}
+                        title={
+                          <div className="security-guardrail-header">
+                            <Toggle
+                              checked={g.enabled}
+                              onChange={() => setStandardGuardrails(prev => prev.map(gr => gr.id === g.id ? { ...gr, enabled: !gr.enabled } : gr))}
+                              size="compact"
+                            />
+                            <div className="security-guardrail-header-text">
+                              <span className="security-guardrail-name">{g.name}</span>
+                              <span className="security-guardrail-desc">{g.description}</span>
+                            </div>
+                          </div>
+                        }
+                        defaultExpanded={g.enabled}
+                      >
+                        <div className="security-guardrail-controls">
+                          <div className="security-control-row">
+                            <label className="security-control-label">Sensitivity</label>
+                            <div className="security-slider-wrap">
+                              <Slider
+                                value={g.sensitivity}
+                                onChange={(v) => setStandardGuardrails(prev => prev.map(gr => gr.id === g.id ? { ...gr, sensitivity: v as number } : gr))}
+                                min={0}
+                                max={100}
+                                step={25}
+                                showTicks
+                                disabled={!g.enabled}
+                              />
+                              <div className="security-sensitivity-labels">
+                                <span>Very Low</span>
+                                <span>Low</span>
+                                <span>Medium</span>
+                                <span>High</span>
+                                <span>Very High</span>
+                              </div>
+                            </div>
+                          </div>
+                          <div className="security-control-row">
+                            <label className="security-control-label">Enforcement</label>
+                            <RadioGroup
+                              name={`enforcement-${g.id}`}
+                              value={g.enforcement}
+                              onChange={(v) => setStandardGuardrails(prev => prev.map(gr => gr.id === g.id ? { ...gr, enforcement: v as Enforcement } : gr))}
+                              className="security-enforcement-control"
+                            >
+                              <Radio value="monitor" label="Monitor" disabled={!g.enabled} />
+                              <Radio value="block" label="Block" disabled={!g.enabled} />
+                            </RadioGroup>
                           </div>
                         </div>
-                        <div className="guardrail-card-chips">
-                          <span className="guardrail-card-chip">{GUARDRAIL_CATEGORIES.find(c => c.id === g.category)?.label}</span>
-                          {g.custom && <span className="guardrail-card-chip guardrail-custom-chip">Custom</span>}
-                        </div>
-                        <p className="guardrail-card-desc">{g.description}</p>
-                      </div>
+                      </AccordionItem>
                     ))}
+                  </AccordionGroup>
+                </div>
+              )}
+
+              {/* ── Advanced Guardrails ── */}
+              {securityTier === 'advanced' && (
+                <div className="security-advanced-panel">
+                  {!isPaidUser && (
+                    <Banner
+                      type="info"
+                      title="Upgrade to Pro"
+                      subtitle="Enable Advanced Guardrails powered by AI Defense for comprehensive protection across security, privacy, and safety categories."
+                    />
+                  )}
+
+                  <div className="security-advanced-groups">
+                    <AccordionGroup type="contained">
+                      {advancedDefaultGroups.map((group) => (
+                        <AccordionItem
+                          key={group.id}
+                          defaultExpanded
+                          title={
+                            <div className="security-group-header">
+                              <Icon name={group.icon as any} weight="bold" size={18} />
+                              <span>{group.label}</span>
+                              <Badge variant="default">{group.items.filter(i => i.enabled).length}/{group.items.length}</Badge>
+                            </div>
+                          }
+                        >
+                          <Table compact className="security-advanced-table">
+                            <TableHead>
+                              <TableRow>
+                                <TableHeader style={{ width: 48 }} aria-label="Enabled" />
+                                <TableHeader style={{ width: 180 }}>Guardrail</TableHeader>
+                                <TableHeader>Description</TableHeader>
+                                <TableHeader style={{ width: 140 }}>Direction</TableHeader>
+                                <TableHeader style={{ width: 120 }}>Action</TableHeader>
+                              </TableRow>
+                            </TableHead>
+                            <TableBody>
+                              {group.items.map((item) => (
+                                <TableRow key={item.id}>
+                                  <TableCell>
+                                    <Toggle
+                                      checked={item.enabled}
+                                      disabled={!isPaidUser}
+                                      onChange={() => setAdvancedDefaultGroups(prev => prev.map(gp =>
+                                        gp.id === group.id
+                                          ? { ...gp, items: gp.items.map(it => it.id === item.id ? { ...it, enabled: !it.enabled } : it) }
+                                          : gp
+                                      ))}
+                                      size="compact"
+                                    />
+                                  </TableCell>
+                                  <TableCell>{item.name}</TableCell>
+                                  <TableCell className="guardrail-description-cell">{item.description}</TableCell>
+                                  <TableCell>
+                                    <Dropdown
+                                      options={[{ value: 'prompt', label: 'Prompt' }, { value: 'response', label: 'Response' }]}
+                                      value={item.direction}
+                                      disabled={!isPaidUser}
+                                      onChange={(v) => setAdvancedDefaultGroups(prev => prev.map(gp =>
+                                        gp.id === group.id
+                                          ? { ...gp, items: gp.items.map(it => it.id === item.id ? { ...it, direction: v as Direction } : it) }
+                                          : gp
+                                      ))}
+                                    />
+                                  </TableCell>
+                                  <TableCell>
+                                    <Dropdown
+                                      options={[{ value: 'block', label: 'Block' }, { value: 'allow', label: 'Allow' }]}
+                                      value={item.action}
+                                      disabled={!isPaidUser}
+                                      className={`security-action-${item.action}`}
+                                      onChange={(v) => setAdvancedDefaultGroups(prev => prev.map(gp =>
+                                        gp.id === group.id
+                                          ? { ...gp, items: gp.items.map(it => it.id === item.id ? { ...it, action: v as AdvAction } : it) }
+                                          : gp
+                                      ))}
+                                    />
+                                  </TableCell>
+                                </TableRow>
+                              ))}
+                            </TableBody>
+                          </Table>
+                        </AccordionItem>
+                      ))}
+                      {advancedCustomItems.length > 0 && (
+                        <div className="custom-profile-section">
+                          <div className="custom-profile-section-header">
+                            <Icon name="document-create" weight="bold" size={18} />
+                            <span>Custom Profiles</span>
+                            <Badge variant="default">{advancedCustomItems.filter(i => i.enabled).length}/{advancedCustomItems.length}</Badge>
+                          </div>
+                          <div className="custom-profile-grid">
+                            {advancedCustomItems.map((item) => (
+                              <div key={item.id} className={`custom-profile-card${item.enabled ? '' : ' custom-profile-card--disabled'}`}>
+                                <div className="custom-profile-card__header">
+                                  <Toggle
+                                    checked={item.enabled}
+                                    disabled={!isPaidUser}
+                                    onChange={() => setAdvancedCustomItems(prev => prev.map(it => it.id === item.id ? { ...it, enabled: !it.enabled } : it))}
+                                    size="compact"
+                                  />
+                                  <div className="custom-profile-card__actions">
+                                    <Button
+                                      variant="tertiary"
+                                      size="sm"
+                                      aria-label={`Edit ${item.name}`}
+                                      onClick={() => { setEditingProfileId(item.id); setShowPolicyStudio(true); }}
+                                    >
+                                      <Icon name="edit" size={16} />
+                                    </Button>
+                                    <Button
+                                      variant="tertiary"
+                                      size="sm"
+                                      aria-label={`Delete ${item.name}`}
+                                      onClick={() => setAdvancedCustomItems(prev => prev.filter(it => it.id !== item.id))}
+                                    >
+                                      <Icon name="delete" size={16} />
+                                    </Button>
+                                  </div>
+                                </div>
+                                <div className="custom-profile-card__body">
+                                  <h4 className="custom-profile-card__name">{item.name}</h4>
+                                  <p className="custom-profile-card__desc">{item.description}</p>
+                                </div>
+                                <div className="custom-profile-card__meta">
+                                  <span>{item.createdBy}</span>
+                                  <span className="custom-profile-card__meta-sep" aria-hidden="true" />
+                                  <span>{item.createdAt}</span>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                    </AccordionGroup>
+                    <Button
+                      variant="primary"
+                      size="sm"
+                      disabled={!isPaidUser}
+                      onClick={() => { setEditingProfileId(null); setShowPolicyStudio(true); }}
+                      style={{ alignSelf: 'flex-start' }}
+                    >
+                      <Icon name="plus" weight="bold" size={16} />Create custom profile
+                    </Button>
                   </div>
                 </div>
               )}
-              <div className="guardrails-section">
-                <button type="button" className="guardrails-expand-btn" onClick={() => setShowAllGuardrails(prev => !prev)}>
-                  <Icon name={showAllGuardrails ? 'arrow-up' : 'arrow-down'} weight="bold" size={16} />
-                  {showAllGuardrails ? 'Collapse all guardrails' : `Show all guardrails (${guardrails.length})`}
-                </button>
-                {showAllGuardrails && (
-                  <>
-                    <div className="guardrails-filters">
-                      <button type="button" className={`guardrails-filter-pill${guardrailFilter === 'all' ? ' active' : ''}`} onClick={() => setGuardrailFilter('all')}>All</button>
-                      {GUARDRAIL_CATEGORIES.map((cat) => (
-                        <button key={cat.id} type="button" className={`guardrails-filter-pill${guardrailFilter === cat.id ? ' active' : ''}`} onClick={() => setGuardrailFilter(cat.id)}>{cat.label}</button>
-                      ))}
-                    </div>
-                    <div className="guardrails-grid">
-                      {guardrails.filter(g => guardrailFilter === 'all' ? true : g.category === guardrailFilter).map((g) => (
-                        <div key={g.id} className={`guardrail-card${g.enabled ? ' enabled' : ''}`}>
-                          <div className="guardrail-card-title-row">
-                            <Toggle checked={g.enabled} onChange={() => setGuardrails(prev => prev.map(gr => gr.id === g.id ? { ...gr, enabled: !gr.enabled } : gr))} size="compact" />
-                            <Icon name={(GUARDRAIL_CATEGORIES.find(c => c.id === g.category)?.icon ?? 'info-circle') as any} weight="bold" size={16} />
-                            <h4 className="guardrail-card-name">{g.name}</h4>
-                            <div className="guardrail-card-actions">
-                              {g.reasoning && (
-                                <Tooltip content={<><strong>Reasoning</strong><br />{g.reasoning}</>} placement="bottom-end">
-                                  <button type="button" className="guardrail-action-btn" aria-label="Reasoning"><Icon name="info-circle" weight="bold" size={14} /></button>
-                                </Tooltip>
-                              )}
-                              <button type="button" className="guardrail-action-btn" aria-label="Edit" onClick={() => { setEditingGuardrailId(g.id); setNewGuardrailName(g.name); setNewGuardrailDesc(g.description); setNewGuardrailCategory(g.category); setShowAddGuardrail(true); }}><Icon name="edit" weight="bold" size={14} /></button>
-                              <button type="button" className="guardrail-action-btn" aria-label="Delete" onClick={() => setDeleteGuardrailId(g.id)}><Icon name="delete" weight="bold" size={14} /></button>
-                            </div>
-                          </div>
-                          <div className="guardrail-card-chips">
-                            <span className="guardrail-card-chip">{GUARDRAIL_CATEGORIES.find(c => c.id === g.category)?.label}</span>
-                            {g.custom && <span className="guardrail-card-chip guardrail-custom-chip">Custom</span>}
-                          </div>
-                          <p className="guardrail-card-desc">{g.description}</p>
-                        </div>
-                      ))}
-                    </div>
-                  </>
-                )}
-              </div>
             </div>
           )}
 
@@ -1558,24 +1808,6 @@ export default function ActionConfigureV2() {
         />
       )}
 
-      {deleteGuardrailId && (
-        <Modal size="sm" onClose={() => setDeleteGuardrailId(null)}>
-          <ModalHeader
-            title="Delete guardrail?"
-            description={`"${guardrails.find(g => g.id === deleteGuardrailId)?.name}" will be permanently removed. This action cannot be undone.`}
-            onClose={() => setDeleteGuardrailId(null)}
-          />
-          <ModalFooter>
-            <Button variant="tertiary" onClick={() => setDeleteGuardrailId(null)}>Cancel</Button>
-            <Button variant="primary" style={{ background: 'var(--danger-color)', borderColor: 'var(--danger-color)' }} onClick={() => {
-              setGuardrails(prev => prev.filter(g => g.id !== deleteGuardrailId));
-              setDeleteGuardrailId(null);
-              showToast('Guardrail removed', 'success');
-            }}>Delete</Button>
-          </ModalFooter>
-        </Modal>
-      )}
-
       {showFulfillmentModal && (
         <CreateFulfillmentModal
           onClose={() => setShowFulfillmentModal(false)}
@@ -1586,40 +1818,6 @@ export default function ActionConfigureV2() {
         />
       )}
 
-      {showAddGuardrail && createPortal(
-        <div className="fpmodal-overlay">
-          <div className="fpmodal" role="dialog" aria-modal="true" aria-label={editingGuardrailId ? 'Edit guardrail' : 'Create guardrail'}>
-            <div className="fpmodal-header">
-              <div className="fpmodal-header__left">
-                <h1 className="fpmodal-title">{editingGuardrailId ? 'Edit guardrail' : 'Create new guardrail'}</h1>
-                <p className="fpmodal-subtitle">Define a guardrail to control agent behavior, compliance, or safety.</p>
-              </div>
-              <button className="fpmodal-close" onClick={() => setShowAddGuardrail(false)} aria-label="Close"><Icon name="cancel" weight="bold" size={32} /></button>
-            </div>
-            <div className="fpmodal-body">
-              <div className="fpmodal-content-area">
-                <div className="fpmodal-section">
-                  <h2 className="fpmodal-section-title">Guardrail details</h2>
-                  <div className="fpmodal-card" style={{ maxWidth: 640 }}>
-                    <Input label="Name" required value={newGuardrailName} onChange={(e) => setNewGuardrailName(e.target.value)} placeholder="e.g. Block competitor mentions" clearable onClear={() => setNewGuardrailName('')} />
-                    <Textarea label="Description" value={newGuardrailDesc} onChange={(e) => setNewGuardrailDesc(e.target.value)} placeholder="Describe what this guardrail should enforce or prevent..." rows={5} />
-                    <Dropdown label="Category" options={GUARDRAIL_CATEGORIES.map(c => ({ value: c.id, label: c.label }))} value={newGuardrailCategory} onChange={(v) => setNewGuardrailCategory(v as GuardrailCategory)} />
-                  </div>
-                </div>
-              </div>
-            </div>
-            <div className="fpmodal-footer"><div className="fpmodal-footer-divider" /><div className="fpmodal-footer-bar"><div className="fpmodal-footer__actions">
-              <Button variant="secondary" onClick={() => setShowAddGuardrail(false)}>Cancel</Button>
-              <Button disabled={!newGuardrailName.trim()} onClick={() => {
-                if (editingGuardrailId) { setGuardrails(prev => prev.map(g => g.id === editingGuardrailId ? { ...g, name: newGuardrailName.trim(), description: newGuardrailDesc.trim(), category: newGuardrailCategory } : g)); showToast('Guardrail updated', 'success'); }
-                else { setGuardrails(prev => [...prev, { id: `gr-custom-${Date.now()}`, name: newGuardrailName.trim(), description: newGuardrailDesc.trim(), category: newGuardrailCategory, enabled: true, custom: true }]); showToast('Guardrail created', 'success'); }
-                setNewGuardrailName(''); setNewGuardrailDesc(''); setShowAddGuardrail(false); setEditingGuardrailId(null);
-              }}>{editingGuardrailId ? 'Save' : 'Create'}</Button>
-            </div></div></div>
-          </div>
-        </div>,
-        document.body,
-      )}
 
       {showExampleModal && createPortal(
         <div className="example-modal-overlay" onClick={() => setShowExampleModal(false)}>
@@ -1721,6 +1919,83 @@ export default function ActionConfigureV2() {
         </div>,
         document.body,
       )}
+      {showPolicyStudio && (() => {
+        const editItem = editingProfileId ? advancedCustomItems.find(it => it.id === editingProfileId) : undefined;
+        const initial = editItem
+          ? { name: editItem.name, description: editItem.description, overview: editItem.overview }
+          : undefined;
+        const versionOpts = editItem?.versions.map((v, i) => ({
+          value: v.version,
+          label: i === editItem.versions.length - 1 ? `${v.version} (current)` : v.version,
+        }));
+        return (
+          <PolicyStudio
+            key={editingProfileId || 'new'}
+            initialData={initial}
+            versionOptions={versionOpts}
+            onClose={() => { setShowPolicyStudio(false); setEditingProfileId(null); }}
+            onPublish={(result) => {
+              const now = new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+              if (result.publishMode === 'new') {
+                const v1: import('./PolicyStudio').PolicyStudioResult & { version: string; createdAt: string } = {
+                  ...result,
+                  version: 'v1',
+                  createdAt: now,
+                };
+                setAdvancedCustomItems(prev => [...prev, {
+                  id: `custom-${Date.now()}`,
+                  name: result.name,
+                  description: result.description,
+                  overview: result.overview,
+                  enabled: true,
+                  createdBy: 'You',
+                  createdAt: now,
+                  versions: [{ version: v1.version, name: v1.name, description: v1.description, overview: v1.overview, createdAt: v1.createdAt }],
+                }]);
+                showToast(`Profile "${result.name}" published`, 'success');
+              } else if (result.publishMode === 'override' && editingProfileId) {
+                setAdvancedCustomItems(prev => prev.map(it => {
+                  if (it.id !== editingProfileId) return it;
+                  const updatedVersions = [...it.versions];
+                  if (updatedVersions.length > 0) {
+                    updatedVersions[updatedVersions.length - 1] = {
+                      ...updatedVersions[updatedVersions.length - 1],
+                      name: result.name,
+                      description: result.description,
+                      overview: result.overview,
+                      createdAt: now,
+                    };
+                  }
+                  return { ...it, name: result.name, description: result.description, overview: result.overview, versions: updatedVersions };
+                }));
+                showToast(`Profile "${result.name}" updated`, 'success');
+              } else if (result.publishMode === 'new-version' && editingProfileId) {
+                setAdvancedCustomItems(prev => prev.map(it => {
+                  if (it.id !== editingProfileId) return it;
+                  const nextNum = it.versions.length + 1;
+                  const newVersion: PolicyVersion = {
+                    version: `v${nextNum}`,
+                    name: result.name,
+                    description: result.description,
+                    overview: result.overview,
+                    createdAt: now,
+                  };
+                  return {
+                    ...it,
+                    name: result.name,
+                    description: result.description,
+                    overview: result.overview,
+                    versions: [...it.versions, newVersion],
+                  };
+                }));
+                showToast(`Profile "${result.name}" v${(editItem?.versions.length ?? 0) + 1} created`, 'success');
+              }
+              setShowPolicyStudio(false);
+              setEditingProfileId(null);
+            }}
+          />
+        );
+      })()}
     </div>
   );
 }

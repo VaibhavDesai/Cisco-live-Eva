@@ -1,12 +1,13 @@
-/*
- * Border Radius Tokens
- * Auto-extracted from Figma: 💎 Theme - Border Radius
+/**
+ * Border radius tokens — Momentum Design System
+ * "We have four different border radius sizes."
  */
 
 :root {
-  --border-radius-none: 0px;
-  --border-radius-small: 4px;
-  --border-radius-medium: 8px;
-  --border-radius-large: 12px;
-  --border-radius-half-height: 50%;
+  --border-radius-none:         0px;
+  --border-radius-small:        4px;
+  --border-radius-medium:       8px;
+  --border-radius-large:        12px;
+  --border-radius-half-height:  50%;
+  --border-radius-pill:         9999px;  /* app-level alias for pill shapes */
 }

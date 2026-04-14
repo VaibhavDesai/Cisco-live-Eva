@@ -14,11 +14,12 @@ import {
 import { ActionConfigureV2, AgentSessions, AgentHistory, AgentAnalytics } from './pages/agent';
 import '@momentum-design/fonts/dist/css/fonts.css';
 import '@momentum-design/tokens/dist/css/theme/webex/dark-stable.css';
+import '@momentum-design/tokens/dist/css/theme/webex/light-stable.css';
 import '@momentum-design/tokens/dist/css/components/complete.css';
 
 function App() {
   return (
-    <div className="mds-theme-stable-darkWebex app-shell-root">
+    <div className="app-shell-root">
       <AppProvider>
         <BrowserRouter>
           <Routes>

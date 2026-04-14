@@ -44,6 +44,8 @@ Before writing code, map every visual decision to an existing token or class.
 | Avatars | `Avatar` |
 | Dropdowns | `Dropdown` |
 | Form fields | `Input`, `Textarea`, `Select`, `Option` |
+| Custom select | `Dropdown` (`size="default" \| "compact"`) |
+| Links | CSS class `.link` (`.link--standalone` \| `.link--inline`, `.link--lg` \| `.link--md` \| `.link--sm`, `.link--disabled`) |
 
 **Map colors — never hardcode hex/rgba:**
 
@@ -53,12 +55,20 @@ Before writing code, map every visual decision to an existing token or class.
 | Primary text | `var(--text-primary)` |
 | Secondary text | `var(--text-secondary)` |
 | Muted/disabled text | `var(--text-muted)` |
+| Disabled text | `var(--text-disabled)` |
 | Accent / link | `var(--accent-color)` |
 | Success state | `var(--success-color)` / `var(--success-bg)` |
 | Warning state | `var(--warning-color)` / `var(--warning-bg)` |
 | Error state | `var(--danger-color)` / `var(--danger-bg)` |
 | Border | `var(--border-color)` |
-| Hover | `var(--button-secondary-active)` |
+| Button hover | `var(--button-secondary-active)` |
+| Input hover bg | `var(--bg-input-hover)` |
+| Input pressed bg | `var(--bg-input-pressed)` |
+| Input disabled bg | `var(--bg-input-disabled)` |
+| Input border | `var(--outline-input)` |
+| Input border (active/open) | `var(--outline-input-active)` |
+| Input border (disabled) | `var(--outline-input-disabled)` |
+| Focus ring (3-layer) | `var(--focus-ring-0)`, `var(--focus-ring-1)`, `var(--focus-ring-2)` |
 
 **Map spacing — use 4px-grid tokens:**
 
@@ -123,6 +133,12 @@ export default function MyComponent({ ...props }: MyComponentProps) {
 - Import and reuse shared components: `import { Button, Card, Badge } from '../shared'`
 - Use `transition: all 0.15s ease` for interactive elements
 - Prefer `color-mix(in srgb, var(--token) N%, transparent)` for transparency variants
+
+**CRITICAL — No Custom Components:**
+- **NEVER** build, customize, or modify any shared component (`web/src/components/shared/`) or its CSS without explicit approval
+- **NEVER** create inline replacements, wrappers, or one-off versions of existing components
+- If a page needs a component or variant that does not already exist in `components.css` or `web/src/components/shared/`, **STOP and flag it to the user** — do not improvise
+- Always use components exactly as they exist; if they don't fit, ask first
 
 **DO NOT:**
 - Hardcode hex colors (`#64b4fa`), `rgb()`/`rgba()` values, or named CSS colors

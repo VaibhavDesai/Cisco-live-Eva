@@ -1,0 +1,175 @@
+/*
+ * AI Agent Studio — Product-specific component styles
+ *
+ * These classes are used exclusively by AI Agent Studio components
+ * (Sidebar, Header) and are not part of the shared foundation.
+ * Foundation styles are in src/components.css.
+ */
+
+/* ── AI Agent Studio Shell ───────────────────────────────────────── */
+
+html[data-product='ai-agent-studio'] {
+  background: #07101c;
+}
+
+html[data-product='ai-agent-studio'][data-theme='light'] {
+  background: url('../../assets/app-shell-bg.png') no-repeat center center / cover fixed;
+}
+
+html[data-product='ai-agent-studio'] body {
+  background: transparent;
+}
+
+.app--ai {
+  position: relative;
+  z-index: auto;
+}
+
+.app--ai__bg {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  background:
+    radial-gradient(ellipse 50% 55% at 20% 10%, rgba(166, 44, 44, 0.5) 0%, transparent 70%),
+    radial-gradient(ellipse 45% 50% at 40% 25%, rgba(124, 3, 246, 0.35) 0%, transparent 70%),
+    radial-gradient(ellipse 40% 45% at 55% 20%, rgba(33, 65, 124, 0.6) 0%, transparent 70%),
+    radial-gradient(ellipse 50% 40% at 50% 50%, rgba(0, 0, 0, 0.3) 20%, transparent 100%),
+    #07101c;
+  pointer-events: none;
+}
+
+[data-theme='light'] .app--ai__bg {
+  display: none;
+}
+
+.app--ai .header,
+html[data-product='ai-agent-studio'] .app-header {
+  background: transparent;
+  z-index: 100;
+}
+
+.app--ai .sidebar {
+  background: transparent;
+  z-index: 90;
+}
+
+.app--ai .main {
+  z-index: 1;
+  overflow: hidden;
+}
+
+.app--ai .primary-content {
+  height: 100%;
+  min-height: 0;
+  overflow-y: auto;
+  background: color-mix(in srgb, var(--mds-color-theme-background-solid-primary-normal) 70%, transparent);
+  backdrop-filter: blur(60px);
+  -webkit-backdrop-filter: blur(60px);
+  border-color: rgba(255, 255, 255, 0.06);
+}
+
+[data-theme='light'] .app--ai .primary-content {
+  background: color-mix(in srgb, var(--mds-color-theme-background-solid-primary-normal) 60%, transparent);
+}
+
+/* Sidebar */
+.sidebar {
+  position: fixed;
+  top: 64px;
+  left: 0;
+  bottom: 0;
+  width: 240px;
+  background: transparent;
+  padding: 0;
+  overflow: visible;
+  z-index: 90;
+  display: flex;
+  flex-direction: column;
+}
+
+.sidebar > .sidenav {
+  width: 100%;
+  height: 100%;
+}
+
+.sidebar::-webkit-scrollbar {
+  display: none;
+}
+
+.sidebar-main {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  scrollbar-width: none;
+}
+
+.sidebar-main::-webkit-scrollbar {
+  display: none;
+}
+
+.sidebar-bottom {
+  flex-shrink: 0;
+  padding: 12px 12px 0;
+  margin-top: auto;
+}
+
+/* Organization settings entry — footer */
+.sidebar-org-pill {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  margin: 0;
+  padding: 10px 12px;
+  border: none;
+  border-radius: 100px;
+  background: var(--mds-color-theme-background-primary-ghost);
+  color: var(--text-primary);
+  font-size: 14px;
+  font-weight: 500;
+  font-family: var(--font-family-primary);
+  line-height: 20px;
+  cursor: pointer;
+  transition: background 0.15s ease;
+  text-align: left;
+  box-sizing: border-box;
+}
+
+.sidebar-org-pill:hover {
+  background: var(--mds-color-theme-background-primary-hover);
+}
+
+.sidebar-org-pill:focus-visible {
+  outline: 2px solid var(--accent-color);
+  outline-offset: 2px;
+}
+
+.sidebar-org-pill--active {
+  background: var(--mds-color-theme-background-primary-active);
+}
+
+.sidebar-org-pill__icon {
+  width: 28px;
+  height: 28px;
+  border-radius: 8px;
+  background: linear-gradient(145deg, #2b9f76 0%, #157a52 100%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.sidebar-org-pill__label {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  min-width: 0;
+}
+
+/* ── AI Agent Studio — Project Page ─────────────────────────────── */
+
+.ai-project-tab-content {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-medium);
+}

@@ -14,9 +14,11 @@ interface DropdownProps {
   onChange: (value: string) => void;
   placeholder?: string;
   label?: string;
+  required?: boolean;
   hint?: string;
   disabled?: boolean;
   className?: string;
+  size?: 'default' | 'compact';
 }
 
 export default function Dropdown({
@@ -25,9 +27,11 @@ export default function Dropdown({
   onChange,
   placeholder = 'Select an option',
   label,
+  required = false,
   hint,
   disabled = false,
   className = '',
+  size = 'default',
 }: DropdownProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [highlightedIndex, setHighlightedIndex] = useState(-1);
@@ -167,19 +171,17 @@ export default function Dropdown({
     );
 
   return (
-    <div ref={containerRef} className={className}>
+    <div ref={containerRef} className={`form-group ${className}`}>
       {label && (
-        <label
-          className="dropdown-section-header"
-          style={{ display: 'block', padding: '0 0 4px' }}
-        >
+        <label className="form-label">
           {label}
+          {required && <span className="required">*</span>}
         </label>
       )}
       <button
         ref={triggerRef}
         type="button"
-        className={`dropdown-trigger ${isOpen ? 'open' : ''}`}
+        className={`dropdown-trigger${size === 'compact' ? ' dropdown-trigger--compact' : ''} ${isOpen ? 'open' : ''}`}
         onClick={handleToggle}
         disabled={disabled}
         aria-haspopup="listbox"
@@ -192,18 +194,7 @@ export default function Dropdown({
           <Icon name="arrow-down" weight="bold" size="xs" />
         </span>
       </button>
-      {hint && (
-        <span
-          style={{
-            display: 'block',
-            marginTop: '4px',
-            fontSize: 'var(--font-size-body-small)',
-            color: 'var(--text-secondary)',
-          }}
-        >
-          {hint}
-        </span>
-      )}
+      {hint && <span className="form-hint">{hint}</span>}
       {menu}
     </div>
   );

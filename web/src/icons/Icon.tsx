@@ -23,7 +23,10 @@ async function loadSvgRaw(id: string): Promise<string> {
     return '';
   }
   try {
-    const raw = await loader();
+    let raw = await loader();
+    if (raw && !raw.includes('fill=')) {
+      raw = raw.replace('<svg ', '<svg fill="currentColor" ');
+    }
     svgCache.set(id, raw);
     return raw;
   } catch {

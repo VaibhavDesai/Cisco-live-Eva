@@ -1,16 +1,20 @@
-/*
- * Effect Tokens (Blur)
- * Auto-extracted from Figma: 💎 Tokens - Effects
+/**
+ * Effect tokens — Momentum Design System
  *
- * blur-20:  Contextual blur — use sparingly for context behind layout objects
- * blur-200: Primary blur — general purpose layer blur
- * blur-800: Background blur — use on primary layout objects for accessibility
- *
- * Values are CSS backdrop-filter blur() values (Figma radius / 2).
+ * Blur tokens:
+ *   blur.20  – Contextual blur for layout objects providing context
+ *   blur.200 – General-purpose / primary blur
+ *   blur.800 – Background blur for primary layout objects (use with a material)
  */
 
 :root {
-  --blur-20: 10px;
-  --blur-200: 100px;
-  --blur-800: 400px;
+  /* ── Blur ──────────────────────────────────────────────────── */
+  --effect-blur-contextual:  20px;    /* blur.20  */
+  --effect-blur-primary:     200px;   /* blur.200 */
+  --effect-blur-background:  800px;   /* blur.800 */
+
+  /* ── Shadow (app-level convenience aliases) ────────────────── */
+  --effect-shadow-small:  0px 2px 4px 0px rgba(0, 0, 0, 0.08);
+  --effect-shadow-medium: 0px 4px 12px 0px rgba(0, 0, 0, 0.10);
+  --effect-shadow-large:  0px 6px 24px 0px rgba(0, 0, 0, 0.10);
 }

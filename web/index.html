@@ -1,6 +1,21 @@
 <!doctype html>
-<html lang="en" class="mds-theme-stable-darkWebex" data-theme="dark">
+<html
+  lang="en"
+  data-product="ai-agent-studio"
+>
   <head>
+    <script>
+      (function() {
+        var t = localStorage.getItem('preferred-theme');
+        if (t !== 'dark' && t !== 'light') {
+          t = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+        }
+        document.documentElement.setAttribute('data-theme', t);
+        document.documentElement.classList.add(
+          t === 'dark' ? 'mds-theme-stable-darkWebex' : 'mds-theme-stable-lightWebex'
+        );
+      })();
+    </script>
     <meta charset="UTF-8" />
     <link rel="icon" type="image/svg+xml" href="/vite.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
