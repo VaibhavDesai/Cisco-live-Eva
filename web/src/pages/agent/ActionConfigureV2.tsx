@@ -903,7 +903,7 @@ export default function ActionConfigureV2() {
                 <Card clickable selected={securityTier === 'advanced'} onClick={() => setSecurityTier('advanced')} className="security-tier-card">
                   <CardBody>
                     <div className="security-tier-card-inner">
-                      <Icon name="shield" weight="bold" size={24} />
+                      <Icon name="secure-circle" weight="bold" size={24} />
                       <div className="security-tier-card-text">
                         <span className="security-tier-card-title">Advanced Guardrails <Badge variant="success" className="security-tier-badge">AI Defense</Badge></span>
                         <span className="security-tier-card-desc">Comprehensive security, privacy, and safety guardrails with custom profiles.</span>
