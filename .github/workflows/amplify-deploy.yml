@@ -99,5 +99,5 @@ jobs:
       build_command: ${{ inputs.build_command || 'npm run build' }}
       output_dir: ${{ inputs.output_dir || 'dist' }}
       environment_variables_json: ${{ inputs.environment_variables_json || '{}' }}
-      enable_branch_auto_build: ${{ inputs.enable_branch_auto_build == '' && false || inputs.enable_branch_auto_build }}
+      enable_branch_auto_build: ${{ github.event_name == 'workflow_dispatch' && inputs.enable_branch_auto_build || false }}
     secrets: inherit
