@@ -7,6 +7,7 @@ import Slider from '../components/shared/Slider';
 import { Modal, ModalHeader, ModalBody, ModalFooter } from '../components/shared/Modal';
 import { Tooltip } from '../components/shared/Tooltip';
 import { Icon } from '../icons';
+import { Banner } from '../components/shared/Banner';
 
 const SYSTEM_PROMPT_GUIDELINES = [
   {
@@ -474,14 +475,12 @@ export default function CreateEngineModal({ onClose, onCreate }: CreateEngineMod
                   </div>
 
                   {/* Engine summary banner */}
-                  <div className="fpmodal-config-summary">
-                    <Icon name="info-circle" weight="bold" size={20} />
-                    <div className="fpmodal-config-summary-text">
-                      <h3 className="fpmodal-config-summary-title">Engine summary</h3>
-                      <p>Based on your selected components, this engine supports <strong>English</strong>. <a href="https://developer.webex-ai.cisco.com/docs/languages" target="_blank" rel="noopener noreferrer">View language support details</a></p>
-                      <p>Webex model selected — you qualify for the <strong>Standard</strong> pricing tier. <a href="https://developer.webex-ai.cisco.com/docs/pricing" target="_blank" rel="noopener noreferrer">Pricing details</a></p>
-                    </div>
-                  </div>
+                  <Banner
+                    type="info"
+                    title="Engine summary"
+                    subtitle={<>Based on your selected components, this engine supports <strong>English</strong>. <a href="https://developer.webex-ai.cisco.com/docs/languages" target="_blank" rel="noopener noreferrer">View language support details</a><br />Webex model selected — you qualify for the <strong>Standard</strong> pricing tier. <a href="https://developer.webex-ai.cisco.com/docs/pricing" target="_blank" rel="noopener noreferrer">Pricing details</a></>}
+                    dismissable={false}
+                  />
                 </div>
               </div>
             )}

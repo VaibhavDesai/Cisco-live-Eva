@@ -778,26 +778,6 @@ body {
   margin-top: var(--spacing-xx-small);
 }
 
-.fpmodal-config-summary {
-  background: transparent;
-  border: 1px solid var(--border-color);
-  border-radius: var(--border-radius-large);
-  padding: var(--spacing-small);
-}
-
-.fpmodal-config-summary-title {
-  font-size: var(--font-size-heading-small);
-  font-weight: var(--font-weight-bold);
-  color: var(--text-primary);
-  margin: 0 0 var(--spacing-xx-small);
-}
-
-.fpmodal-config-summary p {
-  font-size: var(--font-size-body-midsize);
-  color: var(--text-secondary);
-  margin: var(--spacing-xxx-small) 0 0;
-  line-height: 20px;
-}
 
 /* Step 1: same two-column grid, content only in first column */
 .fpmodal-step1-layout {
@@ -1010,6 +990,52 @@ body {
   margin: 0;
 }
 
+/* ── System components (read-only, visually subdued) ───── */
+
+.system-components-title-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.system-components-info {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-secondary);
+  cursor: pointer;
+}
+
+.system-components-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+
+.system-component-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--spacing-large);
+  padding: 10px 0;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.system-component-item:last-child {
+  border-bottom: none;
+}
+
+.system-component-label {
+  font-size: var(--font-size-body-small);
+  color: var(--text-secondary);
+}
+
+.system-component-value {
+  font-size: var(--font-size-body-small);
+  color: var(--text-secondary);
+  text-align: right;
+}
+
 .edit-engine-field-group {
   display: flex;
   flex-direction: column;
@@ -1062,27 +1088,6 @@ body {
 
 .edit-engine-prompt-card > .form-group {
   margin-bottom: 0;
-}
-
-.edit-engine-summary {
-  background: transparent;
-  border: 1px solid var(--border-color);
-  border-radius: var(--border-radius-large);
-  padding: var(--spacing-small);
-}
-
-.edit-engine-summary-title {
-  font-size: var(--font-size-heading-small);
-  font-weight: var(--font-weight-bold);
-  color: var(--text-primary);
-  margin: 0 0 var(--spacing-xx-small);
-}
-
-.edit-engine-summary p {
-  font-size: var(--font-size-body-midsize);
-  color: var(--text-secondary);
-  margin: var(--spacing-xxx-small) 0 0;
-  line-height: 20px;
 }
 
 
@@ -4352,13 +4357,16 @@ tbody tr:focus-visible {
   background: var(--bg-glass);
   border: 1px solid var(--border-color);
   border-radius: 20px;
-  padding: var(--spacing-xxx-small);
+  padding: 2px;
   gap: var(--spacing-micro);
+  height: var(--spacing-x-large);
+  box-sizing: border-box;
+  align-items: center;
 }
 
 .view-switcher-btn {
-  width: 32px;
-  height: 28px;
+  width: 26px;
+  height: 26px;
   border: none;
   background: transparent;
   cursor: pointer;
@@ -11755,6 +11763,7 @@ img.app-header__wordmark-logo {
   flex-direction: column;
   flex: 0 0 auto;
   padding: var(--spacing-small);
+  gap: var(--spacing-small);
   border-radius: 12px;
   border: 1px solid var(--mds-color-theme-outline-secondary-normal, rgba(0, 0, 0, 0.06));
   background:
@@ -11767,7 +11776,7 @@ img.app-header__wordmark-logo {
 .guardrails-layout {
   display: flex;
   flex-direction: column;
-  gap: var(--spacing-medium);
+  gap: var(--spacing-small);
   min-height: 0;
 }
 

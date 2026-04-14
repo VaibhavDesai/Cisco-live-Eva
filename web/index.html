@@ -8,7 +8,7 @@
       (function() {
         var t = localStorage.getItem('preferred-theme');
         if (t !== 'dark' && t !== 'light') {
-          t = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+          t = 'dark';
         }
         document.documentElement.setAttribute('data-theme', t);
         document.documentElement.classList.add(

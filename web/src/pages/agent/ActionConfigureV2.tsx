@@ -1209,7 +1209,7 @@ export default function ActionConfigureV2() {
                     <tr key={row.id} className={!row.enabled ? 'row-disabled' : ''}>
                       <td className="col-action-name">
                         <div className="action-config-v2-row-name">
-                          <Toggle checked={row.enabled} onChange={() => toggleAction(row.id)} />
+                          <Toggle checked={row.enabled} onChange={() => toggleAction(row.id)} size="compact" />
                           <span>{row.name}</span>
                         </div>
                       </td>

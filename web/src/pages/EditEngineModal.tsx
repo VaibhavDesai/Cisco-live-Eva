@@ -6,6 +6,7 @@ import Dropdown from '../components/shared/Dropdown';
 import Slider from '../components/shared/Slider';
 import { Modal, ModalHeader, ModalBody, ModalFooter } from '../components/shared/Modal';
 import { Tooltip } from '../components/shared/Tooltip';
+import { Banner } from '../components/shared/Banner';
 import { Icon } from '../icons';
 
 interface EditEngineModalProps {
@@ -308,14 +309,12 @@ export default function EditEngineModal({ onClose, onSave, onDuplicate, initialD
           </div>
 
           {/* Engine summary banner — full width below both columns */}
-          <div className="edit-engine-summary">
-            <Icon name="info-circle" weight="bold" size={20} />
-            <div className="edit-engine-summary-text">
-              <h3 className="edit-engine-summary-title">Engine summary</h3>
-              <p>Based on your selected components, this engine supports <strong>English</strong>. <a href="https://developer.webex-ai.cisco.com/docs/languages" target="_blank" rel="noopener noreferrer">View language support details</a></p>
-              <p>Webex model selected — you qualify for the <strong>Standard</strong> pricing tier. <a href="https://developer.webex-ai.cisco.com/docs/pricing" target="_blank" rel="noopener noreferrer">Pricing details</a></p>
-            </div>
-          </div>
+          <Banner
+            type="info"
+            title="Engine summary"
+            subtitle={<>Based on your selected components, this engine supports <strong>English</strong>. <a href="https://developer.webex-ai.cisco.com/docs/languages" target="_blank" rel="noopener noreferrer">View language support details</a><br />Webex model selected — you qualify for the <strong>Standard</strong> pricing tier. <a href="https://developer.webex-ai.cisco.com/docs/pricing" target="_blank" rel="noopener noreferrer">Pricing details</a></>}
+            dismissable={false}
+          />
         </div>
 
         {/* Footer */}
