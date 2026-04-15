@@ -129,8 +129,13 @@ jobs:
           fi
           echo "Found Amplify app: $APP_ID"
 
-          JOB_ID=$(aws amplify start-job --app-id "$APP_ID" --branch-name "$BRANCH" --job-type RELEASE --query 'jobSummary.jobId' --output text)
-          echo "Started Amplify build: job $JOB_ID"
+          JOB_ID=$(aws amplify start-job --app-id "$APP_ID" --branch-name "$BRANCH" --job-type RELEASE --query 'jobSummary.jobId' --output text 2>/dev/null) || true
+          if [ -z "$JOB_ID" ] || [ "$JOB_ID" = "None" ]; then
+            echo "A build is already running — monitoring existing job"
+            JOB_ID=$(aws amplify list-jobs --app-id "$APP_ID" --branch-name "$BRANCH" --max-results 1 --query 'jobSummaries[0].jobId' --output text)
+          else
+            echo "Started new Amplify build: job $JOB_ID"
+          fi
 
           echo "Waiting for build to complete..."
           for i in $(seq 1 60); do
