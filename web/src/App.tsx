@@ -21,7 +21,7 @@ function App() {
   return (
     <div className="app-shell-root">
       <AppProvider>
-        <BrowserRouter>
+        <BrowserRouter basename={import.meta.env.BASE_URL}>
           <Routes>
             <Route path="/" element={<MainLayout />}>
               <Route index element={<Dashboard />} />
