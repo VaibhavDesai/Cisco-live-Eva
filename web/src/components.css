@@ -3667,6 +3667,10 @@ tbody tr:focus-visible {
   background: var(--mds-color-theme-background-solid-primary-normal);
 }
 
+.agent-header-sticky > .tabs {
+  margin-bottom: 0;
+}
+
 /* Agent Header */
 .agent-header {
   display: flex;
@@ -3826,13 +3830,11 @@ tbody tr:focus-visible {
 
 .tabs-line {
   gap: var(--spacing-xx-small);
-  border-bottom: 1px solid var(--border-color);
 }
 
 .tabs-line .tab {
   border-radius: 4px 4px 0 0;
   border-bottom: var(--spacing-micro) solid transparent;
-  margin-bottom: -1px;
 }
 
 .tabs-line .tab.active {
@@ -7149,10 +7151,10 @@ select.form-input:disabled {
   z-index: 10001;
   max-width: 400px;
   padding: var(--spacing-x-small);
-  border-radius: var(--border-radius-large);
+  border-radius: var(--border-radius-medium);
   background: var(--surface-tooltip-tonal-fill);
-  border: 1px solid color-mix(in srgb, var(--surface-tooltip-tonal-stroke) 14%, transparent);
-  box-shadow: var(--surface-tooltip-tonal-shadow);
+  border: 1px solid color-mix(in srgb, var(--surface-tooltip-tonal-stroke) 20%, transparent);
+  box-shadow: var(--elevation-3);
   --fill-0: var(--surface-tooltip-tonal-fill);
   --stroke-0: var(--surface-tooltip-tonal-stroke);
   pointer-events: none;
@@ -7160,18 +7162,7 @@ select.form-input:disabled {
 }
 
 .tooltip-tonal-backdrop {
-  position: absolute;
-  inset: 0;
-  z-index: 0;
-  pointer-events: none;
-  border-radius: inherit;
-  overflow: hidden;
-}
-
-.tooltip-tonal-backdrop svg {
-  display: block;
-  width: 100%;
-  height: 100%;
+  display: none;
 }
 
 [data-theme='light'] .tooltip-bubble {
@@ -7296,14 +7287,20 @@ select.form-input:disabled {
   animation: none;
 }
 
-/* Arrow / notch — rendered via ::after as a rotated square matching the bubble fill */
+
+@keyframes tooltipFadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+/* Arrow / notch */
 .tooltip-bubble::after {
   content: '';
   position: absolute;
   width: 10px;
   height: 10px;
   background: var(--surface-tooltip-tonal-fill);
-  border: 1px solid color-mix(in srgb, var(--surface-tooltip-tonal-stroke) 14%, transparent);
+  border: 1px solid color-mix(in srgb, var(--surface-tooltip-tonal-stroke) 20%, transparent);
   transform: rotate(45deg);
 }
 
@@ -7326,6 +7323,7 @@ select.form-input:disabled {
 
 /* Placement: top (arrow on bottom) */
 .tooltip-bubble[data-placement^='top']::after {
+  top: auto;
   bottom: -6px;
   border-left: none;
   border-top: none;
@@ -7373,11 +7371,6 @@ select.form-input:disabled {
 .tooltip-bubble[data-placement='left-end']::after {
   bottom: 14px;
   top: auto;
-}
-
-@keyframes tooltipFadeIn {
-  from { opacity: 0; }
-  to { opacity: 1; }
 }
 
 /* --- Momentum Menu Component --- */
@@ -13065,8 +13058,7 @@ img.app-header__wordmark-logo {
   display: flex;
   align-items: center;
   gap: var(--spacing-small);
-  min-height: 40px;
-  margin-bottom: var(--spacing-large);
+  margin-bottom: 0;
 }
 
 .action-config-v2-title-row .tabs {
@@ -13077,9 +13069,9 @@ img.app-header__wordmark-logo {
   display: inline-flex;
   align-items: center;
   gap: var(--spacing-xx-small);
-  height: 40px;
+  height: 32px;
   margin-left: auto;
-  padding: var(--spacing-xx-small) var(--spacing-small);
+  padding: 0 var(--spacing-small);
   border-radius: 100px;
   border: var(--border-width-small) solid var(--outline-button);
   background: transparent;

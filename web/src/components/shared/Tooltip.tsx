@@ -31,7 +31,7 @@ export type TooltipPlacement =
   | 'right-start'
   | 'right-end';
 
-const ARROW_GAP = 8;
+const TOOLTIP_GAP = 8;
 
 function computePosition(
   anchor: DOMRect,
@@ -46,16 +46,16 @@ function computePosition(
 
   switch (side) {
     case 'top':
-      top = anchor.top - bubble.height - ARROW_GAP;
+      top = anchor.top - bubble.height - TOOLTIP_GAP;
       break;
     case 'bottom':
-      top = anchor.bottom + ARROW_GAP;
+      top = anchor.bottom + TOOLTIP_GAP;
       break;
     case 'left':
-      left = anchor.left - bubble.width - ARROW_GAP;
+      left = anchor.left - bubble.width - TOOLTIP_GAP;
       break;
     case 'right':
-      left = anchor.right + ARROW_GAP;
+      left = anchor.right + TOOLTIP_GAP;
       break;
   }
 

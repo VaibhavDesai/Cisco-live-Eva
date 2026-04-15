@@ -599,7 +599,7 @@ export default function ActionConfigureV2() {
     <div className="primary-content">
       <AgentHeader agent={agent} activeTab="configure" showPublishButton={false} headerRight={headerActions}>
         <div className="action-config-v2-title-row">
-          <Tabs aria-label="Agent configuration sections">
+          <Tabs variant="line" aria-label="Agent configuration sections">
             {ACTION_SECTIONS.map((section) => (
               <Tab
                 key={section}

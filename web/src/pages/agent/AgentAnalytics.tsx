@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useParams, Navigate } from 'react-router-dom';
 import { useApp } from '../../contexts/AppContext';
 import { AgentHeader } from '../../components/agents';
+import Tabs, { Tab } from '../../components/shared/Tabs';
 import { Card, CardTitle } from '../../components/shared/Card';
 import { Table, TableHead, TableBody, TableRow, TableHeader, TableCell } from '../../components/shared/Table';
 import Dropdown from '../../components/shared/Dropdown';
@@ -73,22 +74,12 @@ export default function AgentAnalytics() {
 
   return (
     <div className="primary-content">
-      <AgentHeader agent={agent} activeTab="analytics" showPublishButton={false} />
-
-      <div className="subtabs">
-        <div
-          className={`subtab ${activeSection === 'analytics' ? 'active' : ''}`}
-          onClick={() => setActiveSection('analytics')}
-        >
-          Analytics
-        </div>
-        <div
-          className={`subtab ${activeSection === 'testing' ? 'active' : ''}`}
-          onClick={() => setActiveSection('testing')}
-        >
-          Testing
-        </div>
-      </div>
+      <AgentHeader agent={agent} activeTab="analytics" showPublishButton={false}>
+        <Tabs variant="line" aria-label="Analytics sections">
+          <Tab active={activeSection === 'analytics'} onClick={() => setActiveSection('analytics')}>Analytics</Tab>
+          <Tab active={activeSection === 'testing'} onClick={() => setActiveSection('testing')}>Testing</Tab>
+        </Tabs>
+      </AgentHeader>
 
       <div className="secondary-content">
         {activeSection === 'analytics' && (
