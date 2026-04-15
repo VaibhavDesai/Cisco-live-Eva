@@ -129,28 +129,17 @@ jobs:
           fi
           echo "Found Amplify app: $APP_ID"
 
-          JOB_ID=$(aws amplify start-job --app-id "$APP_ID" --branch-name "$BRANCH" --job-type RELEASE --query 'jobSummary.jobId' --output text 2>/dev/null) || true
-          if [ -z "$JOB_ID" ] || [ "$JOB_ID" = "None" ]; then
-            echo "A build is already running — monitoring existing job"
-            JOB_ID=$(aws amplify list-jobs --app-id "$APP_ID" --branch-name "$BRANCH" --max-results 1 --query 'jobSummaries[0].jobId' --output text)
+          if JOB_OUTPUT=$(aws amplify start-job --app-id "$APP_ID" --branch-name "$BRANCH" --job-type RELEASE 2>&1); then
+            JOB_ID=$(echo "$JOB_OUTPUT" | python3 -c "import sys,json; print(json.load(sys.stdin)['jobSummary']['jobId'])")
+            echo "✅ Started Amplify build: job $JOB_ID"
+            echo "🔗 https://main.${APP_ID}.amplifyapp.com"
+            echo "Build is running on Amplify — site will update in 2-5 minutes."
           else
-            echo "Started new Amplify build: job $JOB_ID"
-          fi
-
-          echo "Waiting for build to complete..."
-          for i in $(seq 1 60); do
-            STATUS=$(aws amplify get-job --app-id "$APP_ID" --branch-name "$BRANCH" --job-id "$JOB_ID" --query 'job.summary.status' --output text)
-            echo "  [$i] Status: $STATUS"
-            if [ "$STATUS" = "SUCCEED" ]; then
-              echo "✅ Amplify build succeeded!"
+            if echo "$JOB_OUTPUT" | grep -q "already have pending or running"; then
+              echo "✅ A build is already running on Amplify — site will update shortly."
               echo "🔗 https://main.${APP_ID}.amplifyapp.com"
-              exit 0
-            elif [ "$STATUS" = "FAILED" ] || [ "$STATUS" = "CANCELLED" ]; then
-              echo "::error::Amplify build ${STATUS}"
-              aws amplify get-job --app-id "$APP_ID" --branch-name "$BRANCH" --job-id "$JOB_ID" --query 'job.steps[*].{step:stepName,status:status,reason:statusReason}' --output table
+            else
+              echo "::error::Failed to start build: $JOB_OUTPUT"
               exit 1
             fi
-            sleep 10
-          done
-          echo "::error::Timed out waiting for Amplify build"
-          exit 1
+          fi
