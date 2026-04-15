@@ -115,11 +115,12 @@ jobs:
           role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
           aws-region: ${{ inputs.aws_region || 'us-west-2' }}
 
-      - name: Trigger Amplify build
+      - name: Trigger Amplify build and wait
         run: |
           set -euo pipefail
           APP_NAME="${{ inputs.app_name || github.event.repository.name }}"
           BRANCH="${{ inputs.branch || 'main' }}"
+          REGION="${{ inputs.aws_region || 'us-west-2' }}"
 
           APP_ID=$(aws amplify list-apps --query "apps[?name=='${APP_NAME}'].appId" --output text)
           if [ -z "$APP_ID" ] || [ "$APP_ID" = "None" ]; then
@@ -129,5 +130,22 @@ jobs:
           echo "Found Amplify app: $APP_ID"
 
           JOB_ID=$(aws amplify start-job --app-id "$APP_ID" --branch-name "$BRANCH" --job-type RELEASE --query 'jobSummary.jobId' --output text)
-          echo "Triggered Amplify build: job $JOB_ID"
-          echo "View build at: https://${{ inputs.aws_region || 'us-west-2' }}.console.aws.amazon.com/amplify/apps/${APP_ID}/branches/${BRANCH}"
+          echo "Started Amplify build: job $JOB_ID"
+
+          echo "Waiting for build to complete..."
+          for i in $(seq 1 60); do
+            STATUS=$(aws amplify get-job --app-id "$APP_ID" --branch-name "$BRANCH" --job-id "$JOB_ID" --query 'job.summary.status' --output text)
+            echo "  [$i] Status: $STATUS"
+            if [ "$STATUS" = "SUCCEED" ]; then
+              echo "✅ Amplify build succeeded!"
+              echo "🔗 https://main.${APP_ID}.amplifyapp.com"
+              exit 0
+            elif [ "$STATUS" = "FAILED" ] || [ "$STATUS" = "CANCELLED" ]; then
+              echo "::error::Amplify build ${STATUS}"
+              aws amplify get-job --app-id "$APP_ID" --branch-name "$BRANCH" --job-id "$JOB_ID" --query 'job.steps[*].{step:stepName,status:status,reason:statusReason}' --output table
+              exit 1
+            fi
+            sleep 10
+          done
+          echo "::error::Timed out waiting for Amplify build"
+          exit 1
