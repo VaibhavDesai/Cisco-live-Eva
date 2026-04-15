@@ -7671,44 +7671,23 @@ button.form-input-wrapper.open:focus-visible {
   transform: rotate(180deg);
 }
 
-/* Dropdown Menu — Momentum ListBox (Figma Popover Tonal) */
+/* Dropdown Menu — Momentum Menu / Popover Tonal */
 .dropdown-menu {
   background: var(--surface-tooltip-tonal-fill, var(--bg-primary));
-  border: 1px solid var(--mds-color-theme-outline-glass-normal, var(--outline-color));
+  border: 1px solid color-mix(in srgb, var(--surface-tooltip-tonal-stroke, var(--outline-color)) 14%, transparent);
   border-radius: var(--border-radius-large);
   box-shadow: var(--elevation-3);
-  padding: var(--spacing-x-small);
+  padding: var(--spacing-xx-small);
   min-width: 180px;
   position: relative;
-}
-
-/* Gradient glow effect */
-.dropdown-menu::before {
-  content: '';
-  position: absolute;
-  inset: -1px;
-  border-radius: calc(var(--border-radius-large) + 1px);
-  padding: 1px;
-  background: linear-gradient(
-    135deg,
-    rgba(100, 58, 189, 0.3) 0%,
-    rgba(0, 0, 0, 0.05) 50%,
-    rgba(100, 58, 189, 0.2) 100%
-  );
-  -webkit-mask:
-    linear-gradient(#fff 0 0) content-box,
-    linear-gradient(#fff 0 0);
-  -webkit-mask-composite: xor;
-  mask-composite: exclude;
-  pointer-events: none;
 }
 
 .dropdown-item {
   display: flex;
   align-items: center;
-  gap: var(--spacing-xx-small);
+  gap: var(--spacing-x-small);
   width: 100%;
-  padding: var(--spacing-xx-small) var(--spacing-x-small);
+  padding: var(--spacing-x-small) var(--spacing-small);
   background: transparent;
   border: none;
   color: var(--text-primary);
@@ -7724,11 +7703,20 @@ button.form-input-wrapper.open:focus-visible {
 
 .dropdown-item:hover,
 .dropdown-item.highlighted {
-  background: var(--bg-input-hover);
+  background: var(--mds-color-theme-background-primary-hover, rgba(255, 255, 255, 0.07));
+}
+
+.dropdown-item:active {
+  background: var(--mds-color-theme-background-primary-active, rgba(255, 255, 255, 0.12));
 }
 
 .dropdown-item.selected {
-  background: var(--bg-input-hover);
+  background: transparent;
+}
+
+.dropdown-item.selected:hover,
+.dropdown-item.selected.highlighted {
+  background: var(--mds-color-theme-background-primary-hover, rgba(255, 255, 255, 0.07));
 }
 
 .dropdown-item.disabled {
@@ -7763,7 +7751,7 @@ button.form-input-wrapper.open:focus-visible {
 .dropdown-check {
   margin-left: auto;
   flex-shrink: 0;
-  color: var(--accent-color);
+  color: var(--text-primary);
 }
 
 .dropdown-label {

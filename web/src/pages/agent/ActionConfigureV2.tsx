@@ -229,6 +229,7 @@ export default function ActionConfigureV2() {
   const [advancedCustomItems, setAdvancedCustomItems] = useState<CustomGuardrailItem[]>([]);
   const [confirmDisableJailbreak, setConfirmDisableJailbreak] = useState(false);
   const [pendingAdvancedEnable, setPendingAdvancedEnable] = useState<{ groupId: string; itemId: string } | null>(null);
+  const [hasAcknowledgedAdvancedPricing, setHasAcknowledgedAdvancedPricing] = useState(false);
   const [showPolicyStudio, setShowPolicyStudio] = useState(false);
   const [editingProfileId, setEditingProfileId] = useState<string | null>(null);
 
@@ -1037,7 +1038,15 @@ export default function ActionConfigureV2() {
                                       disabled={!isPaidUser}
                                       onChange={() => {
                                         if (!item.enabled) {
-                                          setPendingAdvancedEnable({ groupId: group.id, itemId: item.id });
+                                          if (!hasAcknowledgedAdvancedPricing) {
+                                            setPendingAdvancedEnable({ groupId: group.id, itemId: item.id });
+                                            return;
+                                          }
+                                          setAdvancedDefaultGroups(prev => prev.map(gp =>
+                                            gp.id === group.id
+                                              ? { ...gp, items: gp.items.map(it => it.id === item.id ? { ...it, enabled: true } : it) }
+                                              : gp
+                                          ));
                                           return;
                                         }
                                         setAdvancedDefaultGroups(prev => prev.map(gp =>
@@ -1824,6 +1833,7 @@ export default function ActionConfigureV2() {
                   ? { ...gp, items: gp.items.map(it => it.id === itemId ? { ...it, enabled: true } : it) }
                   : gp
               ));
+              setHasAcknowledgedAdvancedPricing(true);
               setPendingAdvancedEnable(null);
             }}>Enable</Button>
           </ModalFooter>

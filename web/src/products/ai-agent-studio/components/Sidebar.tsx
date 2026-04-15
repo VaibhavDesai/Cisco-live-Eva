@@ -38,7 +38,7 @@ export default function Sidebar() {
                 const itemActive =
                   item.path === '/settings'
                     ? location.pathname === '/settings'
-                    : isActive(item.path, item.path === '/agents' || item.path === '/');
+                    : isActive(item.path, item.path === '/');
 
                 return (
                   <SideNav.Item
