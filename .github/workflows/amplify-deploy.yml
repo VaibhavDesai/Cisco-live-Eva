@@ -102,25 +102,41 @@ jobs:
       enable_branch_auto_build: ${{ github.event_name == 'push' || (github.event_name == 'workflow_dispatch' && inputs.enable_branch_auto_build) }}
     secrets: inherit
 
-  trigger-build:
+  build-and-deploy:
     needs: deploy-amplify
     if: ${{ (inputs.action || 'create-or-update') == 'create-or-update' }}
     runs-on: ${{ github.repository_owner }}-amd64-runners
     env:
       FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
     steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Install root dependencies
+        run: npm ci
+
+      - name: Install web dependencies and build
+        working-directory: web
+        run: |
+          npm ci
+          npm run build
+
       - name: Configure AWS credentials
         uses: cisco-actions/configure-aws-credentials@1a221e28f5827bb587dec3ac0ba9a95d01e806e8
         with:
           role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
           aws-region: ${{ inputs.aws_region || 'us-west-2' }}
 
-      - name: Trigger Amplify build and wait
+      - name: Deploy built artifacts to Amplify
         run: |
           set -euo pipefail
           APP_NAME="${{ inputs.app_name || github.event.repository.name }}"
           BRANCH="${{ inputs.branch || 'main' }}"
-          REGION="${{ inputs.aws_region || 'us-west-2' }}"
 
           APP_ID=$(aws amplify list-apps --query "apps[?name=='${APP_NAME}'].appId" --output text)
           if [ -z "$APP_ID" ] || [ "$APP_ID" = "None" ]; then
@@ -129,17 +145,19 @@ jobs:
           fi
           echo "Found Amplify app: $APP_ID"
 
-          if JOB_OUTPUT=$(aws amplify start-job --app-id "$APP_ID" --branch-name "$BRANCH" --job-type RELEASE 2>&1); then
-            JOB_ID=$(echo "$JOB_OUTPUT" | python3 -c "import sys,json; print(json.load(sys.stdin)['jobSummary']['jobId'])")
-            echo "✅ Started Amplify build: job $JOB_ID"
-            echo "🔗 https://main.${APP_ID}.amplifyapp.com"
-            echo "Build is running on Amplify — site will update in 2-5 minutes."
-          else
-            if echo "$JOB_OUTPUT" | grep -q "already have pending or running"; then
-              echo "✅ A build is already running on Amplify — site will update shortly."
-              echo "🔗 https://main.${APP_ID}.amplifyapp.com"
-            else
-              echo "::error::Failed to start build: $JOB_OUTPUT"
-              exit 1
-            fi
-          fi
+          cd web/dist
+          zip -r /tmp/deploy.zip . -q
+          cd -
+
+          DEPLOY_INFO=$(aws amplify create-deployment --app-id "$APP_ID" --branch-name "$BRANCH")
+          UPLOAD_URL=$(echo "$DEPLOY_INFO" | python3 -c "import sys,json; print(json.load(sys.stdin)['zipUploadUrl'])")
+          JOB_ID=$(echo "$DEPLOY_INFO" | python3 -c "import sys,json; print(json.load(sys.stdin)['jobId'])")
+
+          echo "Uploading build artifacts..."
+          curl -s --fail -T /tmp/deploy.zip "$UPLOAD_URL"
+
+          echo "Starting deployment (job $JOB_ID)..."
+          aws amplify start-deployment --app-id "$APP_ID" --branch-name "$BRANCH" --job-id "$JOB_ID"
+
+          echo "✅ Deployment started!"
+          echo "🔗 https://main.${APP_ID}.amplifyapp.com"
