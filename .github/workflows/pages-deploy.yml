@@ -40,8 +40,10 @@ jobs:
         working-directory: web
         env:
           VITE_BASE_PATH: ${{ steps.pages.outputs.base_path }}
+          VITE_CHAT_API_URL: https://ai-agent-studio-proxy.sisun-ai.workers.dev
         run: |
           echo "Pages base_path: $VITE_BASE_PATH"
+          echo "Chat API URL: $VITE_CHAT_API_URL"
           npm run build
 
       - name: Prepare for GitHub Pages

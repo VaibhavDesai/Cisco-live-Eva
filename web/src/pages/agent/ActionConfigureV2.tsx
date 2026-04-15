@@ -1092,68 +1092,91 @@ export default function ActionConfigureV2() {
                           </Table>
                         </AccordionItem>
                       ))}
-                    </AccordionGroup>
-                    <div className="security-custom-profiles-panel">
-                      <div className="security-custom-profiles-header">
-                        <div className="security-group-header">
-                          <Icon name="document-create" weight="bold" size={18} />
-                          <span>Custom Profiles</span>
-                          <Badge variant="default">{advancedCustomItems.filter(i => i.enabled).length}/{advancedCustomItems.length}</Badge>
-                        </div>
-                        <Button
-                          variant="primary"
-                          size="sm"
-                          disabled={!isPaidUser}
-                          onClick={() => { setEditingProfileId(null); setShowPolicyStudio(true); }}
+                      {advancedCustomItems.length > 0 ? (
+                        <AccordionItem
+                          defaultExpanded
+                          title={
+                            <div className="security-custom-profiles-header-row">
+                              <div className="security-group-header">
+                                <Icon name="document-create" weight="bold" size={18} />
+                                <span>Custom Profiles</span>
+                                <Badge variant="default">{advancedCustomItems.filter(i => i.enabled).length}/{advancedCustomItems.length}</Badge>
+                              </div>
+                              <Button
+                                variant="primary"
+                                size="sm"
+                                disabled={!isPaidUser}
+                                onClick={(e: React.MouseEvent) => { e.stopPropagation(); setEditingProfileId(null); setShowPolicyStudio(true); }}
+                              >
+                                <Icon name="plus" weight="bold" size={16} />Create Custom Profile
+                              </Button>
+                            </div>
+                          }
                         >
-                          <Icon name="plus" weight="bold" size={16} />Create Custom Profile
-                        </Button>
-                      </div>
-                      <p className="security-custom-profiles-desc">Generate custom profiles tailored specifically to this agent&apos;s configuration and requirements.</p>
-                      {advancedCustomItems.length > 0 && (
-                        <div className="custom-profile-grid">
-                          {advancedCustomItems.map((item) => (
-                            <div key={item.id} className={`custom-profile-card${item.enabled ? '' : ' custom-profile-card--disabled'}`}>
-                              <div className="custom-profile-card__header">
-                                <Toggle
-                                  checked={item.enabled}
-                                  disabled={!isPaidUser}
-                                  onChange={() => setAdvancedCustomItems(prev => prev.map(it => it.id === item.id ? { ...it, enabled: !it.enabled } : it))}
-                                  size="compact"
-                                />
-                                <h4 className="custom-profile-card__name">{item.name}</h4>
-                                <div className="custom-profile-card__actions">
-                                  <Button
-                                    variant="tertiary"
-                                    size="sm"
-                                    aria-label={`Edit ${item.name}`}
-                                    onClick={() => { setEditingProfileId(item.id); setShowPolicyStudio(true); }}
-                                  >
-                                    <Icon name="edit" size={16} />
-                                  </Button>
-                                  <Button
-                                    variant="tertiary"
-                                    size="sm"
-                                    aria-label={`Delete ${item.name}`}
-                                    onClick={() => setAdvancedCustomItems(prev => prev.filter(it => it.id !== item.id))}
-                                  >
-                                    <Icon name="delete" size={16} />
-                                  </Button>
+                          <div className="custom-profile-grid">
+                            {advancedCustomItems.map((item) => (
+                              <div key={item.id} className={`custom-profile-card${item.enabled ? '' : ' custom-profile-card--disabled'}`}>
+                                <div className="custom-profile-card__header">
+                                  <Toggle
+                                    checked={item.enabled}
+                                    disabled={!isPaidUser}
+                                    onChange={() => setAdvancedCustomItems(prev => prev.map(it => it.id === item.id ? { ...it, enabled: !it.enabled } : it))}
+                                    size="compact"
+                                  />
+                                  <h4 className="custom-profile-card__name">{item.name}</h4>
+                                  <div className="custom-profile-card__actions">
+                                    <Button
+                                      variant="tertiary"
+                                      size="sm"
+                                      aria-label={`Edit ${item.name}`}
+                                      onClick={() => { setEditingProfileId(item.id); setShowPolicyStudio(true); }}
+                                    >
+                                      <Icon name="edit" size={16} />
+                                    </Button>
+                                    <Button
+                                      variant="tertiary"
+                                      size="sm"
+                                      aria-label={`Delete ${item.name}`}
+                                      onClick={() => setAdvancedCustomItems(prev => prev.filter(it => it.id !== item.id))}
+                                    >
+                                      <Icon name="delete" size={16} />
+                                    </Button>
+                                  </div>
+                                </div>
+                                <div className="custom-profile-card__body">
+                                  <p className="custom-profile-card__desc">{item.description}</p>
+                                </div>
+                                <div className="custom-profile-card__meta">
+                                  <span>{item.createdBy}</span>
+                                  <span className="custom-profile-card__meta-sep" aria-hidden="true" />
+                                  <span>{item.createdAt}</span>
                                 </div>
                               </div>
-                              <div className="custom-profile-card__body">
-                                <p className="custom-profile-card__desc">{item.description}</p>
-                              </div>
-                              <div className="custom-profile-card__meta">
-                                <span>{item.createdBy}</span>
-                                <span className="custom-profile-card__meta-sep" aria-hidden="true" />
-                                <span>{item.createdAt}</span>
-                              </div>
+                            ))}
+                          </div>
+                        </AccordionItem>
+                      ) : (
+                        <div className="security-custom-profiles-empty">
+                          <div className="security-custom-profiles-title">
+                            <div className="security-group-header">
+                              <Icon name="document-create" weight="bold" size={18} />
+                              <span>Custom Profiles</span>
                             </div>
-                          ))}
+                            <p className="security-custom-profiles-desc">Generate custom profiles tailored specifically to this agent&apos;s configuration and requirements.</p>
+                          </div>
+                          <div className="security-custom-profiles-action">
+                            <Button
+                              variant="primary"
+                              size="sm"
+                              disabled={!isPaidUser}
+                              onClick={() => { setEditingProfileId(null); setShowPolicyStudio(true); }}
+                            >
+                              <Icon name="plus" weight="bold" size={16} />Create Custom Profile
+                            </Button>
+                          </div>
                         </div>
                       )}
-                    </div>
+                    </AccordionGroup>
                   </div>
                 </div>
               )}

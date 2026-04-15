@@ -12175,38 +12175,44 @@ img.app-header__wordmark-logo {
   color: var(--text-secondary);
 }
 
-/* ── Custom profiles panel (matches accordion-item styling) ── */
+/* ── Custom profiles ── */
 
-.security-custom-profiles-panel {
-  border: 1px solid var(--border-color);
-  border-radius: var(--border-radius-medium);
-  background: transparent;
-}
-
-.security-custom-profiles-header {
+/* Populated state: button grouped with heading in accordion header */
+.security-custom-profiles-header-row {
   display: flex;
   align-items: center;
   justify-content: space-between;
+  width: 100%;
+}
+
+/* Empty state: flat panel separated by top divider */
+.security-custom-profiles-empty {
+  border-top: 1px solid var(--border-color);
   padding: var(--spacing-small);
+}
+
+.security-custom-profiles-title {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-x-small);
 }
 
 .security-custom-profiles-desc {
   margin: 0;
-  padding: 0 var(--spacing-small) var(--spacing-small);
   font-size: var(--font-size-body-midsize);
   line-height: var(--font-lineheight-body-midsize);
   color: var(--text-secondary);
 }
 
-.security-custom-profiles-panel .custom-profile-grid {
-  border-top: 1px solid var(--border-color);
-  padding: var(--spacing-small);
+.security-custom-profiles-action {
+  padding-top: var(--spacing-small);
 }
 
 .custom-profile-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
   gap: var(--spacing-small);
+  padding: var(--spacing-small);
 }
 
 .custom-profile-card {
@@ -12234,6 +12240,16 @@ img.app-header__wordmark-logo {
   gap: var(--spacing-x-small);
 }
 
+.custom-profile-card__name {
+  margin: 0;
+  flex: 1;
+  min-width: 0;
+  font-size: var(--font-size-body-midsize);
+  font-weight: var(--font-weight-bold);
+  line-height: var(--font-lineheight-body-midsize);
+  color: var(--text-primary);
+}
+
 .custom-profile-card__actions {
   display: flex;
   gap: 2px;
@@ -12255,16 +12271,6 @@ img.app-header__wordmark-logo {
   display: flex;
   flex-direction: column;
   gap: var(--spacing-xxx-small);
-}
-
-.custom-profile-card__name {
-  margin: 0;
-  flex: 1;
-  min-width: 0;
-  font-size: var(--font-size-body-midsize);
-  font-weight: var(--font-weight-bold);
-  line-height: var(--font-lineheight-body-midsize);
-  color: var(--text-primary);
 }
 
 .custom-profile-card__desc {

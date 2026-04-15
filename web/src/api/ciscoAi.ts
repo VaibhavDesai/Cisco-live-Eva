@@ -77,7 +77,9 @@ export async function sendPolicyChat(
     ...messages,
   ];
 
-  const res = await fetch('/api/chat', {
+  const apiUrl = import.meta.env.VITE_CHAT_API_URL || '/api/chat';
+
+  const res = await fetch(apiUrl, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ messages: fullMessages }),
