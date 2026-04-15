@@ -1333,7 +1333,6 @@ body {
   display: flex;
   flex-direction: column;
   gap: var(--spacing-xxx-small);
-  padding-right: var(--spacing-x-small);
 }
 
 .sidenav-upper {
@@ -1393,7 +1392,7 @@ body {
 .sidenav-item {
   display: flex;
   align-items: center;
-  gap: var(--spacing-x-small);
+  gap: var(--spacing-xx-small);
   height: 40px;
   position: relative;
 }
@@ -1420,11 +1419,12 @@ body {
 }
 
 .sidenav-tab {
-  flex: 1;
+  flex: 1 1 0;
   display: flex;
   align-items: center;
   gap: var(--spacing-xx-small);
-  padding: var(--spacing-xx-small);
+  padding: var(--spacing-xx-small) var(--spacing-small);
+  margin-right: var(--spacing-x-small);
   border-radius: 20px;
   background: transparent;
   transition: background 0.15s;
@@ -1444,21 +1444,21 @@ body {
 }
 
 .sidenav-tab:hover {
-  background: var(--mds-color-theme-background-primary-hover);
+  background: var(--mds-color-theme-background-primary-hover, rgba(255, 255, 255, 0.07));
   text-decoration: none;
 }
 
 .sidenav-tab:active {
-  background: var(--mds-color-theme-button-secondary-active-normal);
+  background: var(--mds-color-theme-background-primary-active, rgba(255, 255, 255, 0.12));
 }
 
 .sidenav-item.active .sidenav-tab {
-  background: var(--mds-color-theme-button-secondary-active-normal);
+  background: var(--mds-color-theme-button-secondary-pressed, rgba(255, 255, 255, 0.16));
   font-weight: 700;
 }
 
 .sidenav-item.active .sidenav-tab:hover {
-  background: var(--mds-color-theme-button-secondary-active-normal);
+  background: var(--mds-color-theme-button-secondary-pressed, rgba(255, 255, 255, 0.16));
 }
 
 .sidenav-tab:focus-visible {
@@ -1868,7 +1868,7 @@ body {
 /* ── Validation: Negative ───────────────────────── */
 .btn-negative.btn-primary {
   background: var(--mds-color-theme-button-cancel-normal, var(--danger-color));
-  color: var(--text-inverted);
+  color: var(--mds-color-theme-common-text-primary-normal, #fff);
 }
 
 .btn-negative.btn-primary:hover:not(:disabled) {
@@ -10259,10 +10259,8 @@ mdc-icon {
   flex-direction: column;
   width: 232px;
   height: 100%;
-  padding-right: var(--spacing-small);
   box-sizing: border-box;
   background: transparent;
-  overflow: hidden;
 }
 
 .sidenav--collapsed {
@@ -10276,12 +10274,7 @@ mdc-icon {
   flex: 1 0 0;
   min-height: 0;
   padding-bottom: var(--spacing-small);
-  overflow-y: auto;
-  scrollbar-width: none;
-}
-
-.sidenav__upper::-webkit-scrollbar {
-  display: none;
+  overflow: visible;
 }
 
 /* Lower fixed section */
@@ -10354,7 +10347,7 @@ mdc-icon {
 .sidenav__item {
   display: flex;
   align-items: center;
-  gap: var(--spacing-x-small);
+  gap: var(--spacing-xx-small);
   height: 40px;
   flex-shrink: 0;
 }
@@ -10378,12 +10371,13 @@ mdc-icon {
 /* ── Tab base — the clickable pill ── */
 .sidenav__tab {
   display: flex;
-  flex: 1 0 0;
+  flex: 1 1 0;
   align-items: center;
   gap: var(--spacing-xx-small);
-  padding: var(--spacing-xx-small);
+  padding: var(--spacing-xx-small) var(--spacing-small);
+  margin-right: var(--spacing-x-small);
   border-radius: 20px;
-  background: var(--mds-color-theme-button-secondary-normal, transparent);
+  background: transparent;
   border: none;
   cursor: pointer;
   color: var(--text-primary);
@@ -10399,20 +10393,20 @@ mdc-icon {
 }
 
 .sidenav__tab:hover {
-  background: var(--button-secondary-hover);
+  background: var(--mds-color-theme-background-primary-hover, rgba(255, 255, 255, 0.07));
 }
 
 .sidenav__tab:active {
-  background: var(--button-secondary-active);
+  background: var(--mds-color-theme-background-primary-active, rgba(255, 255, 255, 0.12));
 }
 
 .sidenav__tab--active {
-  background: var(--mds-color-theme-button-secondary-pressed, rgba(255, 255, 255, 0.20));
+  background: var(--mds-color-theme-button-secondary-pressed, rgba(255, 255, 255, 0.16));
   font-weight: 700;
 }
 
 .sidenav__tab--active:hover {
-  background: var(--mds-color-theme-button-secondary-pressed, rgba(255, 255, 255, 0.20));
+  background: var(--mds-color-theme-button-secondary-pressed, rgba(255, 255, 255, 0.16));
 }
 
 .sidenav__tab:focus-visible {
@@ -11898,6 +11892,7 @@ img.app-header__wordmark-logo {
   padding: var(--spacing-small);
 }
 
+
 .security-tier-card-inner {
   display: flex;
   align-items: flex-start;
@@ -12177,24 +12172,32 @@ img.app-header__wordmark-logo {
   color: var(--text-secondary);
 }
 
-/* ── Custom profile cards (inside advanced guardrails) ── */
+/* ── Custom profiles panel (matches accordion-item styling) ── */
 
-.custom-profile-section {
-  padding: var(--spacing-small) 0;
+.security-custom-profiles-panel {
+  border: 1px solid var(--border-color);
+  border-radius: var(--border-radius-medium);
+  background: transparent;
 }
 
-.custom-profile-section-header {
+.security-custom-profiles-header {
   display: flex;
   align-items: center;
-  gap: var(--spacing-xx-small);
-  font-size: var(--font-size-body-midsize);
-  font-weight: var(--font-weight-bold);
-  color: var(--text-primary);
-  padding-bottom: var(--spacing-small);
+  justify-content: space-between;
+  padding: var(--spacing-small);
 }
 
-.custom-profile-section-header .badge {
-  margin-left: 0;
+.security-custom-profiles-desc {
+  margin: 0;
+  padding: 0 var(--spacing-small) var(--spacing-small);
+  font-size: var(--font-size-body-midsize);
+  line-height: var(--font-lineheight-body-midsize);
+  color: var(--text-secondary);
+}
+
+.security-custom-profiles-panel .custom-profile-grid {
+  border-top: 1px solid var(--border-color);
+  padding: var(--spacing-small);
 }
 
 .custom-profile-grid {
@@ -12225,12 +12228,14 @@ img.app-header__wordmark-logo {
 .custom-profile-card__header {
   display: flex;
   align-items: center;
-  justify-content: space-between;
+  gap: var(--spacing-x-small);
 }
 
 .custom-profile-card__actions {
   display: flex;
   gap: 2px;
+  flex-shrink: 0;
+  margin-left: auto;
 }
 
 .custom-profile-card__actions .btn {
@@ -12251,6 +12256,8 @@ img.app-header__wordmark-logo {
 
 .custom-profile-card__name {
   margin: 0;
+  flex: 1;
+  min-width: 0;
   font-size: var(--font-size-body-midsize);
   font-weight: var(--font-weight-bold);
   line-height: var(--font-lineheight-body-midsize);
@@ -12292,10 +12299,28 @@ img.app-header__wordmark-logo {
 
 .instructions-layout {
   display: grid;
-  grid-template-columns: 280px 1fr 280px;
+  grid-template-columns: 280px minmax(400px, 1fr) 280px;
   gap: var(--spacing-small);
   align-items: start;
   width: 100%;
+}
+
+@media (max-width: 1400px) {
+  .instructions-layout {
+    grid-template-columns: 280px minmax(400px, 1fr);
+  }
+  .instructions-optimize-card {
+    grid-column: 2;
+  }
+}
+
+@media (max-width: 920px) {
+  .instructions-layout {
+    grid-template-columns: 1fr;
+  }
+  .instructions-optimize-card {
+    grid-column: 1;
+  }
 }
 
 .instructions-sidebar {

@@ -92,7 +92,7 @@ export default defineConfig({
             const token = await getCiscoToken()
 
             const aiRes = await fetch(
-              'https://chat-ai.cisco.com/openai/deployments/gpt-4o-mini/chat/completions',
+              'https://chat-ai.cisco.com/openai/deployments/gpt-5-nano/chat/completions',
               {
                 method: 'POST',
                 headers: {

@@ -31,7 +31,7 @@ export default function Settings() {
           <p className="page-subtitle">AI engine configuration and management</p>
         </div>
         <Button
-          variant="secondary"
+          variant="primary"
           onClick={() => setShowCreate(true)}
         >
           Create engine

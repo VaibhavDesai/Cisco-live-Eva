@@ -1,7 +1,7 @@
 import { useState, useCallback } from 'react'
 import Icon from '../Icon'
 import AiSymbol from './AiSymbol'
-import Accordion from '../Accordion'
+import { AccordionItem as Accordion } from '../Accordion'
 
 const POSITIVE_OPTIONS = ['Great response', 'Clear', 'Helpful', 'Accurate']
 const NEGATIVE_OPTIONS = ['Incorrect', 'Unhelpful', 'Confusing', 'Incomplete']
@@ -86,7 +86,7 @@ function AiResponseMessage({
 
         {sources.length > 0 && (
           <div className="ai-response__sources">
-            <Accordion heading="Sources" size="small" variant="default">
+            <Accordion title="Sources" size="small" styleVariant="default">
               <div className="ai-response__sources-list">
                 {sources.map((s, i) => (
                   <a key={i} href={s.url || '#'} className="ai-response__source-link" target="_blank" rel="noopener noreferrer">

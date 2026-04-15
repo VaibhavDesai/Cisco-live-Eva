@@ -5,13 +5,13 @@ import Icon from './Icon'
 import Toggle from './Toggle'
 import TimePicker from './TimePicker'
 import PasswordInput from './PasswordInput'
-import DatePicker from './DatePicker'
+import { DatePicker } from './DatePicker'
 import Card from './Card'
-import Badge, { BadgeOverlay } from './Badge'
+import Badge, { BadgeIndicator, BadgeOverlay } from './Badge'
 import Avatar from './Avatar'
 import AppHeader from './AppHeader'
-import AnnouncementDialog from './AnnouncementDialog'
-import Accordion, { AccordionGroup } from './Accordion'
+import { AnnouncementDialog } from './AnnouncementDialog'
+import { AccordionItem as Accordion, AccordionGroup } from './Accordion'
 import Toolbar from './Toolbar'
 import SideNav from './SideNav'
 import AiSymbol from './ai/AiSymbol'
@@ -545,51 +545,51 @@ function Dashboard() {
       <Section searchQuery={normalizedDashSearch} title="Badge Indicators" desc="Dot, counter, icon, and validation indicators with overlay positioning.">
         <div className="showcase-label">Dot</div>
         <div className="showcase-row">
-          <Badge type="dot" />
+          <BadgeIndicator type="dot" />
         </div>
 
         <div className="showcase-label" style={{ marginTop: 16 }}>Counter</div>
         <div className="showcase-row">
-          <Badge type="counter" count={1} />
-          <Badge type="counter" count={99} />
-          <Badge type="counter" count={999} />
-          <Badge type="counter" count={9999} />
+          <BadgeIndicator type="counter" count={1} />
+          <BadgeIndicator type="counter" count={99} />
+          <BadgeIndicator type="counter" count={999} />
+          <BadgeIndicator type="counter" count={9999} />
         </div>
 
         <div className="showcase-label" style={{ marginTop: 16 }}>Icon</div>
         <div className="showcase-row">
-          <Badge type="icon" icon="check-circle-badge-filled" color="accent" />
-          <Badge type="icon" icon="unread-filled" color="transparent" />
-          <Badge type="icon" icon="mention-bold" color="accent" />
-          <Badge type="icon" icon="announcement-bold" color="accent" />
-          <Badge type="icon" icon="enter-room-bold" color="accent" />
-          <Badge type="icon" icon="draft-indicator-bold" color="default" />
-          <Badge type="icon" icon="alert-muted-bold" color="default" />
-          <Badge type="icon" icon="alert-active-bold" color="default" />
-          <Badge type="icon" icon="error-legacy-badge-filled" color="error" />
-          <Badge type="icon" icon="blocked-bold" color="warning" />
+          <BadgeIndicator type="icon" icon="check-circle" />
+          <BadgeIndicator type="icon" icon="unread" />
+          <BadgeIndicator type="icon" icon="mention" />
+          <BadgeIndicator type="icon" icon="announcement" />
+          <BadgeIndicator type="icon" icon="enter-room" />
+          <BadgeIndicator type="icon" icon="draft-indicator" />
+          <BadgeIndicator type="icon" icon="alert-muted" />
+          <BadgeIndicator type="icon" icon="alert-active" />
+          <BadgeIndicator type="icon" icon="error-legacy" />
+          <BadgeIndicator type="icon" icon="blocked" />
         </div>
 
         <div className="showcase-label" style={{ marginTop: 16 }}>Validation</div>
         <div className="showcase-row">
-          <Badge type="success" />
-          <Badge type="warning" />
-          <Badge type="error" />
+          <BadgeIndicator type="success" />
+          <BadgeIndicator type="warning" />
+          <BadgeIndicator type="error" />
         </div>
 
         <div className="showcase-label" style={{ marginTop: 16 }}>Overlay</div>
         <div className="showcase-row">
-          <BadgeOverlay badge={<Badge type="counter" count={9} />}>
+          <BadgeOverlay badge={<BadgeIndicator type="counter" count={9} />}>
             <div style={{ width: 32, height: 32, borderRadius: '50%', background: 'var(--bg-tertiary)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
               <IconStar size={16} />
             </div>
           </BadgeOverlay>
-          <BadgeOverlay badge={<Badge type="dot" />}>
+          <BadgeOverlay badge={<BadgeIndicator type="dot" />}>
             <div style={{ width: 32, height: 32, borderRadius: '50%', background: 'var(--bg-tertiary)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
               <Icon name="chat-bold" size={16} />
             </div>
           </BadgeOverlay>
-          <BadgeOverlay badge={<Badge type="error" />}>
+          <BadgeOverlay badge={<BadgeIndicator type="error" />}>
             <div style={{ width: 32, height: 32, borderRadius: '50%', background: 'var(--bg-tertiary)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
               <Icon name="alert-bold" size={16} />
             </div>
@@ -1608,55 +1608,55 @@ function Dashboard() {
       {/* ═══════════════════════════════════════════════════════ */}
       <Section searchQuery={normalizedDashSearch} title="Accordion" desc="Expandable content panels with default, stacked, and borderless variants. Supports single or multi-expand.">
         <div className="showcase-label">Single — Stacked Group</div>
-        <AccordionGroup variant="stack" defaultExpanded={['faq1']} style={{ maxWidth: 544 }}>
-          <Accordion id="faq1" heading="What is this design system?">
+        <AccordionGroup type="stack" className="showcase-accordion-group">
+          <Accordion id="faq1" title="What is this design system?" defaultExpanded>
             A comprehensive collection of reusable components built on the Momentum Design System, using CSS custom properties for theming.
           </Accordion>
-          <Accordion id="faq2" heading="How do I customize colors?">
+          <Accordion id="faq2" title="How do I customize colors?">
             Edit the color tokens in tokens.css. The light and dark themes are controlled via the data-theme attribute on the HTML element.
           </Accordion>
-          <Accordion id="faq3" heading="Can I add new components?">
+          <Accordion id="faq3" title="Can I add new components?">
             Yes! Follow the existing patterns in components.css and create new CSS classes with the appropriate token references.
           </Accordion>
         </AccordionGroup>
 
         <div className="showcase-label" style={{ marginTop: 24 }}>Multi — Stacked Group</div>
-        <AccordionGroup variant="stack" multiple defaultExpanded={['m1', 'm2']} style={{ maxWidth: 544 }}>
-          <Accordion id="m1" heading="First section">
+        <AccordionGroup type="stack" className="showcase-accordion-group">
+          <Accordion id="m1" title="First section" defaultExpanded>
             Multiple panels can be open at the same time in a multi-expand group.
           </Accordion>
-          <Accordion id="m2" heading="Second section">
+          <Accordion id="m2" title="Second section" defaultExpanded>
             This section is also expanded by default alongside the first.
           </Accordion>
-          <Accordion id="m3" heading="Third section">
+          <Accordion id="m3" title="Third section">
             Click to expand this panel independently.
           </Accordion>
         </AccordionGroup>
 
         <div className="showcase-label" style={{ marginTop: 24 }}>Borderless</div>
-        <AccordionGroup variant="borderless" defaultExpanded={['b1']} style={{ maxWidth: 544 }}>
-          <Accordion id="b1" heading="Borderless expanded">
+        <AccordionGroup type="borderless" className="showcase-accordion-group">
+          <Accordion id="b1" title="Borderless expanded" defaultExpanded>
             Borderless variant removes the outer border and uses only the content divider.
           </Accordion>
-          <Accordion id="b2" heading="Borderless collapsed">
+          <Accordion id="b2" title="Borderless collapsed">
             Second borderless panel content.
           </Accordion>
         </AccordionGroup>
 
         <div className="showcase-label" style={{ marginTop: 24 }}>Large Size</div>
-        <AccordionGroup variant="stack" defaultExpanded={['lg1']} style={{ maxWidth: 544 }}>
-          <Accordion id="lg1" heading="Large accordion item" size="large">
+        <AccordionGroup type="stack" className="showcase-accordion-group">
+          <Accordion id="lg1" title="Large accordion item" size="large" defaultExpanded>
             The large variant uses 24px padding on both the header and content area.
           </Accordion>
-          <Accordion id="lg2" heading="Another large item" size="large">
+          <Accordion id="lg2" title="Another large item" size="large">
             Additional content for the large-size variant.
           </Accordion>
         </AccordionGroup>
 
         <div className="showcase-label" style={{ marginTop: 24 }}>States</div>
         <div style={{ maxWidth: 544, display: 'flex', flexDirection: 'column', gap: 8 }}>
-          <Accordion heading="Normal" defaultExpanded>Normal expanded accordion item.</Accordion>
-          <Accordion heading="Disabled" disabled>This panel cannot be toggled.</Accordion>
+          <Accordion title="Normal" defaultExpanded>Normal expanded accordion item.</Accordion>
+          <Accordion title="Disabled" disabled>This panel cannot be toggled.</Accordion>
         </div>
       </Section>
 
@@ -2071,78 +2071,78 @@ function Dashboard() {
       {/* ═══════════════════════════════════════════════════════ */}
       {/*  AVATARS                                               */}
       {/* ═══════════════════════════════════════════════════════ */}
-      <Section searchQuery={normalizedDashSearch} title="Avatars" desc="Photo, initials, icon, and counter avatars with presence indicators across 7 sizes.">
+      <Section searchQuery={normalizedDashSearch} title="Avatars" desc="Photo, initials, and icon avatars with badge counts across 7 sizes.">
         <div className="showcase-label">Photo</div>
         <div className="showcase-row" style={{ alignItems: 'center' }}>
-          <Avatar type="photo" size="xx-large" src="https://i.pravatar.cc/248?img=12" name="Molly" />
-          <Avatar type="photo" size="x-large" src="https://i.pravatar.cc/176?img=12" name="Molly" />
-          <Avatar type="photo" size="large" src="https://i.pravatar.cc/144?img=12" name="Molly" />
-          <Avatar type="photo" size="midsize" src="https://i.pravatar.cc/128?img=12" name="Molly" />
-          <Avatar type="photo" size="small" src="https://i.pravatar.cc/96?img=12" name="Molly" />
-          <Avatar type="photo" size="x-small" src="https://i.pravatar.cc/64?img=12" name="Molly" />
-          <Avatar type="photo" size="xx-small" src="https://i.pravatar.cc/48?img=12" name="Molly" />
+          <Avatar variant="photo" size="2x-large" src="https://i.pravatar.cc/248?img=12" alt="Molly" />
+          <Avatar variant="photo" size="x-large" src="https://i.pravatar.cc/176?img=12" alt="Molly" />
+          <Avatar variant="photo" size="large" src="https://i.pravatar.cc/144?img=12" alt="Molly" />
+          <Avatar variant="photo" size="midsize" src="https://i.pravatar.cc/128?img=12" alt="Molly" />
+          <Avatar variant="photo" size="small" src="https://i.pravatar.cc/96?img=12" alt="Molly" />
+          <Avatar variant="photo" size="x-small" src="https://i.pravatar.cc/64?img=12" alt="Molly" />
+          <Avatar variant="photo" size="2x-small" src="https://i.pravatar.cc/48?img=12" alt="Molly" />
         </div>
 
         <div className="showcase-label" style={{ marginTop: 16 }}>Initials</div>
         <div className="showcase-row" style={{ alignItems: 'center' }}>
-          <Avatar type="initials" size="xx-large" name="Sarah Smith" />
-          <Avatar type="initials" size="x-large" name="Sarah Smith" />
-          <Avatar type="initials" size="large" name="Sarah Smith" />
-          <Avatar type="initials" size="midsize" name="Sarah Smith" />
-          <Avatar type="initials" size="small" name="Sarah Smith" />
-          <Avatar type="initials" size="x-small" name="Sarah Smith" />
-          <Avatar type="initials" size="xx-small" name="Sarah Smith" />
+          <Avatar variant="initials" size="2x-large" initials="SS" />
+          <Avatar variant="initials" size="x-large" initials="SS" />
+          <Avatar variant="initials" size="large" initials="SS" />
+          <Avatar variant="initials" size="midsize" initials="SS" />
+          <Avatar variant="initials" size="small" initials="SS" />
+          <Avatar variant="initials" size="x-small" initials="SS" />
+          <Avatar variant="initials" size="2x-small" initials="SS" />
         </div>
 
         <div className="showcase-label" style={{ marginTop: 16 }}>Icon</div>
         <div className="showcase-row" style={{ alignItems: 'center' }}>
-          <Avatar type="icon" size="xx-large" />
-          <Avatar type="icon" size="x-large" />
-          <Avatar type="icon" size="large" />
-          <Avatar type="icon" size="midsize" />
-          <Avatar type="icon" size="small" />
-          <Avatar type="icon" size="x-small" />
-          <Avatar type="icon" size="xx-small" />
+          <Avatar variant="icon" size="2x-large" />
+          <Avatar variant="icon" size="x-large" />
+          <Avatar variant="icon" size="large" />
+          <Avatar variant="icon" size="midsize" />
+          <Avatar variant="icon" size="small" />
+          <Avatar variant="icon" size="x-small" />
+          <Avatar variant="icon" size="2x-small" />
         </div>
 
         <div className="showcase-label" style={{ marginTop: 16 }}>Counter</div>
         <div className="showcase-row" style={{ alignItems: 'center' }}>
-          <Avatar type="counter" size="xx-large" count={99} />
-          <Avatar type="counter" size="x-large" count={99} />
-          <Avatar type="counter" size="large" count={99} />
-          <Avatar type="counter" size="midsize" count={99} />
-          <Avatar type="counter" size="small" count={99} />
-          <Avatar type="counter" size="x-small" count={99} />
-          <Avatar type="counter" size="xx-small" count={99} />
+          <Avatar variant="icon" size="2x-large" badgeCount={99} />
+          <Avatar variant="icon" size="x-large" badgeCount={99} />
+          <Avatar variant="icon" size="large" badgeCount={99} />
+          <Avatar variant="icon" size="midsize" badgeCount={99} />
+          <Avatar variant="icon" size="small" badgeCount={99} />
+          <Avatar variant="icon" size="x-small" badgeCount={99} />
+          <Avatar variant="icon" size="2x-small" badgeCount={99} />
         </div>
 
         <div className="showcase-label" style={{ marginTop: 16 }}>Presence</div>
         <div className="showcase-row" style={{ alignItems: 'center' }}>
-          <Avatar type="photo" size="x-large" src="https://i.pravatar.cc/176?img=12" name="Molly" presence="active" />
-          <Avatar type="photo" size="x-large" src="https://i.pravatar.cc/176?img=12" name="Molly" presence="meet" />
-          <Avatar type="photo" size="x-large" src="https://i.pravatar.cc/176?img=12" name="Molly" presence="dnd" />
-          <Avatar type="photo" size="x-large" src="https://i.pravatar.cc/176?img=12" name="Molly" presence="away" />
-          <Avatar type="photo" size="x-large" src="https://i.pravatar.cc/176?img=12" name="Molly" presence="schedule" />
-          <Avatar type="photo" size="x-large" src="https://i.pravatar.cc/176?img=12" name="Molly" presence="ooo" />
+          <Avatar variant="photo" size="x-large" src="https://i.pravatar.cc/176?img=12" alt="Molly" />
+          <Avatar variant="photo" size="x-large" src="https://i.pravatar.cc/176?img=12" alt="Molly" />
+          <Avatar variant="photo" size="x-large" src="https://i.pravatar.cc/176?img=12" alt="Molly" />
+          <Avatar variant="photo" size="x-large" src="https://i.pravatar.cc/176?img=12" alt="Molly" />
+          <Avatar variant="photo" size="x-large" src="https://i.pravatar.cc/176?img=12" alt="Molly" />
+          <Avatar variant="photo" size="x-large" src="https://i.pravatar.cc/176?img=12" alt="Molly" />
         </div>
 
         <div className="showcase-label" style={{ marginTop: 16 }}>States</div>
         <div className="showcase-row" style={{ alignItems: 'center' }}>
           <div className="showcase-col" style={{ alignItems: 'center' }}>
             <div className="showcase-label">Normal</div>
-            <Avatar type="photo" size="large" src="https://i.pravatar.cc/144?img=12" name="Molly" />
+            <Avatar variant="photo" size="large" src="https://i.pravatar.cc/144?img=12" alt="Molly" />
           </div>
           <div className="showcase-col" style={{ alignItems: 'center' }}>
             <div className="showcase-label">Disabled</div>
-            <Avatar type="photo" size="large" src="https://i.pravatar.cc/144?img=12" name="Molly" disabled />
+            <Avatar variant="photo" size="large" src="https://i.pravatar.cc/144?img=12" alt="Molly" />
           </div>
           <div className="showcase-col" style={{ alignItems: 'center' }}>
             <div className="showcase-label">Ghost</div>
-            <Avatar type="photo" size="large" src="https://i.pravatar.cc/144?img=12" name="Molly" ghost />
+            <Avatar variant="photo" size="large" src="https://i.pravatar.cc/144?img=12" alt="Molly" />
           </div>
           <div className="showcase-col" style={{ alignItems: 'center' }}>
             <div className="showcase-label">Interactive</div>
-            <Avatar type="photo" size="large" src="https://i.pravatar.cc/144?img=12" name="Molly" interactive />
+            <Avatar variant="photo" size="large" src="https://i.pravatar.cc/144?img=12" alt="Molly" />
           </div>
         </div>
       </Section>

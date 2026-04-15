@@ -15,10 +15,10 @@ function AiUserMessage({ text, avatarSrc, className = '' }) {
     <div className={`ai-user-msg ${className}`}>
       <div className="ai-user-msg__header">
         <Avatar
-          type={avatarSrc ? 'photo' : 'initials'}
-          size="xx-small"
+          variant={avatarSrc ? 'photo' : 'initials'}
+          size="2x-small"
           src={avatarSrc}
-          name="You"
+          initials="Y"
         />
         <span className="ai-user-msg__name">You</span>
       </div>

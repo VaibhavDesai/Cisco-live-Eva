@@ -5,6 +5,8 @@ interface ButtonProps {
   children: React.ReactNode;
   /** Visual emphasis: primary, secondary, or tertiary */
   variant?: 'primary' | 'secondary' | 'tertiary';
+  /** Semantic color: default, negative (danger/alert), positive, or accent */
+  color?: 'default' | 'negative' | 'positive' | 'accent';
   /** Control density */
   size?: 'default' | 'sm';
   /** Click handler for the button */
@@ -27,6 +29,7 @@ interface ButtonProps {
 export default function Button({ 
   children, 
   variant = 'primary', 
+  color = 'default',
   size = 'default',
   onClick,
   className = '',
@@ -37,11 +40,12 @@ export default function Button({
   const variantClass =
     variant === 'primary' ? 'btn-primary' :
     variant === 'tertiary' ? 'btn-tertiary' : 'btn-secondary';
+  const colorClass = color !== 'default' ? `btn-${color}` : '';
   const sizeClass = size === 'sm' ? 'btn-sm' : '';
   
   return (
     <button 
-      className={`btn ${variantClass} ${sizeClass} ${className}`}
+      className={`btn ${variantClass} ${colorClass} ${sizeClass} ${className}`.replace(/\s+/g, ' ').trim()}
       onClick={onClick}
       style={style}
       disabled={disabled}
