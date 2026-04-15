@@ -115,9 +115,6 @@ jobs:
           role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
           aws-region: ${{ inputs.aws_region || 'us-west-2' }}
 
-      - name: Checkout code
-        uses: actions/checkout@v4
-
       - name: Fix build spec, refresh token, and trigger build
         env:
           GH_TOKEN: ${{ github.token }}
@@ -134,15 +131,31 @@ jobs:
           fi
           echo "Found Amplify app: $APP_ID"
 
-          echo "--- Overwriting build spec with amplify.yml ---"
-          BUILDSPEC=$(cat amplify.yml)
+          echo "--- Setting correct build spec (Gen 1 with cd web) ---"
+          BUILDSPEC='version: 1
+          frontend:
+            phases:
+              preBuild:
+                commands:
+                  - cd web && npm ci
+              build:
+                commands:
+                  - cd web && npm run build
+            artifacts:
+              baseDirectory: web/dist
+              files:
+                - "**/*"
+            cache:
+              paths:
+                - web/node_modules/**/*'
+
           aws amplify update-app \
             --app-id "$APP_ID" \
             --repository "$REPO" \
             --oauth-token "$GH_TOKEN" \
             --build-spec "$BUILDSPEC" \
             --query 'app.buildSpec' --output text
-          echo "✅ Build spec updated with appRoot: web"
+          echo "✅ Build spec updated"
 
           echo "--- Triggering RELEASE build ---"
           if JOB_OUTPUT=$(aws amplify start-job --app-id "$APP_ID" --branch-name "$BRANCH" --job-type RELEASE 2>&1); then
@@ -151,8 +164,8 @@ jobs:
             echo "🔗 https://main.${APP_ID}.amplifyapp.com"
           else
             if echo "$JOB_OUTPUT" | grep -q "already have pending or running"; then
-              echo "⏳ Build already running — waiting 90s then retrying..."
-              sleep 90
+              echo "⏳ Build already running — waiting 120s then retrying..."
+              sleep 120
               if JOB_OUTPUT2=$(aws amplify start-job --app-id "$APP_ID" --branch-name "$BRANCH" --job-type RELEASE 2>&1); then
                 JOB_ID=$(echo "$JOB_OUTPUT2" | python3 -c "import sys,json; print(json.load(sys.stdin)['jobSummary']['jobId'])")
                 echo "✅ Started Amplify build: job $JOB_ID"
