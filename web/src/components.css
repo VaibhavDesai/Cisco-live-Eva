@@ -3647,6 +3647,21 @@ tbody tr:focus-visible {
   to { transform: rotate(360deg); }
 }
 
+/* Agent Header — sticky wrapper */
+.agent-header-sticky {
+  position: sticky;
+  top: calc(-1 * var(--spacing-large));
+  z-index: 10;
+  margin: calc(-1 * var(--spacing-large)) calc(-1 * var(--spacing-large)) 0;
+  padding: var(--spacing-large) var(--spacing-large) var(--spacing-small);
+  border-radius: 16px 0 0 0;
+  transition: background 0.2s ease;
+}
+
+.agent-header-sticky.agent-header-stuck {
+  background: var(--mds-color-theme-background-solid-primary-normal);
+}
+
 /* Agent Header */
 .agent-header {
   display: flex;

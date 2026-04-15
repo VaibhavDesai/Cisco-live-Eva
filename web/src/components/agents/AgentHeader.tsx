@@ -1,12 +1,36 @@
+import { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Badge from '../shared/Badge';
 import Button from '../shared/Button';
 import Tabs, { Tab } from '../shared/Tabs';
 import { useApp } from '../../contexts/AppContext';
 
-export default function AgentHeader({ agent, activeTab, showPublishButton = true, headerRight = null }) {
+export default function AgentHeader({ agent, activeTab, showPublishButton = true, headerRight = null, children = null }) {
   const navigate = useNavigate();
   const { toggleAgentPublish, showToast } = useApp();
+  const stickyRef = useRef(null);
+  const [isStuck, setIsStuck] = useState(false);
+
+  useEffect(() => {
+    const el = stickyRef.current;
+    if (!el) return;
+
+    const observer = new IntersectionObserver(
+      ([entry]) => setIsStuck(!entry.isIntersecting),
+      { root: el.closest('.main'), threshold: 1, rootMargin: '-1px 0px 0px 0px' }
+    );
+
+    const sentinel = document.createElement('div');
+    sentinel.style.height = '1px';
+    sentinel.style.marginBottom = '-1px';
+    el.parentNode.insertBefore(sentinel, el);
+    observer.observe(sentinel);
+
+    return () => {
+      observer.disconnect();
+      sentinel.remove();
+    };
+  }, []);
 
   const getBadgeVariant = (statusClass) => {
     if (statusClass === 'badge-success') return 'success';
@@ -28,7 +52,7 @@ export default function AgentHeader({ agent, activeTab, showPublishButton = true
   };
 
   return (
-    <>
+    <div ref={stickyRef} className={`agent-header-sticky${isStuck ? ' agent-header-stuck' : ''}`}>
       <div className="agent-header" style={{ marginBottom: '16px' }}>
         <div 
           className="agent-avatar" 
@@ -56,7 +80,7 @@ export default function AgentHeader({ agent, activeTab, showPublishButton = true
         )}
       </div>
 
-      <Tabs variant="glass" aria-label="Agent navigation" style={{ marginBottom: '16px' }}>
+      <Tabs variant="glass" aria-label="Agent navigation" style={{ marginBottom: children ? '16px' : '0' }}>
         {tabs.map(tab => (
           <Tab
             key={tab.id}
@@ -67,6 +91,8 @@ export default function AgentHeader({ agent, activeTab, showPublishButton = true
           </Tab>
         ))}
       </Tabs>
-    </>
+
+      {children}
+    </div>
   );
 }

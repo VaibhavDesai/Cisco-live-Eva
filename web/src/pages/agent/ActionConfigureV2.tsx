@@ -565,61 +565,62 @@ export default function ActionConfigureV2() {
 
   return (
     <div className="primary-content">
-      <AgentHeader agent={agent} activeTab="configure" showPublishButton={false} headerRight={headerActions} />
+      <AgentHeader agent={agent} activeTab="configure" showPublishButton={false} headerRight={headerActions}>
+        <div className="action-config-v2-title-row">
+          <Tabs aria-label="Agent configuration sections">
+            {ACTION_SECTIONS.map((section) => (
+              <Tab
+                key={section}
+                active={section === activeSection}
+                onClick={() => setActiveSection(section)}
+              >
+                {section}
+              </Tab>
+            ))}
+          </Tabs>
+          {activeSection === 'Action' && (
+            <div className="add-action-menu-wrapper" ref={addMenuRef}>
+              <button
+                type="button"
+                className="action-config-v2-add-btn"
+                onClick={() => setShowAddMenu(!showAddMenu)}
+              >
+                <Icon name="plus" weight="bold" size={20} />
+                Add actions
+              </button>
+              {showAddMenu && (
+                <div className="add-action-menu">
+                  <div className="add-action-menu-section">
+                    <div className="add-action-menu-header">Browse actions</div>
+                    <button
+                      className="add-action-menu-item"
+                      onClick={() => { setShowAddMenu(false); setShowAddCapabilityModal(true); }}
+                    >
+                      <Icon name="extension-mobility" weight="bold" size={20} />
+                      Select available
+                    </button>
+                  </div>
+                  <div className="add-action-menu-divider" />
+                  <div className="add-action-menu-section">
+                    <div className="add-action-menu-header">Create new action</div>
+                    <button className="add-action-menu-item" onClick={() => setShowAddMenu(false)}>
+                      <Icon name="next" weight="bold" size={20} />
+                      Transfer
+                    </button>
+                    <button className="add-action-menu-item" onClick={() => { setShowAddMenu(false); setShowFulfillmentModal(true); }}>
+                      <Icon name="automation" weight="bold" size={20} />
+                      Fulfillment
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+      </AgentHeader>
 
       <div className="action-config-v2-shell">
         <div className="action-config-v2-card">
-          <div className="action-config-v2-title-row">
-            <Tabs aria-label="Agent configuration sections">
-              {ACTION_SECTIONS.map((section) => (
-                <Tab
-                  key={section}
-                  active={section === activeSection}
-                  onClick={() => setActiveSection(section)}
-                >
-                  {section}
-                </Tab>
-              ))}
-            </Tabs>
-            {activeSection === 'Action' && (
-              <div className="add-action-menu-wrapper" ref={addMenuRef}>
-                <button
-                  type="button"
-                  className="action-config-v2-add-btn"
-                  onClick={() => setShowAddMenu(!showAddMenu)}
-                >
-                  <Icon name="plus" weight="bold" size={20} />
-                  Add actions
-                </button>
-                {showAddMenu && (
-                  <div className="add-action-menu">
-                    <div className="add-action-menu-section">
-                      <div className="add-action-menu-header">Browse actions</div>
-                      <button
-                        className="add-action-menu-item"
-                        onClick={() => { setShowAddMenu(false); setShowAddCapabilityModal(true); }}
-                      >
-                        <Icon name="extension-mobility" weight="bold" size={20} />
-                        Select available
-                      </button>
-                    </div>
-                    <div className="add-action-menu-divider" />
-                    <div className="add-action-menu-section">
-                      <div className="add-action-menu-header">Create new action</div>
-                      <button className="add-action-menu-item" onClick={() => setShowAddMenu(false)}>
-                        <Icon name="next" weight="bold" size={20} />
-                        Transfer
-                      </button>
-                      <button className="add-action-menu-item" onClick={() => { setShowAddMenu(false); setShowFulfillmentModal(true); }}>
-                        <Icon name="automation" weight="bold" size={20} />
-                        Fulfillment
-                      </button>
-                    </div>
-                  </div>
-                )}
-              </div>
-            )}
-          </div>
 
           {activeSection === 'Profile' && (
             <div className="v2-profile-layout">
