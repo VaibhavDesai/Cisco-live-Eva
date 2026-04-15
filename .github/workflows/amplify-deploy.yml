@@ -104,7 +104,7 @@ jobs:
 
   trigger-build:
     needs: deploy-amplify
-    if: ${{ (inputs.action || 'create-or-update') == 'create-or-update' }}
+    if: ${{ always() && (inputs.action || 'create-or-update') == 'create-or-update' }}
     runs-on: ${{ github.repository_owner }}-amd64-runners
     env:
       FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
@@ -156,6 +156,9 @@ jobs:
             --build-spec "$BUILDSPEC" \
             --query 'app.buildSpec' --output text
           echo "✅ Build spec updated"
+
+          echo "--- Waiting for any running builds to finish ---"
+          sleep 180
 
           echo "--- Triggering RELEASE build ---"
           if JOB_OUTPUT=$(aws amplify start-job --app-id "$APP_ID" --branch-name "$BRANCH" --job-type RELEASE 2>&1); then
