@@ -96,6 +96,69 @@ export async function sendPolicyChat(
   return parseAiResponse(content);
 }
 
+export interface OptimizeResult {
+  optimizedText: string;
+  changes: string[];
+  reasoning: string[];
+}
+
+const OPTIMIZE_SYSTEM_PROMPT = `You are an expert AI prompt engineer. Your job is to optimize agent system instructions to be clearer, more structured, and more effective.
+
+Given the user's original instructions, produce an improved version and a summary of changes.
+
+You MUST respond with a JSON block (fenced with \`\`\`json) containing:
+\`\`\`json
+{
+  "optimizedText": "The full improved instructions text",
+  "changes": ["Change 1 description", "Change 2 description"],
+  "reasoning": ["Reason 1 for the change", "Reason 2 for the change"]
+}
+\`\`\`
+
+Rules:
+- Preserve the original intent, tone, and all domain-specific details
+- Improve structure with clear sections (use markdown #### headers)
+- Remove redundancies and tighten language
+- Preserve any template variables like {{variable_name}}
+- "changes" should list 3-6 specific improvements made
+- "reasoning" should list 3-6 explanations for why each change improves the prompt
+- Keep the optimized text concise but comprehensive`;
+
+export async function optimizeInstructions(instructions: string): Promise<OptimizeResult> {
+  const messages: ChatMessage[] = [
+    { role: 'system', content: OPTIMIZE_SYSTEM_PROMPT },
+    { role: 'user', content: `Please optimize these agent instructions:\n\n${instructions}` },
+  ];
+
+  const apiUrl = import.meta.env.VITE_CHAT_API_URL || '/api/chat';
+
+  const res = await fetch(apiUrl, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ messages }),
+  });
+
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({ error: 'Request failed' }));
+    throw new Error(err.error || `API error (${res.status})`);
+  }
+
+  const data = await res.json();
+  const content: string = data.content ?? '';
+
+  const jsonMatch = content.match(/```json\s*([\s\S]*?)```/);
+  if (!jsonMatch) {
+    throw new Error('Failed to parse optimization result');
+  }
+
+  const parsed = JSON.parse(jsonMatch[1].trim());
+  return {
+    optimizedText: parsed.optimizedText || instructions,
+    changes: parsed.changes || [],
+    reasoning: parsed.reasoning || [],
+  };
+}
+
 function parseAiResponse(content: string): PolicyAiResponse {
   const jsonMatch = content.match(/```json\s*([\s\S]*?)```/);
 

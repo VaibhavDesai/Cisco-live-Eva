@@ -173,23 +173,26 @@ export default function CreateFulfillmentModal({ onClose, onSave }: CreateFulfil
         </div>
 
         <div className="fpmodal-footer">
-          <div className="fpmodal-footer__actions">
-            <Button variant="secondary" onClick={onClose}>
-              Cancel
-            </Button>
-            <Button
-              disabled={!canSave}
-              onClick={() =>
-                onSave({
-                  name: actionName.trim(),
-                  description: actionDescription,
-                  serverName,
-                  entities,
-                })
-              }
-            >
-              Update
-            </Button>
+          <div className="fpmodal-footer-divider" />
+          <div className="fpmodal-footer-bar">
+            <div className="fpmodal-footer__actions">
+              <Button variant="secondary" onClick={onClose}>
+                Cancel
+              </Button>
+              <Button
+                disabled={!canSave}
+                onClick={() =>
+                  onSave({
+                    name: actionName.trim(),
+                    description: actionDescription,
+                    serverName,
+                    entities,
+                  })
+                }
+              >
+                Update
+              </Button>
+            </div>
           </div>
         </div>
       </div>

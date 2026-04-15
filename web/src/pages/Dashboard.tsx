@@ -11,6 +11,12 @@ export default function Dashboard() {
 
   const agentList = Object.values(agents);
 
+  const agentExtras: Record<string, { actions: number; knowledgeBases: number; guardrails: number }> = {
+    cs: { actions: 5, knowledgeBases: 3, guardrails: 4 },
+    sa: { actions: 3, knowledgeBases: 2, guardrails: 3 },
+    it: { actions: 4, knowledgeBases: 1, guardrails: 2 },
+  };
+
   const handleAgentClick = (agentId) => {
     selectAgent(agentId);
     navigate(`/agents/${agentId}`);
@@ -56,59 +62,65 @@ export default function Dashboard() {
           </div>
         </div>
 
-        {/* Two Column Layout */}
-        <div className="grid grid-2">
-          {/* Top Agents */}
-          <Card>
-            <div className="card-header">
-              <CardTitle>Top Performing Agents</CardTitle>
-              <Button variant="secondary" size="sm" onClick={() => navigate('/agents')}>
-                View All
-              </Button>
-            </div>
-            <Table>
-              <TableHead>
-                <TableRow>
-                  <TableHeader>Agent</TableHeader>
-                  <TableHeader>Status</TableHeader>
-                  <TableHeader>Sessions</TableHeader>
-                </TableRow>
-              </TableHead>
-              <TableBody>
-                {agentList.slice(0, 3).map(agent => (
+        {/* Top Agents */}
+        <Card>
+          <div className="card-header">
+            <CardTitle>Top performing agents</CardTitle>
+            <Button variant="secondary" size="sm" onClick={() => navigate('/agents')}>
+              View all
+            </Button>
+          </div>
+          <Table>
+            <TableHead>
+              <TableRow>
+                <TableHeader>Agent</TableHeader>
+                <TableHeader>Status</TableHeader>
+                <TableHeader>Sessions</TableHeader>
+                <TableHeader>Actions enabled</TableHeader>
+                <TableHeader>Knowledge bases</TableHeader>
+                <TableHeader>Guardrails enabled</TableHeader>
+              </TableRow>
+            </TableHead>
+            <TableBody>
+              {agentList.slice(0, 3).map(agent => {
+                const extras = agentExtras[agent.id] || { actions: 0, knowledgeBases: 0, guardrails: 0 };
+                return (
                   <TableRow key={agent.id} onClick={() => handleAgentClick(agent.id)}>
                     <TableCell><strong>{agent.name}</strong></TableCell>
                     <TableCell>
                       <Badge variant={getBadgeVariant(agent.statusClass)}>{agent.status}</Badge>
                     </TableCell>
                     <TableCell>{agent.sessions}</TableCell>
+                    <TableCell>{extras.actions}</TableCell>
+                    <TableCell>{extras.knowledgeBases}</TableCell>
+                    <TableCell>{extras.guardrails}</TableCell>
                   </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </Card>
+                );
+              })}
+            </TableBody>
+          </Table>
+        </Card>
 
-          {/* Recent Activity */}
-          <Card>
-            <div className="card-header">
-              <CardTitle>Recent Activity</CardTitle>
+        {/* Recent Activity */}
+        <Card>
+          <div className="card-header">
+            <CardTitle>Recent activity</CardTitle>
+          </div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', padding: '8px 0', borderBottom: '1px solid var(--border-color)' }}>
+              <span>Customer Support Bot updated</span>
+              <span style={{ color: 'var(--text-secondary)', fontSize: '13px' }}>2 hours ago</span>
             </div>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', padding: '8px 0', borderBottom: '1px solid var(--border-color)' }}>
-                <span>Customer Support Bot updated</span>
-                <span style={{ color: 'var(--text-secondary)', fontSize: '13px' }}>2 hours ago</span>
-              </div>
-              <div style={{ display: 'flex', justifyContent: 'space-between', padding: '8px 0', borderBottom: '1px solid var(--border-color)' }}>
-                <span>Sales Assistant published</span>
-                <span style={{ color: 'var(--text-secondary)', fontSize: '13px' }}>5 hours ago</span>
-              </div>
-              <div style={{ display: 'flex', justifyContent: 'space-between', padding: '8px 0' }}>
-                <span>IT Support Agent created</span>
-                <span style={{ color: 'var(--text-secondary)', fontSize: '13px' }}>1 day ago</span>
-              </div>
+            <div style={{ display: 'flex', justifyContent: 'space-between', padding: '8px 0', borderBottom: '1px solid var(--border-color)' }}>
+              <span>Sales Assistant published</span>
+              <span style={{ color: 'var(--text-secondary)', fontSize: '13px' }}>5 hours ago</span>
             </div>
-          </Card>
-        </div>
+            <div style={{ display: 'flex', justifyContent: 'space-between', padding: '8px 0' }}>
+              <span>IT Support Agent created</span>
+              <span style={{ color: 'var(--text-secondary)', fontSize: '13px' }}>1 day ago</span>
+            </div>
+          </div>
+        </Card>
       </div>
     </div>
   );

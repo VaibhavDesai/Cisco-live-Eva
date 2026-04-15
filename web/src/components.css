@@ -1976,11 +1976,13 @@ body {
 }
 
 /* Simple card (no image / no layout class) gets inner padding */
-.card:not(.card-vertical):not(.card-horizontal) > .card-header,
 .card:not(.card-vertical):not(.card-horizontal) > .card-body,
 .card:not(.card-vertical):not(.card-horizontal) > .card-footer {
   padding-left: var(--spacing-large);
   padding-right: var(--spacing-large);
+}
+.card:not(.card-vertical):not(.card-horizontal) > .card-header {
+  padding-right: 0;
 }
 .card:not(.card-vertical):not(.card-horizontal) > .card-header { padding-top: var(--spacing-large); }
 .card:not(.card-vertical):not(.card-horizontal) > .card-body { padding-bottom: 0; }
@@ -2050,7 +2052,9 @@ body {
 
 /* Selectable card — selected */
 .card.card-selected {
-  border-color: var(--accent-color);
+  border-color: var(--mds-color-theme-outline-input-active, var(--accent-color));
+  box-shadow: inset 0 0 0 1px var(--mds-color-theme-outline-input-active, var(--accent-color));
+  background: var(--mds-color-theme-background-primary-active);
 }
 
 .card.card-selected .card-select-icon {
@@ -2086,7 +2090,8 @@ body {
 /* Card header */
 .card-header {
   display: flex;
-  align-items: flex-start;
+  align-items: center;
+  justify-content: space-between;
   gap: var(--spacing-xx-small);
   width: 100%;
 }
@@ -6511,10 +6516,10 @@ select.form-input:disabled {
   flex-shrink: 0;
   width: 16px;
   height: 16px;
-  margin-top: var(--spacing-micro);
-  border: var(--border-width-small) solid var(--outline-input);
+  margin-top: 2px;
+  border: 1px solid var(--outline-input);
   border-radius: 2px;
-  background: var(--mds-color-theme-background-primary-active);
+  background: var(--mds-color-theme-control-inactive-normal, rgba(255, 255, 255, 0.11));
   transition: background 0.15s, border-color 0.15s, box-shadow 0.15s;
   display: flex;
   align-items: center;
@@ -6531,13 +6536,14 @@ select.form-input:disabled {
 
 /* Hover */
 .checkbox:hover .checkbox-box {
-  border-color: var(--outline-input-hover);
-  background: var(--mds-color-theme-background-primary-active);
+  border-color: var(--outline-input);
+  background: var(--mds-color-theme-control-inactive-hover, rgba(255, 255, 255, 0.2));
 }
 
 /* Pressed */
 .checkbox:active .checkbox-box {
-  background: var(--mds-color-theme-background-primary-hover);
+  background: var(--mds-color-theme-control-inactive-pressed, rgba(255, 255, 255, 0.3));
+  border-color: var(--mds-color-theme-control-inactive-pressed, rgba(255, 255, 255, 0.3));
 }
 
 /* Checked / Selected */
@@ -6578,16 +6584,21 @@ select.form-input:disabled {
 /* Focus ring */
 .checkbox-input:focus-visible + .checkbox-box {
   box-shadow:
-    0 0 0 2px var(--bg-primary),
-    0 0 0 4px var(--accent-color),
-    0 0 0 5px color-mix(in srgb, var(--accent-color) 35%, transparent);
+    0 0 0 2px var(--focus-ring-0),
+    0 0 0 4px var(--focus-ring-1),
+    0 0 0 5px var(--focus-ring-2);
+  border-color: var(--outline-input);
 }
 
 /* Disabled */
 .checkbox.disabled {
-  opacity: 0.4;
   cursor: not-allowed;
   pointer-events: none;
+}
+
+.checkbox.disabled .checkbox-box {
+  background: var(--mds-color-theme-control-inactive-disabled, rgba(255, 255, 255, 0.07));
+  border-color: var(--outline-disabled);
 }
 
 /* Read-only */
@@ -6597,7 +6608,7 @@ select.form-input:disabled {
 }
 
 .checkbox.readonly .checkbox-box {
-  border-color: var(--outline-input-disabled);
+  border-color: var(--outline-disabled);
 }
 
 /* Checkbox label */
@@ -12177,42 +12188,30 @@ img.app-header__wordmark-logo {
 
 /* ── Custom profiles ── */
 
-/* Populated state: button grouped with heading in accordion header */
-.security-custom-profiles-header-row {
+/* Custom profiles flat section below accordion */
+.security-custom-profiles-section {
+  padding: 0 0 var(--spacing-small) 0;
+  margin-top: var(--spacing-medium);
+}
+
+.security-custom-profiles-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  width: 100%;
-}
-
-/* Empty state: flat panel separated by top divider */
-.security-custom-profiles-empty {
-  border-top: 1px solid var(--border-color);
-  padding: var(--spacing-small);
-}
-
-.security-custom-profiles-title {
-  display: flex;
-  flex-direction: column;
-  gap: var(--spacing-x-small);
 }
 
 .security-custom-profiles-desc {
-  margin: 0;
+  margin: var(--spacing-x-small) 0 0;
   font-size: var(--font-size-body-midsize);
   line-height: var(--font-lineheight-body-midsize);
   color: var(--text-secondary);
-}
-
-.security-custom-profiles-action {
-  padding-top: var(--spacing-small);
 }
 
 .custom-profile-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
   gap: var(--spacing-small);
-  padding: var(--spacing-small);
+  padding-top: var(--spacing-small);
 }
 
 .custom-profile-card {
@@ -12279,9 +12278,15 @@ img.app-header__wordmark-logo {
   line-height: var(--font-lineheight-body-small);
   color: var(--text-secondary);
   display: -webkit-box;
-  -webkit-line-clamp: 2;
+  -webkit-line-clamp: 3;
   -webkit-box-orient: vertical;
   overflow: hidden;
+}
+
+.custom-profile-card__desc--expanded {
+  display: block;
+  -webkit-line-clamp: unset;
+  overflow: visible;
 }
 
 .custom-profile-card__meta {
@@ -12293,7 +12298,11 @@ img.app-header__wordmark-logo {
   color: var(--text-secondary);
   margin-top: auto;
   padding-top: var(--spacing-xx-small);
-  border-top: 1px solid var(--outline-color);
+  border-top: none;
+  background-image: var(--gradient-divider);
+  background-size: 100% 1px;
+  background-repeat: no-repeat;
+  background-position: top;
 }
 
 .custom-profile-card__meta-sep {
@@ -12459,6 +12468,31 @@ img.app-header__wordmark-logo {
   line-height: var(--font-lineheight-body-midsize);
   resize: none;
   outline: none;
+  scrollbar-width: thin;
+  scrollbar-color: transparent transparent;
+}
+
+.instructions-textarea:hover,
+.instructions-textarea:focus {
+  scrollbar-color: var(--mds-color-theme-scrollbar-background-secondary-normal, rgba(255, 255, 255, 0.11)) transparent;
+}
+
+.instructions-textarea::-webkit-scrollbar {
+  width: 6px;
+}
+
+.instructions-textarea::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.instructions-textarea::-webkit-scrollbar-thumb {
+  background: transparent;
+  border-radius: 3px;
+}
+
+.instructions-textarea:hover::-webkit-scrollbar-thumb,
+.instructions-textarea:focus::-webkit-scrollbar-thumb {
+  background: var(--mds-color-theme-scrollbar-background-secondary-normal, rgba(255, 255, 255, 0.11));
 }
 
 .instructions-textarea::placeholder {
@@ -12584,9 +12618,9 @@ img.app-header__wordmark-logo {
   max-width: 95vw;
   max-height: 85vh;
   border-radius: var(--border-radius-large);
-  background: var(--bg-primary, #1a1a1a);
-  border: 1px solid rgba(255, 255, 255, 0.11);
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
+  background: var(--bg-primary);
+  border: 1px solid var(--border-color);
+  box-shadow: var(--elevation-3);
 }
 
 .optimize-modal-header {
@@ -12639,7 +12673,7 @@ img.app-header__wordmark-logo {
   border-radius: var(--border-radius-medium);
   border: var(--border-width-small) solid rgba(255, 255, 255, 0.11);
   background: var(--bg-glass, rgba(255, 255, 255, 0.05));
-  min-height: 0;
+  min-height: 700px;
   overflow: hidden;
 }
 
@@ -12794,9 +12828,9 @@ img.app-header__wordmark-logo {
   width: 720px;
   height: 80vh;
   border-radius: var(--border-radius-large);
-  background: var(--bg-primary, #1a1a1a);
-  border: 1px solid rgba(255, 255, 255, 0.11);
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
+  background: var(--bg-primary);
+  border: 1px solid var(--border-color);
+  box-shadow: var(--elevation-3);
 }
 
 .example-modal-header {
@@ -12876,6 +12910,29 @@ img.app-header__wordmark-logo {
   overflow-y: auto;
   padding: 8px 20px 16px;
   min-height: 0;
+  scrollbar-width: thin;
+  scrollbar-color: transparent transparent;
+}
+
+.example-modal-body:hover {
+  scrollbar-color: var(--mds-color-theme-scrollbar-background-secondary-normal, rgba(255, 255, 255, 0.11)) transparent;
+}
+
+.example-modal-body::-webkit-scrollbar {
+  width: 6px;
+}
+
+.example-modal-body::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.example-modal-body::-webkit-scrollbar-thumb {
+  background: transparent;
+  border-radius: 3px;
+}
+
+.example-modal-body:hover::-webkit-scrollbar-thumb {
+  background: var(--mds-color-theme-scrollbar-background-secondary-normal, rgba(255, 255, 255, 0.11));
 }
 
 .example-modal-examples-list {
@@ -13121,10 +13178,12 @@ img.app-header__wordmark-logo {
 
 .add-capability-modal {
   width: 578px;
+  height: 700px;
   max-height: calc(100vh - 80px);
   display: flex;
   flex-direction: column;
   background: var(--bg-primary);
+  border: 1px solid var(--border-color);
   border-radius: var(--border-radius-large);
   box-shadow: var(--elevation-3);
   overflow: hidden;
@@ -13276,14 +13335,36 @@ img.app-header__wordmark-logo {
   overflow-y: auto;
   margin: var(--spacing-small) var(--spacing-small) 0;
   min-height: 0;
+  scrollbar-width: thin;
+  scrollbar-color: transparent transparent;
+}
+
+.add-capability-list:hover {
+  scrollbar-color: var(--mds-color-theme-scrollbar-background-secondary-normal, rgba(255, 255, 255, 0.11)) transparent;
+}
+
+.add-capability-list::-webkit-scrollbar {
+  width: 6px;
+}
+
+.add-capability-list::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.add-capability-list::-webkit-scrollbar-thumb {
+  background: transparent;
+  border-radius: 3px;
+}
+
+.add-capability-list:hover::-webkit-scrollbar-thumb {
+  background: var(--mds-color-theme-scrollbar-background-secondary-normal, rgba(255, 255, 255, 0.11));
 }
 
 .add-capability-item {
   display: flex;
   align-items: center;
-  gap: var(--spacing-x-small);
-  height: 52px;
-  padding: 0 var(--spacing-x-small);
+  gap: 12px;
+  padding: 8px 12px;
   border-radius: var(--border-radius-small);
   cursor: pointer;
   transition: background 0.12s;
@@ -13314,25 +13395,32 @@ img.app-header__wordmark-logo {
   justify-content: center;
   width: 16px;
   height: 16px;
-  border-radius: 3px;
-  border: 2px solid var(--outline-input);
+  border-radius: 2px;
+  border: 1px solid var(--outline-input);
+  background: var(--mds-color-theme-control-inactive-normal, rgba(255, 255, 255, 0.11));
   flex-shrink: 0;
   transition: background 0.12s, border-color 0.12s;
   color: var(--color-theme-inverted-text-primary-normal);
 }
 
+.add-capability-item:hover .add-capability-item-checkbox:not(.checked):not(.disabled) {
+  background: var(--mds-color-theme-control-inactive-hover, rgba(255, 255, 255, 0.2));
+}
+
 .add-capability-item-checkbox.checked {
-  background: var(--color-theme-control-active-normal, #64b4fa);
-  border-color: var(--color-theme-control-active-normal, #64b4fa);
+  background: var(--mds-color-theme-control-active-normal, #64b4fa);
+  border-color: var(--mds-color-theme-control-active-normal, #64b4fa);
 }
 
 .add-capability-item-checkbox.pending {
-  background: var(--color-theme-control-active-normal, #64b4fa);
-  border-color: var(--color-theme-control-active-normal, #64b4fa);
+  background: var(--mds-color-theme-control-active-normal, #64b4fa);
+  border-color: var(--mds-color-theme-control-active-normal, #64b4fa);
   opacity: 0.6;
 }
 
 .add-capability-item-checkbox.disabled {
+  background: var(--mds-color-theme-control-inactive-disabled, rgba(255, 255, 255, 0.07));
+  border-color: var(--outline-disabled);
   opacity: 0.5;
 }
 
@@ -13363,9 +13451,10 @@ img.app-header__wordmark-logo {
   gap: var(--spacing-xx-small);
   font-family: var(--font-family);
   font-size: var(--font-size-body-midsize);
-  font-weight: var(--font-weight-medium);
-  line-height: 20px;
+  font-weight: var(--font-weight-regular);
+  line-height: var(--font-lineheight-body-midsize, 20px);
   color: var(--text-primary);
+  font-feature-settings: 'ss02' 1;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -13377,18 +13466,30 @@ img.app-header__wordmark-logo {
 }
 
 .add-capability-item-meta {
+  display: flex;
+  align-items: center;
+  gap: 4px;
   font-family: var(--font-family);
   font-size: var(--font-size-body-small);
   font-weight: var(--font-weight-regular);
-  line-height: 16px;
+  line-height: var(--font-lineheight-body-small, 16px);
   color: var(--text-secondary);
+  font-feature-settings: 'ss02' 1;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 }
 
 .add-capability-item-dot {
-  margin: 0 var(--spacing-xxx-small);
+  display: inline-block;
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background: var(--text-secondary);
+  flex-shrink: 0;
+  font-size: 0;
+  line-height: 0;
+  overflow: hidden;
 }
 
 .add-capability-item-arrow {
@@ -15645,9 +15746,10 @@ img.app-header__wordmark-logo {
 .ai-dialog {
   width: 400px;
   max-width: calc(100vw - 40px);
-  border-radius: 12px;
-  background: var(--mds-color-theme-background-solid-primary-normal, var(--bg-primary));
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+  border-radius: var(--border-radius-medium);
+  background: var(--bg-primary);
+  border: 1px solid var(--border-color);
+  box-shadow: var(--elevation-3);
   animation: ai-shell-in 0.2s ease-out;
   display: flex;
   flex-direction: column;
@@ -16659,6 +16761,28 @@ img.app-header__wordmark-logo {
   font-size: var(--font-size-body-midsize);
   line-height: 1.5;
   max-width: 360px;
+}
+
+.ps-details-empty__divider {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-small);
+  width: 100%;
+  max-width: 240px;
+  margin: var(--spacing-x-small) 0;
+}
+
+.ps-details-empty__divider-line {
+  flex: 1;
+  height: 1px;
+  background: var(--outline-color);
+}
+
+.ps-details-empty__divider-text {
+  font-size: var(--font-size-body-small);
+  color: var(--text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
 }
 
 .ps-description {

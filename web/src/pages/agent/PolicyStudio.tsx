@@ -148,7 +148,7 @@ export default function PolicyStudio({ onClose, onPublish, initialData, versionO
     ? versionOptions
     : [{ value: 'v1', label: 'v1 (current)' }];
   const [selectedVersion, setSelectedVersion] = useState(versions[versions.length - 1]?.value ?? 'v1');
-  const [statusMessage, setStatusMessage] = useState(initialData ? 'The profile now covers discovered patterns and improved general detection based on your insights verdicts.' : 'Waiting for your first prompt to generate a policy.');
+  const [statusMessage, setStatusMessage] = useState(initialData ? 'The profile now covers discovered patterns and improved general detection based on your insights verdicts.' : 'Add rules below or use the assistant to generate them.');
   const [messages, setMessages] = useState<PolicyMessage[]>(() => {
     if (!initialData) return [];
     return [{
@@ -167,6 +167,7 @@ export default function PolicyStudio({ onClose, onPublish, initialData, versionO
   const [editingDescription, setEditingDescription] = useState(false);
   const [descriptionDraft, setDescriptionDraft] = useState(policyDescription);
   const descInputRef = useRef<HTMLTextAreaElement>(null);
+  const [manualMode, setManualMode] = useState(false);
 
   useEffect(() => { setDescriptionDraft(policyDescription); }, [policyDescription]);
   useEffect(() => { if (editingDescription) descInputRef.current?.focus(); }, [editingDescription]);
@@ -272,8 +273,10 @@ export default function PolicyStudio({ onClose, onPublish, initialData, versionO
     }
   };
 
+  const hasBehaviors = overview.blocked.length + overview.allowed.length + overview.edgeCases.length > 0;
+
   const handlePublish = () => {
-    if (!policyName) return;
+    if (!policyName.trim() || !policyDescription.trim() || !hasBehaviors) return;
     if (isEditing) {
       setShowPublishDialog(true);
     } else {
@@ -422,14 +425,27 @@ export default function PolicyStudio({ onClose, onPublish, initialData, versionO
               {policyDescription && <button className="ps-source-link">View source text</button>}
             </div>
 
-            {!policyDescription ? (
+            {!policyDescription && !manualMode ? (
               <div className="ps-details-empty">
                 <Illustration name="message" size="oneninetwo" variant="empty-primary" width={120} height={120} />
                 <p>Policy details will appear here once you create a policy using the assistant.</p>
+                <div className="ps-details-empty__divider">
+                  <span className="ps-details-empty__divider-line" />
+                  <span className="ps-details-empty__divider-text">or</span>
+                  <span className="ps-details-empty__divider-line" />
+                </div>
+                <Button variant="secondary" size="sm" onClick={() => {
+                  setManualMode(true);
+                  setEditingDescription(true);
+                  setOverviewExpanded(true);
+                }}>
+                  <Icon name="edit" size={16} />
+                  Create manually
+                </Button>
               </div>
             ) : (
               <>
-                {editingDescription ? (
+                {editingDescription || (!policyDescription && manualMode) ? (
                   <textarea
                     ref={descInputRef}
                     className="ps-description ps-description--editing"
@@ -438,6 +454,7 @@ export default function PolicyStudio({ onClose, onPublish, initialData, versionO
                     onBlur={commitDescription}
                     onKeyDown={e => { if (e.key === 'Escape') { setDescriptionDraft(policyDescription); setEditingDescription(false); } }}
                     rows={3}
+                    placeholder="Describe what this policy does..."
                   />
                 ) : (
                   <p className="ps-description ps-description--editable" onClick={() => setEditingDescription(true)}>
@@ -566,7 +583,10 @@ export default function PolicyStudio({ onClose, onPublish, initialData, versionO
           <div className="fpmodal-footer-bar">
             <div className="fpmodal-footer__actions">
               <Button variant="secondary" onClick={onClose}>Cancel</Button>
-              <Button disabled={!policyName} onClick={handlePublish}>
+              <Button
+                disabled={!policyName.trim() || !policyDescription.trim() || !hasBehaviors}
+                onClick={handlePublish}
+              >
                 <Icon name="alert" weight="bold" size={16} />
                 {isEditing ? 'Update' : 'Publish'}
               </Button>

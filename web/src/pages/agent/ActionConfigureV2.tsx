@@ -19,9 +19,12 @@ import { Illustration } from '../../assets/illustrations';
 import { Tooltip } from '../../components/shared/Tooltip';
 import { Banner } from '../../components/shared/Banner';
 import { Modal, ModalHeader, ModalBody, ModalFooter } from '../../components/shared/Modal';
+import { TextLink } from '../../components/shared/TextLink';
+
 import CreateEngineModal from '../CreateEngineModal';
 import CreateFulfillmentModal from './CreateFulfillmentModal';
 import PolicyStudio from './PolicyStudio';
+import { optimizeInstructions } from '../../api/ciscoAi';
 import { Icon } from '../../icons';
 import {
   type UpdateStatus,
@@ -38,6 +41,27 @@ import {
   buildSeededVersionCache,
   resolveVersionMetaFromCache,
 } from './actionConfigShared';
+
+function ClampedDesc({ text, expanded, onToggle }: { text: string; expanded: boolean; onToggle: () => void }) {
+  const ref = useRef<HTMLParagraphElement>(null);
+  const [overflows, setOverflows] = useState(false);
+
+  useEffect(() => {
+    const el = ref.current;
+    if (el) setOverflows(el.scrollHeight > el.clientHeight + 1);
+  }, [text, expanded]);
+
+  return (
+    <div className="custom-profile-card__body">
+      <p ref={ref} className={`custom-profile-card__desc${expanded ? ' custom-profile-card__desc--expanded' : ''}`}>{text}</p>
+      {(overflows || expanded) && (
+        <TextLink variant="inline" size="sm" onClick={(e) => { e.preventDefault(); onToggle(); }}>
+          {expanded ? 'Collapse' : 'View all'}
+        </TextLink>
+      )}
+    </div>
+  );
+}
 
 type ActionRow = {
   id: number;
@@ -98,9 +122,9 @@ interface StandardGuardrail {
 
 const DEFAULT_STANDARD_GUARDRAILS: StandardGuardrail[] = [
   { id: 'std-toxicity', name: 'Toxicity', description: 'Detect and filter toxic language, insults, and abusive content in conversations.', enabled: true, sensitivity: 50, enforcement: 'monitor' },
-  { id: 'std-harm', name: 'Harm Detection', description: 'Identify requests or responses that could cause physical, emotional, or financial harm.', enabled: true, sensitivity: 50, enforcement: 'monitor' },
+  { id: 'std-harm', name: 'Harm detection', description: 'Identify requests or responses that could cause physical, emotional, or financial harm.', enabled: true, sensitivity: 50, enforcement: 'monitor' },
   { id: 'std-jailbreak', name: 'Jailbreak', description: 'Detect prompt injection attempts designed to bypass agent instructions and safety rules.', enabled: true, sensitivity: 50, enforcement: 'block' },
-  { id: 'std-multiturn', name: 'Multi-turn Jailbreak', description: 'Detect multi-step manipulation where users gradually steer the agent away from its guardrails across turns.', enabled: true, sensitivity: 50, enforcement: 'block' },
+  { id: 'std-multiturn', name: 'Multi-turn jailbreak', description: 'Detect multi-step manipulation where users gradually steer the agent away from its guardrails across turns.', enabled: true, sensitivity: 50, enforcement: 'block' },
 ];
 
 type Direction = 'prompt' | 'response';
@@ -144,38 +168,38 @@ interface CustomGuardrailItem {
 
 const DEFAULT_ADVANCED_GROUPS: AdvancedGuardrailGroup[] = [
   {
-    id: 'security', label: 'Security Guardrails', icon: 'shield',
+    id: 'security', label: 'Security guardrails', icon: 'shield',
     items: [
-      { id: 'sec-prompt-injection', name: 'Prompt Injection', description: 'Detect attempts to manipulate the agent by injecting hidden instructions into user input.', enabled: false, direction: 'prompt', action: 'block' },
-      { id: 'sec-code-injection', name: 'Code Injection', description: 'Block inputs that attempt to execute arbitrary code through the agent.', enabled: false, direction: 'prompt', action: 'block' },
-      { id: 'sec-system-prompt', name: 'System Prompt Extraction', description: 'Prevent users from tricking the agent into revealing its system prompt or configuration.', enabled: false, direction: 'prompt', action: 'block' },
-      { id: 'sec-instruction-override', name: 'Instruction Override', description: 'Block attempts to override or replace the agent\u2019s original instructions.', enabled: false, direction: 'prompt', action: 'block' },
-      { id: 'sec-encoding-attack', name: 'Encoding Attack', description: 'Detect obfuscated payloads using Base64, Unicode, or other encoding schemes.', enabled: false, direction: 'prompt', action: 'block' },
-      { id: 'sec-sql-injection', name: 'SQL Injection', description: 'Identify inputs crafted to execute unauthorized database queries.', enabled: false, direction: 'prompt', action: 'block' },
-      { id: 'sec-xss', name: 'XSS Injection', description: 'Block cross-site scripting payloads embedded in user messages.', enabled: false, direction: 'prompt', action: 'block' },
-      { id: 'sec-resource-hijack', name: 'Resource Hijack', description: 'Prevent prompts designed to consume excessive compute or API resources.', enabled: false, direction: 'prompt', action: 'block' },
+      { id: 'sec-prompt-injection', name: 'Prompt injection', description: 'Detect attempts to manipulate the agent by injecting hidden instructions into user input.', enabled: false, direction: 'prompt', action: 'block' },
+      { id: 'sec-code-injection', name: 'Code injection', description: 'Block inputs that attempt to execute arbitrary code through the agent.', enabled: false, direction: 'prompt', action: 'block' },
+      { id: 'sec-system-prompt', name: 'System prompt extraction', description: 'Prevent users from tricking the agent into revealing its system prompt or configuration.', enabled: false, direction: 'prompt', action: 'block' },
+      { id: 'sec-instruction-override', name: 'Instruction override', description: 'Block attempts to override or replace the agent\u2019s original instructions.', enabled: false, direction: 'prompt', action: 'block' },
+      { id: 'sec-encoding-attack', name: 'Encoding attack', description: 'Detect obfuscated payloads using Base64, Unicode, or other encoding schemes.', enabled: false, direction: 'prompt', action: 'block' },
+      { id: 'sec-sql-injection', name: 'SQL injection', description: 'Identify inputs crafted to execute unauthorized database queries.', enabled: false, direction: 'prompt', action: 'block' },
+      { id: 'sec-xss', name: 'XSS injection', description: 'Block cross-site scripting payloads embedded in user messages.', enabled: false, direction: 'prompt', action: 'block' },
+      { id: 'sec-resource-hijack', name: 'Resource hijack', description: 'Prevent prompts designed to consume excessive compute or API resources.', enabled: false, direction: 'prompt', action: 'block' },
     ],
   },
   {
-    id: 'privacy', label: 'Privacy Guardrails', icon: 'privacy-circle',
+    id: 'privacy', label: 'Privacy guardrails', icon: 'privacy-circle',
     items: [
-      { id: 'priv-pii', name: 'PII Detection', description: 'Identify and flag personally identifiable information in agent responses.', enabled: false, direction: 'response', action: 'block' },
-      { id: 'priv-ssn', name: 'SSN Redaction', description: 'Automatically redact Social Security numbers from responses.', enabled: false, direction: 'response', action: 'block' },
-      { id: 'priv-credit-card', name: 'Credit Card Redaction', description: 'Strip credit card numbers from agent output before delivery.', enabled: false, direction: 'response', action: 'block' },
-      { id: 'priv-email', name: 'Email Redaction', description: 'Remove email addresses from responses to prevent data leakage.', enabled: false, direction: 'response', action: 'block' },
-      { id: 'priv-phone', name: 'Phone Number Redaction', description: 'Redact phone numbers from agent responses.', enabled: false, direction: 'response', action: 'block' },
-      { id: 'priv-address', name: 'Address Redaction', description: 'Strip physical addresses from responses to protect user privacy.', enabled: false, direction: 'response', action: 'block' },
-      { id: 'priv-ip', name: 'IP Address Redaction', description: 'Remove IP addresses from agent output.', enabled: false, direction: 'response', action: 'allow' },
+      { id: 'priv-pii', name: 'PII detection', description: 'Identify and flag personally identifiable information in agent responses.', enabled: false, direction: 'response', action: 'block' },
+      { id: 'priv-ssn', name: 'SSN redaction', description: 'Automatically redact Social Security numbers from responses.', enabled: false, direction: 'response', action: 'block' },
+      { id: 'priv-credit-card', name: 'Credit card redaction', description: 'Strip credit card numbers from agent output before delivery.', enabled: false, direction: 'response', action: 'block' },
+      { id: 'priv-email', name: 'Email redaction', description: 'Remove email addresses from responses to prevent data leakage.', enabled: false, direction: 'response', action: 'block' },
+      { id: 'priv-phone', name: 'Phone number redaction', description: 'Redact phone numbers from agent responses.', enabled: false, direction: 'response', action: 'block' },
+      { id: 'priv-address', name: 'Address redaction', description: 'Strip physical addresses from responses to protect user privacy.', enabled: false, direction: 'response', action: 'block' },
+      { id: 'priv-ip', name: 'IP address redaction', description: 'Remove IP addresses from agent output.', enabled: false, direction: 'response', action: 'allow' },
     ],
   },
   {
-    id: 'safety', label: 'Safety Guardrails', icon: 'check-circle',
+    id: 'safety', label: 'Safety guardrails', icon: 'check-circle',
     items: [
       { id: 'safe-toxicity', name: 'Toxicity', description: 'Detect and block toxic, abusive, or offensive language in responses.', enabled: false, direction: 'response', action: 'block' },
-      { id: 'safe-hate', name: 'Hate Speech', description: 'Block responses containing hate speech targeting protected groups.', enabled: false, direction: 'response', action: 'block' },
+      { id: 'safe-hate', name: 'Hate speech', description: 'Block responses containing hate speech targeting protected groups.', enabled: false, direction: 'response', action: 'block' },
       { id: 'safe-self-harm', name: 'Self-harm', description: 'Prevent responses that encourage or provide guidance on self-harm.', enabled: false, direction: 'response', action: 'block' },
       { id: 'safe-violence', name: 'Violence', description: 'Block content that promotes, glorifies, or instructs on violence.', enabled: false, direction: 'response', action: 'block' },
-      { id: 'safe-sexual', name: 'Sexual Content', description: 'Filter sexually explicit or inappropriate content from responses.', enabled: false, direction: 'response', action: 'block' },
+      { id: 'safe-sexual', name: 'Sexual content', description: 'Filter sexually explicit or inappropriate content from responses.', enabled: false, direction: 'response', action: 'block' },
       { id: 'safe-harassment', name: 'Harassment', description: 'Detect and block responses that harass, intimidate, or bully users.', enabled: false, direction: 'response', action: 'block' },
       { id: 'safe-misinfo', name: 'Misinformation', description: 'Flag responses containing known false or misleading claims.', enabled: false, direction: 'response', action: 'block' },
       { id: 'safe-radicalization', name: 'Radicalization', description: 'Block content that promotes extremist ideologies or recruitment.', enabled: false, direction: 'response', action: 'block' },
@@ -232,22 +256,30 @@ export default function ActionConfigureV2() {
   const [hasAcknowledgedAdvancedPricing, setHasAcknowledgedAdvancedPricing] = useState(false);
   const [showPolicyStudio, setShowPolicyStudio] = useState(false);
   const [editingProfileId, setEditingProfileId] = useState<string | null>(null);
+  const [expandedProfileDescs, setExpandedProfileDescs] = useState<Set<string>>(new Set());
 
-  const handleOptimize = () => {
-    setOriginalTextSnapshot(profileForm.instructions);
+  const handleOptimize = useCallback(async () => {
+    const text = profileForm.instructions.trim();
+    if (!text) return;
+
+    setOriginalTextSnapshot(text);
     setOptimizeState('generating');
     setOptimizedText('');
     setOptimizeSummary({ changes: [], reasoning: [] });
     setShowOptimizeModal(true);
-    setTimeout(() => {
-      setOptimizedText(`You are a conversational pizza order bot. Your task is to help users place accurate pizza orders by gathering relevant information in a natural, conversational way. Guide the user step by step: clarify order details (such as pizza size, crust type, toppings, number of pizzas, delivery/pickup, address or contact if needed, special instructions), confirm their selections, and provide a summary of the order for final confirmation.\n\n**Reasoning Order:**\nFirst, ask targeted questions and clarify the user's desires at each stage (reasoning). Then, once all necessary information is gathered, provide a clear, itemized summary and prompt the user for final confirmation (conclusion).\n\n**Output Format:**\nAll responses should be short conversational English sentences or questions, except for the final order summary, which should be presented as a neatly formatted list in plain text.`);
-      setOptimizeSummary({
-        changes: ['Clarify Pizza order bot\'s role and goals.', 'Add error handling for invalid inputs at each step.', 'Offer menu categories or search by diet.', 'Include upsell prompts ("Would you like a drink or dessert?").', 'Support modifying or canceling items before final confirmation.', 'Send an order-tracking link after completion.'],
-        reasoning: ['Reorganized instruction format for better structure.', 'Removed redundancies and overlapped instructions.', 'Simplified language into clear, numbered steps.', 'Preserved all required variables ({{customer_id}}, {{user_name}}, {{order_items}}).', 'Organized flow from verification → naming → ordering → confirmation.', 'Minimized token count while covering typical ordering tasks.'],
-      });
+
+    try {
+      const result = await optimizeInstructions(text);
+      setOptimizedText(result.optimizedText);
+      setOptimizeSummary({ changes: result.changes, reasoning: result.reasoning });
       setOptimizeState('completed');
-    }, 3000);
-  };
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Optimization failed';
+      showToast(message, 'error');
+      setShowOptimizeModal(false);
+      setOptimizeState('idle');
+    }
+  }, [profileForm.instructions, showToast]);
 
   const [capabilities, setCapabilities] = useState<CapabilityRecord[]>(CAPABILITIES);
   const [rows, setRows] = useState<ActionRow[]>(
@@ -837,7 +869,7 @@ export default function ActionConfigureV2() {
                     <button type="button" className="instructions-toolbar-btn" aria-label="Table"><Icon name="table" weight="bold" size={16} /></button>
                     <span className="instructions-toolbar-divider" />
                     <button type="button" className="instructions-toolbar-pill" onClick={() => setShowExampleModal(true)}>
-                      <Icon name="text-code-block" weight="bold" size={16} />
+                      <Icon name="guide" weight="bold" size={16} />
                       Example
                     </button>
                     {optimizeAccepted && (
@@ -855,7 +887,7 @@ export default function ActionConfigureV2() {
                 <textarea className="instructions-textarea" placeholder="Set clear goals for your agent. Provide step-by-step instructions to help them succeed in reaching these targets." value={profileForm.instructions} onChange={(e) => updateProfileField('instructions', e.target.value)} />
                 {optimizeAccepted && (
                   <div className="instructions-ai-footer">
-                    <Icon name="check" weight="bold" size={14} /><span>AI Generated</span><span className="instructions-ai-divider">·</span><span>Is this helpful?</span>
+                    <Icon name="check" weight="bold" size={14} color="var(--mds-color-theme-text-success-normal, var(--success-color))" /><span>AI Generated</span><span className="instructions-ai-divider">·</span><span>Is this helpful?</span>
                     <button type="button" className="instructions-feedback-btn" aria-label="Helpful"><Icon name="like" weight="bold" size={14} /></button>
                     <button type="button" className="instructions-feedback-btn" aria-label="Not helpful"><Icon name="dislike" weight="bold" size={14} /></button>
                   </div>
@@ -896,7 +928,7 @@ export default function ActionConfigureV2() {
                     <div className="security-tier-card-inner">
                       <Icon name="shield" weight="bold" size={24} />
                       <div className="security-tier-card-text">
-                        <span className="security-tier-card-title">Standard Guardrails</span>
+                        <span className="security-tier-card-title">Standard guardrails</span>
                         <span className="security-tier-card-desc">Basic protection with toxicity, harm detection, and jailbreak prevention.</span>
                         <span className="security-tier-card-count">{standardGuardrails.filter(g => g.enabled).length}/{standardGuardrails.length} enabled</span>
                       </div>
@@ -908,7 +940,7 @@ export default function ActionConfigureV2() {
                     <div className="security-tier-card-inner">
                       <Icon name="secure-circle" weight="bold" size={24} />
                       <div className="security-tier-card-text">
-                        <span className="security-tier-card-title">Advanced Guardrails <Badge variant="success" className="security-tier-badge">AI Defense</Badge></span>
+                        <span className="security-tier-card-title">Advanced guardrails <Badge variant="success" className="security-tier-badge">AI Defense</Badge></span>
                         <span className="security-tier-card-desc">Comprehensive security, privacy, and safety guardrails with custom profiles.</span>
                         <span className="security-tier-card-count">{advancedDefaultGroups.reduce((sum, gp) => sum + gp.items.filter(i => i.enabled).length, 0) + advancedCustomItems.filter(c => c.enabled).length}/{advancedDefaultGroups.reduce((sum, gp) => sum + gp.items.length, 0) + advancedCustomItems.length} enabled{advancedCustomItems.length > 0 ? ` · ${advancedCustomItems.length} custom` : ''}</span>
                       </div>
@@ -944,7 +976,9 @@ export default function ActionConfigureV2() {
                                   setConfirmDisableJailbreak(true);
                                   return;
                                 }
-                                setStandardGuardrails(prev => prev.map(gr => gr.id === g.id ? { ...gr, enabled: !gr.enabled } : gr));
+                                const willEnable = !g.enabled;
+                                setStandardGuardrails(prev => prev.map(gr => gr.id === g.id ? { ...gr, enabled: willEnable } : gr));
+                                if (willEnable) showToast(`${g.name} guardrail enabled`, 'success');
                               }}
                               size="compact"
                             />
@@ -1002,7 +1036,7 @@ export default function ActionConfigureV2() {
                     <Banner
                       type="info"
                       title="Upgrade to Pro"
-                      subtitle="Enable Advanced Guardrails powered by AI Defense for comprehensive protection across security, privacy, and safety categories."
+                      subtitle="Enable advanced guardrails powered by AI Defense for comprehensive protection across security, privacy, and safety categories."
                     />
                   )}
 
@@ -1048,6 +1082,7 @@ export default function ActionConfigureV2() {
                                               ? { ...gp, items: gp.items.map(it => it.id === item.id ? { ...it, enabled: true } : it) }
                                               : gp
                                           ));
+                                          showToast(`${item.name} guardrail enabled`, 'success');
                                           return;
                                         }
                                         setAdvancedDefaultGroups(prev => prev.map(gp =>
@@ -1092,91 +1127,86 @@ export default function ActionConfigureV2() {
                           </Table>
                         </AccordionItem>
                       ))}
-                      {advancedCustomItems.length > 0 ? (
-                        <AccordionItem
-                          defaultExpanded
-                          title={
-                            <div className="security-custom-profiles-header-row">
-                              <div className="security-group-header">
-                                <Icon name="document-create" weight="bold" size={18} />
-                                <span>Custom Profiles</span>
-                                <Badge variant="default">{advancedCustomItems.filter(i => i.enabled).length}/{advancedCustomItems.length}</Badge>
-                              </div>
-                              <Button
-                                variant="primary"
-                                size="sm"
-                                disabled={!isPaidUser}
-                                onClick={(e: React.MouseEvent) => { e.stopPropagation(); setEditingProfileId(null); setShowPolicyStudio(true); }}
-                              >
-                                <Icon name="plus" weight="bold" size={16} />Create Custom Profile
-                              </Button>
-                            </div>
-                          }
+                    </AccordionGroup>
+                    <div className="security-custom-profiles-section">
+                      <div className="security-custom-profiles-header">
+                        <div className="security-group-header">
+                          <Icon name="document-create" weight="bold" size={18} />
+                          <span>Custom profiles</span>
+                          {advancedCustomItems.length > 0 && (
+                            <Badge variant="default">{advancedCustomItems.filter(i => i.enabled).length}/{advancedCustomItems.length}</Badge>
+                          )}
+                        </div>
+                        <Button
+                          variant="primary"
+                          size="sm"
+                          disabled={!isPaidUser}
+                          onClick={() => { setEditingProfileId(null); setShowPolicyStudio(true); }}
                         >
-                          <div className="custom-profile-grid">
-                            {advancedCustomItems.map((item) => (
-                              <div key={item.id} className={`custom-profile-card${item.enabled ? '' : ' custom-profile-card--disabled'}`}>
-                                <div className="custom-profile-card__header">
-                                  <Toggle
-                                    checked={item.enabled}
-                                    disabled={!isPaidUser}
-                                    onChange={() => setAdvancedCustomItems(prev => prev.map(it => it.id === item.id ? { ...it, enabled: !it.enabled } : it))}
-                                    size="compact"
-                                  />
-                                  <h4 className="custom-profile-card__name">{item.name}</h4>
-                                  <div className="custom-profile-card__actions">
-                                    <Button
-                                      variant="tertiary"
-                                      size="sm"
-                                      aria-label={`Edit ${item.name}`}
-                                      onClick={() => { setEditingProfileId(item.id); setShowPolicyStudio(true); }}
-                                    >
-                                      <Icon name="edit" size={16} />
-                                    </Button>
-                                    <Button
-                                      variant="tertiary"
-                                      size="sm"
-                                      aria-label={`Delete ${item.name}`}
-                                      onClick={() => setAdvancedCustomItems(prev => prev.filter(it => it.id !== item.id))}
-                                    >
-                                      <Icon name="delete" size={16} />
-                                    </Button>
-                                  </div>
-                                </div>
-                                <div className="custom-profile-card__body">
-                                  <p className="custom-profile-card__desc">{item.description}</p>
-                                </div>
-                                <div className="custom-profile-card__meta">
-                                  <span>{item.createdBy}</span>
-                                  <span className="custom-profile-card__meta-sep" aria-hidden="true" />
-                                  <span>{item.createdAt}</span>
+                          <Icon name="plus" weight="bold" size={16} />Create custom profile
+                        </Button>
+                      </div>
+                      <p className="security-custom-profiles-desc">Generate custom profiles tailored specifically to this agent&apos;s configuration and requirements.</p>
+                      {advancedCustomItems.length > 0 && (
+                        <div className="custom-profile-grid">
+                          {advancedCustomItems.map((item) => (
+                            <div key={item.id} className={`custom-profile-card${item.enabled ? '' : ' custom-profile-card--disabled'}`}>
+                              <div className="custom-profile-card__header">
+                                <Toggle
+                                  checked={item.enabled}
+                                  disabled={!isPaidUser}
+                                  onChange={() => {
+                                    const willEnable = !item.enabled;
+                                    setAdvancedCustomItems(prev => prev.map(it => it.id === item.id ? { ...it, enabled: willEnable } : it));
+                                    if (willEnable) showToast(`${item.name} profile enabled`, 'success');
+                                  }}
+                                  size="compact"
+                                />
+                                <h4 className="custom-profile-card__name">{item.name}</h4>
+                                <div className="custom-profile-card__actions">
+                                  <Button
+                                    variant="tertiary"
+                                    size="sm"
+                                    aria-label={`Edit ${item.name}`}
+                                    onClick={() => { setEditingProfileId(item.id); setShowPolicyStudio(true); }}
+                                  >
+                                    <Icon name="edit" size={16} />
+                                  </Button>
+                                  <Button
+                                    variant="tertiary"
+                                    size="sm"
+                                    aria-label={`Delete ${item.name}`}
+                                    onClick={() => setAdvancedCustomItems(prev => prev.filter(it => it.id !== item.id))}
+                                  >
+                                    <Icon name="delete" size={16} />
+                                  </Button>
                                 </div>
                               </div>
-                            ))}
-                          </div>
-                        </AccordionItem>
-                      ) : (
-                        <div className="security-custom-profiles-empty">
-                          <div className="security-custom-profiles-title">
-                            <div className="security-group-header">
-                              <Icon name="document-create" weight="bold" size={18} />
-                              <span>Custom Profiles</span>
+                              <ClampedDesc
+                                text={item.description}
+                                expanded={expandedProfileDescs.has(item.id)}
+                                onToggle={() => setExpandedProfileDescs(prev => {
+                                  const next = new Set(prev);
+                                  if (next.has(item.id)) next.delete(item.id); else next.add(item.id);
+                                  return next;
+                                })}
+                              />
+                              <div className="custom-profile-card__meta">
+                                <span>{item.createdBy}</span>
+                                <span className="custom-profile-card__meta-sep" aria-hidden="true" />
+                                <span>{item.createdAt}</span>
+                                {item.versions.length > 1 && (
+                                  <>
+                                    <span className="custom-profile-card__meta-sep" aria-hidden="true" />
+                                    <span>{item.versions.length} versions</span>
+                                  </>
+                                )}
+                              </div>
                             </div>
-                            <p className="security-custom-profiles-desc">Generate custom profiles tailored specifically to this agent&apos;s configuration and requirements.</p>
-                          </div>
-                          <div className="security-custom-profiles-action">
-                            <Button
-                              variant="primary"
-                              size="sm"
-                              disabled={!isPaidUser}
-                              onClick={() => { setEditingProfileId(null); setShowPolicyStudio(true); }}
-                            >
-                              <Icon name="plus" weight="bold" size={16} />Create Custom Profile
-                            </Button>
-                          </div>
+                          ))}
                         </div>
                       )}
-                    </AccordionGroup>
+                    </div>
                   </div>
                 </div>
               )}
@@ -1808,7 +1838,7 @@ export default function ActionConfigureV2() {
                       placement="top"
                     >
                       <span className="add-capability-selected-label">
-                        Selected ({confirmedActions.length}/{9 - rows.length})
+                        Selected ({confirmedActions.length}/9)
                         <Icon name="info-circle" weight="bold" size={16} className="add-capability-selected-info" />
                       </span>
                     </Tooltip>
@@ -1844,7 +1874,7 @@ export default function ActionConfigureV2() {
 
       {pendingAdvancedEnable && (
         <Modal onClose={() => setPendingAdvancedEnable(null)} size="sm">
-          <ModalHeader title="Enable Advanced Guardrail?" onClose={() => setPendingAdvancedEnable(null)} />
+          <ModalHeader title="Enable advanced guardrail?" onClose={() => setPendingAdvancedEnable(null)} />
           <ModalBody>
             Advanced guardrails are powered by Cisco AI Defense and are billed based on usage. Each enabled rail will incur charges per message scanned. You can review pricing in your organization settings.
           </ModalBody>
@@ -1852,6 +1882,7 @@ export default function ActionConfigureV2() {
             <Button variant="secondary" onClick={() => setPendingAdvancedEnable(null)}>Cancel</Button>
             <Button variant="primary" onClick={() => {
               const { groupId, itemId } = pendingAdvancedEnable;
+              const itemName = advancedDefaultGroups.find(g => g.id === groupId)?.items.find(i => i.id === itemId)?.name;
               setAdvancedDefaultGroups(prev => prev.map(gp =>
                 gp.id === groupId
                   ? { ...gp, items: gp.items.map(it => it.id === itemId ? { ...it, enabled: true } : it) }
@@ -1859,6 +1890,7 @@ export default function ActionConfigureV2() {
               ));
               setHasAcknowledgedAdvancedPricing(true);
               setPendingAdvancedEnable(null);
+              showToast(`${itemName} guardrail enabled`, 'success');
             }}>Enable</Button>
           </ModalFooter>
         </Modal>
@@ -1866,7 +1898,7 @@ export default function ActionConfigureV2() {
 
       {confirmDisableJailbreak && (
         <Modal onClose={() => setConfirmDisableJailbreak(false)} size="sm">
-          <ModalHeader title="Disable Jailbreak Protection?" onClose={() => setConfirmDisableJailbreak(false)} />
+          <ModalHeader title="Disable jailbreak protection?" onClose={() => setConfirmDisableJailbreak(false)} />
           <ModalBody>
             Jailbreak protection prevents users from bypassing your agent&apos;s instructions and safety rules through prompt injection. Disabling it may expose your agent to manipulation.
           </ModalBody>
@@ -1976,7 +2008,11 @@ export default function ActionConfigureV2() {
                 <div className="optimize-modal-col-header"><Icon name="check-circle" weight="bold" size={16} color="var(--success-color)" /><h3>Optimized instructions</h3>
                   {optimizeState === 'completed' && <button type="button" className="optimize-copy-btn" onClick={() => { navigator.clipboard.writeText(optimizedText); showToast('Copied to clipboard', 'success'); }}><Icon name="copy" weight="bold" size={14} />Copy</button>}
                 </div>
-                <div className="optimize-modal-text">{optimizeState === 'generating' ? originalTextSnapshot : optimizedText}</div>
+                <div className="optimize-modal-text">
+                  {optimizeState === 'generating' ? (
+                    <p style={{ color: 'var(--text-secondary)' }}>Optimized instructions will appear here once generation is complete.</p>
+                  ) : optimizedText}
+                </div>
               </div>
               <div className="optimize-modal-summary">
                 <h3 className="optimize-modal-summary-title">Optimize summary</h3>
