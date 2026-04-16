@@ -1,108 +1,37 @@
-name: AWS Amplify Deploy
+name: Deploy to AWS Amplify
 
 on:
+  push:
+    branches: [main]
   workflow_dispatch:
-    inputs:
-      access_control:
-        description: 'Access control for the app'
-        required: true
-        default: 'public'
-        type: choice
-        options:
-          - public
-          - restricted
-      basic_auth_username:
-        description: 'Username for basic auth (required when access_control is restricted)'
-        required: false
-        type: string
-      basic_auth_password:
-        description: 'Password for basic auth (required when access_control is restricted, at least 7 characters)'
-        required: false
-        type: string
-      action:
-        description: 'Action to perform'
-        required: true
-        default: 'create-or-update'
-        type: choice
-        options:
-          - create-or-update
-          - delete        
-      branch:
-        description: 'Branch to deploy'
-        required: true
-        default: 'main'
-        type: string
-      aws_region:
-        description: 'AWS region'
-        required: true
-        default: 'us-west-2'
-        type: choice
-        options:
-          - us-east-1
-          - us-east-2
-          - us-west-2
-      framework:
-        description: 'Framework preset'
-        required: true
-        default: 'React - Vite'
-        type: choice
-        options:
-          - 'React - Vite'
-          - 'React'
-          - 'Next.js'
-          - 'Vue'
-          - 'Angular'
-          - 'Web'
-      build_command:
-        description: 'Build command (leave empty for Web - plain HTML/CSS/JS sites)'
-        required: false
-        default: 'npm run build'
-        type: string
-      output_dir:
-        description: 'Build output directory (use . for Web - plain HTML/CSS/JS sites)'
-        required: false
-        default: 'dist'
-        type: string
-      environment_variables_json:
-        description: 'Amplify environment variables JSON, for example {"API_URL":"https://example.com"}'
-        required: false
-        default: '{}'
-        type: string
-      app_name:
-        description: 'Amplify app name, defaults to repository name if not provided'
-        required: false
-        type: string        
-      enable_branch_auto_build:
-        description: 'Enable auto build on branch push'
-        required: false
-        default: false
-        type: boolean
 
 permissions:
   id-token: write
   contents: read
 
+concurrency:
+  group: amplify-deploy
+  cancel-in-progress: false
+
 jobs:
-  deploy-amplify:
+  deploy:
     uses: webexdesign/.github/.github/workflows/amplify-deploy.yml@main
     with:
-      app_name: ${{ inputs.app_name || github.event.repository.name }}
-      access_control: ${{ inputs.access_control || 'public' }}
-      basic_auth_username: ${{ inputs.basic_auth_username || '' }}
-      basic_auth_password: ${{ inputs.basic_auth_password || '' }}
-      action: ${{ inputs.action || 'create-or-update' }}
-      branch: ${{ inputs.branch || 'main' }}
-      aws_region: ${{ inputs.aws_region || 'us-west-2' }}
-      framework: ${{ inputs.framework || 'React - Vite' }}
-      build_command: ${{ inputs.build_command || 'npm run build' }}
-      output_dir: ${{ inputs.output_dir || 'dist' }}
-      environment_variables_json: ${{ inputs.environment_variables_json || '{}' }}
-      enable_branch_auto_build: ${{ github.event_name == 'push' || (github.event_name == 'workflow_dispatch' && inputs.enable_branch_auto_build) }}
+      app_name: ai-agent-studio
+      access_control: public
+      action: create-or-update
+      branch: main
+      aws_region: us-west-2
+      framework: "React - Vite"
+      build_command: "npm run build"
+      output_dir: dist
+      environment_variables_json: '{"VITE_CHAT_API_URL":"https://ai-agent-studio-proxy.sisun-ai.workers.dev"}'
+      enable_branch_auto_build: true
     secrets: inherit
 
-  trigger-build:
-    needs: deploy-amplify
-    if: ${{ always() && (inputs.action || 'create-or-update') == 'create-or-update' }}
+  configure-and-build:
+    needs: deploy
+    if: always()
     runs-on: ${{ github.repository_owner }}-amd64-runners
     env:
       FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
@@ -111,15 +40,15 @@ jobs:
         uses: cisco-actions/configure-aws-credentials@1a221e28f5827bb587dec3ac0ba9a95d01e806e8
         with:
           role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
-          aws-region: ${{ inputs.aws_region || 'us-west-2' }}
+          aws-region: us-west-2
 
-      - name: Fix build spec, refresh token, and trigger build
+      - name: Fix build spec, configure SPA redirects, and trigger build
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
-          APP_NAME="${{ inputs.app_name || github.event.repository.name }}"
-          BRANCH="${{ inputs.branch || 'main' }}"
+          APP_NAME="ai-agent-studio"
+          BRANCH="main"
           REPO="https://github.com/${{ github.repository }}"
 
           APP_ID=$(aws amplify list-apps --query "apps[?name=='${APP_NAME}'].appId" --output text)
@@ -129,7 +58,7 @@ jobs:
           fi
           echo "Found Amplify app: $APP_ID"
 
-          echo "--- Setting correct build spec (Gen 1 with cd web) ---"
+          echo "--- Updating build spec for monorepo (web/ subdirectory) ---"
           BUILDSPEC='version: 1
           frontend:
             phases:
@@ -151,31 +80,29 @@ jobs:
             --app-id "$APP_ID" \
             --repository "$REPO" \
             --oauth-token "$GH_TOKEN" \
-            --build-spec "$BUILDSPEC" \
-            --query 'app.buildSpec' --output text
-          echo "✅ Build spec updated"
+            --build-spec "$BUILDSPEC"
+          echo "Build spec updated"
 
-          echo "--- Waiting for any running builds to finish ---"
-          sleep 180
+          echo "--- Configuring SPA redirect rules ---"
+          aws amplify update-app \
+            --app-id "$APP_ID" \
+            --custom-rules '[{"source":"</^[^.]+$|\\.(?!(css|gif|ico|jpg|js|png|txt|svg|woff|woff2|ttf|map|json|webp)$)([^.]+$)/>","status":"200","target":"/index.html"}]'
+          echo "SPA redirect rules configured"
 
-          echo "--- Triggering RELEASE build ---"
+          echo "--- Waiting for any in-progress builds ---"
+          sleep 30
+
+          echo "--- Triggering build ---"
           if JOB_OUTPUT=$(aws amplify start-job --app-id "$APP_ID" --branch-name "$BRANCH" --job-type RELEASE 2>&1); then
             JOB_ID=$(echo "$JOB_OUTPUT" | python3 -c "import sys,json; print(json.load(sys.stdin)['jobSummary']['jobId'])")
-            echo "✅ Started Amplify build: job $JOB_ID"
-            echo "🔗 https://main.${APP_ID}.amplifyapp.com"
+            echo "Started Amplify build: job $JOB_ID"
           else
             if echo "$JOB_OUTPUT" | grep -q "already have pending or running"; then
-              echo "⏳ Build already running — waiting 120s then retrying..."
-              sleep 120
-              if JOB_OUTPUT2=$(aws amplify start-job --app-id "$APP_ID" --branch-name "$BRANCH" --job-type RELEASE 2>&1); then
-                JOB_ID=$(echo "$JOB_OUTPUT2" | python3 -c "import sys,json; print(json.load(sys.stdin)['jobSummary']['jobId'])")
-                echo "✅ Started Amplify build: job $JOB_ID"
-              else
-                echo "⏳ Build still in progress. Will deploy on completion."
-              fi
-              echo "🔗 https://main.${APP_ID}.amplifyapp.com"
+              echo "Build already in progress — it will pick up the latest code."
             else
               echo "::error::Failed to start build: $JOB_OUTPUT"
               exit 1
             fi
           fi
+
+          echo "Deployment URL: https://main.${APP_ID}.amplifyapp.com"
