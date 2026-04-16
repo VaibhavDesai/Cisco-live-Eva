@@ -14,7 +14,7 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
-  deploy:
+  ensure-app:
     uses: webexdesign/.github/.github/workflows/amplify-deploy.yml@main
     with:
       app_name: ai-agent-studio
@@ -26,30 +26,47 @@ jobs:
       build_command: "npm run build"
       output_dir: dist
       environment_variables_json: '{"VITE_CHAT_API_URL":"https://ai-agent-studio-proxy.sisun-ai.workers.dev"}'
-      enable_branch_auto_build: true
+      enable_branch_auto_build: false
     secrets: inherit
 
-  configure-and-build:
-    needs: deploy
+  build-and-deploy:
+    needs: ensure-app
     if: always()
     runs-on: ${{ github.repository_owner }}-amd64-runners
     env:
       FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
     steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+
+      - name: Install dependencies
+        working-directory: web
+        run: npm ci
+
+      - name: Build
+        working-directory: web
+        run: npm run build
+        env:
+          VITE_CHAT_API_URL: https://ai-agent-studio-proxy.sisun-ai.workers.dev
+
       - name: Configure AWS credentials
         uses: cisco-actions/configure-aws-credentials@1a221e28f5827bb587dec3ac0ba9a95d01e806e8
         with:
           role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
           aws-region: us-west-2
 
-      - name: Fix build spec, configure SPA redirects, and trigger build
-        env:
-          GH_TOKEN: ${{ github.token }}
+      - name: Deploy pre-built artifacts to Amplify
         run: |
           set -euo pipefail
           APP_NAME="ai-agent-studio"
           BRANCH="main"
-          REPO="https://github.com/${{ github.repository }}"
 
           APP_ID=$(aws amplify list-apps --query "apps[?name=='${APP_NAME}'].appId" --output text)
           if [ -z "$APP_ID" ] || [ "$APP_ID" = "None" ]; then
@@ -58,51 +75,42 @@ jobs:
           fi
           echo "Found Amplify app: $APP_ID"
 
-          echo "--- Updating build spec for monorepo (web/ subdirectory) ---"
-          BUILDSPEC='version: 1
-          frontend:
-            phases:
-              preBuild:
-                commands:
-                  - cd web && npm ci
-              build:
-                commands:
-                  - cd web && npm run build
-            artifacts:
-              baseDirectory: web/dist
-              files:
-                - "**/*"
-            cache:
-              paths:
-                - web/node_modules/**/*'
-
-          aws amplify update-app \
+          echo "--- Disabling auto-build (we deploy pre-built artifacts) ---"
+          aws amplify update-branch \
             --app-id "$APP_ID" \
-            --repository "$REPO" \
-            --oauth-token "$GH_TOKEN" \
-            --build-spec "$BUILDSPEC"
-          echo "Build spec updated"
+            --branch-name "$BRANCH" \
+            --no-enable-auto-build 2>/dev/null || true
 
           echo "--- Configuring SPA redirect rules ---"
           aws amplify update-app \
             --app-id "$APP_ID" \
             --custom-rules '[{"source":"</^[^.]+$|\\.(?!(css|gif|ico|jpg|js|png|txt|svg|woff|woff2|ttf|map|json|webp)$)([^.]+$)/>","status":"200","target":"/index.html"}]'
-          echo "SPA redirect rules configured"
 
-          echo "--- Waiting for any in-progress builds ---"
-          sleep 30
+          echo "--- Zipping build artifacts ---"
+          cd web/dist
+          zip -qr ../../deploy.zip .
+          cd ../..
+          echo "Archive size: $(du -h deploy.zip | cut -f1)"
 
-          echo "--- Triggering build ---"
-          if JOB_OUTPUT=$(aws amplify start-job --app-id "$APP_ID" --branch-name "$BRANCH" --job-type RELEASE 2>&1); then
-            JOB_ID=$(echo "$JOB_OUTPUT" | python3 -c "import sys,json; print(json.load(sys.stdin)['jobSummary']['jobId'])")
-            echo "Started Amplify build: job $JOB_ID"
-          else
-            if echo "$JOB_OUTPUT" | grep -q "already have pending or running"; then
-              echo "Build already in progress — it will pick up the latest code."
-            else
-              echo "::error::Failed to start build: $JOB_OUTPUT"
-              exit 1
-            fi
-          fi
+          echo "--- Creating deployment ---"
+          DEPLOYMENT=$(aws amplify create-deployment \
+            --app-id "$APP_ID" \
+            --branch-name "$BRANCH")
 
+          JOB_ID=$(echo "$DEPLOYMENT" | python3 -c "import sys,json; print(json.load(sys.stdin)['jobId'])")
+          ZIP_URL=$(echo "$DEPLOYMENT" | python3 -c "import sys,json; print(json.load(sys.stdin)['zipUploadUrl'])")
+          echo "Created deployment job: $JOB_ID"
+
+          echo "--- Uploading artifacts ---"
+          curl --fail --silent --show-error -T deploy.zip "$ZIP_URL"
+          echo "Upload complete"
+
+          echo "--- Starting deployment ---"
+          aws amplify start-deployment \
+            --app-id "$APP_ID" \
+            --branch-name "$BRANCH" \
+            --job-id "$JOB_ID"
+          echo "Deployment started"
+
+          echo ""
           echo "Deployment URL: https://main.${APP_ID}.amplifyapp.com"

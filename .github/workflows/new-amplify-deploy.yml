@@ -73,9 +73,9 @@ on:
         required: false
         type: string        
       enable_branch_auto_build:
-        description: 'Enable auto build on branch push'
+        description: 'Enable auto build on branch push (disable if using CI-driven artifact deployment)'
         required: false
-        default: true
+        default: false
         type: boolean
 
 permissions:
