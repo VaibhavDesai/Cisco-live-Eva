@@ -23,16 +23,6 @@
   </head>
   <body>
     <div id="root"></div>
-    <script>
-      // SPA redirect restoration — picks up the path stored by 404.html
-      (function() {
-        var redirect = sessionStorage.getItem('spa-redirect');
-        if (redirect) {
-          sessionStorage.removeItem('spa-redirect');
-          history.replaceState(null, '', redirect);
-        }
-      })();
-    </script>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>
