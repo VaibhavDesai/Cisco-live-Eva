@@ -42,7 +42,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
   try {
     const token = await getCiscoToken();
-    const { messages } = req.body;
+    const body = typeof req.body === 'string' ? JSON.parse(req.body) : req.body;
+    const messages = body?.messages;
+
+    if (!messages || !Array.isArray(messages)) {
+      return res.status(400).json({ error: 'Missing or invalid "messages" array in request body' });
+    }
 
     const aiRes = await fetch(
       'https://chat-ai.cisco.com/openai/deployments/gpt-5-nano/chat/completions',
@@ -64,8 +69,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     if (!aiRes.ok) {
       const errText = await aiRes.text();
       return res.status(aiRes.status).json({
-        error: `Cisco AI error (${aiRes.status})`,
-        details: errText,
+        error: `Cisco AI error (${aiRes.status}): ${errText}`,
       });
     }
 
