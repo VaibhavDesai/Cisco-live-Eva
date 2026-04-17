@@ -202,10 +202,10 @@ export default function EditEngineModal({ onClose, onSave, onDuplicate, initialD
                 <h2 className="edit-engine-card-title">Large language model configuration</h2>
                 <div className="form-group">
                   <label className="form-label">
-                    Service app <span className="required">*</span>
+                    Agentic app <span className="required">*</span>
                   </label>
                   <Dropdown
-                    placeholder="Select a service app"
+                    placeholder="Select an agentic app"
                     options={[
                       { value: 'openai', label: 'OpenAI' },
                       { value: 'azure-openai', label: 'Azure OpenAI' },

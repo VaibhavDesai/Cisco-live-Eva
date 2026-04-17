@@ -202,10 +202,10 @@ export default function CreateEngineModal({ onClose, onCreate }: CreateEngineMod
                   <div className="fpmodal-card">
                     <div className="form-group">
                       <label className="form-label">
-                        Service app <span className="required">*</span>
+                        Agentic app <span className="required">*</span>
                       </label>
                       <Dropdown
-                        placeholder="Select a service app"
+                        placeholder="Select an agentic app"
                         options={[
                           { value: 'openai', label: 'OpenAI' },
                           { value: 'azure-openai', label: 'Azure OpenAI' },
@@ -353,7 +353,7 @@ export default function CreateEngineModal({ onClose, onCreate }: CreateEngineMod
                     </div>
                     <div className="fpmodal-review-table">
                       <div className="fpmodal-review-row">
-                        <span className="fpmodal-review-label">Service app</span>
+                        <span className="fpmodal-review-label">Agentic app</span>
                         <span className="fpmodal-review-value">{SERVICE_APP_LABELS[serviceApp] || '—'}</span>
                       </div>
                       <div className="fpmodal-review-row">

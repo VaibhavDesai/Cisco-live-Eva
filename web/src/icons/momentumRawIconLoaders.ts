@@ -1,28 +1,28 @@
 /**
  * Pre-register every Momentum SVG for Vite static analysis.
- * Dynamic `import(\`@momentum-design/icons/...\`)` often fails in dev / prebundling.
+ * Using eager: true bundles all SVGs into the main chunk, avoiding
+ * thousands of tiny dynamic-import chunks that break on static hosts.
  */
-const iconLoaders = import.meta.glob<string>(
+const iconData = import.meta.glob<string>(
   '../../node_modules/@momentum-design/icons/dist/svg/*.svg',
-  { query: '?raw', import: 'default' }
-) as Record<string, () => Promise<string>>;
+  { query: '?raw', import: 'default', eager: true }
+) as Record<string, string>;
 
-/** file base e.g. list-menu-bold → loader */
-const loaderById = new Map<string, () => Promise<string>>();
+const svgById = new Map<string, string>();
 
-for (const [path, loader] of Object.entries(iconLoaders)) {
+for (const [path, svg] of Object.entries(iconData)) {
   const normalized = path.replace(/\\/g, '/');
   const m = normalized.match(/\/([^/]+)\.svg$/);
-  if (m) loaderById.set(m[1], loader as () => Promise<string>);
+  if (m) svgById.set(m[1], svg);
 }
 
 export function resolveMomentumIconLoader(id: string): (() => Promise<string>) | undefined {
-  let fn = loaderById.get(id);
-  if (fn) return fn;
+  let svg = svgById.get(id);
+  if (svg) return () => Promise.resolve(svg);
   if (id.endsWith('-bold')) {
     const alt = `${id.slice(0, -'-bold'.length)}-regular`;
-    fn = loaderById.get(alt);
-    if (fn) return fn;
+    svg = svgById.get(alt);
+    if (svg) return () => Promise.resolve(svg);
   }
   return undefined;
 }
