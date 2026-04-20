@@ -3115,46 +3115,6 @@ body {
   color: var(--text-muted);
 }
 
-/* Badges - Text Pill Style (backward compatible) */
-.badge {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--spacing-xxx-small);
-  padding: var(--spacing-micro) var(--spacing-xx-small);
-  border-radius: 4px;
-  font-size: 14px;
-  font-weight: 400;
-  line-height: 20px;
-  background: var(--mds-color-theme-background-alert-default-normal);
-  border: 1px solid var(--outline-color);
-  color: var(--text-primary);
-}
-
-.badge-success {
-  background: var(--success-bg);
-  border-color: var(--success-color);
-  color: var(--text-primary);
-}
-
-.badge-warning {
-  background: var(--warning-bg);
-  border-color: var(--warning-color);
-  color: var(--text-primary);
-}
-
-.badge-danger,
-.badge-error {
-  background: var(--danger-bg);
-  border-color: var(--danger-color);
-  color: var(--text-primary);
-}
-
-.badge-info {
-  background: var(--mds-color-theme-background-alert-theme-normal);
-  border-color: var(--accent-color);
-  color: var(--text-primary);
-}
-
 /* --- Momentum Badge Indicator Component --- */
 
 .badge-indicator {
@@ -11943,7 +11903,7 @@ img.app-header__wordmark-logo {
   color: var(--accent-color);
 }
 
-.badge.security-tier-badge {
+.alert-chip.security-tier-badge {
   margin-left: var(--spacing-xx-small);
   vertical-align: middle;
   background: linear-gradient(var(--bg-primary), var(--bg-primary)) padding-box,
@@ -11995,22 +11955,20 @@ img.app-header__wordmark-logo {
 }
 
 .security-control-row {
-  display: flex;
-  align-items: center;
+  display: grid;
+  grid-template-columns: 100px 320px;
   gap: var(--spacing-medium);
+  align-items: center;
 }
 
 .security-control-label {
-  flex-shrink: 0;
-  width: 100px;
   font-size: var(--font-size-body-midsize);
   font-weight: var(--font-weight-medium);
   color: var(--text-secondary);
 }
 
 .security-slider-wrap {
-  flex: 1;
-  max-width: 320px;
+  width: 100%;
 }
 
 .security-sensitivity-labels {
@@ -12023,13 +11981,23 @@ img.app-header__wordmark-logo {
 }
 
 .security-enforcement-control {
-  flex-shrink: 0;
+  min-width: 0;
 }
 
 .security-enforcement-control .radio-group-list {
   display: flex;
   flex-direction: row;
-  gap: var(--spacing-medium);
+  gap: 24px;
+}
+
+.security-enforcement-control .radio-group-list > .radio:first-child {
+  min-width: 110px;
+}
+
+.radio-icon-label {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--spacing-xxx-small);
 }
 
 /* ── Advanced guardrails ── */
@@ -12047,7 +12015,13 @@ img.app-header__wordmark-logo {
 .security-advanced-groups {
   display: flex;
   flex-direction: column;
-  gap: var(--spacing-small);
+  gap: var(--spacing-large);
+}
+
+.security-advanced-group {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-x-small);
 }
 
 .security-group-header {
@@ -12059,7 +12033,7 @@ img.app-header__wordmark-logo {
   color: var(--text-primary);
 }
 
-.security-group-header .badge {
+.security-group-header .alert-chip {
   margin-left: 0;
 }
 

@@ -9,7 +9,7 @@ import Toggle from '../../components/shared/Toggle';
 import Dropdown from '../../components/shared/Dropdown';
 import { Slider } from '../../components/shared/Slider';
 import { AccordionGroup, AccordionItem } from '../../components/shared/Accordion';
-import { Table, TableHead, TableBody, TableRow, TableHeader, TableCell } from '../../components/shared/Table';
+
 import Badge from '../../components/shared/Badge';
 import { Card, CardBody } from '../../components/shared/Card';
 import { Radio, RadioGroup } from '../../components/shared/Radio';
@@ -118,13 +118,15 @@ interface StandardGuardrail {
   enabled: boolean;
   sensitivity: number;
   enforcement: Enforcement;
+  direction: Direction;
+  action: AdvAction;
 }
 
 const DEFAULT_STANDARD_GUARDRAILS: StandardGuardrail[] = [
-  { id: 'std-toxicity', name: 'Toxicity', description: 'Detect and filter toxic language, insults, and abusive content in conversations.', enabled: true, sensitivity: 50, enforcement: 'monitor' },
-  { id: 'std-harm', name: 'Harm detection', description: 'Identify requests or responses that could cause physical, emotional, or financial harm.', enabled: true, sensitivity: 50, enforcement: 'monitor' },
-  { id: 'std-jailbreak', name: 'Jailbreak', description: 'Detect prompt injection attempts designed to bypass agent instructions and safety rules.', enabled: true, sensitivity: 50, enforcement: 'block' },
-  { id: 'std-multiturn', name: 'Multi-turn jailbreak', description: 'Detect multi-step manipulation where users gradually steer the agent away from its guardrails across turns.', enabled: true, sensitivity: 50, enforcement: 'block' },
+  { id: 'std-toxicity', name: 'Toxicity', description: 'Detect and filter toxic language, insults, and abusive content in conversations.', enabled: true, sensitivity: 50, enforcement: 'monitor', direction: 'response', action: 'block' },
+  { id: 'std-harm', name: 'Harm detection', description: 'Identify requests or responses that could cause physical, emotional, or financial harm.', enabled: true, sensitivity: 50, enforcement: 'monitor', direction: 'response', action: 'block' },
+  { id: 'std-jailbreak', name: 'Jailbreak', description: 'Detect prompt injection attempts designed to bypass agent instructions and safety rules.', enabled: true, sensitivity: 50, enforcement: 'block', direction: 'prompt', action: 'block' },
+  { id: 'std-multiturn', name: 'Multi-turn jailbreak', description: 'Detect multi-step manipulation where users gradually steer the agent away from its guardrails across turns.', enabled: true, sensitivity: 50, enforcement: 'block', direction: 'prompt', action: 'block' },
 ];
 
 type Direction = 'prompt' | 'response';
@@ -136,6 +138,8 @@ interface AdvancedGuardrailItem {
   name: string;
   description: string;
   enabled: boolean;
+  sensitivity: number;
+  enforcement: Enforcement;
   direction: Direction;
   action: AdvAction;
 }
@@ -170,39 +174,39 @@ const DEFAULT_ADVANCED_GROUPS: AdvancedGuardrailGroup[] = [
   {
     id: 'security', label: 'Security guardrails', icon: 'shield',
     items: [
-      { id: 'sec-prompt-injection', name: 'Prompt injection', description: 'Detect attempts to manipulate the agent by injecting hidden instructions into user input.', enabled: false, direction: 'prompt', action: 'block' },
-      { id: 'sec-code-injection', name: 'Code injection', description: 'Block inputs that attempt to execute arbitrary code through the agent.', enabled: false, direction: 'prompt', action: 'block' },
-      { id: 'sec-system-prompt', name: 'System prompt extraction', description: 'Prevent users from tricking the agent into revealing its system prompt or configuration.', enabled: false, direction: 'prompt', action: 'block' },
-      { id: 'sec-instruction-override', name: 'Instruction override', description: 'Block attempts to override or replace the agent\u2019s original instructions.', enabled: false, direction: 'prompt', action: 'block' },
-      { id: 'sec-encoding-attack', name: 'Encoding attack', description: 'Detect obfuscated payloads using Base64, Unicode, or other encoding schemes.', enabled: false, direction: 'prompt', action: 'block' },
-      { id: 'sec-sql-injection', name: 'SQL injection', description: 'Identify inputs crafted to execute unauthorized database queries.', enabled: false, direction: 'prompt', action: 'block' },
-      { id: 'sec-xss', name: 'XSS injection', description: 'Block cross-site scripting payloads embedded in user messages.', enabled: false, direction: 'prompt', action: 'block' },
-      { id: 'sec-resource-hijack', name: 'Resource hijack', description: 'Prevent prompts designed to consume excessive compute or API resources.', enabled: false, direction: 'prompt', action: 'block' },
+      { id: 'sec-prompt-injection', name: 'Prompt injection', description: 'Detect attempts to manipulate the agent by injecting hidden instructions into user input.', enabled: false, sensitivity: 50, enforcement: 'block', direction: 'prompt', action: 'block' },
+      { id: 'sec-code-injection', name: 'Code injection', description: 'Block inputs that attempt to execute arbitrary code through the agent.', enabled: false, sensitivity: 50, enforcement: 'block', direction: 'prompt', action: 'block' },
+      { id: 'sec-system-prompt', name: 'System prompt extraction', description: 'Prevent users from tricking the agent into revealing its system prompt or configuration.', enabled: false, sensitivity: 50, enforcement: 'block', direction: 'prompt', action: 'block' },
+      { id: 'sec-instruction-override', name: 'Instruction override', description: 'Block attempts to override or replace the agent\u2019s original instructions.', enabled: false, sensitivity: 50, enforcement: 'block', direction: 'prompt', action: 'block' },
+      { id: 'sec-encoding-attack', name: 'Encoding attack', description: 'Detect obfuscated payloads using Base64, Unicode, or other encoding schemes.', enabled: false, sensitivity: 50, enforcement: 'block', direction: 'prompt', action: 'block' },
+      { id: 'sec-sql-injection', name: 'SQL injection', description: 'Identify inputs crafted to execute unauthorized database queries.', enabled: false, sensitivity: 50, enforcement: 'block', direction: 'prompt', action: 'block' },
+      { id: 'sec-xss', name: 'XSS injection', description: 'Block cross-site scripting payloads embedded in user messages.', enabled: false, sensitivity: 50, enforcement: 'block', direction: 'prompt', action: 'block' },
+      { id: 'sec-resource-hijack', name: 'Resource hijack', description: 'Prevent prompts designed to consume excessive compute or API resources.', enabled: false, sensitivity: 50, enforcement: 'block', direction: 'prompt', action: 'block' },
     ],
   },
   {
     id: 'privacy', label: 'Privacy guardrails', icon: 'privacy-circle',
     items: [
-      { id: 'priv-pii', name: 'PII detection', description: 'Identify and flag personally identifiable information in agent responses.', enabled: false, direction: 'response', action: 'block' },
-      { id: 'priv-ssn', name: 'SSN redaction', description: 'Automatically redact Social Security numbers from responses.', enabled: false, direction: 'response', action: 'block' },
-      { id: 'priv-credit-card', name: 'Credit card redaction', description: 'Strip credit card numbers from agent output before delivery.', enabled: false, direction: 'response', action: 'block' },
-      { id: 'priv-email', name: 'Email redaction', description: 'Remove email addresses from responses to prevent data leakage.', enabled: false, direction: 'response', action: 'block' },
-      { id: 'priv-phone', name: 'Phone number redaction', description: 'Redact phone numbers from agent responses.', enabled: false, direction: 'response', action: 'block' },
-      { id: 'priv-address', name: 'Address redaction', description: 'Strip physical addresses from responses to protect user privacy.', enabled: false, direction: 'response', action: 'block' },
-      { id: 'priv-ip', name: 'IP address redaction', description: 'Remove IP addresses from agent output.', enabled: false, direction: 'response', action: 'allow' },
+      { id: 'priv-pii', name: 'PII detection', description: 'Identify and flag personally identifiable information in agent responses.', enabled: false, sensitivity: 50, enforcement: 'block', direction: 'response', action: 'block' },
+      { id: 'priv-ssn', name: 'SSN redaction', description: 'Automatically redact Social Security numbers from responses.', enabled: false, sensitivity: 50, enforcement: 'block', direction: 'response', action: 'block' },
+      { id: 'priv-credit-card', name: 'Credit card redaction', description: 'Strip credit card numbers from agent output before delivery.', enabled: false, sensitivity: 50, enforcement: 'block', direction: 'response', action: 'block' },
+      { id: 'priv-email', name: 'Email redaction', description: 'Remove email addresses from responses to prevent data leakage.', enabled: false, sensitivity: 50, enforcement: 'block', direction: 'response', action: 'block' },
+      { id: 'priv-phone', name: 'Phone number redaction', description: 'Redact phone numbers from agent responses.', enabled: false, sensitivity: 50, enforcement: 'block', direction: 'response', action: 'block' },
+      { id: 'priv-address', name: 'Address redaction', description: 'Strip physical addresses from responses to protect user privacy.', enabled: false, sensitivity: 50, enforcement: 'block', direction: 'response', action: 'block' },
+      { id: 'priv-ip', name: 'IP address redaction', description: 'Remove IP addresses from agent output.', enabled: false, sensitivity: 50, enforcement: 'monitor', direction: 'response', action: 'allow' },
     ],
   },
   {
     id: 'safety', label: 'Safety guardrails', icon: 'check-circle',
     items: [
-      { id: 'safe-toxicity', name: 'Toxicity', description: 'Detect and block toxic, abusive, or offensive language in responses.', enabled: false, direction: 'response', action: 'block' },
-      { id: 'safe-hate', name: 'Hate speech', description: 'Block responses containing hate speech targeting protected groups.', enabled: false, direction: 'response', action: 'block' },
-      { id: 'safe-self-harm', name: 'Self-harm', description: 'Prevent responses that encourage or provide guidance on self-harm.', enabled: false, direction: 'response', action: 'block' },
-      { id: 'safe-violence', name: 'Violence', description: 'Block content that promotes, glorifies, or instructs on violence.', enabled: false, direction: 'response', action: 'block' },
-      { id: 'safe-sexual', name: 'Sexual content', description: 'Filter sexually explicit or inappropriate content from responses.', enabled: false, direction: 'response', action: 'block' },
-      { id: 'safe-harassment', name: 'Harassment', description: 'Detect and block responses that harass, intimidate, or bully users.', enabled: false, direction: 'response', action: 'block' },
-      { id: 'safe-misinfo', name: 'Misinformation', description: 'Flag responses containing known false or misleading claims.', enabled: false, direction: 'response', action: 'block' },
-      { id: 'safe-radicalization', name: 'Radicalization', description: 'Block content that promotes extremist ideologies or recruitment.', enabled: false, direction: 'response', action: 'block' },
+      { id: 'safe-toxicity', name: 'Toxicity', description: 'Detect and block toxic, abusive, or offensive language in responses.', enabled: false, sensitivity: 50, enforcement: 'block', direction: 'response', action: 'block' },
+      { id: 'safe-hate', name: 'Hate speech', description: 'Block responses containing hate speech targeting protected groups.', enabled: false, sensitivity: 50, enforcement: 'block', direction: 'response', action: 'block' },
+      { id: 'safe-self-harm', name: 'Self-harm', description: 'Prevent responses that encourage or provide guidance on self-harm.', enabled: false, sensitivity: 50, enforcement: 'block', direction: 'response', action: 'block' },
+      { id: 'safe-violence', name: 'Violence', description: 'Block content that promotes, glorifies, or instructs on violence.', enabled: false, sensitivity: 50, enforcement: 'block', direction: 'response', action: 'block' },
+      { id: 'safe-sexual', name: 'Sexual content', description: 'Filter sexually explicit or inappropriate content from responses.', enabled: false, sensitivity: 50, enforcement: 'block', direction: 'response', action: 'block' },
+      { id: 'safe-harassment', name: 'Harassment', description: 'Detect and block responses that harass, intimidate, or bully users.', enabled: false, sensitivity: 50, enforcement: 'block', direction: 'response', action: 'block' },
+      { id: 'safe-misinfo', name: 'Misinformation', description: 'Flag responses containing known false or misleading claims.', enabled: false, sensitivity: 50, enforcement: 'monitor', direction: 'response', action: 'block' },
+      { id: 'safe-radicalization', name: 'Radicalization', description: 'Block content that promotes extremist ideologies or recruitment.', enabled: false, sensitivity: 50, enforcement: 'block', direction: 'response', action: 'block' },
     ],
   },
 ];
@@ -988,7 +992,7 @@ export default function ActionConfigureV2() {
                             </div>
                           </div>
                         }
-                        defaultExpanded={g.enabled}
+                        expanded={g.enabled}
                       >
                         <div className="security-guardrail-controls">
                           <div className="security-control-row">
@@ -1022,6 +1026,30 @@ export default function ActionConfigureV2() {
                               <Radio value="block" label="Block" disabled={!g.enabled} />
                             </RadioGroup>
                           </div>
+                          <div className="security-control-row">
+                            <label className="security-control-label">Direction</label>
+                            <RadioGroup
+                              name={`direction-${g.id}`}
+                              value={g.direction}
+                              onChange={(v) => setStandardGuardrails(prev => prev.map(gr => gr.id === g.id ? { ...gr, direction: v as Direction } : gr))}
+                              className="security-enforcement-control"
+                            >
+                              <Radio value="prompt" label="Prompt" disabled={!g.enabled} />
+                              <Radio value="response" label="Response" disabled={!g.enabled} />
+                            </RadioGroup>
+                          </div>
+                          <div className="security-control-row">
+                            <label className="security-control-label">Action</label>
+                            <RadioGroup
+                              name={`action-${g.id}`}
+                              value={g.action}
+                              onChange={(v) => setStandardGuardrails(prev => prev.map(gr => gr.id === g.id ? { ...gr, action: v as AdvAction } : gr))}
+                              className="security-enforcement-control"
+                            >
+                              <Radio value="block" label={<span className="radio-icon-label"><Icon name="blocked" weight="bold" size={14} color="var(--danger-color)" /> Block</span>} disabled={!g.enabled} />
+                              <Radio value="allow" label={<span className="radio-icon-label"><Icon name="check-circle" weight="bold" size={14} color="var(--success-color)" /> Allow</span>} disabled={!g.enabled} />
+                            </RadioGroup>
+                          </div>
                         </div>
                       </AccordionItem>
                     ))}
@@ -1041,93 +1069,130 @@ export default function ActionConfigureV2() {
                   )}
 
                   <div className="security-advanced-groups">
-                    <AccordionGroup type="contained">
-                      {advancedDefaultGroups.map((group) => (
-                        <AccordionItem
-                          key={group.id}
-                          defaultExpanded
-                          title={
-                            <div className="security-group-header">
-                              <Icon name={group.icon as any} weight="bold" size={18} />
-                              <span>{group.label}</span>
-                              <Badge variant="default">{group.items.filter(i => i.enabled).length}/{group.items.length}</Badge>
-                            </div>
-                          }
-                        >
-                          <Table compact className="security-advanced-table">
-                            <TableHead>
-                              <TableRow>
-                                <TableHeader style={{ width: 48 }} aria-label="Enabled" />
-                                <TableHeader style={{ width: 180 }}>Guardrail</TableHeader>
-                                <TableHeader>Description</TableHeader>
-                                <TableHeader style={{ width: 140 }}>Direction</TableHeader>
-                                <TableHeader style={{ width: 120 }}>Action</TableHeader>
-                              </TableRow>
-                            </TableHead>
-                            <TableBody>
-                              {group.items.map((item) => (
-                                <TableRow key={item.id}>
-                                  <TableCell>
-                                    <Toggle
-                                      checked={item.enabled}
-                                      disabled={!isPaidUser}
-                                      onChange={() => {
-                                        if (!item.enabled) {
-                                          if (!hasAcknowledgedAdvancedPricing) {
-                                            setPendingAdvancedEnable({ groupId: group.id, itemId: item.id });
-                                            return;
-                                          }
-                                          setAdvancedDefaultGroups(prev => prev.map(gp =>
-                                            gp.id === group.id
-                                              ? { ...gp, items: gp.items.map(it => it.id === item.id ? { ...it, enabled: true } : it) }
-                                              : gp
-                                          ));
-                                          showToast(`${item.name} guardrail enabled`, 'success');
+                    {advancedDefaultGroups.map((group) => (
+                      <div key={group.id} className="security-advanced-group">
+                        <div className="security-group-header">
+                          <Icon name={group.icon as any} weight="bold" size={18} />
+                          <span>{group.label}</span>
+                          <Badge variant="default">{group.items.filter(i => i.enabled).length}/{group.items.length}</Badge>
+                        </div>
+                        <AccordionGroup type="contained">
+                          {group.items.map((item) => (
+                            <AccordionItem
+                              key={item.id}
+                              title={
+                                <div className="security-guardrail-header">
+                                  <Toggle
+                                    checked={item.enabled}
+                                    disabled={!isPaidUser}
+                                    onChange={() => {
+                                      if (!item.enabled) {
+                                        if (!hasAcknowledgedAdvancedPricing) {
+                                          setPendingAdvancedEnable({ groupId: group.id, itemId: item.id });
                                           return;
                                         }
                                         setAdvancedDefaultGroups(prev => prev.map(gp =>
                                           gp.id === group.id
-                                            ? { ...gp, items: gp.items.map(it => it.id === item.id ? { ...it, enabled: false } : it) }
+                                            ? { ...gp, items: gp.items.map(it => it.id === item.id ? { ...it, enabled: true } : it) }
                                             : gp
                                         ));
-                                      }}
-                                      size="compact"
-                                    />
-                                  </TableCell>
-                                  <TableCell>{item.name}</TableCell>
-                                  <TableCell className="guardrail-description-cell">{item.description}</TableCell>
-                                  <TableCell>
-                                    <Dropdown
-                                      options={[{ value: 'prompt', label: 'Prompt' }, { value: 'response', label: 'Response' }]}
-                                      value={item.direction}
-                                      disabled={!isPaidUser}
+                                        showToast(`${item.name} guardrail enabled`, 'success');
+                                        return;
+                                      }
+                                      setAdvancedDefaultGroups(prev => prev.map(gp =>
+                                        gp.id === group.id
+                                          ? { ...gp, items: gp.items.map(it => it.id === item.id ? { ...it, enabled: false } : it) }
+                                          : gp
+                                      ));
+                                    }}
+                                    size="compact"
+                                  />
+                                  <div className="security-guardrail-header-text">
+                                    <span className="security-guardrail-name">{item.name}</span>
+                                    <span className="security-guardrail-desc">{item.description}</span>
+                                  </div>
+                                </div>
+                              }
+                              expanded={item.enabled}
+                            >
+                              <div className="security-guardrail-controls">
+                                <div className="security-control-row">
+                                  <label className="security-control-label">Sensitivity</label>
+                                  <div className="security-slider-wrap">
+                                    <Slider
+                                      value={item.sensitivity}
                                       onChange={(v) => setAdvancedDefaultGroups(prev => prev.map(gp =>
                                         gp.id === group.id
-                                          ? { ...gp, items: gp.items.map(it => it.id === item.id ? { ...it, direction: v as Direction } : it) }
+                                          ? { ...gp, items: gp.items.map(it => it.id === item.id ? { ...it, sensitivity: v as number } : it) }
                                           : gp
                                       ))}
+                                      min={0}
+                                      max={100}
+                                      step={50}
+                                      showTicks
+                                      disabled={!item.enabled || !isPaidUser}
                                     />
-                                  </TableCell>
-                                  <TableCell>
-                                    <Dropdown
-                                      options={[{ value: 'block', label: 'Block' }, { value: 'allow', label: 'Allow' }]}
-                                      value={item.action}
-                                      disabled={!isPaidUser}
-                                      className={`security-action-${item.action}`}
-                                      onChange={(v) => setAdvancedDefaultGroups(prev => prev.map(gp =>
-                                        gp.id === group.id
-                                          ? { ...gp, items: gp.items.map(it => it.id === item.id ? { ...it, action: v as AdvAction } : it) }
-                                          : gp
-                                      ))}
-                                    />
-                                  </TableCell>
-                                </TableRow>
-                              ))}
-                            </TableBody>
-                          </Table>
-                        </AccordionItem>
-                      ))}
-                    </AccordionGroup>
+                                    <div className="security-sensitivity-labels">
+                                      <span>Low</span>
+                                      <span>Medium</span>
+                                      <span>High</span>
+                                    </div>
+                                  </div>
+                                </div>
+                                <div className="security-control-row">
+                                  <label className="security-control-label">Enforcement</label>
+                                  <RadioGroup
+                                    name={`enforcement-${item.id}`}
+                                    value={item.enforcement}
+                                    onChange={(v) => setAdvancedDefaultGroups(prev => prev.map(gp =>
+                                      gp.id === group.id
+                                        ? { ...gp, items: gp.items.map(it => it.id === item.id ? { ...it, enforcement: v as Enforcement } : it) }
+                                        : gp
+                                    ))}
+                                    className="security-enforcement-control"
+                                  >
+                                    <Radio value="monitor" label="Monitor" disabled={!item.enabled || !isPaidUser} />
+                                    <Radio value="block" label="Block" disabled={!item.enabled || !isPaidUser} />
+                                  </RadioGroup>
+                                </div>
+                                <div className="security-control-row">
+                                  <label className="security-control-label">Direction</label>
+                                  <RadioGroup
+                                    name={`direction-${item.id}`}
+                                    value={item.direction}
+                                    onChange={(v) => setAdvancedDefaultGroups(prev => prev.map(gp =>
+                                      gp.id === group.id
+                                        ? { ...gp, items: gp.items.map(it => it.id === item.id ? { ...it, direction: v as Direction } : it) }
+                                        : gp
+                                    ))}
+                                    className="security-enforcement-control"
+                                  >
+                                    <Radio value="prompt" label="Prompt" disabled={!item.enabled || !isPaidUser} />
+                                    <Radio value="response" label="Response" disabled={!item.enabled || !isPaidUser} />
+                                  </RadioGroup>
+                                </div>
+                                <div className="security-control-row">
+                                  <label className="security-control-label">Action</label>
+                                  <RadioGroup
+                                    name={`action-${item.id}`}
+                                    value={item.action}
+                                    onChange={(v) => setAdvancedDefaultGroups(prev => prev.map(gp =>
+                                      gp.id === group.id
+                                        ? { ...gp, items: gp.items.map(it => it.id === item.id ? { ...it, action: v as AdvAction } : it) }
+                                        : gp
+                                    ))}
+                                    className="security-enforcement-control"
+                                  >
+                                    <Radio value="block" label={<span className="radio-icon-label"><Icon name="blocked" weight="bold" size={14} color="var(--danger-color)" /> Block</span>} disabled={!item.enabled || !isPaidUser} />
+                                    <Radio value="allow" label={<span className="radio-icon-label"><Icon name="check-circle" weight="bold" size={14} color="var(--success-color)" /> Allow</span>} disabled={!item.enabled || !isPaidUser} />
+                                  </RadioGroup>
+                                </div>
+                              </div>
+                            </AccordionItem>
+                          ))}
+                        </AccordionGroup>
+                      </div>
+                    ))}
                     <div className="security-custom-profiles-section">
                       <div className="security-custom-profiles-header">
                         <div className="security-group-header">

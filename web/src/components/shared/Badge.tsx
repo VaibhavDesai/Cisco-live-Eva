@@ -3,7 +3,7 @@ import { Icon } from '../../icons/Icon';
 import type { IconName } from '../../icons/types';
 
 /* ------------------------------------------------------------------ */
-/*  Text Badge (backward-compatible)                                   */
+/*  Text Badge – uses the alert-chip CSS from the local design system  */
 /* ------------------------------------------------------------------ */
 
 export type BadgeVariant =
@@ -23,8 +23,18 @@ export interface BadgeProps {
   className?: string;
 }
 
+const VARIANT_CLASS: Record<BadgeVariant, string> = {
+  default: 'alert-chip-default',
+  success: 'alert-chip-success',
+  warning: 'alert-chip-warning',
+  error: 'alert-chip-error',
+  danger: 'alert-chip-error',
+  info: 'alert-chip-info',
+};
+
 /**
- * Text pill badge for compact labels and status (legacy-compatible classes).
+ * Text pill badge for compact labels and status.
+ * Built on the `alert-chip` CSS from the local Momentum design library.
  * @example
  * <Badge variant="success">Active</Badge>
  */
@@ -33,10 +43,8 @@ export default function Badge({
   variant = 'default',
   className = '',
 }: BadgeProps) {
-  const variantClass = variant ? `badge-${variant}` : '';
-
   return (
-    <span className={`badge ${variantClass} ${className}`}>
+    <span className={`alert-chip ${VARIANT_CLASS[variant]} ${className}`}>
       {children}
     </span>
   );
