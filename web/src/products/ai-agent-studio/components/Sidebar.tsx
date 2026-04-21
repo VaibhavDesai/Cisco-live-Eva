@@ -1,6 +1,8 @@
 import { useLocation, useNavigate } from 'react-router-dom';
 import SideNav from '../../../components/shared/SideNav';
 import { Icon } from '../../../icons/Icon';
+import Toggle from '../../../components/shared/Toggle';
+import { useReview } from '../../../features/review/ReviewProvider';
 
 interface NavItem {
   path: string;
@@ -22,6 +24,12 @@ const ORGANIZATION_NAME = 'Renergize Healthcare';
 export default function Sidebar() {
   const location = useLocation();
   const navigate = useNavigate();
+  const {
+    configured: reviewConfigured,
+    active: reviewActive,
+    toggleActive: toggleReview,
+    openCommentsModal,
+  } = useReview();
 
   const isActive = (path: string, end = false) => {
     if (end) return location.pathname === path;
@@ -55,6 +63,42 @@ export default function Sidebar() {
         </SideNav>
       </div>
       <div className="sidebar-bottom">
+        <div
+          className="sidebar-comment-toggle"
+          data-review-ui
+          title={
+            !reviewConfigured
+              ? 'Comment mode unavailable — Supabase is not configured.'
+              : reviewActive
+                ? 'Comment mode is on — click any element to leave feedback.'
+                : 'Turn on to leave inline comments on any element.'
+          }
+        >
+          <span className="sidebar-comment-toggle__icon" aria-hidden>
+            <Icon name="chat" size={14} />
+          </span>
+          <span className="sidebar-comment-toggle__label">Comment</span>
+          <button
+            type="button"
+            className="sidebar-comment-toggle__view-all"
+            data-review-ui
+            onClick={openCommentsModal}
+            disabled={!reviewConfigured}
+            title="View all comments"
+            aria-label="View all comments"
+          >
+            <Icon name="list-menu" size={14} />
+          </button>
+          <Toggle
+            size="compact"
+            checked={reviewActive}
+            disabled={!reviewConfigured}
+            onChange={() => {
+              void toggleReview();
+            }}
+            aria-label={reviewActive ? 'Turn off comment mode' : 'Turn on comment mode'}
+          />
+        </div>
         <button
           type="button"
           className={`sidebar-org-pill${location.pathname === '/settings/organization' ? ' sidebar-org-pill--active' : ''}`}

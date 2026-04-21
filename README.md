@@ -103,6 +103,40 @@ The app uses the **Momentum Design System** (dark Webex theme):
 - **Fonts**: CiscoSans via `@momentum-design/fonts`.
 - **Components**: Custom React components in `src/components/shared/` built on top of Momentum tokens.
 
+## Review Mode (inline PM comments)
+
+Share a link with your PM and let them drop element-anchored comments on the live page. Comments sync across browsers via Supabase realtime.
+
+### 1. Create the Supabase project
+
+1. Create a free project at <https://supabase.com>.
+2. In the SQL editor, run the schema in `web/src/features/review/schema.sql` (creates `threads` + `comments`, RLS policies, and enables realtime).
+3. Under **Database → Replication** (or Publications), confirm `threads` and `comments` are in `supabase_realtime`.
+
+### 2. Configure env vars
+
+Copy `web/.env.local.example` to `web/.env.local` and fill in:
+
+```
+VITE_SUPABASE_URL=https://<project-ref>.supabase.co
+VITE_SUPABASE_ANON_KEY=<anon public key>
+```
+
+Restart `npm run dev` so Vite picks up the new env vars.
+
+### 3. Share the review link
+
+Append `?review=1` to any URL, e.g. `https://your-site.example/agents?review=1`.
+
+- A floating **Review** pill appears in the bottom-right (hidden without the flag).
+- Toggle it on, enter a display name (stored in `localStorage`), then click **Add comment** and pick any element on the page.
+- A popover lets the PM type a comment and submit. Pins and new comments appear for you in real time.
+- Click any pin to open the thread, reply, or resolve it.
+
+### Security note
+
+The anon key ships in the client bundle and the RLS policies allow public read/write — fine for a PM-review prototype, not for production. Treat the link itself as the access control. To harden, put writes behind a serverless function with auth.
+
 ## Deployment
 
 The app is configured for deployment on **Vercel** (see `web/vercel.json`). An alternative GitHub Pages deploy is also available via `npm run deploy`.

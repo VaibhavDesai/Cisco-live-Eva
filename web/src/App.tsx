@@ -1,6 +1,7 @@
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import { AppProvider } from './contexts/AppContext';
 import { MainLayout } from './components/layout';
+import { ReviewProvider } from './features/review';
 import {
   Dashboard,
   Agents,
@@ -22,23 +23,25 @@ function App() {
     <div className="app-shell-root">
       <AppProvider>
         <BrowserRouter basename={import.meta.env.BASE_URL}>
-          <Routes>
-            <Route path="/" element={<MainLayout />}>
-              <Route index element={<Dashboard />} />
-              <Route path="agents" element={<Agents />} />
-              <Route path="assistant-skills" element={<AssistantSkills />} />
-              <Route path="agents/:agentId" element={<ActionConfigureV2 />} />
-              <Route path="agents/:agentId/configure" element={<ActionConfigureV2 />} />
-              <Route path="agents/:agentId/sessions" element={<AgentSessions />} />
-              <Route path="agents/:agentId/history" element={<AgentHistory />} />
-              <Route path="agents/:agentId/analytics" element={<AgentAnalytics />} />
-              <Route path="knowledge" element={<Knowledge />} />
-              <Route path="knowledge/:kbId" element={<KnowledgeBaseDetail />} />
-              <Route path="connections" element={<Connections />} />
-              <Route path="settings" element={<Settings />} />
-              <Route path="settings/organization" element={<OrganizationSettings />} />
-            </Route>
-          </Routes>
+          <ReviewProvider>
+            <Routes>
+              <Route path="/" element={<MainLayout />}>
+                <Route index element={<Dashboard />} />
+                <Route path="agents" element={<Agents />} />
+                <Route path="assistant-skills" element={<AssistantSkills />} />
+                <Route path="agents/:agentId" element={<ActionConfigureV2 />} />
+                <Route path="agents/:agentId/configure" element={<ActionConfigureV2 />} />
+                <Route path="agents/:agentId/sessions" element={<AgentSessions />} />
+                <Route path="agents/:agentId/history" element={<AgentHistory />} />
+                <Route path="agents/:agentId/analytics" element={<AgentAnalytics />} />
+                <Route path="knowledge" element={<Knowledge />} />
+                <Route path="knowledge/:kbId" element={<KnowledgeBaseDetail />} />
+                <Route path="connections" element={<Connections />} />
+                <Route path="settings" element={<Settings />} />
+                <Route path="settings/organization" element={<OrganizationSettings />} />
+              </Route>
+            </Routes>
+          </ReviewProvider>
         </BrowserRouter>
       </AppProvider>
     </div>

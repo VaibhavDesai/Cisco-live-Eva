@@ -5,6 +5,7 @@ import Sidebar from '../../products/ai-agent-studio/components/Sidebar';
 import { ToastProvider, useToast } from '../shared/Toast';
 import CreateAgentModal from '../agents/CreateAgentModal';
 import { useApp } from '../../contexts/AppContext';
+import { ReviewOverlay } from '../../features/review';
 
 function LegacyToastBridge() {
   const { toast } = useApp();
@@ -36,6 +37,7 @@ export default function MainLayout() {
       {isCreateModalOpen && (
         <CreateAgentModal onClose={() => setIsCreateModalOpen(false)} />
       )}
+      <ReviewOverlay />
     </ToastProvider>
   );
 }

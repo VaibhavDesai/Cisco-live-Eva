@@ -15,6 +15,8 @@ export interface ModalProps {
   size?: ModalSize;
   /** Additional CSS class on the dialog shell */
   className?: string;
+  /** Additional CSS class on the full-screen overlay (stacks above .modal-overlay) */
+  overlayClassName?: string;
   /** When true the backdrop click does not close */
   preventBackdropClose?: boolean;
 }
@@ -31,6 +33,7 @@ export function Modal({
   onClose,
   size = 'md',
   className = '',
+  overlayClassName = '',
   preventBackdropClose = false,
 }: ModalProps) {
   const onBackdrop = (e: MouseEvent<HTMLDivElement>) => {
@@ -39,7 +42,11 @@ export function Modal({
   };
 
   return createPortal(
-    <div className="modal-overlay" onClick={onBackdrop} role="presentation">
+    <div
+      className={`modal-overlay ${overlayClassName}`.trim()}
+      onClick={onBackdrop}
+      role="presentation"
+    >
       <div
         className={`modal modal--${size} ${className}`.trim()}
         role="dialog"

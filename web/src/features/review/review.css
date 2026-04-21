@@ -1,0 +1,361 @@
+/* Review Mode — inline commenting overlay. */
+
+.review-layer {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 2147483000;
+}
+.review-layer > * {
+  pointer-events: auto;
+}
+
+
+/* Picker highlight */
+.review-picker-highlight {
+  position: fixed;
+  top: 0;
+  left: 0;
+  pointer-events: none;
+  border: 2px solid var(--accent-bg);
+  border-radius: var(--border-radius-small, 4px);
+  box-shadow: 0 0 0 9999px rgba(0, 0, 0, 0.12);
+  transition: transform 60ms ease, width 60ms ease, height 60ms ease;
+  z-index: 2147482999;
+}
+
+/* Numbered comment pins — bright yellow so they stand out on camera/recordings. */
+.review-pin {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 28px;
+  height: 28px;
+  margin: -14px 0 0 -14px;
+  padding: 0;
+  border: 2px solid #1a1a1a;
+  border-radius: 50%;
+  background: #ffd400;
+  color: #1a1a1a;
+  cursor: pointer;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.35);
+  font: inherit;
+  font-weight: 700;
+  font-size: var(--font-size-body-small, 12px);
+  z-index: 2147482998;
+  transition: transform 80ms ease;
+}
+.review-pin:hover {
+  transform: translate(var(--pin-x, 0), var(--pin-y, 0)) scale(1.08);
+  background: #ffe34d;
+}
+.review-pin__number {
+  display: block;
+  line-height: 24px;
+  text-align: center;
+}
+.review-pin--resolved {
+  background: var(--success-color, #148060);
+  color: #fff;
+  border-color: var(--bg-primary);
+}
+.review-pin--active {
+  outline: 3px solid rgba(255, 212, 0, 0.45);
+}
+.review-pin--orphan {
+  opacity: 0.6;
+}
+
+/* Popover (shared between new-comment and thread views) */
+.review-popover {
+  position: fixed;
+  top: 0;
+  left: 0;
+  display: flex;
+  flex-direction: column;
+  background: var(--bg-primary);
+  border: 1px solid var(--border-color);
+  border-radius: var(--border-radius-medium, 8px);
+  box-shadow: var(--elevation-3);
+  color: var(--text-primary);
+  font-family: var(--font-family-primary, system-ui);
+  font-size: var(--font-size-body-secondary, 13px);
+  overflow: hidden;
+  z-index: 2147483002;
+}
+
+.review-popover__header {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-x-small);
+  padding: var(--spacing-small) var(--spacing-medium);
+  border-bottom: 1px solid var(--border-color);
+  background: var(--bg-secondary);
+}
+
+.review-popover__author {
+  font-weight: 600;
+}
+
+.review-popover__target {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--text-secondary);
+  font-size: var(--font-size-body-small, 12px);
+}
+
+.review-popover__close {
+  background: transparent;
+  border: none;
+  color: var(--text-secondary);
+  cursor: pointer;
+  padding: 4px;
+  border-radius: var(--border-radius-small, 4px);
+  margin-left: auto;
+}
+.review-popover__close:hover {
+  background: var(--button-secondary-hover);
+  color: var(--text-primary);
+}
+
+.review-popover__form {
+  display: flex;
+  flex-direction: column;
+  padding: var(--spacing-small) var(--spacing-medium) var(--spacing-medium);
+  gap: var(--spacing-small);
+}
+
+.review-popover__footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--spacing-small);
+}
+
+.review-popover__hint {
+  color: var(--text-muted);
+  font-size: var(--font-size-body-small, 11px);
+}
+
+.review-popover__actions {
+  display: flex;
+  gap: var(--spacing-x-small);
+  margin-left: auto;
+}
+
+/* "Commenting as <name>" row with inline Edit link. */
+.review-popover__identity {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-x-small);
+  color: var(--text-secondary);
+  font-size: var(--font-size-body-small, 12px);
+}
+.review-popover__identity-label {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.review-popover__identity-name {
+  color: var(--text-primary);
+  font-weight: 600;
+}
+.review-popover__identity-edit {
+  background: transparent;
+  border: none;
+  padding: 2px 4px;
+  margin: -2px -4px;
+  color: var(--accent-color);
+  cursor: pointer;
+  font: inherit;
+  font-size: inherit;
+  border-radius: var(--border-radius-small, 4px);
+}
+.review-popover__identity-edit:hover {
+  text-decoration: underline;
+  background: var(--button-secondary-hover);
+}
+.review-popover__identity-edit:focus-visible {
+  outline: 2px solid var(--focus-ring-2);
+  outline-offset: 0;
+}
+
+/* The Momentum Textarea bakes in its own form-group spacing; strip it so the
+ * popover can control vertical rhythm. */
+.review-popover .form-group {
+  margin: 0;
+}
+
+/* Thread list */
+.review-thread__list {
+  max-height: 320px;
+  overflow-y: auto;
+  padding: var(--spacing-small) var(--spacing-medium);
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-medium);
+  border-bottom: 1px solid var(--border-color);
+}
+
+.review-thread__empty {
+  color: var(--text-secondary);
+  font-style: italic;
+  padding: var(--spacing-small) 0;
+}
+
+.review-thread__item {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-xx-small);
+}
+
+.review-thread__meta {
+  display: flex;
+  align-items: baseline;
+  gap: var(--spacing-x-small);
+  color: var(--text-secondary);
+  font-size: var(--font-size-body-small, 12px);
+}
+
+.review-thread__author {
+  color: var(--text-primary);
+  font-weight: 600;
+}
+
+.review-thread__body {
+  color: var(--text-primary);
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+/* Review-owned modals need to float above the review pins/popovers, which use
+ * a very high z-index so they escape app chrome. The shared .modal-overlay is
+ * z-index 1100, so without this bump the "What's your name?" modal would hide
+ * behind the comment popover it was launched from. */
+.review-modal-overlay {
+  z-index: 2147483100;
+}
+/* The name modal is launched FROM the all-comments modal (via Edit), so it has
+ * to stack above it too. */
+.review-modal-overlay--name {
+  z-index: 2147483200;
+}
+
+/* "All comments" modal — browses every thread across every route. */
+.review-comments-modal__list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-x-small);
+  max-height: 60vh;
+  overflow-y: auto;
+}
+
+.review-comments-modal__item {
+  margin: 0;
+}
+
+.review-comments-modal__row {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-xx-small);
+  width: 100%;
+  padding: var(--spacing-small) var(--spacing-medium);
+  border: 1px solid var(--border-color);
+  border-radius: var(--border-radius-small, 6px);
+  background: var(--bg-primary);
+  color: var(--text-primary);
+  text-align: left;
+  cursor: pointer;
+  font: inherit;
+}
+.review-comments-modal__row:hover {
+  background: var(--button-secondary-hover);
+  border-color: var(--border-color-hover, var(--border-color));
+}
+.review-comments-modal__row:focus-visible {
+  outline: 2px solid var(--focus-ring-2);
+  outline-offset: 1px;
+}
+
+.review-comments-modal__row-top {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-x-small);
+  color: var(--text-secondary);
+  font-size: var(--font-size-body-small, 12px);
+}
+
+.review-comments-modal__route {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-family: var(--font-family-mono, ui-monospace, SFMono-Regular, Menlo, monospace);
+}
+
+.review-comments-modal__time {
+  flex-shrink: 0;
+}
+
+.review-comments-modal__preview {
+  color: var(--text-primary);
+  white-space: pre-wrap;
+  word-break: break-word;
+  font-size: var(--font-size-body-secondary, 13px);
+}
+
+.review-comments-modal__meta {
+  display: flex;
+  align-items: baseline;
+  gap: var(--spacing-x-small);
+  color: var(--text-secondary);
+  font-size: var(--font-size-body-small, 12px);
+}
+
+.review-comments-modal__author {
+  color: var(--text-primary);
+  font-weight: 600;
+}
+
+.review-comments-modal__target {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  min-width: 0;
+}
+
+.review-comments-modal__empty {
+  color: var(--text-secondary);
+  padding: var(--spacing-medium);
+  text-align: center;
+}
+
+/* Status chip used inside the modal rows. */
+.review-status-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 8px;
+  border-radius: 999px;
+  font-size: var(--font-size-body-small, 11px);
+  font-weight: 600;
+  flex-shrink: 0;
+}
+.review-status-chip--open {
+  background: rgba(255, 212, 0, 0.18);
+  color: #8a6d00;
+}
+.review-status-chip--resolved {
+  background: var(--success-bg, rgba(20, 128, 96, 0.15));
+  color: var(--success-color, #148060);
+}
+

@@ -25,7 +25,12 @@ jobs:
       framework: "React - Vite"
       build_command: "npm run build"
       output_dir: dist
-      environment_variables_json: '{"VITE_CHAT_API_URL":"https://ai-agent-studio-proxy.sisun-ai.workers.dev"}'
+      # Note: VITE_SUPABASE_URL + VITE_SUPABASE_ANON_KEY are the Supabase
+      # publishable (anon) key pair. They are designed to be shipped to the
+      # client and are protected by Row Level Security policies defined in
+      # web/src/features/review/schema.sql. The service_role key is never
+      # used in this app.
+      environment_variables_json: '{"VITE_CHAT_API_URL":"https://ai-agent-studio-proxy.sisun-ai.workers.dev","VITE_SUPABASE_URL":"https://ddtwkthkyseukvpileck.supabase.co","VITE_SUPABASE_ANON_KEY":"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRkdHdrdGhreXNldWt2cGlsZWNrIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzY4MDIyMjksImV4cCI6MjA5MjM3ODIyOX0.j8NcfCP6bmG7RCqyNHm6LfoNvyK-FbpLqLWbj8UqocU"}'
       enable_branch_auto_build: false
     secrets: inherit
 
@@ -55,6 +60,10 @@ jobs:
         run: npm run build
         env:
           VITE_CHAT_API_URL: https://ai-agent-studio-proxy.sisun-ai.workers.dev
+          # Supabase publishable (anon) key — safe to ship to the client,
+          # guarded by RLS policies (see web/src/features/review/schema.sql).
+          VITE_SUPABASE_URL: https://ddtwkthkyseukvpileck.supabase.co
+          VITE_SUPABASE_ANON_KEY: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRkdHdrdGhreXNldWt2cGlsZWNrIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzY4MDIyMjksImV4cCI6MjA5MjM3ODIyOX0.j8NcfCP6bmG7RCqyNHm6LfoNvyK-FbpLqLWbj8UqocU
 
       - name: Configure AWS credentials
         uses: cisco-actions/configure-aws-credentials@1a221e28f5827bb587dec3ac0ba9a95d01e806e8
