@@ -1052,18 +1052,6 @@ export default function ActionConfigureV2() {
                               <Radio value="response" label="Response" disabled={!g.enabled} />
                             </RadioGroup>
                           </div>
-                          <div className="security-control-row">
-                            <label className="security-control-label">Action</label>
-                            <RadioGroup
-                              name={`action-${g.id}`}
-                              value={g.action}
-                              onChange={(v) => setStandardGuardrails(prev => prev.map(gr => gr.id === g.id ? { ...gr, action: v as AdvAction } : gr))}
-                              className="security-enforcement-control"
-                            >
-                              <Radio value="block" label={<span className="radio-icon-label"><Icon name="blocked" weight="bold" size={14} color="var(--danger-color)" /> Block</span>} disabled={!g.enabled} />
-                              <Radio value="allow" label={<span className="radio-icon-label"><Icon name="check-circle" weight="bold" size={14} color="var(--success-color)" /> Allow</span>} disabled={!g.enabled} />
-                            </RadioGroup>
-                          </div>
                         </div>
                       </AccordionItem>
                     ))}
@@ -1189,22 +1177,6 @@ export default function ActionConfigureV2() {
                                   >
                                     <Radio value="prompt" label="Prompt" disabled={!item.enabled || !isPaidUser} />
                                     <Radio value="response" label="Response" disabled={!item.enabled || !isPaidUser} />
-                                  </RadioGroup>
-                                </div>
-                                <div className="security-control-row">
-                                  <label className="security-control-label">Action</label>
-                                  <RadioGroup
-                                    name={`action-${item.id}`}
-                                    value={item.action}
-                                    onChange={(v) => setAdvancedDefaultGroups(prev => prev.map(gp =>
-                                      gp.id === group.id
-                                        ? { ...gp, items: gp.items.map(it => it.id === item.id ? { ...it, action: v as AdvAction } : it) }
-                                        : gp
-                                    ))}
-                                    className="security-enforcement-control"
-                                  >
-                                    <Radio value="block" label={<span className="radio-icon-label"><Icon name="blocked" weight="bold" size={14} color="var(--danger-color)" /> Block</span>} disabled={!item.enabled || !isPaidUser} />
-                                    <Radio value="allow" label={<span className="radio-icon-label"><Icon name="check-circle" weight="bold" size={14} color="var(--success-color)" /> Allow</span>} disabled={!item.enabled || !isPaidUser} />
                                   </RadioGroup>
                                 </div>
                               </div>
