@@ -258,6 +258,12 @@ export default function ActionConfigureV2() {
   const [confirmDisableJailbreak, setConfirmDisableJailbreak] = useState(false);
   const [pendingAdvancedEnable, setPendingAdvancedEnable] = useState<{ groupId: string; itemId: string } | null>(null);
   const [hasAcknowledgedAdvancedPricing, setHasAcknowledgedAdvancedPricing] = useState(false);
+  const [expandedRails, setExpandedRails] = useState<Set<string>>(() => {
+    const initial = new Set<string>();
+    DEFAULT_STANDARD_GUARDRAILS.forEach(g => { if (g.enabled) initial.add(g.id); });
+    DEFAULT_ADVANCED_GROUPS.forEach(gp => gp.items.forEach(it => { if (it.enabled) initial.add(it.id); }));
+    return initial;
+  });
   const [showPolicyStudio, setShowPolicyStudio] = useState(false);
   const [editingProfileId, setEditingProfileId] = useState<string | null>(null);
   const [expandedProfileDescs, setExpandedProfileDescs] = useState<Set<string>>(new Set());
@@ -982,7 +988,10 @@ export default function ActionConfigureV2() {
                                 }
                                 const willEnable = !g.enabled;
                                 setStandardGuardrails(prev => prev.map(gr => gr.id === g.id ? { ...gr, enabled: willEnable } : gr));
-                                if (willEnable) showToast(`${g.name} guardrail enabled`, 'success');
+                                if (willEnable) {
+                                  setExpandedRails(prev => new Set(prev).add(g.id));
+                                  showToast(`${g.name} guardrail enabled`, 'success');
+                                }
                               }}
                               size="compact"
                             />
@@ -992,7 +1001,12 @@ export default function ActionConfigureV2() {
                             </div>
                           </div>
                         }
-                        expanded={g.enabled}
+                        expanded={expandedRails.has(g.id)}
+                        onExpandedChange={(open) => setExpandedRails(prev => {
+                          const next = new Set(prev);
+                          if (open) next.add(g.id); else next.delete(g.id);
+                          return next;
+                        })}
                       >
                         <div className="security-guardrail-controls">
                           <div className="security-control-row">
@@ -1096,6 +1110,7 @@ export default function ActionConfigureV2() {
                                             ? { ...gp, items: gp.items.map(it => it.id === item.id ? { ...it, enabled: true } : it) }
                                             : gp
                                         ));
+                                        setExpandedRails(prev => new Set(prev).add(item.id));
                                         showToast(`${item.name} guardrail enabled`, 'success');
                                         return;
                                       }
@@ -1113,7 +1128,12 @@ export default function ActionConfigureV2() {
                                   </div>
                                 </div>
                               }
-                              expanded={item.enabled}
+                              expanded={expandedRails.has(item.id)}
+                              onExpandedChange={(open) => setExpandedRails(prev => {
+                                const next = new Set(prev);
+                                if (open) next.add(item.id); else next.delete(item.id);
+                                return next;
+                              })}
                             >
                               <div className="security-guardrail-controls">
                                 <div className="security-control-row">
@@ -1953,6 +1973,7 @@ export default function ActionConfigureV2() {
                   ? { ...gp, items: gp.items.map(it => it.id === itemId ? { ...it, enabled: true } : it) }
                   : gp
               ));
+              setExpandedRails(prev => new Set(prev).add(itemId));
               setHasAcknowledgedAdvancedPricing(true);
               setPendingAdvancedEnable(null);
               showToast(`${itemName} guardrail enabled`, 'success');
