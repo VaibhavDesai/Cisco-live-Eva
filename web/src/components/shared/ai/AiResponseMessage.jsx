@@ -22,6 +22,8 @@ const NEGATIVE_OPTIONS = ['Incorrect', 'Unhelpful', 'Confusing', 'Incomplete']
  * @param {function(): void} [props.onRegenerate] Handler for the regenerate action button.
  * @param {string[]} [props.followups=[]] Suggestion labels rendered as follow-up buttons.
  * @param {function(string): void} [props.onFollowup] Invoked with a suggestion string when a follow-up chip is chosen.
+ * @param {string} [props.assistantName='AI Assistant'] Label shown beside the AI symbol.
+ * @param {'static'|'processing'|'responding'} [props.assistantState='static'] Motion state for the AI symbol.
  * @param {string} [props.className=''] Additional CSS class names merged onto the root container.
  * @example
  * <AiResponseMessage content="Here is the summary." sources={[{ title: 'Doc', url: 'https://example.com' }]} onCopy={() => {}} />
@@ -38,6 +40,8 @@ function AiResponseMessage({
   onRegenerate,
   followups = [],
   onFollowup,
+  assistantName = 'AI Assistant',
+  assistantState = 'static',
   className = '',
 }) {
   const [feedback, setFeedback] = useState(null)
@@ -63,8 +67,8 @@ function AiResponseMessage({
 
       <div className="ai-response__header">
         <div className="ai-response__identity">
-          <AiSymbol size={24} />
-          <span className="ai-response__label">AI Assistant</span>
+          <AiSymbol state={assistantState} size={24} />
+          <span className="ai-response__label">{assistantName}</span>
           {warning && (
             <span className="ai-response__badge">
               <Icon name="warning-badge-filled" size={16} />

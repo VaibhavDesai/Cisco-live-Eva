@@ -68,7 +68,6 @@ export const ReviewOverlay = () => {
     };
   }, [active]);
 
-  if (!enabled) return null;
   if (typeof document === 'undefined') return null;
 
   const selected = selectedThreadId
@@ -76,50 +75,58 @@ export const ReviewOverlay = () => {
     : null;
   const selectedPos = selected ? positions[selected.id] : null;
 
+  // NameModal and CommentsModal self-gate on their own open state and must be
+  // mounted unconditionally — otherwise the user can never get past the first
+  // name prompt (clicking the sidebar toggle before `enabled` flips true would
+  // trigger the modal, but with nothing rendered to show it).
   return createPortal(
-    <div
-      className={`review-layer ${active ? 'review-layer--active' : ''}`}
-      data-review-ui
-    >
-      {showMarkers && <ElementPicker />}
+    <>
+      {enabled && (
+        <div
+          className={`review-layer ${active ? 'review-layer--active' : ''}`}
+          data-review-ui
+        >
+          {showMarkers && <ElementPicker />}
 
-      {/* Resolved threads are reachable via the "All comments" modal, but
-          their pins disappear from the page so open items stand out. */}
-      {showMarkers &&
-        routeThreads
-          .filter((t) => t.status === 'open')
-          .map((t, i) => {
-            const pos = positions[t.id];
-            if (!pos) return null;
-            return (
-              <CommentPin
-                key={t.id}
-                index={i + 1}
-                thread={t}
-                x={pos.x}
-                y={pos.y}
-                active={selectedThreadId === t.id}
-                orphan={pos.orphan}
-                onClick={() => selectThread(t.id)}
-              />
-            );
-          })}
+          {/* Resolved threads are reachable via the "All comments" modal, but
+              their pins disappear from the page so open items stand out. */}
+          {showMarkers &&
+            routeThreads
+              .filter((t) => t.status === 'open')
+              .map((t, i) => {
+                const pos = positions[t.id];
+                if (!pos) return null;
+                return (
+                  <CommentPin
+                    key={t.id}
+                    index={i + 1}
+                    thread={t}
+                    x={pos.x}
+                    y={pos.y}
+                    active={selectedThreadId === t.id}
+                    orphan={pos.orphan}
+                    onClick={() => selectThread(t.id)}
+                  />
+                );
+              })}
 
-      {showMarkers && pendingAnchor && (
-        <CommentPopover
-          x={pendingAnchor.clientX}
-          y={pendingAnchor.clientY}
-          label={pendingAnchor.label}
-        />
-      )}
+          {showMarkers && pendingAnchor && (
+            <CommentPopover
+              x={pendingAnchor.clientX}
+              y={pendingAnchor.clientY}
+              label={pendingAnchor.label}
+            />
+          )}
 
-      {showMarkers && selected && selectedPos && (
-        <CommentThread thread={selected} x={selectedPos.x} y={selectedPos.y} />
+          {showMarkers && selected && selectedPos && (
+            <CommentThread thread={selected} x={selectedPos.x} y={selectedPos.y} />
+          )}
+        </div>
       )}
 
       <NameModal />
       <CommentsModal />
-    </div>,
+    </>,
     document.body,
   );
 };

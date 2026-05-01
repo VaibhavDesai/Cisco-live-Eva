@@ -32,6 +32,12 @@ const setSessionEnabled = (): void => {
   }
 };
 
+const isTextEntryTarget = (target: EventTarget | null): boolean => {
+  if (!(target instanceof HTMLElement)) return false;
+  if (target.isContentEditable) return true;
+  return !!target.closest('input, textarea, select, [contenteditable="true"]');
+};
+
 type PickerMode = 'idle' | 'picking';
 
 interface ReviewContextValue {
@@ -406,6 +412,19 @@ export const ReviewProvider = ({ children }: { children: ReactNode }) => {
       setSelectedThreadId(null);
     }
   }, [active, configured, ensureDisplayName, sessionEnabled]);
+
+  useEffect(() => {
+    const handleShortcut = (event: KeyboardEvent) => {
+      if (event.key.toLowerCase() !== 'c') return;
+      if (event.metaKey || event.ctrlKey || event.altKey || event.shiftKey) return;
+      if (event.repeat || isTextEntryTarget(event.target)) return;
+      event.preventDefault();
+      void toggleActive();
+    };
+
+    document.addEventListener('keydown', handleShortcut);
+    return () => document.removeEventListener('keydown', handleShortcut);
+  }, [toggleActive]);
 
   const startPicking = useCallback(() => {
     if (!active) return;

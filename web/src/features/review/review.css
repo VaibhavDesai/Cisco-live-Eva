@@ -246,6 +246,13 @@
   z-index: 2147483200;
 }
 
+/* Review modals are short and never need to scroll, so let the Input focus ring
+ * bleed past the modal-body's top edge instead of getting clipped by the
+ * shared `overflow-y: auto` rule on .modal-body. */
+.review-modal-overlay .modal-body {
+  overflow: visible;
+}
+
 /* "All comments" modal — browses every thread across every route. */
 .review-comments-modal__list {
   list-style: none;

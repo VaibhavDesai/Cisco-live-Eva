@@ -2,7 +2,9 @@ import { useLocation, useNavigate } from 'react-router-dom';
 import SideNav from '../../../components/shared/SideNav';
 import { Icon } from '../../../icons/Icon';
 import Toggle from '../../../components/shared/Toggle';
+import Dropdown from '../../../components/shared/Dropdown';
 import { useReview } from '../../../features/review/ReviewProvider';
+import { useV2Mode } from '../../../contexts/V2ModeContext';
 
 interface NavItem {
   path: string;
@@ -21,7 +23,16 @@ const navItems: NavItem[] = [
 
 const ORGANIZATION_NAME = 'Renergize Healthcare';
 
-export default function Sidebar() {
+const DESIGN_VARIATION_OPTIONS = [
+  { value: 'none', label: 'None' },
+  { value: 'crosslaunch-v2', label: 'CrossLaunch V2' },
+];
+
+interface SidebarProps {
+  collapsed?: boolean;
+}
+
+export default function Sidebar({ collapsed = false }: SidebarProps) {
   const location = useLocation();
   const navigate = useNavigate();
   const {
@@ -30,6 +41,7 @@ export default function Sidebar() {
     toggleActive: toggleReview,
     openCommentsModal,
   } = useReview();
+  const { active: v2Active, setActive: setV2Active } = useV2Mode();
 
   const isActive = (path: string, end = false) => {
     if (end) return location.pathname === path;
@@ -37,9 +49,9 @@ export default function Sidebar() {
   };
 
   return (
-    <aside className="sidebar">
+    <aside className={`sidebar${collapsed ? ' sidebar--collapsed' : ''}`}>
       <div className="sidebar-main">
-        <SideNav aria-label="Main navigation">
+        <SideNav collapsed={collapsed} aria-label="Main navigation">
           <SideNav.Upper>
             <SideNav.Section>
               {navItems.map(item => {
@@ -64,7 +76,7 @@ export default function Sidebar() {
       </div>
       <div className="sidebar-bottom">
         <div
-          className="sidebar-comment-toggle"
+          className="sidebar-comment-toggle sidebar-comment-toggle--with-hint"
           data-review-ui
           title={
             !reviewConfigured
@@ -74,10 +86,19 @@ export default function Sidebar() {
                 : 'Turn on to leave inline comments on any element.'
           }
         >
-          <span className="sidebar-comment-toggle__icon" aria-hidden>
-            <Icon name="chat" size={14} />
+          <span className="sidebar-comment-toggle__copy">
+            <span className="sidebar-comment-toggle__label">Comment mode</span>
+            <span className="sidebar-comment-toggle__hint">Press C to turn on/off</span>
           </span>
-          <span className="sidebar-comment-toggle__label">Comment</span>
+          <Toggle
+            size="compact"
+            checked={reviewActive}
+            disabled={!reviewConfigured}
+            onChange={() => {
+              void toggleReview();
+            }}
+            aria-label={reviewActive ? 'Turn off comment mode' : 'Turn on comment mode'}
+          />
           <button
             type="button"
             className="sidebar-comment-toggle__view-all"
@@ -89,16 +110,16 @@ export default function Sidebar() {
           >
             <Icon name="list-menu" size={14} />
           </button>
-          <Toggle
-            size="compact"
-            checked={reviewActive}
-            disabled={!reviewConfigured}
-            onChange={() => {
-              void toggleReview();
-            }}
-            aria-label={reviewActive ? 'Turn off comment mode' : 'Turn on comment mode'}
-          />
         </div>
+        <Dropdown
+          className="sidebar-design-variation-select"
+          label="Design Variations"
+          options={DESIGN_VARIATION_OPTIONS}
+          value={v2Active ? 'crosslaunch-v2' : 'none'}
+          size="compact"
+          menuPlacement="top"
+          onChange={value => setV2Active(value === 'crosslaunch-v2')}
+        />
         <button
           type="button"
           className={`sidebar-org-pill${location.pathname === '/settings/organization' ? ' sidebar-org-pill--active' : ''}`}

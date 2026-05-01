@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { createPortal } from 'react-dom';
 import { Icon } from '../../icons';
+import type { IconName } from '../../icons/types';
 
 export interface DropdownOption {
   /** Value passed to `onChange` when this option is selected */
@@ -9,6 +10,8 @@ export interface DropdownOption {
   label: string;
   /** When true, the option cannot be selected */
   disabled?: boolean;
+  /** Optional muted count rendered after the label in the menu (e.g., filter facets) */
+  count?: number;
 }
 
 interface DropdownProps {
@@ -32,6 +35,10 @@ interface DropdownProps {
   className?: string;
   /** Trigger size variant */
   size?: 'default' | 'compact';
+  /** Optional leading icon rendered inside the trigger (e.g., `filter`). */
+  leadingIcon?: IconName;
+  /** Direction the menu opens from the trigger. */
+  menuPlacement?: 'bottom' | 'top';
 }
 
 /**
@@ -51,6 +58,8 @@ export default function Dropdown({
   disabled = false,
   className = '',
   size = 'default',
+  leadingIcon,
+  menuPlacement = 'bottom',
 }: DropdownProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [highlightedIndex, setHighlightedIndex] = useState(-1);
@@ -65,12 +74,12 @@ export default function Dropdown({
     if (isOpen && triggerRef.current) {
       const rect = triggerRef.current.getBoundingClientRect();
       setMenuPosition({
-        top: rect.bottom + 4,
+        top: menuPlacement === 'top' ? rect.top - 4 : rect.bottom + 4,
         left: rect.left,
         width: rect.width,
       });
     }
-  }, [isOpen]);
+  }, [isOpen, menuPlacement]);
 
   useEffect(() => {
     if (!isOpen) return;
@@ -155,6 +164,7 @@ export default function Dropdown({
           top: menuPosition.top,
           left: menuPosition.left,
           minWidth: menuPosition.width,
+          transform: menuPlacement === 'top' ? 'translateY(-100%)' : undefined,
           zIndex: 9999,
         }}
       >
@@ -178,6 +188,9 @@ export default function Dropdown({
             disabled={option.disabled}
           >
             <span className="dropdown-label">{option.label}</span>
+            {typeof option.count === 'number' && (
+              <span className="dropdown-option-count">{option.count}</span>
+            )}
             {option.value === value && (
               <span className="dropdown-check">
                 <Icon name="check" weight="bold" size="sm" />
@@ -206,6 +219,11 @@ export default function Dropdown({
         aria-haspopup="listbox"
         aria-expanded={isOpen}
       >
+        {leadingIcon && (
+          <span className="dropdown-trigger-leading" aria-hidden="true">
+            <Icon name={leadingIcon} weight="bold" size="xs" />
+          </span>
+        )}
         <span className={`dropdown-trigger-value ${!selectedOption ? 'placeholder' : ''}`}>
           {selectedOption?.label || placeholder}
         </span>

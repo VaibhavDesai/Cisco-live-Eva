@@ -175,6 +175,7 @@ export type IconName =
   | 'chat-mute'
   | 'check'
   | 'check-circle'
+  | 'check-circle-filled'
   | 'checkbox-group'
   | 'clean-up'
   | 'clear'

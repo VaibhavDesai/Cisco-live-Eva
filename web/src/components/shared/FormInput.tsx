@@ -30,6 +30,8 @@ export interface InputProps
   leadingIcon?: IconName;
   /** Icon displayed at the end of the input */
   trailingIcon?: IconName;
+  /** Static text/content rendered inside the field, before the input (e.g. "https://") */
+  prefix?: React.ReactNode;
   /** Shows a clear control when the field has a value */
   clearable?: boolean;
   /** Handler invoked when the clear control is pressed */
@@ -56,6 +58,7 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(
       showCharCount = false,
       leadingIcon,
       trailingIcon,
+      prefix,
       clearable = false,
       onClear,
       className = '',
@@ -70,7 +73,7 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(
   ) => {
     const autoId = useId();
     const inputId = externalId ?? autoId;
-    const hasIcons = leadingIcon || trailingIcon || clearable;
+    const hasIcons = leadingIcon || trailingIcon || clearable || prefix;
     const showClear = clearable && value && !disabled && !readOnly;
 
     const wrapperCls = [
@@ -117,6 +120,7 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(
                 <Icon name={leadingIcon} weight="regular" size={16} />
               </span>
             )}
+            {prefix && <span className="form-input-prefix">{prefix}</span>}
             {renderInput}
             {showClear && (
               <button

@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import Button from '../components/shared/Button';
+import { Card, CardHeader, CardBody, CardFooter } from '../components/shared/Card';
 import Dropdown from '../components/shared/Dropdown';
 import { Table, TableHead, TableBody, TableRow, TableHeader, TableCell } from '../components/shared/Table';
 import Badge from '../components/shared/Badge';
@@ -100,23 +101,22 @@ export default function Connections() {
         {activeTab === 'available' && (
           <div className="grid grid-3" style={{ gap: '16px' }}>
             {AVAILABLE_INTEGRATIONS.map(integration => (
-              <div 
-                key={integration.id}
-                className="connection-card"
-              >
-                <div className="connection-card-header">
+              <Card key={integration.id} className="connection-card">
+                <CardHeader>
                   <div className="connection-card-logo">{integration.logo}</div>
-                  <div className="connection-card-info">
-                    <div className="connection-card-name">{integration.name}</div>
-                    <div className="connection-card-category">{integration.category}</div>
+                  <div className="card-header-text">
+                    <span className="card-title">{integration.name}</span>
+                    <span className="card-subtitle">{integration.category}</span>
                   </div>
-                </div>
-                <p className="connection-card-description">{integration.description}</p>
-                <div className="connection-card-footer">
+                </CardHeader>
+                <CardBody>
+                  <p className="card-body-text">{integration.description}</p>
+                </CardBody>
+                <CardFooter>
                   <span className="connection-card-updated">Updated {integration.updated}</span>
                   <Button variant="secondary" size="sm">Connect</Button>
-                </div>
-              </div>
+                </CardFooter>
+              </Card>
             ))}
           </div>
         )}

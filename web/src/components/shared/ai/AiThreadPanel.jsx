@@ -66,7 +66,17 @@ function AiThreadPanel({
       </div>
 
       <div className="ai-thread-panel__header">
-        <span className="ai-thread-panel__title">Threads</span>
+        <div className="ai-thread-panel__title-row">
+          <span className="ai-thread-panel__title">Threads</span>
+          <button
+            type="button"
+            className="ai-thread-panel__collapse-btn"
+            aria-label="Collapse threads"
+            onClick={onCollapse}
+          >
+            <Icon name="side-panel-bold" size={16} />
+          </button>
+        </div>
         <div>
           <button
             type="button"

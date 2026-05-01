@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect, useMemo, useCallback } from 'react';
 import { createPortal } from 'react-dom';
-import { Navigate, useParams, Link } from 'react-router-dom';
+import { Navigate, useParams, Link, useSearchParams } from 'react-router-dom';
 import { useApp } from '../../contexts/AppContext';
 import { AgentHeader } from '../../components/agents';
 import Button from '../../components/shared/Button';
@@ -24,6 +24,7 @@ import { TextLink } from '../../components/shared/TextLink';
 import CreateEngineModal from '../CreateEngineModal';
 import CreateFulfillmentModal from './CreateFulfillmentModal';
 import PolicyStudio from './PolicyStudio';
+import { useV2Mode } from '../../contexts/V2ModeContext';
 import { optimizeInstructions } from '../../api/ciscoAi';
 import { Icon } from '../../icons';
 import {
@@ -74,7 +75,23 @@ type ActionRow = {
   lastUpdated: string;
 };
 
-const ACTION_SECTIONS = ['Profile', 'Instructions', 'Security', 'Knowledge', 'Action', 'Language'];
+const ACTION_SECTIONS = ['Profile', 'Instructions', 'Knowledge', 'Action', 'Security', 'Language'];
+
+const PROFILE_LANGUAGE_OPTIONS = [
+  { value: 'en-US', label: 'English (US)' },
+  { value: 'en-GB', label: 'English (UK)' },
+  { value: 'es-ES', label: 'Spanish' },
+  { value: 'fr-FR', label: 'French' },
+  { value: 'de-DE', label: 'German' },
+];
+
+const PROFILE_VOICE_OPTIONS = [
+  { value: 'ava', label: 'Ava' },
+  { value: 'daniel', label: 'Daniel' },
+  { value: 'emma', label: 'Emma' },
+  { value: 'liam', label: 'Liam' },
+  { value: 'sophia', label: 'Sophia' },
+];
 
 const INSTRUCTION_EXAMPLES = [
   {
@@ -214,7 +231,21 @@ const DEFAULT_ADVANCED_GROUPS: AdvancedGuardrailGroup[] = [
 export default function ActionConfigureV2() {
   const { agentId } = useParams();
   const { agents, currentAgent, selectAgent, showToast, aiEngines, addAiEngine } = useApp();
-  const [activeSection, setActiveSection] = useState<string>('Profile');
+  const { active: v2ModeActive } = useV2Mode();
+  const [searchParams] = useSearchParams();
+  // Allow deep-linking to a specific section via ?section=Security (etc.).
+  // Only the first render reads the param; user navigation takes over after that.
+  const initialSection = (() => {
+    const raw = searchParams.get('section');
+    if (!raw) return 'Profile';
+    const allowed = ['Profile', 'Instructions', 'Knowledge', 'Action', 'Security', 'Language'];
+    return allowed.includes(raw) ? raw : 'Profile';
+  })();
+  const initialTier: 'standard' | 'advanced' = (() => {
+    const raw = searchParams.get('tier');
+    return raw === 'advanced' ? 'advanced' : 'standard';
+  })();
+  const [activeSection, setActiveSection] = useState<string>(initialSection);
 
   // Profile form state
   const [profileForm, setProfileForm] = useState({
@@ -222,6 +253,8 @@ export default function ActionConfigureV2() {
     systemId: 'AcmeBankCreditCardAssistant-uah13as',
     avatarUrl: 'https://us.webexbotbuilder.com/static/assets/i...',
     timezone: 'Europe/London',
+    language: 'en-US',
+    voiceName: 'ava',
     aiEngine: 'Webex AI Pro 1.0',
     welcomeMessage: '',
     agentGoal: '',
@@ -249,7 +282,7 @@ export default function ActionConfigureV2() {
   const [preOptimizeText, setPreOptimizeText] = useState('');
 
   // Security tab state
-  const [securityTier, setSecurityTier] = useState<'standard' | 'advanced'>('standard');
+  const [securityTier, setSecurityTier] = useState<'standard' | 'advanced'>(initialTier);
   const [showObsBanner, setShowObsBanner] = useState(true);
   const isPaidUser = true;
   const [standardGuardrails, setStandardGuardrails] = useState<StandardGuardrail[]>(DEFAULT_STANDARD_GUARDRAILS);
@@ -721,6 +754,28 @@ export default function ActionConfigureV2() {
                     ]}
                     value={profileForm.timezone}
                     onChange={(val) => updateProfileField('timezone', val)}
+                  />
+                </div>
+
+                <div className="v2-profile-field-group">
+                  <label className="v2-profile-label">
+                    Language <span className="v2-profile-required">*</span>
+                  </label>
+                  <Dropdown
+                    options={PROFILE_LANGUAGE_OPTIONS}
+                    value={profileForm.language}
+                    onChange={(val) => updateProfileField('language', val)}
+                  />
+                </div>
+
+                <div className="v2-profile-field-group">
+                  <label className="v2-profile-label">
+                    Voice name <span className="v2-profile-required">*</span>
+                  </label>
+                  <Dropdown
+                    options={PROFILE_VOICE_OPTIONS}
+                    value={profileForm.voiceName}
+                    onChange={(val) => updateProfileField('voiceName', val)}
                   />
                 </div>
 
@@ -1198,7 +1253,19 @@ export default function ActionConfigureV2() {
                           variant="primary"
                           size="sm"
                           disabled={!isPaidUser}
-                          onClick={() => { setEditingProfileId(null); setShowPolicyStudio(true); }}
+                          onClick={() => {
+                            if (v2ModeActive) {
+                              const base = (import.meta.env.BASE_URL || '/').replace(/\/$/, '');
+                              window.open(
+                                `${base}/policy-studio-v2`,
+                                '_blank',
+                                'noopener,noreferrer',
+                              );
+                              return;
+                            }
+                            setEditingProfileId(null);
+                            setShowPolicyStudio(true);
+                          }}
                         >
                           <Icon name="plus" weight="bold" size={16} />Create custom profile
                         </Button>

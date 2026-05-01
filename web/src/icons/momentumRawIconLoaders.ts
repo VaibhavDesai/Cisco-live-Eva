@@ -20,8 +20,14 @@ export function resolveMomentumIconLoader(id: string): (() => Promise<string>) |
   let svg = svgById.get(id);
   if (svg) return () => Promise.resolve(svg);
   if (id.endsWith('-bold')) {
-    const alt = `${id.slice(0, -'-bold'.length)}-regular`;
+    const bare = id.slice(0, -'-bold'.length);
+    const alt = `${bare}-regular`;
     svg = svgById.get(alt);
+    if (svg) return () => Promise.resolve(svg);
+    // Some Momentum glyphs (e.g. "*-filled") ship without weight variants.
+    // Fall back to the bare filename so callers can still reference them
+    // via the Icon component with the default weight.
+    svg = svgById.get(bare);
     if (svg) return () => Promise.resolve(svg);
   }
   return undefined;

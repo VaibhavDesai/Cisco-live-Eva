@@ -10,6 +10,9 @@ import AiSymbol from './AiSymbol'
  * @param {boolean} [props.processing=false] - When true, replaces the input row with a processing state and hides suggestions.
  * @param {string[]} [props.suggestions=[]] - Quick-reply strings rendered as chips above the composer when not processing.
  * @param {string} [props.placeholder='Ask AI Assistant'] - Placeholder for the auto-growing message textarea.
+ * @param {boolean} [props.voiceActive=false] - Shows active state for the optional voice input control.
+ * @param {function(): void} [props.onVoiceToggle] - Enables a microphone button beside send when provided.
+ * @param {boolean} [props.fillContainer=false] - Removes composer width caps so the footer fills its parent.
  * @param {string} [props.className=''] - Extra classes merged onto the root `ai-footer` container.
  * @example
  * <AiFooter onSend={(msg) => console.log(msg)} suggestions={['Summarize', 'Next steps']} />
@@ -20,6 +23,9 @@ function AiFooter({
   processing = false,
   suggestions = [],
   placeholder = 'Ask AI Assistant',
+  voiceActive = false,
+  onVoiceToggle,
+  fillContainer = false,
   className = '',
 }) {
   const [text, setText] = useState('')
@@ -48,8 +54,18 @@ function AiFooter({
     }
   }, [handleSend])
 
+  const fillContainerStyle = fillContainer
+    ? { boxSizing: 'border-box', maxWidth: 'none', width: '100%', paddingLeft: 0, paddingRight: 0 }
+    : undefined
+  const groupStyle = fillContainer
+    ? { alignItems: 'stretch', boxSizing: 'border-box', width: '100%' }
+    : undefined
+  const inputRowStyle = fillContainer
+    ? { alignSelf: 'stretch', boxSizing: 'border-box', flexBasis: '100%', maxWidth: 'none', minWidth: '100%', width: '100%' }
+    : undefined
+
   return (
-    <div className={`ai-footer ${className}`}>
+    <div className={`ai-footer ${className}`} style={fillContainerStyle}>
       {suggestions.length > 0 && !processing && (
         <div className="ai-footer__suggestions">
           {suggestions.map((s, i) => (
@@ -64,14 +80,14 @@ function AiFooter({
           ))}
         </div>
       )}
-      <div className="ai-footer__group">
+      <div className="ai-footer__group" style={groupStyle}>
         {processing ? (
-          <div className="ai-footer__input-row" style={{ alignItems: 'center', justifyContent: 'center' }}>
+          <div className="ai-footer__input-row" style={{ ...inputRowStyle, alignItems: 'center', justifyContent: 'center' }}>
             <AiSymbol size={24} state="processing" />
             <span style={{ color: 'var(--text-secondary)', fontSize: 14, marginLeft: 8 }}>Processing...</span>
           </div>
         ) : (
-          <div className="ai-footer__input-row">
+          <div className="ai-footer__input-row" style={inputRowStyle}>
             <div className="ai-footer__type-area">
               <textarea
                 ref={textareaRef}
@@ -89,6 +105,18 @@ function AiFooter({
                 All sources
                 <Icon name="arrow-down-bold" size={16} />
               </button>
+              {onVoiceToggle && (
+                <button
+                  type="button"
+                  className={`ai-footer__voice-btn${voiceActive ? ' ai-footer__voice-btn--active' : ''}`}
+                  aria-label={voiceActive ? 'Turn voice input off' : 'Turn voice input on'}
+                  aria-pressed={voiceActive}
+                  disabled={disabled}
+                  onClick={onVoiceToggle}
+                >
+                  <Icon name={voiceActive ? 'microphone-on-bold' : 'microphone-bold'} size={16} />
+                </button>
+              )}
               <button
                 type="button"
                 className="ai-footer__send-btn"

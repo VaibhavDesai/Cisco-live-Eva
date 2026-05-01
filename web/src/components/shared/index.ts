@@ -85,6 +85,8 @@ export { Dialog } from './Dialog';
 export type { DialogProps, DialogSize, DialogVariant } from './Dialog';
 export { FilterPill } from './FilterPill';
 export type { FilterPillProps } from './FilterPill';
+export { Filter } from './Filter';
+export type { FilterProps, FilterOption } from './Filter';
 export { EmptyState } from './EmptyState';
 export type { EmptyStateProps, EmptyStateGraphicSize, EmptyStateLayout } from './EmptyState';
 export { Illustration } from '../../assets/illustrations';

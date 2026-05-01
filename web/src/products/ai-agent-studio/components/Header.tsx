@@ -5,10 +5,11 @@ import webexAiAgentStudioWordmark from '../../../assets/webex-ai-agent-studio-wo
 
 export interface StudioHeaderProps {
   onAiClick?: () => void;
+  onMenuClick?: () => void;
   centerContent?: ReactNode;
 }
 
-export default function Header({ onAiClick, centerContent }: StudioHeaderProps) {
+export default function Header({ onAiClick, onMenuClick, centerContent }: StudioHeaderProps) {
   return (
     <AppHeader
       fixed
@@ -20,6 +21,7 @@ export default function Header({ onAiClick, centerContent }: StudioHeaderProps) 
       avatarSrc="https://i.pravatar.cc/64?img=12"
       avatarName="Austen Jones"
       onAiClick={onAiClick}
+      onMenuClick={onMenuClick}
     >
       <ThemeToggle />
     </AppHeader>

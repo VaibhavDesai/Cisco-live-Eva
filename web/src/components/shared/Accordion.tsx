@@ -123,7 +123,7 @@ export function AccordionItem({
           aria-labelledby={headerId}
           className="accordion__panel"
         >
-          <div className="accordion__panel-inner">{children}</div>
+          <div className="accordion__panel-content">{children}</div>
         </div>
       )}
     </div>
