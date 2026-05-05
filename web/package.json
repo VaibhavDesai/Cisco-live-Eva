@@ -8,8 +8,8 @@
     "build": "vite build && cp dist/index.html dist/404.html && touch dist/.nojekyll",
     "lint": "eslint .",
     "preview": "vite preview",
-    "predeploy:ghpages": "VITE_BASE_PATH=/pages/CBABU/ai-agent-studio/ vite build && cp dist/index.html dist/404.html && touch dist/.nojekyll",
-    "deploy": "npm run predeploy:ghpages && gh-pages -d dist --repo git@sqbu-github-cisco:CBABU/ai-agent-studio.git -b gh-pages --dotfiles"
+    "predeploy:ghpages": "VITE_BASE_PATH=/pages/CBABU/Cisco-live-Eva/ vite build && cp dist/index.html dist/404.html && touch dist/.nojekyll",
+    "deploy": "npm run predeploy:ghpages && gh-pages -d dist --repo git@sqbu-github-cisco:CBABU/Cisco-live-Eva.git -b gh-pages --dotfiles"
   },
   "dependencies": {
     "@momentum-design/components": "^0.129.51",
