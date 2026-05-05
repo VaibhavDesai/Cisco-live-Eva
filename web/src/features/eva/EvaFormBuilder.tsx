@@ -1057,6 +1057,22 @@ export default function EvaFormBuilder() {
                 <div className="instructions-editor">
                   <div className="instructions-toolbar">
                     <div className="instructions-toolbar-left">
+                      <button type="button" className="instructions-toolbar-btn" aria-label="Bold">
+                        <Icon name="bold" weight="bold" size={16} />
+                      </button>
+                      <button type="button" className="instructions-toolbar-btn" aria-label="Italic">
+                        <Icon name="italic" weight="bold" size={16} />
+                      </button>
+                      <button type="button" className="instructions-toolbar-btn" aria-label="Underline">
+                        <Icon name="underline" weight="bold" size={16} />
+                      </button>
+                      <button type="button" className="instructions-toolbar-btn" aria-label="Link">
+                        <Icon name="link" weight="bold" size={16} />
+                      </button>
+                      <button type="button" className="instructions-toolbar-btn" aria-label="Table">
+                        <Icon name="table" weight="bold" size={16} />
+                      </button>
+                      <span className="instructions-toolbar-divider" />
                       <button
                         type="button"
                         className="instructions-toolbar-pill"
@@ -1088,10 +1104,29 @@ export default function EvaFormBuilder() {
                   </div>
                   <textarea
                     className="instructions-textarea"
-                    placeholder="Set clear goals for your agent. Provide step-by-step instructions to help them succeed."
+                    placeholder="Set clear goals for your agent. Provide step-by-step instructions to help them succeed in reaching these targets."
                     value={instructionPrompt}
                     onChange={event => setInstructionPrompt(event.target.value)}
                   />
+                  {optimizeAccepted && (
+                    <div className="instructions-ai-footer">
+                      <Icon
+                        name="check"
+                        weight="bold"
+                        size={14}
+                        color="var(--mds-color-theme-text-success-normal, var(--success-color))"
+                      />
+                      <span>AI Generated</span>
+                      <span className="instructions-ai-divider">·</span>
+                      <span>Is this helpful?</span>
+                      <button type="button" className="instructions-feedback-btn" aria-label="Helpful">
+                        <Icon name="like" weight="bold" size={14} />
+                      </button>
+                      <button type="button" className="instructions-feedback-btn" aria-label="Not helpful">
+                        <Icon name="dislike" weight="bold" size={14} />
+                      </button>
+                    </div>
+                  )}
                 </div>
               </div>
 
@@ -1160,6 +1195,14 @@ export default function EvaFormBuilder() {
                         </article>
                       ))}
                     </div>
+                  </div>
+                  <div className="eva-instruction-examples__section">
+                    <h4>Best practice tips</h4>
+                    <ul className="eva-instruction-tips">
+                      <li>Start with a clear role definition.</li>
+                      <li>Use markdown headers for role, goals, guardrails, and output rules.</li>
+                      <li>Define the agent's tone and escalation path.</li>
+                    </ul>
                   </div>
                 </div>
               )}
