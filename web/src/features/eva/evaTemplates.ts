@@ -1,4 +1,107 @@
-import type { EvaGuidedStepId, EvaTemplate } from './types';
+import type { EvaGuidedStepId, EvaKnowledgeRecommendation, EvaTemplate } from './types';
+
+/* Centralized catalog of recommended knowledge collections so multiple templates
+   can share consistent metadata (counts, descriptions, last-updated). The
+   `lastUpdatedAt` timestamps are anchored to module-load time so the relative
+   labels ("3 hours ago", "2 days ago") stay believable across sessions. */
+const isoMinutesAgo = (mins: number) =>
+  new Date(Date.now() - mins * 60_000).toISOString();
+
+const KB_CATALOG: Record<string, EvaKnowledgeRecommendation> = {
+  'FAQ database': {
+    name: 'FAQ database',
+    description: 'Curated answers to the most common customer questions.',
+    sources: 142,
+    usedBy: 7,
+    lastUpdatedAt: isoMinutesAgo(45),
+  },
+  'Support articles': {
+    name: 'Support articles',
+    description: 'Step-by-step troubleshooting articles maintained by the support team.',
+    sources: 318,
+    usedBy: 5,
+    lastUpdatedAt: isoMinutesAgo(60 * 6),
+  },
+  'Product documentation': {
+    name: 'Product documentation',
+    description: 'Official user manuals, release notes, and product reference material.',
+    sources: 254,
+    usedBy: 12,
+    lastUpdatedAt: isoMinutesAgo(60 * 24 * 2),
+  },
+  'Engineering wiki': {
+    name: 'Engineering wiki',
+    description: 'Internal architecture notes, runbooks, and design decisions.',
+    sources: 487,
+    usedBy: 4,
+    lastUpdatedAt: isoMinutesAgo(60 * 3),
+  },
+  'HR policies': {
+    name: 'HR policies',
+    description: 'Employee handbook, benefits, leave, and people-ops procedures.',
+    sources: 96,
+    usedBy: 9,
+    lastUpdatedAt: isoMinutesAgo(60 * 24 * 4),
+  },
+  'Process playbooks': {
+    name: 'Process playbooks',
+    description: 'Standard operating playbooks describing how teams execute routine workflows.',
+    sources: 64,
+    usedBy: 3,
+    lastUpdatedAt: isoMinutesAgo(60 * 12),
+  },
+  'SOP library': {
+    name: 'SOP library',
+    description: 'Approved standard operating procedures across departments.',
+    sources: 128,
+    usedBy: 6,
+    lastUpdatedAt: isoMinutesAgo(60 * 24),
+  },
+  'Compliance policy library': {
+    name: 'Compliance policy library',
+    description: 'Regulatory policies and internal compliance directives.',
+    sources: 87,
+    usedBy: 4,
+    lastUpdatedAt: isoMinutesAgo(60 * 24 * 5),
+  },
+  'Security standards': {
+    name: 'Security standards',
+    description: 'Security policies, control frameworks, and data classification rules.',
+    sources: 53,
+    usedBy: 8,
+    lastUpdatedAt: isoMinutesAgo(60 * 30),
+  },
+  'Audit guidance': {
+    name: 'Audit guidance',
+    description: 'Internal and external audit handbooks, evidence templates, and remediation guides.',
+    sources: 41,
+    usedBy: 2,
+    lastUpdatedAt: isoMinutesAgo(60 * 24 * 9),
+  },
+  'Sales playbooks': {
+    name: 'Sales playbooks',
+    description: 'Account planning, opportunity progression, and pursuit strategies.',
+    sources: 76,
+    usedBy: 5,
+    lastUpdatedAt: isoMinutesAgo(60 * 8),
+  },
+  'Product briefs': {
+    name: 'Product briefs',
+    description: 'One-pagers summarizing positioning, target buyers, and use cases.',
+    sources: 45,
+    usedBy: 11,
+    lastUpdatedAt: isoMinutesAgo(60 * 24 * 3),
+  },
+  'Competitive guidance': {
+    name: 'Competitive guidance',
+    description: 'Battlecards, talking points, and competitor differentiators.',
+    sources: 34,
+    usedBy: 7,
+    lastUpdatedAt: isoMinutesAgo(60 * 18),
+  },
+};
+
+const kb = (name: keyof typeof KB_CATALOG): EvaKnowledgeRecommendation => KB_CATALOG[name];
 
 export const EVA_GUIDED_STEPS: Array<{
   id: EvaGuidedStepId;
@@ -38,7 +141,7 @@ export const EVA_TEMPLATES: EvaTemplate[] = [
       name: 'Customer Support Eva Agent',
       description: 'Answers customer questions, summarizes context, and escalates complex cases.',
       goals: ['Resolve common requests', 'Ground answers in approved support content', 'Escalate high-risk issues'],
-      knowledgeBases: ['FAQ database', 'Support articles', 'Product documentation'],
+      knowledgeBases: [kb('FAQ database'), kb('Support articles'), kb('Product documentation')],
       actions: ['Create case', 'Update ticket', 'Route to live agent'],
       security: ['PII redaction', 'Escalation for account changes', 'Answer only from approved sources'],
       language: 'English (US)',
@@ -55,7 +158,7 @@ export const EVA_TEMPLATES: EvaTemplate[] = [
       name: 'Knowledge Assistant Eva Agent',
       description: 'Finds and explains trusted answers from connected enterprise knowledge.',
       goals: ['Search approved sources', 'Summarize with citations', 'Recommend next steps'],
-      knowledgeBases: ['Engineering wiki', 'HR policies', 'Product documentation'],
+      knowledgeBases: [kb('Engineering wiki'), kb('HR policies'), kb('Product documentation')],
       actions: ['Open source document', 'Collect feedback', 'Create follow-up task'],
       security: ['Respect source permissions', 'Show citation confidence', 'Block unsupported claims'],
       language: 'English (US)',
@@ -72,7 +175,7 @@ export const EVA_TEMPLATES: EvaTemplate[] = [
       name: 'Workflow Automation Eva Agent',
       description: 'Guides users through requests and executes approved workflow actions.',
       goals: ['Collect required fields', 'Validate request completeness', 'Run approved actions'],
-      knowledgeBases: ['Process playbooks', 'SOP library'],
+      knowledgeBases: [kb('Process playbooks'), kb('SOP library')],
       actions: ['Create task', 'Send approval request', 'Notify owner'],
       security: ['Require confirmation before execution', 'Log action summaries', 'Escalate exceptions'],
       language: 'English (US)',
@@ -89,7 +192,7 @@ export const EVA_TEMPLATES: EvaTemplate[] = [
       name: 'Policy Compliance Eva Agent',
       description: 'Helps users understand policy requirements and flags risky requests.',
       goals: ['Explain policy requirements', 'Identify missing evidence', 'Route exceptions'],
-      knowledgeBases: ['Compliance policy library', 'Security standards', 'Audit guidance'],
+      knowledgeBases: [kb('Compliance policy library'), kb('Security standards'), kb('Audit guidance')],
       actions: ['Create review request', 'Notify compliance owner', 'Attach evidence'],
       security: ['Use strict policy grounding', 'Require human approval for exceptions', 'Retain audit trail'],
       language: 'English (US)',
@@ -106,7 +209,7 @@ export const EVA_TEMPLATES: EvaTemplate[] = [
       name: 'Sales Enablement Eva Agent',
       description: 'Prepares sales teams with approved messaging and recommended next steps.',
       goals: ['Summarize account context', 'Suggest discovery questions', 'Recommend follow-up actions'],
-      knowledgeBases: ['Sales playbooks', 'Product briefs', 'Competitive guidance'],
+      knowledgeBases: [kb('Sales playbooks'), kb('Product briefs'), kb('Competitive guidance')],
       actions: ['Draft follow-up', 'Create CRM note', 'Schedule next meeting'],
       security: ['Use approved messaging', 'Avoid unsupported claims', 'Protect customer-sensitive data'],
       language: 'English (US)',

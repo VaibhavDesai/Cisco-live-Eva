@@ -1,0 +1,1910 @@
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { useApp } from '../../contexts/AppContext';
+import {
+  AccordionGroup,
+  AccordionItem,
+  AiFooter,
+  AiPromptButton,
+  AiResponseMessage,
+  Badge,
+  Button,
+  Dropdown,
+  Input,
+  Slider,
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+  Textarea,
+  Toggle,
+} from '../../components/shared';
+import { Icon } from '../../icons';
+import { optimizeInstructions } from '../../api/ciscoAi';
+import { formatRelative } from '../../pages/knowledge/utils';
+import { EVA_TEMPLATES } from './evaTemplates';
+import type { EvaAgentDraft, EvaTemplateId } from './types';
+import {
+  CHANNEL_PHONE_NUMBER_OPTIONS,
+  DIGITAL_CHANNEL_DETAILS,
+  DIGITAL_CHANNEL_OPTIONS,
+  EVA_ACTION_ROWS,
+  EVA_ADVANCED_GUARDRAIL_GROUPS,
+  EVA_PLANNING_ROWS,
+  EVA_SESSION_STORAGE_KEY,
+  EVA_STANDARD_GUARDRAILS,
+  INSTRUCTION_EXAMPLES,
+  PROFILE_LANGUAGE_OPTIONS,
+  PROFILE_TIMEZONE_OPTIONS,
+  PROFILE_VOICE_OPTIONS,
+  STARTER_PROMPTS,
+  buildInstructionPrompt,
+  buildWelcomeMessage,
+  readEvaSessionState,
+  sensitivityToValue,
+  summarizeInstructionPrompt,
+  valueToSensitivity,
+  type EvaChannelType,
+  type EvaDigitalChannel,
+  type EvaDirection,
+  type EvaEnforcement,
+  type EvaSecurityTier,
+  type EvaSensitivity,
+  type EvaSessionState,
+} from './evaFormConfig';
+
+const gradient = 'linear-gradient(135deg, var(--accent-bg), var(--bg-glass-light))';
+const initialTemplateDraft: EvaAgentDraft = EVA_TEMPLATES[0].draft;
+
+const FORM_SECTION_IDS = [
+  'profile',
+  'channels',
+  'instructions',
+  'knowledge',
+  'actions',
+  'security',
+  'review',
+] as const;
+
+const REVIEW_FOLLOW_UP_PROMPTS = [
+  'Include a guide on filing a claim',
+  'Add tips for choosing the right insurance plan',
+  'Explain the deductible and co-pay concepts',
+  'Provide updates on the process of ongoing claims',
+  'Create a FAQ on common policy terms',
+];
+
+const PLANNING_TICK_MS = 560;
+const SECTION_REVEAL_MS = 320;
+
+type FormBuilderPhase = 'landing' | 'planning' | 'waterfall' | 'complete';
+
+export default function EvaFormBuilder() {
+  const navigate = useNavigate();
+  const { addAgent, aiEngines, showToast } = useApp();
+
+  const restoredRef = useRef<EvaSessionState | null>(null);
+  if (restoredRef.current === null) {
+    restoredRef.current = readEvaSessionState();
+  }
+  const restored = restoredRef.current;
+
+  const [draft, setDraft] = useState<EvaAgentDraft>(restored?.draft ?? initialTemplateDraft);
+  const [agentName, setAgentName] = useState(restored?.agentName ?? initialTemplateDraft.name);
+  const [agentDescription, setAgentDescription] = useState(
+    restored?.agentDescription ?? initialTemplateDraft.description,
+  );
+  const [avatarUrl, setAvatarUrl] = useState(
+    restored?.avatarUrl ?? 'https://us.webexbotbuilder.com/static/assets/i...',
+  );
+  const [timezone, setTimezone] = useState(restored?.timezone ?? 'Europe/London');
+  const [aiEngine, setAiEngine] = useState(restored?.aiEngine ?? 'Webex AI Pro 1.0');
+  const [welcomeMessage, setWelcomeMessage] = useState(
+    restored?.welcomeMessage ??
+      'Hi, I am Eva. I can help answer questions, guide next steps, and connect you with the right support path.',
+  );
+  const [instructionPrompt, setInstructionPrompt] = useState(
+    restored?.instructionPrompt ?? buildInstructionPrompt(initialTemplateDraft),
+  );
+  const [showInstructionExamples, setShowInstructionExamples] = useState(false);
+  const [optimizingInstructions, setOptimizingInstructions] = useState(false);
+  const [optimizeAccepted, setOptimizeAccepted] = useState(restored?.optimizeAccepted ?? false);
+  const [preOptimizeText, setPreOptimizeText] = useState(restored?.preOptimizeText ?? '');
+  const [optimizeSummary, setOptimizeSummary] = useState<{
+    changes: string[];
+    reasoning: string[];
+  }>(restored?.optimizeSummary ?? { changes: [], reasoning: [] });
+  const [selectedKnowledgeBases, setSelectedKnowledgeBases] = useState<string[]>(
+    restored?.selectedKnowledgeBases ?? initialTemplateDraft.knowledgeBases.slice(0, 2).map(kb => kb.name),
+  );
+  const [selectedActions, setSelectedActions] = useState<string[]>(
+    restored?.selectedActions ?? initialTemplateDraft.actions.slice(0, 2),
+  );
+  const [securityTier, setSecurityTier] = useState<EvaSecurityTier>(
+    restored?.securityTier ?? 'standard',
+  );
+  const [channelType, setChannelType] = useState<EvaChannelType>(
+    restored?.channelType ?? 'digital',
+  );
+  const [digitalChannel, setDigitalChannel] = useState<EvaDigitalChannel>(
+    restored?.digitalChannel ?? 'chat',
+  );
+  const [digitalChannelAddress, setDigitalChannelAddress] = useState(
+    restored?.digitalChannelAddress ?? '',
+  );
+  const [channelPhoneNumber, setChannelPhoneNumber] = useState(
+    restored?.channelPhoneNumber ?? CHANNEL_PHONE_NUMBER_OPTIONS[0].value,
+  );
+  const [standardGuardrails, setStandardGuardrails] = useState(
+    restored?.standardGuardrails ?? EVA_STANDARD_GUARDRAILS,
+  );
+  const [advancedGuardrailGroups, setAdvancedGuardrailGroups] = useState(
+    restored?.advancedGuardrailGroups ?? EVA_ADVANCED_GUARDRAIL_GROUPS,
+  );
+  const [expandedAdvancedGroups, setExpandedAdvancedGroups] = useState<Set<string>>(
+    () => new Set(restored?.expandedAdvancedGroups ?? EVA_ADVANCED_GUARDRAIL_GROUPS.map(g => g.id)),
+  );
+  const [personality, setPersonality] = useState(
+    restored?.personality ?? {
+      llm: 'Webex AI Pro 1.0',
+      voice: 'ava',
+      language: 'en-US',
+      gender: 'neutral',
+    },
+  );
+  const [customRules, setCustomRules] = useState<string[]>(restored?.customRules ?? []);
+  const [selectedTemplateId, setSelectedTemplateId] = useState<EvaTemplateId | null>(
+    restored?.selectedTemplateId ?? null,
+  );
+
+  const [phase, setPhase] = useState<FormBuilderPhase>('landing');
+  const [planningProgress, setPlanningProgress] = useState(0);
+  const [revealedSections, setRevealedSections] = useState(0);
+  /* Indices of form sections the user has actually scrolled into view.
+     Drives the right-rail Progress card's "done" check marks (see
+     `generationProgressSteps` below). Populated by the IntersectionObserver
+     useEffect below, never auto-set by the planning reveal timer. */
+  const [visitedSections, setVisitedSections] = useState<Set<number>>(() => new Set());
+  /* Index of the form section currently most prominently in view. Used to
+     paint a blue active outline on that section's wrapper, mirroring the
+     "active" state shown in the right-rail Progress card. */
+  const [activeSectionIndex, setActiveSectionIndex] = useState<number | null>(null);
+  const [userPrompt, setUserPrompt] = useState<string>('');
+  const [voiceActive, setVoiceActive] = useState(false);
+  /* Collapsed/expanded state for the side-panel mini Eva assistant. Mirrors
+     the canvas Eva window's behavior so the user can shrink it down to just
+     the header when they need more vertical space for the Progress / Summary
+     / Context cards above. Starts expanded so the input is immediately
+     reachable on first arrival to the Review step. */
+  const [reviewAssistantCollapsed, setReviewAssistantCollapsed] = useState(false);
+
+  const planningIntervalRef = useRef<number | null>(null);
+  const planningTimeoutRef = useRef<number | null>(null);
+
+  useEffect(() => () => {
+    if (planningIntervalRef.current) window.clearInterval(planningIntervalRef.current);
+    if (planningTimeoutRef.current) window.clearTimeout(planningTimeoutRef.current);
+  }, []);
+
+  useEffect(() => {
+    if (phase !== 'waterfall') return undefined;
+    if (revealedSections >= FORM_SECTION_IDS.length) {
+      setPhase('complete');
+      return undefined;
+    }
+    const timer = window.setTimeout(() => {
+      setRevealedSections(prev => prev + 1);
+    }, SECTION_REVEAL_MS);
+    return () => window.clearTimeout(timer);
+  }, [phase, revealedSections]);
+
+  /* Watch each rendered form section for viewport entry and (a) mark its
+     index as visited once it's meaningfully on screen, and (b) maintain
+     `activeSectionIndex` as the section currently most prominently in view
+     (used to paint the blue active outline on that section's wrapper).
+     Multiple thresholds give us live `intersectionRatio` updates as the
+     user scrolls; we re-query whenever the set of rendered sections
+     changes (revealedSections ticks up during planning, phase transitions). */
+  useEffect(() => {
+    if (typeof IntersectionObserver === 'undefined') return undefined;
+    const sections = Array.from(
+      document.querySelectorAll<HTMLElement>('[data-form-section-index]'),
+    );
+    if (sections.length === 0) return undefined;
+
+    /* Per-section visibility ratio. Lives in a closure (not React state) so
+       each observer callback can read the latest values from the previous
+       batch without triggering re-renders for ratio changes themselves —
+       only the derived `activeSectionIndex` flows back into React. */
+    const ratios = new Map<number, number>();
+
+    const observer = new IntersectionObserver(
+      entries => {
+        entries.forEach(entry => {
+          const indexAttr = entry.target.getAttribute('data-form-section-index');
+          if (indexAttr === null) return;
+          const idx = Number(indexAttr);
+          ratios.set(idx, entry.isIntersecting ? entry.intersectionRatio : 0);
+          if (entry.isIntersecting && entry.intersectionRatio >= 0.4) {
+            setVisitedSections(prev => {
+              if (prev.has(idx)) return prev;
+              const next = new Set(prev);
+              next.add(idx);
+              return next;
+            });
+          }
+        });
+
+        let topIdx: number | null = null;
+        let topRatio = 0;
+        ratios.forEach((ratio, idx) => {
+          if (ratio > topRatio) {
+            topRatio = ratio;
+            topIdx = idx;
+          }
+        });
+        /* Only call setState when the active index actually changes, to
+           avoid a re-render storm during scroll. */
+        setActiveSectionIndex(prev => (prev === topIdx ? prev : topIdx));
+      },
+      { threshold: [0, 0.25, 0.4, 0.6, 0.8, 1], rootMargin: '0px 0px -20% 0px' },
+    );
+    sections.forEach(el => observer.observe(el));
+    return () => observer.disconnect();
+  }, [revealedSections, phase]);
+
+  const aiEngineOptions = useMemo(
+    () => aiEngines.map(engine => ({ value: engine.name, label: engine.name })),
+    [aiEngines],
+  );
+
+  const profileInitials =
+    agentName
+      .split(/\s+/)
+      .filter(Boolean)
+      .map(word => word[0])
+      .join('')
+      .toUpperCase()
+      .slice(0, 2) || 'EA';
+
+  useEffect(() => {
+    const snapshot: Partial<EvaSessionState> = {
+      draft,
+      agentName,
+      agentDescription,
+      avatarUrl,
+      timezone,
+      aiEngine,
+      welcomeMessage,
+      instructionPrompt,
+      selectedKnowledgeBases,
+      selectedActions,
+      optimizeAccepted,
+      preOptimizeText,
+      optimizeSummary,
+      securityTier,
+      channelType,
+      digitalChannel,
+      digitalChannelAddress,
+      channelPhoneNumber,
+      standardGuardrails,
+      advancedGuardrailGroups,
+      expandedAdvancedGroups: Array.from(expandedAdvancedGroups),
+      personality,
+      customRules,
+      selectedTemplateId,
+    };
+
+    try {
+      const existing = window.sessionStorage.getItem(EVA_SESSION_STORAGE_KEY);
+      const parsed = existing ? (JSON.parse(existing) as EvaSessionState) : null;
+      const merged: EvaSessionState = {
+        landingMode: parsed?.landingMode ?? 'build',
+        selectedTemplateId: parsed?.selectedTemplateId ?? null,
+        messages: parsed?.messages ?? [],
+        guidanceVisible: parsed?.guidanceVisible ?? false,
+        orchestrationSuggested: parsed?.orchestrationSuggested ?? false,
+        evaStep: parsed?.evaStep ?? 'profile',
+        ...parsed,
+        ...snapshot,
+      } as EvaSessionState;
+      window.sessionStorage.setItem(EVA_SESSION_STORAGE_KEY, JSON.stringify(merged));
+    } catch {
+      // ignore storage failures
+    }
+  }, [
+    selectedTemplateId,
+    draft,
+    agentName,
+    agentDescription,
+    avatarUrl,
+    timezone,
+    aiEngine,
+    welcomeMessage,
+    instructionPrompt,
+    selectedKnowledgeBases,
+    selectedActions,
+    optimizeAccepted,
+    preOptimizeText,
+    optimizeSummary,
+    securityTier,
+    channelType,
+    digitalChannel,
+    digitalChannelAddress,
+    channelPhoneNumber,
+    standardGuardrails,
+    advancedGuardrailGroups,
+    expandedAdvancedGroups,
+    personality,
+    customRules,
+  ]);
+
+  const toggleKnowledgeBase = (knowledgeBase: string) => {
+    setSelectedKnowledgeBases(prev =>
+      prev.includes(knowledgeBase)
+        ? prev.filter(item => item !== knowledgeBase)
+        : [...prev, knowledgeBase],
+    );
+  };
+
+  const toggleAction = (action: string) => {
+    setSelectedActions(prev =>
+      prev.includes(action) ? prev.filter(item => item !== action) : [...prev, action],
+    );
+  };
+
+  const toggleStandardGuardrail = (id: string) => {
+    setStandardGuardrails(prev =>
+      prev.map(item => (item.id === id ? { ...item, enabled: !item.enabled } : item)),
+    );
+  };
+
+  const updateStandardGuardrail = (
+    id: string,
+    key: 'sensitivity' | 'enforcement' | 'direction',
+    value: EvaSensitivity | EvaEnforcement | EvaDirection,
+  ) => {
+    setStandardGuardrails(prev =>
+      prev.map(item => (item.id === id ? { ...item, [key]: value } : item)),
+    );
+  };
+
+  const toggleAdvancedGuardrail = (groupId: string, itemId: string) => {
+    setAdvancedGuardrailGroups(prev =>
+      prev.map(group =>
+        group.id === groupId
+          ? {
+              ...group,
+              items: group.items.map(item =>
+                item.id === itemId ? { ...item, enabled: !item.enabled } : item,
+              ),
+            }
+          : group,
+      ),
+    );
+  };
+
+  const updateAdvancedGuardrail = (
+    groupId: string,
+    itemId: string,
+    key: 'sensitivity' | 'enforcement' | 'direction',
+    value: EvaSensitivity | EvaEnforcement | EvaDirection,
+  ) => {
+    setAdvancedGuardrailGroups(prev =>
+      prev.map(group =>
+        group.id === groupId
+          ? {
+              ...group,
+              items: group.items.map(item =>
+                item.id === itemId ? { ...item, [key]: value } : item,
+              ),
+            }
+          : group,
+      ),
+    );
+  };
+
+  const toggleAdvancedGroup = (groupId: string) => {
+    setExpandedAdvancedGroups(prev => {
+      const next = new Set(prev);
+      if (next.has(groupId)) {
+        next.delete(groupId);
+      } else {
+        next.add(groupId);
+      }
+      return next;
+    });
+  };
+
+  const handleOptimizeInstructions = async () => {
+    const text = instructionPrompt.trim();
+    if (!text || optimizingInstructions) return;
+
+    setOptimizingInstructions(true);
+    setPreOptimizeText(instructionPrompt);
+    setOptimizeAccepted(false);
+    setOptimizeSummary({ changes: [], reasoning: [] });
+
+    try {
+      const result = await optimizeInstructions(text);
+      setInstructionPrompt(result.optimizedText);
+      setOptimizeSummary({ changes: result.changes, reasoning: result.reasoning });
+      setOptimizeAccepted(true);
+      showToast('Optimized instruction prompt', 'success');
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Optimization failed';
+      showToast(message, 'error');
+    } finally {
+      setOptimizingInstructions(false);
+    }
+  };
+
+  const handleUndoOptimize = () => {
+    setInstructionPrompt(preOptimizeText);
+    setOptimizeAccepted(false);
+    setOptimizeSummary({ changes: [], reasoning: [] });
+    showToast('Reverted to original instructions', 'success');
+  };
+
+  const applyTemplate = (templateId: EvaTemplateId): boolean => {
+    const template = EVA_TEMPLATES.find(item => item.id === templateId);
+    if (!template) return false;
+    setSelectedTemplateId(template.id);
+    setDraft(template.draft);
+    setAgentName(template.draft.name);
+    setAgentDescription(template.draft.description);
+    setWelcomeMessage(buildWelcomeMessage(template.draft));
+    setInstructionPrompt(buildInstructionPrompt(template.draft));
+    setSelectedKnowledgeBases(template.draft.knowledgeBases.slice(0, 2).map(kb => kb.name));
+    setSelectedActions(template.draft.actions.slice(0, 2));
+    setOptimizeAccepted(false);
+    setOptimizeSummary({ changes: [], reasoning: [] });
+    return true;
+  };
+
+  const startPlanningWaterfall = () => {
+    if (planningIntervalRef.current) window.clearInterval(planningIntervalRef.current);
+    if (planningTimeoutRef.current) window.clearTimeout(planningTimeoutRef.current);
+
+    setPhase('planning');
+    setPlanningProgress(1);
+    setRevealedSections(0);
+    setVisitedSections(new Set());
+
+    planningIntervalRef.current = window.setInterval(() => {
+      setPlanningProgress(prev => {
+        const next = Math.min(prev + 1, EVA_PLANNING_ROWS.length);
+        if (next >= EVA_PLANNING_ROWS.length && planningIntervalRef.current) {
+          window.clearInterval(planningIntervalRef.current);
+          planningIntervalRef.current = null;
+        }
+        return next;
+      });
+    }, PLANNING_TICK_MS);
+
+    planningTimeoutRef.current = window.setTimeout(() => {
+      setPlanningProgress(EVA_PLANNING_ROWS.length);
+      setPhase('waterfall');
+      planningTimeoutRef.current = null;
+    }, EVA_PLANNING_ROWS.length * PLANNING_TICK_MS + 320);
+  };
+
+  const handlePromptSubmit = (text: string) => {
+    const trimmed = text.trim();
+    if (!trimmed) return;
+
+    const normalized = trimmed.toLowerCase();
+    const matched = EVA_TEMPLATES.find(template => {
+      if (normalized.includes('healthcare') || normalized.includes('reception')) {
+        return template.id === 'knowledge-assistant';
+      }
+      if (
+        normalized.includes('it ') ||
+        normalized.includes('helpdesk') ||
+        normalized.includes('ticket')
+      ) {
+        return template.id === 'workflow-automation';
+      }
+      if (normalized.includes('policy') || normalized.includes('compliance')) {
+        return template.id === 'policy-compliance';
+      }
+      if (normalized.includes('sales')) {
+        return template.id === 'sales-enablement';
+      }
+      if (normalized.includes('customer') || normalized.includes('support')) {
+        return template.id === 'customer-support';
+      }
+      return false;
+    });
+
+    if (matched) applyTemplate(matched.id);
+
+    setUserPrompt(trimmed);
+    startPlanningWaterfall();
+  };
+
+  const handleTemplateClick = (templateId: EvaTemplateId, prompt: string) => {
+    applyTemplate(templateId);
+    setUserPrompt(prompt);
+    startPlanningWaterfall();
+  };
+
+  /* Sends the user back to the landing prompt screen so they can start a new
+     agent flow. The current draft is left in sessionStorage (the auto-persist
+     effect already mirrors every state change), so the user can pick it up
+     again on a future visit. We also clear any in-flight planning timers
+     so the previous waterfall doesn't continue ticking under the new screen. */
+  const handleStartNewAgent = () => {
+    if (planningIntervalRef.current) {
+      window.clearInterval(planningIntervalRef.current);
+      planningIntervalRef.current = null;
+    }
+    if (planningTimeoutRef.current) {
+      window.clearTimeout(planningTimeoutRef.current);
+      planningTimeoutRef.current = null;
+    }
+    setPhase('landing');
+    setUserPrompt('');
+    setPlanningProgress(0);
+    setRevealedSections(0);
+    setVisitedSections(new Set());
+    setActiveSectionIndex(null);
+  };
+
+  const handleOpenCanvas = () => {
+    navigate('/agents/eva-canvas');
+  };
+
+  const createDraftAgent = () => {
+    if (!agentName.trim()) {
+      showToast('Add an agent name before creating', 'error');
+      return;
+    }
+    const agent = addAgent({
+      name: agentName.trim(),
+      description: agentDescription,
+      gradient,
+      status: 'Ready to Publish',
+      knowledgeBases: selectedKnowledgeBases,
+    });
+    showToast(`Created "${agentName}" as a draft agent.`, 'success');
+    navigate(`/agents/${agent.id}/configure?section=Profile`);
+  };
+
+  const selectedDigitalChannel =
+    DIGITAL_CHANNEL_OPTIONS.find(option => option.value === digitalChannel) ??
+    DIGITAL_CHANNEL_OPTIONS[0];
+  const selectedDigitalChannelDetails = DIGITAL_CHANNEL_DETAILS[digitalChannel];
+  const channelDestination =
+    channelType === 'digital' ? digitalChannelAddress.trim() : channelPhoneNumber;
+  const channelSummary =
+    channelType === 'digital'
+      ? `${selectedDigitalChannel.label} · ${channelDestination || 'Add address or number'}`
+      : `Voice · ${channelPhoneNumber}`;
+  const selectedLanguage = PROFILE_LANGUAGE_OPTIONS.find(o => o.value === personality.language);
+  const selectedVoice = PROFILE_VOICE_OPTIONS.find(o => o.value === personality.voice);
+  const languageSummary = selectedLanguage?.label ?? personality.language;
+  const agentCharacterSummary = `${selectedVoice?.label ?? personality.voice} voice · ${
+    personality.gender === 'neutral' ? 'Neutral' : personality.gender
+  } character`;
+  const instructionSummary = summarizeInstructionPrompt(instructionPrompt);
+  /* Mirrors the form's actual configuration sections (driven by
+     `revealedSections` and gated 1:1 with each <AccordionItem> below).
+     A step is only marked `done` once the user has actually scrolled
+     through that section (tracked in `visitedSections` via the
+     IntersectionObserver in the useEffect below). The currently in-flight
+     section reads as `active`: while planning, that's the latest
+     just-revealed section; after `phase === 'complete'`, that's the first
+     not-yet-visited section. Everything else is `queued`. */
+  const formProgressEntries: Array<{ label: string; detail: string }> = [
+    { label: '1. Profile', detail: `${agentName} · ${languageSummary}` },
+    { label: '2. Channel', detail: channelSummary },
+    { label: '3. Instruction', detail: instructionSummary },
+    {
+      label: '4. Knowledge',
+      detail: `${selectedKnowledgeBases.length} source${selectedKnowledgeBases.length === 1 ? '' : 's'} selected`,
+    },
+    {
+      label: '5. Action',
+      detail: `${selectedActions.length} action${selectedActions.length === 1 ? '' : 's'} enabled`,
+    },
+    {
+      label: '6. Guardrails',
+      detail: `Standard ${standardGuardrails.filter(g => g.enabled).length} · Advanced ${advancedGuardrailGroups.reduce((sum, g) => sum + g.items.filter(i => i.enabled).length, 0)}`,
+    },
+    { label: '7. Review', detail: 'Final configuration check' },
+  ];
+  const firstUnvisitedIndex = formProgressEntries.findIndex(
+    (_, index) => !visitedSections.has(index),
+  );
+  /* While Eva is still drafting (planning + waterfall), only show the items
+     that have been revealed so far so the Progress list grows in lockstep
+     with the form below — same dynamic-reveal pattern EvaChatExperience uses
+     for its right-rail Progress card. We always show at least one entry so
+     the card doesn't look empty during the brief planning frame. The newest
+     item reads as `active` (currently being drafted, with the pulse + text
+     shimmer); prior items stay `queued` (neutral) so they don't flash through
+     the green-check `done` state on every step. The done/checked transition
+     happens only once the user actually visits each section after the form
+     finishes generating. */
+  const isGenerating = phase === 'planning' || phase === 'waterfall';
+  const visibleProgressCount = isGenerating
+    ? Math.max(1, Math.min(formProgressEntries.length, revealedSections))
+    : formProgressEntries.length;
+  const generationProgressSteps = formProgressEntries
+    .slice(0, visibleProgressCount)
+    .map((entry, index) => {
+      let status: 'done' | 'active' | 'queued';
+      if (isGenerating) {
+        status = index === visibleProgressCount - 1 ? 'active' : 'queued';
+      } else if (visitedSections.has(index)) {
+        status = 'done';
+      } else if (phase === 'complete') {
+        status = index === firstUnvisitedIndex ? 'active' : 'queued';
+      } else {
+        status = revealedSections === index + 1 ? 'active' : 'queued';
+      }
+      return { ...entry, status };
+    });
+  /* Mirror the chat-experience side panel: toggle list per row instead of a
+     comma-joined string. Clicking the inline toggle enables/disables the item
+     in-place (same `toggleAction` / `toggleKnowledgeBase` handlers used inside
+     the form below), and the edit pencil scrolls to the corresponding
+     accordion section so they stay in lockstep. */
+  const selectedActionSet = new Set(selectedActions);
+  const selectedKnowledgeBaseSet = new Set(selectedKnowledgeBases);
+  const sidePanelActions = EVA_ACTION_ROWS.map(action => ({
+    id: action.id,
+    name: action.name,
+    enabled: selectedActionSet.has(action.name),
+  }));
+  const sidePanelKnowledgeBases = draft.knowledgeBases.map(source => ({
+    id: source.name,
+    name: source.name,
+    enabled: selectedKnowledgeBaseSet.has(source.name),
+  }));
+  /* Side-card "thinking" flags mirror the shimmer behavior used by
+     EvaChatExperience: each card shows skeleton bars until the form section
+     that feeds it has been revealed by the waterfall reveal effect, so
+     content streams in instead of popping in fully formed.
+       - Summary needs Profile (section 0) to populate name/description.
+       - Context needs Knowledge (3) + Actions (4) + Profile (0) to populate
+         the three subsections; gating on the latest (Actions) is enough. */
+  const summaryThinking = revealedSections < 1;
+  const contextThinking = revealedSections < 5;
+  const scrollToFormSection = (id: string) => {
+    const el = document.getElementById(id);
+    if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  };
+  /* Builds the wrapper className for each form section. The base class drops
+     in default styling (rounded corner, transition); the `--active` modifier
+     applies the blue active outline when this section is the one currently
+     most prominently in view. */
+  const formSectionWrapperClass = (index: number) =>
+    `eva-form-section-wrapper${activeSectionIndex === index ? ' eva-form-section-wrapper--active' : ''}`;
+
+  const standardEnabledCount = standardGuardrails.filter(g => g.enabled).length;
+  const advancedEnabledCount = advancedGuardrailGroups.reduce(
+    (sum, g) => sum + g.items.filter(i => i.enabled).length,
+    0,
+  );
+  const advancedTotalCount = advancedGuardrailGroups.reduce(
+    (sum, g) => sum + g.items.length,
+    0,
+  );
+
+  return (
+    <div
+      className={`primary-content eva-form-builder eva-form-builder--phase-${phase}${
+        phase === 'landing' ? ' eva-agents-landing eva-agents-landing--flush' : ''
+      }`}
+    >
+      {phase === 'landing' ? (
+        <div className="eva-first-interface eva-first-interface--landing eva-form-builder__landing-shell">
+          <section
+            className="eva-first-interface__hero"
+            aria-labelledby="eva-form-builder-hero"
+          >
+            <h1 id="eva-form-builder-hero">Hi I&rsquo;m Eva!</h1>
+            <h2>Build smart agent anytime, anywhere.</h2>
+            <p>
+              Describe the business need, persona, tools, data, routing, or guardrails. I&rsquo;ll
+              plan the setup and lay out every section as a form for you to review.
+            </p>
+          </section>
+
+          <div className="eva-form-builder__landing-composer" aria-label="Talk to Eva">
+            <AiFooter
+              className="eva-ai-footer"
+              fillContainer
+              onSend={handlePromptSubmit}
+              onVoiceToggle={() => setVoiceActive(active => !active)}
+              processing={false}
+              placeholder="Type with Eva. Try: Create an AI agent for customer onboarding..."
+              suggestions={[]}
+              voiceActive={voiceActive}
+            />
+          </div>
+
+          <section className="eva-prompt-examples" aria-label="Quick templates">
+            {STARTER_PROMPTS.slice(0, 4).map(prompt => (
+              <button
+                key={prompt.templateId}
+                type="button"
+                className="eva-prompt-card"
+                onClick={() => handleTemplateClick(prompt.templateId, prompt.prompt)}
+              >
+                <span className="eva-prompt-card__icon" aria-hidden="true">
+                  <Icon name={prompt.icon} weight="bold" size="md" />
+                </span>
+                <strong>{prompt.title}</strong>
+                <span>{prompt.description}</span>
+                <small>Use this example</small>
+              </button>
+            ))}
+          </section>
+        </div>
+      ) : (
+        <div className="page-header eva-form-builder__compact-header">
+          <div>
+            <span className="eva-shell__eyebrow">
+              <Icon name="sparkle" weight="bold" size="sm" />
+              Form-based agent setup
+            </span>
+            <h1 className="page-title">Create AI Agent</h1>
+            <p className="page-subtitle">
+              Eva drafted the configuration based on your request. Review and adjust each section
+              as needed.
+            </p>
+          </div>
+          <div className="eva-form-builder__compact-header-actions">
+            <Button variant="secondary" size="sm" onClick={handleOpenCanvas}>
+              <Icon name="workflow-deployments" weight="bold" size="sm" />
+              Canvas view
+            </Button>
+            <Button variant="secondary" size="sm" onClick={handleStartNewAgent}>
+              <Icon name="plus" weight="bold" size="sm" />
+              Create new agent
+            </Button>
+          </div>
+        </div>
+      )}
+
+      {phase !== 'landing' && (
+      <div className="eva-form-builder__generation-layout">
+      <div className="secondary-content eva-form-builder__main-column">
+        {(phase === 'planning' || userPrompt) && (
+        <section className="eva-form-builder__waterfall" aria-live="polite">
+          {phase === 'planning' && (
+            <AiResponseMessage
+              assistantName="Eva"
+              assistantState="processing"
+              content="Planning the agent setup based on your request..."
+            >
+              <div className="eva-waterfall-card eva-waterfall-status eva-waterfall-status--planning eva-waterfall-status--dynamic">
+                {EVA_PLANNING_ROWS.slice(0, planningProgress).map((item, index) => {
+                  const isLastRow = index === planningProgress - 1;
+                  const isComplete = planningProgress >= EVA_PLANNING_ROWS.length || !isLastRow;
+                  const status = isComplete ? 'done' : 'active';
+                  const iconName = status === 'done' ? 'check-circle-filled' : item.icon;
+                  return (
+                    <div
+                      key={`${item.title}-${index}`}
+                      className={`eva-waterfall-status__row eva-waterfall-status__row--${status}`}
+                    >
+                      <Icon name={iconName} weight="bold" size="sm" />
+                      <span>
+                        <strong>{item.title}</strong>
+                        {item.text(draft, draft.name, userPrompt)}
+                      </span>
+                    </div>
+                  );
+                })}
+              </div>
+            </AiResponseMessage>
+          )}
+
+          {(phase === 'waterfall' || phase === 'complete') && (
+            <AiResponseMessage
+              assistantName="Eva"
+              content={
+                phase === 'complete'
+                  ? 'All recommended sections are ready. Adjust any details and create the agent when you are happy with the setup.'
+                  : "Plan complete. I'm assembling the form below — sections will appear as I prepare each one."
+              }
+            >
+              <AccordionGroup type="stack" className="eva-planning-trace-group">
+                <AccordionItem
+                  title={
+                    <span className="eva-planning-trace__title">
+                      <Icon name="sparkle" weight="bold" size="sm" />
+                      View Eva&rsquo;s thinking trace
+                    </span>
+                  }
+                  size="small"
+                >
+                  <div className="eva-waterfall-card eva-waterfall-status eva-waterfall-status--planning">
+                    {EVA_PLANNING_ROWS.map((item, index) => (
+                      <div
+                        key={`trace-${item.title}-${index}`}
+                        className="eva-waterfall-status__row eva-waterfall-status__row--done"
+                      >
+                        <Icon name="check-circle-filled" weight="bold" size="sm" />
+                        <span>
+                          <strong>{item.title}</strong>
+                          {item.text(draft, draft.name, userPrompt)}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                </AccordionItem>
+              </AccordionGroup>
+            </AiResponseMessage>
+          )}
+        </section>
+        )}
+
+        <AccordionGroup type="stack" className="eva-form-builder__sections">
+          {revealedSections > 0 && (
+          <div id="form-section-profile" data-form-section-index="0" className={formSectionWrapperClass(0)}>
+          <AccordionItem
+            title={
+              <span className="eva-form-section__title">
+                <Icon name="document" weight="bold" size="sm" />
+                <strong>Profile</strong>
+                <span className="eva-form-section__hint">
+                  {agentName} · {timezone} · {languageSummary}
+                </span>
+              </span>
+            }
+            defaultExpanded
+            size="large"
+          >
+            <div className="eva-config-block">
+              <div className="eva-config-grid eva-config-grid--responsive-two">
+                <Input
+                  label="Agent name"
+                  required
+                  value={agentName}
+                  onChange={event => setAgentName(event.target.value)}
+                />
+                <div className="v2-profile-avatar-row">
+                  <div className="v2-profile-avatar-preview">
+                    <div
+                      className="agent-avatar"
+                      style={{ background: gradient, width: 48, height: 48, fontSize: 16 }}
+                    >
+                      {profileInitials}
+                    </div>
+                  </div>
+                  <div className="v2-profile-avatar-field">
+                    <Input
+                      label="URL for agent profile image"
+                      required
+                      value={avatarUrl}
+                      onChange={event => setAvatarUrl(event.target.value)}
+                    />
+                  </div>
+                </div>
+              </div>
+              <Textarea
+                label="Description"
+                value={agentDescription}
+                onChange={event => setAgentDescription(event.target.value)}
+                placeholder="Describe what this agent does"
+                rows={3}
+              />
+              <div className="eva-config-grid eva-config-grid--responsive-two">
+                <Dropdown
+                  label="Time zone"
+                  required
+                  options={PROFILE_TIMEZONE_OPTIONS}
+                  value={timezone}
+                  onChange={setTimezone}
+                />
+                <Dropdown
+                  label="Language"
+                  required
+                  options={PROFILE_LANGUAGE_OPTIONS}
+                  value={personality.language}
+                  onChange={value => setPersonality(prev => ({ ...prev, language: value }))}
+                />
+                <Dropdown
+                  label="Voice name"
+                  required
+                  options={PROFILE_VOICE_OPTIONS}
+                  value={personality.voice}
+                  onChange={value => setPersonality(prev => ({ ...prev, voice: value }))}
+                />
+                <Dropdown
+                  label="AI engine"
+                  required
+                  options={aiEngineOptions}
+                  value={aiEngine}
+                  onChange={value => {
+                    setAiEngine(value);
+                    setPersonality(prev => ({ ...prev, llm: value }));
+                  }}
+                />
+              </div>
+              <div className="v2-profile-textarea-group">
+                <div className="v2-profile-textarea-header">
+                  <label className="v2-profile-label">
+                    Welcome message <span className="v2-profile-required">*</span>
+                  </label>
+                  <button
+                    type="button"
+                    className="v2-profile-insert-example"
+                    onClick={() => setWelcomeMessage(buildWelcomeMessage(draft))}
+                  >
+                    Insert example
+                  </button>
+                </div>
+                <Textarea
+                  value={welcomeMessage}
+                  onChange={event => setWelcomeMessage(event.target.value)}
+                  placeholder="Enter a friendly greeting"
+                  rows={4}
+                />
+              </div>
+            </div>
+          </AccordionItem>
+          </div>
+          )}
+
+          {revealedSections > 1 && (
+          <div id="form-section-channels" data-form-section-index="1" className={formSectionWrapperClass(1)}>
+          <AccordionItem
+            title={
+              <span className="eva-form-section__title">
+                <Icon name="chat" weight="bold" size="sm" />
+                <strong>Channels</strong>
+                <span className="eva-form-section__hint">{channelSummary}</span>
+              </span>
+            }
+            defaultExpanded
+            size="large"
+          >
+            <div className="eva-config-block">
+              <div
+                className="eva-security-tier-selector eva-channel-type-selector"
+                role="radiogroup"
+                aria-label="Channel type"
+              >
+                <button
+                  type="button"
+                  className={`eva-security-tier-card${
+                    channelType === 'digital' ? ' eva-security-tier-card--selected' : ''
+                  }`}
+                  onClick={() => setChannelType('digital')}
+                  aria-pressed={channelType === 'digital'}
+                >
+                  <Icon name="chat" weight="bold" size={24} />
+                  <span>
+                    <strong>Digital</strong>
+                    <small>
+                      Use messaging and digital entry points for customer conversations.
+                    </small>
+                  </span>
+                </button>
+                <button
+                  type="button"
+                  className={`eva-security-tier-card${
+                    channelType === 'voice' ? ' eva-security-tier-card--selected' : ''
+                  }`}
+                  onClick={() => setChannelType('voice')}
+                  aria-pressed={channelType === 'voice'}
+                >
+                  <Icon name="phone" weight="bold" size={24} />
+                  <span>
+                    <strong>Voice</strong>
+                    <small>Use voice calling flows for phone-based customer conversations.</small>
+                  </span>
+                </button>
+              </div>
+              {channelType === 'digital' ? (
+                <div className="eva-config-grid eva-config-grid--responsive-two">
+                  <Dropdown
+                    label="Digital channel"
+                    required
+                    options={DIGITAL_CHANNEL_OPTIONS}
+                    value={digitalChannel}
+                    onChange={value => setDigitalChannel(value as EvaDigitalChannel)}
+                  />
+                  <Input
+                    label={selectedDigitalChannelDetails.label}
+                    required
+                    type={selectedDigitalChannelDetails.inputType}
+                    value={digitalChannelAddress}
+                    onChange={event => setDigitalChannelAddress(event.target.value)}
+                    placeholder={selectedDigitalChannelDetails.placeholder}
+                    hint={selectedDigitalChannelDetails.hint}
+                  />
+                </div>
+              ) : (
+                <Dropdown
+                  label="Voice phone number"
+                  required
+                  options={CHANNEL_PHONE_NUMBER_OPTIONS}
+                  value={channelPhoneNumber}
+                  onChange={setChannelPhoneNumber}
+                />
+              )}
+            </div>
+          </AccordionItem>
+          </div>
+          )}
+
+          {revealedSections > 2 && (
+          <div id="form-section-instructions" data-form-section-index="2" className={formSectionWrapperClass(2)}>
+          <AccordionItem
+            title={
+              <span className="eva-form-section__title">
+                <Icon name="document-create" weight="bold" size="sm" />
+                <strong>Instructions</strong>
+                <span className="eva-form-section__hint">
+                  {instructionSummary.slice(0, 90)}
+                </span>
+              </span>
+            }
+            defaultExpanded
+            size="large"
+          >
+            <div className="eva-config-block">
+              <div className="eva-instructions-layout">
+                <div className="instructions-editor">
+                  <div className="instructions-toolbar">
+                    <div className="instructions-toolbar-left">
+                      <button
+                        type="button"
+                        className="instructions-toolbar-pill"
+                        onClick={() => setShowInstructionExamples(prev => !prev)}
+                      >
+                        <Icon name="guide" weight="bold" size={16} />
+                        Example
+                      </button>
+                      {optimizeAccepted && (
+                        <button
+                          type="button"
+                          className="instructions-toolbar-pill"
+                          onClick={handleUndoOptimize}
+                        >
+                          <Icon name="undo" weight="bold" size={16} />
+                          Undo
+                        </button>
+                      )}
+                    </div>
+                    <button
+                      type="button"
+                      className="instructions-toolbar-pill instructions-optimize-btn"
+                      onClick={handleOptimizeInstructions}
+                      disabled={!instructionPrompt.trim() || optimizingInstructions}
+                    >
+                      <Icon name="sparkle" weight="bold" size={16} />
+                      {optimizingInstructions ? 'Optimizing...' : 'Optimize prompt'}
+                    </button>
+                  </div>
+                  <textarea
+                    className="instructions-textarea"
+                    placeholder="Set clear goals for your agent. Provide step-by-step instructions to help them succeed."
+                    value={instructionPrompt}
+                    onChange={event => setInstructionPrompt(event.target.value)}
+                  />
+                </div>
+              </div>
+
+              {optimizeAccepted && (
+                <div className="eva-instruction-optimize-summary">
+                  <div className="instructions-optimize-header">
+                    <Icon name="sparkle" weight="bold" size={20} />
+                    <h3 className="instructions-optimize-title">Optimize summary</h3>
+                    <Button variant="secondary" size="sm" onClick={handleUndoOptimize}>
+                      <Icon name="undo" weight="bold" size={16} />
+                      Undo
+                    </Button>
+                  </div>
+                  <div className="instructions-optimize-results">
+                    <div className="optimize-results-section">
+                      <h4>What's been changed:</h4>
+                      <ul>
+                        {optimizeSummary.changes.map((change, index) => (
+                          <li key={index}>{change}</li>
+                        ))}
+                      </ul>
+                    </div>
+                    <div className="optimize-results-section">
+                      <h4>Reasoning behind changes:</h4>
+                      <ul>
+                        {optimizeSummary.reasoning.map((reason, index) => (
+                          <li key={index}>{reason}</li>
+                        ))}
+                      </ul>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {showInstructionExamples && (
+                <div
+                  className="eva-instruction-examples"
+                  aria-label="Instruction examples and tips"
+                >
+                  <div className="eva-instruction-examples__section">
+                    <h4>Instruction examples</h4>
+                    <div className="eva-instruction-examples__cards">
+                      {INSTRUCTION_EXAMPLES.map(example => (
+                        <article
+                          key={example.title}
+                          className="eva-instruction-example-card"
+                        >
+                          <strong>{example.title}</strong>
+                          <p>
+                            {example.content
+                              .split('\n\n')[0]
+                              .replace('#### Role & Identity\n', '')}
+                          </p>
+                          <Button
+                            variant="secondary"
+                            size="sm"
+                            onClick={() => {
+                              setInstructionPrompt(`**${example.title}**\n\n${example.content}`);
+                              setShowInstructionExamples(false);
+                              setOptimizeAccepted(false);
+                              showToast('Example inserted into instructions', 'success');
+                            }}
+                          >
+                            Insert
+                          </Button>
+                        </article>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+          </AccordionItem>
+          </div>
+          )}
+
+          {revealedSections > 3 && (
+          <div id="form-section-knowledge" data-form-section-index="3" className={formSectionWrapperClass(3)}>
+          <AccordionItem
+            title={
+              <span className="eva-form-section__title">
+                <Icon name="apps" weight="bold" size="sm" />
+                <strong>Knowledge</strong>
+                <span className="eva-form-section__hint">
+                  {selectedKnowledgeBases.length} of {draft.knowledgeBases.length} sources selected
+                </span>
+              </span>
+            }
+            defaultExpanded
+            size="large"
+          >
+            <div className="eva-config-block">
+              {/* Mirrors the Knowledge page collections table (Name · Description · Sources ·
+                  Used by · Last updated). Selection lives inline on the Name cell — same
+                  toggle pattern used by the Actions table on the next step. */}
+              <Table>
+                <TableHead>
+                  <TableRow>
+                    <TableHeader>Name</TableHeader>
+                    <TableHeader>Description</TableHeader>
+                    <TableHeader>Sources</TableHeader>
+                    <TableHeader>Used by</TableHeader>
+                    <TableHeader>Last updated</TableHeader>
+                  </TableRow>
+                </TableHead>
+                <TableBody
+                  empty={draft.knowledgeBases.length === 0}
+                  emptyTitle="No recommended knowledge sources"
+                >
+                  {draft.knowledgeBases.map(source => {
+                    const selected = selectedKnowledgeBases.includes(source.name);
+                    return (
+                      <TableRow key={source.name} selected={selected}>
+                        <TableCell>
+                          <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
+                            <Toggle
+                              size="compact"
+                              checked={selected}
+                              onChange={() => toggleKnowledgeBase(source.name)}
+                              aria-label={`${selected ? 'Deselect' : 'Select'} ${source.name}`}
+                            />
+                            <strong>{source.name}</strong>
+                          </span>
+                        </TableCell>
+                        <TableCell style={{ maxWidth: 320, whiteSpace: 'normal' }}>
+                          {source.description}
+                        </TableCell>
+                        <TableCell>{source.sources}</TableCell>
+                        <TableCell>{source.usedBy || '—'}</TableCell>
+                        <TableCell>{formatRelative(source.lastUpdatedAt)}</TableCell>
+                      </TableRow>
+                    );
+                  })}
+                </TableBody>
+              </Table>
+            </div>
+          </AccordionItem>
+          </div>
+          )}
+
+          {revealedSections > 4 && (
+          <div id="form-section-actions" data-form-section-index="4" className={formSectionWrapperClass(4)}>
+          <AccordionItem
+            title={
+              <span className="eva-form-section__title">
+                <Icon name="tools" weight="bold" size="sm" />
+                <strong>Actions</strong>
+                <span className="eva-form-section__hint">
+                  {selectedActions.length} of {EVA_ACTION_ROWS.length} actions enabled
+                </span>
+              </span>
+            }
+            defaultExpanded
+            size="large"
+          >
+            <div className="eva-config-block">
+              {/* Recommended actions and MCP tools — same shared <Table> primitive
+                  used by the Knowledge step above for visual + behavioral parity. */}
+              <Table aria-label="Recommended actions and MCP tools">
+                <TableHead>
+                  <TableRow>
+                    <TableHeader>Action name</TableHeader>
+                    <TableHeader>Created by</TableHeader>
+                    <TableHeader>Description</TableHeader>
+                    <TableHeader>Last updated</TableHeader>
+                    <TableHeader>Action type</TableHeader>
+                    <TableHeader>Provider type</TableHeader>
+                  </TableRow>
+                </TableHead>
+                <TableBody
+                  empty={EVA_ACTION_ROWS.length === 0}
+                  emptyTitle="No recommended actions"
+                >
+                  {EVA_ACTION_ROWS.map(action => {
+                    const selected = selectedActions.includes(action.name);
+                    return (
+                      <TableRow key={action.id} selected={selected}>
+                        <TableCell>
+                          <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
+                            <Toggle
+                              size="compact"
+                              checked={selected}
+                              onChange={() => toggleAction(action.name)}
+                              aria-label={`${selected ? 'Disable' : 'Enable'} ${action.name}`}
+                            />
+                            <strong>{action.name}</strong>
+                          </span>
+                        </TableCell>
+                        <TableCell>{action.createdBy}</TableCell>
+                        <TableCell style={{ maxWidth: 320, whiteSpace: 'normal' }}>
+                          {action.description}
+                        </TableCell>
+                        <TableCell>{action.lastUpdated}</TableCell>
+                        <TableCell>{action.actionType}</TableCell>
+                        <TableCell>{action.providerType}</TableCell>
+                      </TableRow>
+                    );
+                  })}
+                </TableBody>
+              </Table>
+            </div>
+          </AccordionItem>
+          </div>
+          )}
+
+          {revealedSections > 5 && (
+          <div id="form-section-security" data-form-section-index="5" className={formSectionWrapperClass(5)}>
+          <AccordionItem
+            title={
+              <span className="eva-form-section__title">
+                <Icon name="shield" weight="bold" size="sm" />
+                <strong>Security</strong>
+                <span className="eva-form-section__hint">
+                  {securityTier === 'standard'
+                    ? `${standardEnabledCount}/${standardGuardrails.length} standard guardrails`
+                    : `${advancedEnabledCount}/${advancedTotalCount} advanced guardrails`}
+                </span>
+              </span>
+            }
+            defaultExpanded
+            size="large"
+          >
+            <div className="eva-config-block">
+              <div className="eva-security-panel">
+                <div
+                  className="eva-security-tier-selector"
+                  role="radiogroup"
+                  aria-label="Security tier"
+                >
+                  <button
+                    type="button"
+                    className={`eva-security-tier-card${
+                      securityTier === 'standard' ? ' eva-security-tier-card--selected' : ''
+                    }`}
+                    onClick={() => setSecurityTier('standard')}
+                  >
+                    <Icon name="shield" weight="bold" size={24} />
+                    <span>
+                      <strong>Standard guardrails</strong>
+                      <small>
+                        Basic protection with toxicity, harm detection, and jailbreak prevention.
+                      </small>
+                      <em>
+                        {standardEnabledCount}/{standardGuardrails.length} enabled
+                      </em>
+                    </span>
+                  </button>
+                  <button
+                    type="button"
+                    className={`eva-security-tier-card${
+                      securityTier === 'advanced' ? ' eva-security-tier-card--selected' : ''
+                    }`}
+                    onClick={() => setSecurityTier('advanced')}
+                  >
+                    <Icon name="secure-circle" weight="bold" size={24} />
+                    <span>
+                      <strong>
+                        Advanced guardrails{' '}
+                        <Badge variant="success" className="security-tier-badge">
+                          AI Defense
+                        </Badge>
+                      </strong>
+                      <small>
+                        Comprehensive security, privacy, and safety guardrails with custom
+                        profiles.
+                      </small>
+                      <em>
+                        {advancedEnabledCount}/{advancedTotalCount} enabled
+                      </em>
+                    </span>
+                  </button>
+                </div>
+
+                <div className="eva-security-observability">
+                  <Icon name="info-circle" weight="bold" size={18} />
+                  <span>
+                    <strong>Observability and logging</strong>
+                    Triggered rails are logged in Sessions. Monitor allows the interaction to
+                    continue with a log entry; Block rejects the individual prompt while keeping
+                    the conversation active.
+                  </span>
+                </div>
+
+                {securityTier === 'standard' && (
+                  <div className="eva-security-standard-list">
+                    {standardGuardrails.map(guardrail => (
+                      <section key={guardrail.id} className="eva-security-guardrail-card">
+                        <div className="eva-security-guardrail-header">
+                          <Toggle
+                            size="compact"
+                            checked={guardrail.enabled}
+                            onChange={() => toggleStandardGuardrail(guardrail.id)}
+                            aria-label={`${guardrail.enabled ? 'Disable' : 'Enable'} ${
+                              guardrail.name
+                            }`}
+                          />
+                          <span>
+                            <strong>{guardrail.name}</strong>
+                            <small>{guardrail.description}</small>
+                          </span>
+                        </div>
+                        {guardrail.enabled && (
+                          <div className="eva-security-controls">
+                            <div className="eva-security-sensitivity-control">
+                              <label>Sensitivity</label>
+                              <Slider
+                                value={sensitivityToValue[guardrail.sensitivity]}
+                                onChange={value =>
+                                  updateStandardGuardrail(
+                                    guardrail.id,
+                                    'sensitivity',
+                                    valueToSensitivity(value as number),
+                                  )
+                                }
+                                min={0}
+                                max={100}
+                                step={50}
+                                showTicks
+                                aria-label={`${guardrail.name} sensitivity`}
+                              />
+                              <div className="security-sensitivity-labels">
+                                <span>Low</span>
+                                <span>Medium</span>
+                                <span>High</span>
+                              </div>
+                            </div>
+                            <Dropdown
+                              label="Enforcement"
+                              options={[
+                                { value: 'monitor', label: 'Monitor' },
+                                { value: 'block', label: 'Block' },
+                              ]}
+                              value={guardrail.enforcement}
+                              onChange={value =>
+                                updateStandardGuardrail(
+                                  guardrail.id,
+                                  'enforcement',
+                                  value as EvaEnforcement,
+                                )
+                              }
+                            />
+                            <Dropdown
+                              label="Direction"
+                              options={[
+                                { value: 'prompt', label: 'Prompt' },
+                                { value: 'response', label: 'Response' },
+                              ]}
+                              value={guardrail.direction}
+                              onChange={value =>
+                                updateStandardGuardrail(
+                                  guardrail.id,
+                                  'direction',
+                                  value as EvaDirection,
+                                )
+                              }
+                            />
+                          </div>
+                        )}
+                      </section>
+                    ))}
+                  </div>
+                )}
+
+                {securityTier === 'advanced' && (
+                  <div className="eva-security-advanced-list">
+                    {advancedGuardrailGroups.map(group => (
+                      <section key={group.id} className="eva-security-advanced-group">
+                        <button
+                          type="button"
+                          className="eva-security-group-header eva-security-group-header--button"
+                          onClick={() => toggleAdvancedGroup(group.id)}
+                          aria-expanded={expandedAdvancedGroups.has(group.id)}
+                        >
+                          <Icon name={group.icon} weight="bold" size={18} />
+                          <strong>{group.label}</strong>
+                          <Badge>
+                            {group.items.filter(item => item.enabled).length}/{group.items.length}
+                          </Badge>
+                          <Icon
+                            name={expandedAdvancedGroups.has(group.id) ? 'arrow-up' : 'arrow-down'}
+                            weight="bold"
+                            size={16}
+                          />
+                        </button>
+                        {expandedAdvancedGroups.has(group.id) && (
+                          <div className="eva-security-advanced-items">
+                            {group.items.map(item => (
+                              <section
+                                key={item.id}
+                                className="eva-security-guardrail-card eva-security-advanced-rule-card"
+                              >
+                                <div className="eva-security-guardrail-header">
+                                  <Toggle
+                                    size="compact"
+                                    checked={item.enabled}
+                                    onChange={() => toggleAdvancedGuardrail(group.id, item.id)}
+                                    aria-label={`${item.enabled ? 'Disable' : 'Enable'} ${
+                                      item.name
+                                    }`}
+                                  />
+                                  <span>
+                                    <strong>{item.name}</strong>
+                                    <small>{item.description}</small>
+                                  </span>
+                                </div>
+                                {item.enabled && (
+                                  <div className="eva-security-controls">
+                                    <div className="eva-security-sensitivity-control">
+                                      <label>Sensitivity</label>
+                                      <Slider
+                                        value={sensitivityToValue[item.sensitivity]}
+                                        onChange={value =>
+                                          updateAdvancedGuardrail(
+                                            group.id,
+                                            item.id,
+                                            'sensitivity',
+                                            valueToSensitivity(value as number),
+                                          )
+                                        }
+                                        min={0}
+                                        max={100}
+                                        step={50}
+                                        showTicks
+                                        aria-label={`${item.name} sensitivity`}
+                                      />
+                                      <div className="security-sensitivity-labels">
+                                        <span>Low</span>
+                                        <span>Medium</span>
+                                        <span>High</span>
+                                      </div>
+                                    </div>
+                                    <Dropdown
+                                      label="Enforcement"
+                                      options={[
+                                        { value: 'monitor', label: 'Monitor' },
+                                        { value: 'block', label: 'Block' },
+                                      ]}
+                                      value={item.enforcement}
+                                      onChange={value =>
+                                        updateAdvancedGuardrail(
+                                          group.id,
+                                          item.id,
+                                          'enforcement',
+                                          value as EvaEnforcement,
+                                        )
+                                      }
+                                    />
+                                    <Dropdown
+                                      label="Direction"
+                                      options={[
+                                        { value: 'prompt', label: 'Prompt' },
+                                        { value: 'response', label: 'Response' },
+                                      ]}
+                                      value={item.direction}
+                                      onChange={value =>
+                                        updateAdvancedGuardrail(
+                                          group.id,
+                                          item.id,
+                                          'direction',
+                                          value as EvaDirection,
+                                        )
+                                      }
+                                    />
+                                  </div>
+                                )}
+                              </section>
+                            ))}
+                          </div>
+                        )}
+                      </section>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+          </AccordionItem>
+          </div>
+          )}
+
+          {revealedSections > 6 && (
+          <div id="form-section-review" data-form-section-index="6" className={formSectionWrapperClass(6)}>
+          <AccordionItem
+            title={
+              <span className="eva-form-section__title">
+                <Icon name="check-circle" weight="bold" size="sm" />
+                <strong>Review</strong>
+                <span className="eva-form-section__hint">Verify before creating the agent</span>
+              </span>
+            }
+            defaultExpanded
+            size="large"
+          >
+            <div className="eva-config-block">
+              <div className="eva-config-summary">
+                <span>
+                  <strong>Welcome</strong>
+                  {welcomeMessage}
+                </span>
+                <span>
+                  <strong>Language</strong>
+                  {languageSummary}
+                </span>
+                <span>
+                  <strong>Time zone</strong>
+                  {timezone}
+                </span>
+                <span>
+                  <strong>Agent character</strong>
+                  {agentCharacterSummary}
+                </span>
+                <span>
+                  <strong>Instructions</strong>
+                  {instructionSummary}
+                </span>
+                <span>
+                  <strong>Knowledge</strong>
+                  {selectedKnowledgeBases.join(', ') || 'No sources selected'}
+                </span>
+                <span>
+                  <strong>Actions</strong>
+                  {selectedActions.join(', ') || 'No actions selected'}
+                </span>
+                <span>
+                  <strong>Channel</strong>
+                  {channelSummary}
+                </span>
+                <span>
+                  <strong>Guardrails</strong>
+                  {[...draft.security, ...customRules].join(', ')}
+                </span>
+              </div>
+              <div className="eva-form-builder__custom-rules">
+                <Input
+                  label="Add a custom guardrail"
+                  placeholder="e.g. Never quote pricing without manager approval"
+                  onKeyDown={event => {
+                    if (event.key !== 'Enter') return;
+                    event.preventDefault();
+                    const value = (event.target as HTMLInputElement).value.trim();
+                    if (!value) return;
+                    setCustomRules(prev => [...prev, value]);
+                    (event.target as HTMLInputElement).value = '';
+                    showToast('Added custom guardrail', 'success');
+                  }}
+                />
+                {customRules.length > 0 && (
+                  <ul className="eva-form-builder__custom-rule-list">
+                    {customRules.map((rule, index) => (
+                      <li key={`${rule}-${index}`}>
+                        <span>{rule}</span>
+                        <button
+                          type="button"
+                          aria-label={`Remove ${rule}`}
+                          onClick={() =>
+                            setCustomRules(prev => prev.filter((_, i) => i !== index))
+                          }
+                        >
+                          <Icon name="cancel" weight="bold" size="sm" />
+                        </button>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </div>
+            </div>
+          </AccordionItem>
+          </div>
+          )}
+        </AccordionGroup>
+
+        {phase === 'complete' && (
+          <div className="eva-form-builder__form-actions">
+            <div className="eva-form-builder__followups" aria-label="Suggested follow-up options">
+              <span className="eva-form-builder__followups-label">
+                What would you like to add next?
+              </span>
+              <div className="eva-form-builder__followups-list">
+                {REVIEW_FOLLOW_UP_PROMPTS.map(prompt => (
+                  <AiPromptButton key={prompt} onClick={() => handlePromptSubmit(prompt)}>
+                    {prompt}
+                  </AiPromptButton>
+                ))}
+              </div>
+            </div>
+            <Button onClick={createDraftAgent}>
+              <Icon name="sparkle" weight="bold" size="sm" />
+              Create agent
+            </Button>
+          </div>
+        )}
+
+      </div>
+      <aside className="eva-form-builder__side-panel" aria-label="Generated agent summary">
+        {/* Cards live in their own scroll region so the docked Eva assistant
+           below can stay anchored at the bottom of the side panel without
+           being pushed off-screen when the Context card fills out post-
+           generation. The side panel itself owns the fixed height and clips;
+           this inner div owns the actual scrolling. */}
+        <div className="eva-form-builder__side-panel-scroll">
+        <section className="eva-side-card">
+          <div className="eva-side-card__header">
+            <Icon name="list-menu" weight="bold" size="sm" />
+            <h2>Progress</h2>
+          </div>
+          <ol className="eva-generation-progress">
+            {generationProgressSteps.map(step => (
+              <li
+                key={step.label}
+                className={`eva-generation-progress__item eva-generation-progress__item--${step.status}`}
+              >
+                <span className="eva-generation-progress__icon" aria-hidden="true">
+                  <Icon
+                    name={step.status === 'done' ? 'check-circle-filled' : 'shape-circle'}
+                    weight="bold"
+                    size="sm"
+                  />
+                </span>
+                <span>
+                  <strong>{step.label}</strong>
+                  <small>{step.detail}</small>
+                </span>
+              </li>
+            ))}
+          </ol>
+        </section>
+
+        <section className="eva-side-card">
+          <div className="eva-side-card__header">
+            <Icon name="bot" weight="bold" size="sm" />
+            <h2>Summary of the Agent</h2>
+          </div>
+          {summaryThinking ? (
+            <div
+              className="eva-side-card-skeleton"
+              role="status"
+              aria-label="Generating agent summary"
+            >
+              <div className="eva-side-card-skeleton__bar eva-side-card-skeleton__bar--medium" />
+              <div className="eva-side-card-skeleton__bar eva-side-card-skeleton__bar--long" />
+              <div className="eva-side-card-skeleton__bar eva-side-card-skeleton__bar--long" />
+              <div className="eva-side-card-skeleton__bar eva-side-card-skeleton__bar--short" />
+            </div>
+          ) : (
+            <div className="eva-side-summary">
+              <strong>{agentName}</strong>
+              <p>{agentDescription}</p>
+              <span>{agentCharacterSummary}</span>
+            </div>
+          )}
+        </section>
+
+        <section className="eva-side-card">
+          <div className="eva-side-card__header">
+            <Icon name="apps" weight="bold" size="sm" />
+            <h2>Context</h2>
+          </div>
+          {contextThinking ? (
+            <div
+              className="eva-side-card-skeleton"
+              role="status"
+              aria-label="Generating agent context"
+            >
+              <div className="eva-side-card-skeleton__group">
+                <div className="eva-side-card-skeleton__bar eva-side-card-skeleton__bar--label" />
+                <div className="eva-side-card-skeleton__bar eva-side-card-skeleton__bar--long" />
+                <div className="eva-side-card-skeleton__bar eva-side-card-skeleton__bar--long" />
+                <div className="eva-side-card-skeleton__bar eva-side-card-skeleton__bar--medium" />
+              </div>
+              <div className="eva-side-card-skeleton__group">
+                <div className="eva-side-card-skeleton__bar eva-side-card-skeleton__bar--label" />
+                <div className="eva-side-card-skeleton__bar eva-side-card-skeleton__bar--long" />
+                <div className="eva-side-card-skeleton__bar eva-side-card-skeleton__bar--long" />
+                <div className="eva-side-card-skeleton__bar eva-side-card-skeleton__bar--medium" />
+              </div>
+              <div className="eva-side-card-skeleton__group">
+                <div className="eva-side-card-skeleton__bar eva-side-card-skeleton__bar--label" />
+                <div className="eva-side-card-skeleton__bar eva-side-card-skeleton__bar--short" />
+              </div>
+            </div>
+          ) : (
+            <div className="eva-side-context">
+              <section className="eva-side-context__section" aria-label="Action">
+                <h3>Action</h3>
+                <ul className="eva-side-toggle-list">
+                  {sidePanelActions.map(action => (
+                    <li key={action.id} className="eva-side-toggle-list__item">
+                      <Toggle
+                        size="compact"
+                        label={action.name}
+                        checked={action.enabled}
+                        onChange={() => toggleAction(action.name)}
+                      />
+                      <button
+                        type="button"
+                        className="eva-side-edit-btn"
+                        aria-label={`Edit ${action.name}`}
+                        onClick={() => scrollToFormSection('form-section-actions')}
+                      >
+                        <Icon name="edit" weight="bold" size="sm" />
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              </section>
+
+              <section className="eva-side-context__section" aria-label="Knowledge base">
+                <h3>Knowledge base</h3>
+                <ul className="eva-side-toggle-list">
+                  {sidePanelKnowledgeBases.map(source => (
+                    <li key={source.id} className="eva-side-toggle-list__item">
+                      <Toggle
+                        size="compact"
+                        label={source.name}
+                        checked={source.enabled}
+                        onChange={() => toggleKnowledgeBase(source.name)}
+                      />
+                      <button
+                        type="button"
+                        className="eva-side-edit-btn"
+                        aria-label={`Edit ${source.name}`}
+                        onClick={() => scrollToFormSection('form-section-knowledge')}
+                      >
+                        <Icon name="edit" weight="bold" size="sm" />
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              </section>
+
+              <section className="eva-side-context__section" aria-label="Language">
+                <h3>Language</h3>
+                <p>{languageSummary}</p>
+              </section>
+            </div>
+          )}
+        </section>
+        </div>
+
+        {/* Composer lives inside the side panel itself (vs. a viewport-fixed
+           footer) so it visually anchors to the Progress / Summary / Context
+           column and stays docked at the bottom of the side rail. Always
+           visible during non-landing phases so the user can ask Eva to adjust
+           the setup while the form is still drafting (planning/waterfall) and
+           after it finishes (complete). It sits OUTSIDE the cards' scroll
+           region (see `.eva-form-builder__side-panel-scroll`) so the cards
+           above can grow + scroll independently without ever pushing this
+           composer off-screen. While Eva is still generating, the input is
+           disabled and the placeholder explains why so it doesn't accept
+           conflicting prompts mid-flight. */}
+        <aside
+          className={`eva-mini-assistant eva-mini-assistant--docked eva-form-builder__review-assistant${
+            reviewAssistantCollapsed ? ' eva-mini-assistant--collapsed' : ''
+          }`}
+          aria-label="Eva agent review assistant"
+        >
+          <div className="eva-mini-assistant__header">
+            <span>
+              <Icon name="sparkle" weight="bold" size="sm" />
+              Eva
+            </span>
+            <div className="eva-mini-assistant__controls">
+              <button
+                type="button"
+                className="eva-mini-assistant__control"
+                aria-label={
+                  reviewAssistantCollapsed
+                    ? 'Expand Eva assistant'
+                    : 'Collapse Eva assistant'
+                }
+                onClick={() => setReviewAssistantCollapsed(prev => !prev)}
+              >
+                <Icon
+                  name={reviewAssistantCollapsed ? 'maximize' : 'minimize'}
+                  weight="bold"
+                  size="sm"
+                />
+              </button>
+            </div>
+          </div>
+          {!reviewAssistantCollapsed && (
+            <>
+              <div className="eva-mini-assistant__thread">
+                <AiResponseMessage
+                  className="eva-mini-assistant__response"
+                  assistantName="Eva"
+                  assistantState={isGenerating ? 'processing' : 'static'}
+                  content={
+                    isGenerating
+                      ? 'Drafting your agent setup. I\'ll be ready for follow-up adjustments once each section is in place.'
+                      : 'I can help adjust this agent setup. Try asking me to change the persona, swap the channel, tighten guardrails, or add knowledge sources.'
+                  }
+                />
+              </div>
+              <AiFooter
+                className="eva-mini-assistant__footer"
+                onSend={handlePromptSubmit}
+                onVoiceToggle={() => setVoiceActive(active => !active)}
+                processing={isGenerating}
+                disabled={isGenerating}
+                placeholder={
+                  isGenerating
+                    ? 'Eva is drafting the setup...'
+                    : 'Ask Eva to adjust the setup...'
+                }
+                suggestions={[]}
+                voiceActive={voiceActive}
+              />
+            </>
+          )}
+        </aside>
+      </aside>
+      </div>
+      )}
+    </div>
+  );
+}

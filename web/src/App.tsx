@@ -1,6 +1,6 @@
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import { AppProvider } from './contexts/AppContext';
-import { V2ModeProvider } from './contexts/V2ModeContext';
+import { DesignVariationProvider } from './contexts/DesignVariationContext';
 import { MainLayout } from './components/layout';
 import { ReviewProvider } from './features/review';
 import { ToastProvider } from './components/shared/Toast';
@@ -16,7 +16,6 @@ import {
 } from './pages';
 import { ActionConfigureV2, AgentSessions, AgentHistory, AgentAnalytics } from './pages/agent';
 import PolicyStudioV2 from './pages/agent/PolicyStudioV2';
-import EvaCanvas from './features/eva/EvaCanvas';
 import '@momentum-design/fonts/dist/css/fonts.css';
 import '@momentum-design/tokens/dist/css/theme/webex/dark-stable.css';
 import '@momentum-design/tokens/dist/css/theme/webex/light-stable.css';
@@ -26,7 +25,7 @@ function App() {
   return (
     <div className="app-shell-root">
       <AppProvider>
-        <V2ModeProvider>
+        <DesignVariationProvider>
           <BrowserRouter basename={import.meta.env.BASE_URL}>
             <ToastProvider>
               <ReviewProvider>
@@ -35,7 +34,13 @@ function App() {
                   <Route path="/" element={<MainLayout />}>
                     <Route index element={<Dashboard />} />
                     <Route path="agents" element={<Agents />} />
-                    <Route path="agents/eva-canvas" element={<EvaCanvas />} />
+                    {/* The canvas slides in as an overlay over the chat/form
+                        view at /agents (see EvaCanvasOverlay). Pointing
+                        /agents/eva-canvas at the same Agents element keeps
+                        the chat/form mounted underneath so the open/close
+                        animation has both panels available simultaneously,
+                        while still preserving deep-linkability of the URL. */}
+                    <Route path="agents/eva-canvas" element={<Agents />} />
                     <Route path="assistant-skills" element={<AssistantSkills />} />
                     <Route path="agents/:agentId" element={<ActionConfigureV2 />} />
                     <Route path="agents/:agentId/configure" element={<ActionConfigureV2 />} />
@@ -52,7 +57,7 @@ function App() {
               </ReviewProvider>
             </ToastProvider>
           </BrowserRouter>
-        </V2ModeProvider>
+        </DesignVariationProvider>
       </AppProvider>
     </div>
   );

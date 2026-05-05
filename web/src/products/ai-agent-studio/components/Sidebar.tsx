@@ -4,7 +4,8 @@ import { Icon } from '../../../icons/Icon';
 import Toggle from '../../../components/shared/Toggle';
 import Dropdown from '../../../components/shared/Dropdown';
 import { useReview } from '../../../features/review/ReviewProvider';
-import { useV2Mode } from '../../../contexts/V2ModeContext';
+import { useDesignVariation } from '../../../contexts/DesignVariationContext';
+import type { DesignVariation } from '../../../contexts/designVariationStore';
 
 interface NavItem {
   path: string;
@@ -23,9 +24,10 @@ const navItems: NavItem[] = [
 
 const ORGANIZATION_NAME = 'Renergize Healthcare';
 
-const DESIGN_VARIATION_OPTIONS = [
-  { value: 'none', label: 'None' },
-  { value: 'crosslaunch-v2', label: 'CrossLaunch V2' },
+const DESIGN_VARIATION_OPTIONS: Array<{ value: DesignVariation; label: string }> = [
+  { value: 'landing', label: 'Chat-based in Ai Agent' },
+  { value: 'dashboard', label: 'Chat-based in Dashboard' },
+  { value: 'form-bases', label: 'Form-based in Ai Agent' },
 ];
 
 interface SidebarProps {
@@ -41,7 +43,7 @@ export default function Sidebar({ collapsed = false }: SidebarProps) {
     toggleActive: toggleReview,
     openCommentsModal,
   } = useReview();
-  const { active: v2Active, setActive: setV2Active } = useV2Mode();
+  const { variation, setVariation } = useDesignVariation();
 
   const isActive = (path: string, end = false) => {
     if (end) return location.pathname === path;
@@ -115,10 +117,10 @@ export default function Sidebar({ collapsed = false }: SidebarProps) {
           className="sidebar-design-variation-select"
           label="Design Variations"
           options={DESIGN_VARIATION_OPTIONS}
-          value={v2Active ? 'crosslaunch-v2' : 'none'}
+          value={variation}
           size="compact"
           menuPlacement="top"
-          onChange={value => setV2Active(value === 'crosslaunch-v2')}
+          onChange={value => setVariation(value as DesignVariation)}
         />
         <button
           type="button"

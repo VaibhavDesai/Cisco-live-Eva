@@ -9050,12 +9050,16 @@ button.form-input-wrapper.open:focus-visible {
   cursor: pointer;
 }
 
-/* Form inputs inside secondary-content */
-.secondary-content input[type="text"],
-.secondary-content input[type="email"],
-.secondary-content input[type="url"],
-.secondary-content select,
-.secondary-content textarea {
+/* Legacy bare-element styling for raw <input>/<select>/<textarea> inside
+   secondary-content. The :not(...) guards exclude shared form components
+   (Input/Textarea/Select) which already render their own outlined wrapper —
+   without these guards, the bare-element border stacks on top of the wrapper
+   border and produces a duplicated outline. */
+.secondary-content input[type="text"]:not(.form-input):not(.combobox-input),
+.secondary-content input[type="email"]:not(.form-input):not(.combobox-input),
+.secondary-content input[type="url"]:not(.form-input):not(.combobox-input),
+.secondary-content select:not(.form-input),
+.secondary-content textarea:not(.form-textarea) {
   background: transparent;
   border: var(--border-width-small) solid var(--outline-input);
   border-radius: var(--border-radius-medium);
@@ -9066,17 +9070,17 @@ button.form-input-wrapper.open:focus-visible {
   font-family: inherit;
 }
 
-.secondary-content input[type="text"]:focus,
-.secondary-content input[type="email"]:focus,
-.secondary-content input[type="url"]:focus,
-.secondary-content select:focus,
-.secondary-content textarea:focus {
+.secondary-content input[type="text"]:not(.form-input):not(.combobox-input):focus,
+.secondary-content input[type="email"]:not(.form-input):not(.combobox-input):focus,
+.secondary-content input[type="url"]:not(.form-input):not(.combobox-input):focus,
+.secondary-content select:not(.form-input):focus,
+.secondary-content textarea:not(.form-textarea):focus {
   outline: none;
   border-color: var(--accent-color);
   box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent-color) 20%, transparent);
 }
 
-.secondary-content select {
+.secondary-content select:not(.form-input) {
   appearance: none;
   background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='rgba(0, 0, 0, 0.56)' d='M2 4l4 4 4-4'/%3E%3C/svg%3E");
   background-repeat: no-repeat;
@@ -14934,7 +14938,7 @@ img.app-header__wordmark-logo {
   display: flex;
   align-items: flex-end;
   gap: var(--spacing-xxx-small);
-  justify-content: flex-start;
+  justify-content: flex-end;
   flex-shrink: 0;
   border-radius: 8px;
 }
@@ -14994,6 +14998,61 @@ img.app-header__wordmark-logo {
 .ai-footer__voice-btn--active:not(:disabled) {
   background: var(--mds-color-theme-button-secondary-active-normal, var(--button-secondary-active));
   color: var(--accent-color);
+}
+
+/* Live recording state — used while MediaRecorder is capturing audio. The
+   solid red accent + slow pulse make it unambiguous that the mic is hot,
+   distinguishing it from the idle / parent-controlled "active" state. */
+.ai-footer__voice-btn--recording:not(:disabled) {
+  background: var(--mds-color-theme-indicator-stable-error-normal, #ff3b30);
+  color: #ffffff;
+  animation: ai-footer-mic-pulse 1.4s ease-in-out infinite;
+}
+
+.ai-footer__voice-btn--recording:not(:disabled):hover {
+  background: var(--mds-color-theme-indicator-stable-error-hover, #d92e25);
+}
+
+@keyframes ai-footer-mic-pulse {
+  0%, 100% {
+    box-shadow: 0 0 0 0 color-mix(in srgb, var(--mds-color-theme-indicator-stable-error-normal, #ff3b30) 60%, transparent);
+  }
+  50% {
+    box-shadow: 0 0 0 6px color-mix(in srgb, var(--mds-color-theme-indicator-stable-error-normal, #ff3b30) 0%, transparent);
+  }
+}
+
+/* Transcribing state — the mic upload is in flight to /api/transcribe.
+   Subtle spin on the icon signals progress without taking visual weight. */
+.ai-footer__voice-btn--transcribing:not(:disabled) {
+  color: var(--accent-color);
+}
+
+.ai-footer__voice-btn--transcribing .icon,
+.ai-footer__voice-btn--transcribing svg {
+  animation: ai-footer-mic-spin 1s linear infinite;
+}
+
+@keyframes ai-footer-mic-spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+/* Inline error surface for mic permission denials, transcription failures,
+   etc. Lives inside the action bar to the left of the mic button so it's
+   visually anchored to the action that produced it. Truncates with an
+   ellipsis (full text in `title`) so a long message can't push the mic
+   or send buttons out of view. */
+.ai-footer__voice-error {
+  display: inline-flex;
+  align-items: center;
+  max-width: 200px;
+  color: var(--mds-color-theme-text-error-normal, #ff3b30);
+  font-size: var(--font-size-body-small, 12px);
+  line-height: 16px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .ai-footer__disclaimer {

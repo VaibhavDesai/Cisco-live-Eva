@@ -4,10 +4,17 @@ import Button from '../components/shared/Button';
 import { Card, CardTitle } from '../components/shared/Card';
 import Badge from '../components/shared/Badge';
 import { Table, TableHead, TableBody, TableRow, TableHeader, TableCell } from '../components/shared/Table';
+import { useDesignVariation } from '../contexts/DesignVariationContext';
+import EvaChatExperience from '../features/eva/EvaChatExperience';
 
 export default function Dashboard() {
   const navigate = useNavigate();
   const { agents, setIsCreateModalOpen, selectAgent } = useApp();
+  const { variation } = useDesignVariation();
+
+  if (variation === 'dashboard') {
+    return <EvaChatExperience />;
+  }
 
   const agentList = Object.values(agents);
 

@@ -24,7 +24,6 @@ import { TextLink } from '../../components/shared/TextLink';
 import CreateEngineModal from '../CreateEngineModal';
 import CreateFulfillmentModal from './CreateFulfillmentModal';
 import PolicyStudio from './PolicyStudio';
-import { useV2Mode } from '../../contexts/V2ModeContext';
 import { optimizeInstructions } from '../../api/ciscoAi';
 import { Icon } from '../../icons';
 import {
@@ -231,7 +230,6 @@ const DEFAULT_ADVANCED_GROUPS: AdvancedGuardrailGroup[] = [
 export default function ActionConfigureV2() {
   const { agentId } = useParams();
   const { agents, currentAgent, selectAgent, showToast, aiEngines, addAiEngine } = useApp();
-  const { active: v2ModeActive } = useV2Mode();
   const [searchParams] = useSearchParams();
   // Allow deep-linking to a specific section via ?section=Security (etc.).
   // Only the first render reads the param; user navigation takes over after that.
@@ -1254,15 +1252,6 @@ export default function ActionConfigureV2() {
                           size="sm"
                           disabled={!isPaidUser}
                           onClick={() => {
-                            if (v2ModeActive) {
-                              const base = (import.meta.env.BASE_URL || '/').replace(/\/$/, '');
-                              window.open(
-                                `${base}/policy-studio-v2`,
-                                '_blank',
-                                'noopener,noreferrer',
-                              );
-                              return;
-                            }
                             setEditingProfileId(null);
                             setShowPolicyStudio(true);
                           }}

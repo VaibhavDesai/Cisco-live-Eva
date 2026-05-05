@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { AiFooter, AiResponseMessage, AiUserMessage, Badge, Button, Card, CardBody, CardHeader, CardTitle, Dropdown } from '../../../components/shared';
 import { Icon } from '../../../icons';
 import type { EvaCanvasConnection, EvaCanvasNode } from '../types';
@@ -12,6 +12,40 @@ import EvaFlowBox, { getEvaFlowBoxSize } from './EvaFlowBox';
 
 type Side = EvaCanvasConnection['fromSide'];
 
+/* SessionStorage key for the canvas. Kept distinct from the chat/form
+   builder key (`eva-agents-session-state`) so that toggling the design
+   variation or restarting the chat thread doesn't blow away the canvas
+   layout, and vice versa. The user can round-trip Chat ↔ Canvas without
+   either side losing state. */
+const EVA_CANVAS_SESSION_STORAGE_KEY = 'eva-canvas-session-state';
+
+type CanvasEvaMessage = {
+  role: 'user' | 'assistant';
+  text: string;
+};
+
+type StoredCanvasState = {
+  nodes: EvaCanvasNode[];
+  connections: EvaCanvasConnection[];
+  selectedNodeId: string;
+  formData: Record<string, string>;
+  zoom: number;
+  pan: { x: number; y: number };
+  compactMode: boolean;
+  showJson: boolean;
+  evaWindowCollapsed: boolean;
+  canvasEvaMessages: CanvasEvaMessage[];
+};
+
+const readStoredCanvasState = (): StoredCanvasState | null => {
+  try {
+    const raw = window.sessionStorage.getItem(EVA_CANVAS_SESSION_STORAGE_KEY);
+    return raw ? (JSON.parse(raw) as StoredCanvasState) : null;
+  } catch {
+    return null;
+  }
+};
+
 const addOptions = [
   { value: 'agent', label: 'Secondary agent' },
   { value: 'knowledge', label: 'Knowledge base' },
@@ -22,11 +56,6 @@ const addOptions = [
   { value: 'exit', label: 'Exit' },
   { value: 'metrics', label: 'Metrics' },
 ];
-
-type CanvasEvaMessage = {
-  role: 'user' | 'assistant';
-  text: string;
-};
 
 function getConnectionPoint(node: EvaCanvasNode, side: Side, compact: boolean) {
   const size = getEvaFlowBoxSize(compact);
@@ -55,30 +84,94 @@ function getConnectionHandleAtPoint(clientX: number, clientY: number): { nodeId:
   return { nodeId, side: side as Side };
 }
 
-export default function EvaCanvasSurface({ onBack }: { onBack: () => void }) {
-  const [nodes, setNodes] = useState<EvaCanvasNode[]>(initialEvaCanvasNodes);
-  const [connections, setConnections] = useState<EvaCanvasConnection[]>(initialEvaCanvasConnections);
-  const [selectedNodeId, setSelectedNodeId] = useState('agent-1');
-  const [formData, setFormData] = useState<Record<string, string>>({});
-  const [zoom, setZoom] = useState(1);
-  const [pan, setPan] = useState({ x: 0, y: 0 });
-  const [compactMode, setCompactMode] = useState(false);
-  const [showJson, setShowJson] = useState(false);
+export default function EvaCanvasSurface({
+  onBack,
+  onNewThread,
+}: {
+  onBack: () => void;
+  /* Optional — when provided, navigates back to chat AND requests a new
+     thread there. Wired through the EvaCanvas page so the canvas itself
+     stays unaware of how the chat view stores threads. */
+  onNewThread?: () => void;
+}) {
+  /* Hydrate from sessionStorage on first render so a Chat ↔ Canvas round-trip
+     restores the user's layout, zoom, pan, JSON pane, Eva window, and
+     in-canvas chat exactly as they left it. The lookup is wrapped in a ref
+     so it runs once even under StrictMode's double-invoke and never causes
+     a re-render. */
+  const restoredRef = useRef<StoredCanvasState | null>(null);
+  if (restoredRef.current === null) {
+    restoredRef.current = readStoredCanvasState();
+  }
+  const restored = restoredRef.current;
+
+  const [nodes, setNodes] = useState<EvaCanvasNode[]>(restored?.nodes ?? initialEvaCanvasNodes);
+  const [connections, setConnections] = useState<EvaCanvasConnection[]>(
+    restored?.connections ?? initialEvaCanvasConnections,
+  );
+  const [selectedNodeId, setSelectedNodeId] = useState(restored?.selectedNodeId ?? 'agent-1');
+  const [formData, setFormData] = useState<Record<string, string>>(restored?.formData ?? {});
+  const [zoom, setZoom] = useState(restored?.zoom ?? 1);
+  const [pan, setPan] = useState(restored?.pan ?? { x: 0, y: 0 });
+  const [compactMode, setCompactMode] = useState(restored?.compactMode ?? false);
+  const [showJson, setShowJson] = useState(restored?.showJson ?? false);
   const [connectingFrom, setConnectingFrom] = useState<{ nodeId: string; side: Side } | null>(null);
   const [copied, setCopied] = useState(false);
   const [addValue, setAddValue] = useState('');
   const [panning, setPanning] = useState(false);
   const [panStart, setPanStart] = useState({ x: 0, y: 0 });
   const [pendingConnectionEnd, setPendingConnectionEnd] = useState<{ x: number; y: number } | null>(null);
-  const [evaWindowCollapsed, setEvaWindowCollapsed] = useState(false);
-  const [canvasEvaMessages, setCanvasEvaMessages] = useState<CanvasEvaMessage[]>([
-    {
-      role: 'assistant',
-      text: 'I can help adjust this orchestration map. Try asking me to add a specialist agent, connect two nodes, or summarize the flow.',
-    },
-  ]);
+  const [evaWindowCollapsed, setEvaWindowCollapsed] = useState(restored?.evaWindowCollapsed ?? false);
+  const [canvasEvaMessages, setCanvasEvaMessages] = useState<CanvasEvaMessage[]>(
+    restored?.canvasEvaMessages ?? [
+      {
+        role: 'assistant',
+        text: 'I can help adjust this orchestration map. Try asking me to add a specialist agent, connect two nodes, or summarize the flow.',
+      },
+    ],
+  );
   const surfaceRef = useRef<HTMLDivElement>(null);
   const connectingFromRef = useRef<{ nodeId: string; side: Side } | null>(null);
+
+  /* Mirror every persistable state slice into sessionStorage on change so the
+     canvas survives a navigate-away (e.g. clicking "Chat view" then coming
+     back via the chat experience's "Canvas view" button). Transient
+     drag/UI state — `connectingFrom`, `pendingConnectionEnd`, `panning`,
+     `panStart`, `addValue`, `copied` — is intentionally excluded; it's
+     ephemeral and would be confusing to restore mid-flight. */
+  useEffect(() => {
+    const snapshot: StoredCanvasState = {
+      nodes,
+      connections,
+      selectedNodeId,
+      formData,
+      zoom,
+      pan,
+      compactMode,
+      showJson,
+      evaWindowCollapsed,
+      canvasEvaMessages,
+    };
+    try {
+      window.sessionStorage.setItem(
+        EVA_CANVAS_SESSION_STORAGE_KEY,
+        JSON.stringify(snapshot),
+      );
+    } catch {
+      // Storage failures (quota, private mode) shouldn't break the canvas.
+    }
+  }, [
+    nodes,
+    connections,
+    selectedNodeId,
+    formData,
+    zoom,
+    pan,
+    compactMode,
+    showJson,
+    evaWindowCollapsed,
+    canvasEvaMessages,
+  ]);
 
   const clientPointToWorldPoint = (clientX: number, clientY: number) => {
     const rect = surfaceRef.current?.getBoundingClientRect();
@@ -269,7 +362,7 @@ export default function EvaCanvasSurface({ onBack }: { onBack: () => void }) {
   };
 
   const handleMouseDown = (event: React.MouseEvent<HTMLDivElement>) => {
-    if ((event.target as HTMLElement).closest('.eva-flowbox, .eva-canvas-json-card, .eva-canvas-eva-window, button, .form-group')) return;
+    if ((event.target as HTMLElement).closest('.eva-flowbox, .eva-canvas-json-card, .eva-mini-assistant, button, .form-group')) return;
     setPanning(true);
     setPanStart({ x: event.clientX - pan.x, y: event.clientY - pan.y });
   };
@@ -293,10 +386,37 @@ export default function EvaCanvasSurface({ onBack }: { onBack: () => void }) {
           <h1>Multi-agent collaboration map</h1>
           <p>Pan, zoom, connect nodes, switch compact mode, and inspect the operation JSON.</p>
         </div>
-        <Button variant="secondary" size="sm" onClick={onBack}>
-          <Icon name="start-chat" weight="bold" size="sm" />
-          Chat view
-        </Button>
+        {/* Mirror the 3-button action cluster from the chat view so the
+            canvas header has the same affordances in the same place.
+            The middle button flips Canvas view ⇄ Chat view, the side-panel
+            icon collapses/expands the floating Eva assistant (the only
+            "panel" the canvas surfaces), and "New thread" hands off to
+            the parent which navigates back to chat and starts a thread. */}
+        <div className="eva-view-actions__controls">
+          <Button
+            variant="secondary"
+            size="sm"
+            className="eva-view-actions__icon-btn"
+            onClick={() => setEvaWindowCollapsed(prev => !prev)}
+            aria-label={evaWindowCollapsed ? 'Expand Eva assistant' : 'Collapse Eva assistant'}
+            aria-pressed={!evaWindowCollapsed}
+            title={evaWindowCollapsed ? 'Expand Eva assistant' : 'Collapse Eva assistant'}
+          >
+            <Icon name="side-panel" weight="bold" size="sm" />
+          </Button>
+          <Button variant="secondary" size="sm" onClick={onBack}>
+            <Icon name="start-chat" weight="bold" size="sm" />
+            Chat view
+          </Button>
+          <Button
+            variant="secondary"
+            size="sm"
+            onClick={() => (onNewThread ?? onBack)()}
+          >
+            <Icon name="plus" weight="bold" size="sm" />
+            Create new agent
+          </Button>
+        </div>
       </header>
 
       <div className="eva-canvas-workspace__body">
@@ -327,6 +447,7 @@ export default function EvaCanvasSurface({ onBack }: { onBack: () => void }) {
               value={addValue}
               placeholder="Add card"
               size="compact"
+              menuPlacement="top"
               onChange={value => {
                 setAddValue('');
                 addNode(value as EvaCanvasNode['type']);
@@ -359,16 +480,21 @@ export default function EvaCanvasSurface({ onBack }: { onBack: () => void }) {
             </Card>
           )}
 
-          <aside className={`eva-canvas-eva-window${evaWindowCollapsed ? ' eva-canvas-eva-window--collapsed' : ''}`} aria-label="Eva canvas assistant">
-            <div className="eva-canvas-eva-window__header">
+          <aside
+            className={`eva-mini-assistant eva-mini-assistant--floating${
+              evaWindowCollapsed ? ' eva-mini-assistant--collapsed' : ''
+            }`}
+            aria-label="Eva canvas assistant"
+          >
+            <div className="eva-mini-assistant__header">
               <span>
                 <Icon name="sparkle" weight="bold" size="sm" />
                 Eva
               </span>
-              <div className="eva-canvas-eva-window__controls">
+              <div className="eva-mini-assistant__controls">
                 <button
                   type="button"
-                  className="eva-canvas-eva-window__control"
+                  className="eva-mini-assistant__control"
                   aria-label={evaWindowCollapsed ? 'Expand Eva assistant' : 'Collapse Eva assistant'}
                   onClick={() => setEvaWindowCollapsed(prev => !prev)}
                 >
@@ -376,7 +502,7 @@ export default function EvaCanvasSurface({ onBack }: { onBack: () => void }) {
                 </button>
                 <button
                   type="button"
-                  className="eva-canvas-eva-window__control"
+                  className="eva-mini-assistant__control"
                   aria-label="Back to full Eva page"
                   onClick={onBack}
                 >
@@ -386,14 +512,14 @@ export default function EvaCanvasSurface({ onBack }: { onBack: () => void }) {
             </div>
             {!evaWindowCollapsed && (
               <>
-                <div className="eva-canvas-eva-window__thread">
+                <div className="eva-mini-assistant__thread">
                   {canvasEvaMessages.map((message, index) => (
                     message.role === 'user'
-                      ? <AiUserMessage key={`${message.role}-${index}`} text={message.text} className="eva-canvas-eva-window__user-message" />
+                      ? <AiUserMessage key={`${message.role}-${index}`} text={message.text} className="eva-mini-assistant__user-message" />
                       : (
                           <AiResponseMessage
                             key={`${message.role}-${index}`}
-                            className="eva-canvas-eva-window__response"
+                            className="eva-mini-assistant__response"
                             assistantName="Eva"
                             content={message.text}
                           />
@@ -401,7 +527,7 @@ export default function EvaCanvasSurface({ onBack }: { onBack: () => void }) {
                   ))}
                 </div>
                 <AiFooter
-                  className="eva-canvas-eva-window__footer"
+                  className="eva-mini-assistant__footer"
                   onSend={handleCanvasEvaSend}
                   placeholder="Ask Eva about this canvas..."
                   suggestions={[]}

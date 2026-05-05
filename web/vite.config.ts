@@ -2,9 +2,35 @@ import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 import path from 'path'
 import fs from 'fs'
+import tls from 'node:tls'
 import dotenv from 'dotenv'
 
 dotenv.config({ path: path.resolve(__dirname, '..', '.env') })
+
+// Merge the OS-level CA store (e.g. macOS Keychain — which on Cisco machines
+// includes the Cisco / Zscaler root that intercepts outbound TLS) into Node's
+// bundled CA list. Without this, server-side `fetch` calls to third-party
+// APIs (e.g. ElevenLabs) fail with `UNABLE_TO_GET_ISSUER_CERT_LOCALLY` because
+// Node ships its own Mozilla CA bundle and ignores the OS keychain.
+// `tls.setDefaultCACertificates` (Node 22.10+) replaces the default bundle —
+// we explicitly merge bundled + system so we don't accidentally drop public
+// CAs like ISRG Root X1 / DigiCert.
+try {
+  const bundled = tls.rootCertificates ?? []
+  const system: readonly string[] =
+    typeof tls.getCACertificates === 'function' ? tls.getCACertificates('system') : []
+  if (typeof tls.setDefaultCACertificates === 'function' && system.length > 0) {
+    const merged = Array.from(new Set([...bundled, ...system]))
+    tls.setDefaultCACertificates(merged)
+    // eslint-disable-next-line no-console
+    console.log(
+      `◇ TLS CAs: bundled=${bundled.length}, system=${system.length}, merged=${merged.length}`,
+    )
+  }
+} catch (err) {
+  // eslint-disable-next-line no-console
+  console.warn('Could not merge system CAs into Node default trust store:', err)
+}
 
 const iconsDir = path.resolve(
   __dirname,
@@ -63,6 +89,143 @@ export default defineConfig({
           } catch {
             res.statusCode = 404
             res.end('Not found')
+          }
+        })
+      },
+    },
+    {
+      // Proxy for ElevenLabs Speech-to-Text (Scribe). Keeps the API key on
+      // the dev server side so it never ships in the client bundle. The
+      // browser POSTs the recorded audio as a raw binary blob with its
+      // own Content-Type (e.g. audio/webm); this middleware wraps it in a
+      // multipart form for ElevenLabs and returns `{ text }`.
+      // NOTE: This is a dev-only proxy. For production deployment the
+      // same endpoint needs to be re-implemented in whatever runtime
+      // serves the app (Edge Function, Node server, etc.) — the client
+      // calls `/api/transcribe` so the proxy can be swapped without
+      // touching the React code.
+      name: 'elevenlabs-stt-proxy',
+      configureServer(server) {
+        server.middlewares.use('/api/transcribe', async (req, res) => {
+          if (req.method !== 'POST') {
+            res.statusCode = 405
+            res.setHeader('Content-Type', 'application/json')
+            res.end(JSON.stringify({ error: 'Method not allowed' }))
+            return
+          }
+
+          const apiKey = process.env.ELEVENLABS_API_KEY
+          if (!apiKey) {
+            res.statusCode = 500
+            res.setHeader('Content-Type', 'application/json')
+            res.end(JSON.stringify({ error: 'ELEVENLABS_API_KEY not configured in .env' }))
+            return
+          }
+
+          try {
+            const chunks: Buffer[] = []
+            for await (const chunk of req) chunks.push(chunk as Buffer)
+            const audioBuffer = Buffer.concat(chunks)
+
+            if (audioBuffer.length === 0) {
+              res.statusCode = 400
+              res.setHeader('Content-Type', 'application/json')
+              res.end(JSON.stringify({ error: 'Empty audio body' }))
+              return
+            }
+
+            // Cap incoming clip size to avoid runaway uploads. ElevenLabs
+            // Scribe accepts up to ~1GB but for a chat composer mic any
+            // single utterance over ~25MB is almost certainly accidental.
+            const MAX_BYTES = 25 * 1024 * 1024
+            if (audioBuffer.length > MAX_BYTES) {
+              res.statusCode = 413
+              res.setHeader('Content-Type', 'application/json')
+              res.end(JSON.stringify({ error: 'Audio too large (>25MB)' }))
+              return
+            }
+
+            const incomingType = (req.headers['content-type'] as string) || 'audio/webm'
+            // Pick a sensible filename extension from the incoming MIME so
+            // ElevenLabs can dispatch to the right decoder.
+            const ext = incomingType.includes('mp4')
+              ? 'mp4'
+              : incomingType.includes('ogg')
+              ? 'ogg'
+              : incomingType.includes('wav')
+              ? 'wav'
+              : incomingType.includes('mpeg') || incomingType.includes('mp3')
+              ? 'mp3'
+              : 'webm'
+
+            const form = new FormData()
+            form.append('file', new Blob([audioBuffer], { type: incomingType }), `audio.${ext}`)
+            form.append('model_id', 'scribe_v1')
+
+            const sttRes = await fetch('https://api.elevenlabs.io/v1/speech-to-text', {
+              method: 'POST',
+              headers: {
+                'xi-api-key': apiKey,
+                Accept: 'application/json',
+              },
+              body: form,
+            })
+
+            if (!sttRes.ok) {
+              const errText = await sttRes.text()
+              res.statusCode = sttRes.status
+              res.setHeader('Content-Type', 'application/json')
+              res.end(
+                JSON.stringify({
+                  error: `ElevenLabs STT error (${sttRes.status})`,
+                  details: errText,
+                }),
+              )
+              return
+            }
+
+            const data = (await sttRes.json()) as { text?: string; language_code?: string }
+            res.setHeader('Content-Type', 'application/json')
+            res.end(
+              JSON.stringify({
+                text: (data.text ?? '').trim(),
+                language: data.language_code ?? null,
+              }),
+            )
+          } catch (err: unknown) {
+            // Surface the underlying network/fetch error too. Node's
+            // undici throws a generic "fetch failed" with the actual
+            // diagnostic (DNS / TLS / abort / etc.) tucked into `cause`,
+            // so we unwrap it here for the client and log the full chain
+            // to the dev server console for easier debugging.
+            const baseMessage = err instanceof Error ? err.message : 'Unknown error'
+            const cause =
+              err && typeof err === 'object' && 'cause' in err
+                ? (err as { cause?: unknown }).cause
+                : undefined
+            const causeMessage =
+              cause instanceof Error
+                ? cause.message
+                : typeof cause === 'string'
+                ? cause
+                : undefined
+            const causeCode =
+              cause && typeof cause === 'object' && 'code' in cause
+                ? (cause as { code?: unknown }).code
+                : undefined
+            const fullMessage = causeMessage ? `${baseMessage}: ${causeMessage}` : baseMessage
+
+            // eslint-disable-next-line no-console
+            console.error('[elevenlabs-stt-proxy] error:', err, 'cause:', cause)
+
+            res.statusCode = 502
+            res.setHeader('Content-Type', 'application/json')
+            res.end(
+              JSON.stringify({
+                error: fullMessage,
+                code: causeCode ?? null,
+              }),
+            )
           }
         })
       },

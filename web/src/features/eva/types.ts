@@ -17,11 +17,26 @@ export interface EvaTemplate {
   draft: EvaAgentDraft;
 }
 
+/** Recommended knowledge collection presented in the Eva guided flow.
+ *  Mirrors the columns displayed in the Knowledge page collections table. */
+export interface EvaKnowledgeRecommendation {
+  /** Display name (also used as selection key in `selectedKnowledgeBases`). */
+  name: string;
+  /** Short description shown in the Description column. */
+  description: string;
+  /** Underlying source-document count. */
+  sources: number;
+  /** Number of agents currently grounded on this collection. */
+  usedBy: number;
+  /** ISO timestamp for "Last updated" — formatted client-side via `formatRelative`. */
+  lastUpdatedAt: string;
+}
+
 export interface EvaAgentDraft {
   name: string;
   description: string;
   goals: string[];
-  knowledgeBases: string[];
+  knowledgeBases: EvaKnowledgeRecommendation[];
   actions: string[];
   security: string[];
   language: string;

@@ -310,22 +310,27 @@ html[data-product='ai-agent-studio'] .app-header {
   flex: 1;
   min-width: 0;
   min-height: calc(100vh - 80px);
-  overflow: hidden;
+  /* `clip` (not `hidden`) so that programmatic scrolling — e.g. `scrollIntoView`
+     on a `.eva-step-anchor` deeper in the tree — does NOT shift this element's
+     contents and leak across landing/generated state transitions. */
+  overflow: clip;
   padding: var(--spacing-small);
   background:
     radial-gradient(circle at 50% 0, color-mix(in srgb, var(--accent-bg) 28%, transparent), transparent 40%),
     linear-gradient(135deg, var(--bg-primary), var(--bg-secondary));
 }
 
-.eva-first-interface--landing {
+.eva-first-interface--landing,
+.eva-first-interface--generated {
   isolation: isolate;
   cursor: default;
   background:
-    radial-gradient(circle at 67% 88%, color-mix(in srgb, var(--accent-color) 20%, transparent), transparent 34%),
-    radial-gradient(ellipse at 70% 44%, color-mix(in srgb, var(--danger-color) 16%, transparent), transparent 38%),
-    linear-gradient(135deg, var(--bg-primary) 0%, var(--bg-secondary) 50%, var(--bg-tertiary) 100%);
-  background-size: 120% 120%, 140% 140%, 100% 100%;
-  animation: evaLandingGradientDrift 16s ease-in-out infinite alternate;
+    radial-gradient(circle at 50% 20%, color-mix(in srgb, var(--text-primary) 12%, transparent), transparent 18%),
+    radial-gradient(ellipse at 70% 72%, color-mix(in srgb, var(--accent-color) 18%, transparent), transparent 42%),
+    radial-gradient(ellipse at 26% 58%, color-mix(in srgb, var(--danger-color) 12%, transparent), transparent 36%),
+    linear-gradient(135deg, var(--bg-primary) 0%, var(--bg-secondary) 58%, var(--bg-tertiary) 100%);
+  background-size: 120% 120%, 140% 140%, 130% 130%, 100% 100%;
+  animation: evaLandingGradientDrift 42s ease-in-out infinite alternate;
 }
 
 .eva-first-interface::before {
@@ -340,29 +345,109 @@ html[data-product='ai-agent-studio'] .app-header {
   opacity: 0.55;
 }
 
-.eva-first-interface--landing::before {
-  background:
-    radial-gradient(circle, color-mix(in srgb, var(--text-primary) 10%, transparent) var(--border-width-small), transparent var(--border-width-small)),
-    linear-gradient(115deg, transparent 0 45%, color-mix(in srgb, var(--accent-color) 14%, transparent) 45% 46%, transparent 46% 100%),
-    linear-gradient(65deg, transparent 0 48%, color-mix(in srgb, var(--success-color) 10%, transparent) 48% 49%, transparent 49% 100%);
-  background-size: var(--spacing-medium) var(--spacing-medium), 120px 180px, 160px 220px;
-  opacity: 0.34;
-  animation: evaLandingDataRain 9s linear infinite;
+.eva-first-interface--landing::before,
+.eva-first-interface--generated::before {
+  top: 50%;
+  left: 50%;
+  z-index: 0;
+  width: var(--border-width-medium);
+  height: var(--border-width-medium);
+  border-radius: var(--border-radius-half-height);
+  background: color-mix(in srgb, var(--text-primary) 86%, transparent);
+  box-shadow:
+    -48vw -32vh color-mix(in srgb, var(--text-primary) 78%, transparent),
+    -44vw -8vh color-mix(in srgb, var(--text-secondary) 62%, transparent),
+    -41vw 22vh color-mix(in srgb, var(--text-primary) 92%, transparent),
+    -38vw -24vh color-mix(in srgb, var(--accent-color) 50%, transparent),
+    -35vw 36vh color-mix(in srgb, var(--text-secondary) 58%, transparent),
+    -31vw -3vh color-mix(in srgb, var(--text-primary) 72%, transparent),
+    -28vw 18vh color-mix(in srgb, var(--text-primary) 88%, transparent),
+    -25vw -40vh color-mix(in srgb, var(--text-secondary) 52%, transparent),
+    -21vw -17vh color-mix(in srgb, var(--accent-color) 46%, transparent),
+    -18vw 31vh color-mix(in srgb, var(--text-primary) 80%, transparent),
+    -15vw 7vh color-mix(in srgb, var(--text-secondary) 68%, transparent),
+    -12vw -29vh color-mix(in srgb, var(--text-primary) 94%, transparent),
+    -8vw 42vh color-mix(in srgb, var(--accent-color) 44%, transparent),
+    -5vw -11vh color-mix(in srgb, var(--text-primary) 70%, transparent),
+    -2vw 25vh color-mix(in srgb, var(--text-secondary) 64%, transparent),
+    3vw -36vh color-mix(in srgb, var(--text-primary) 86%, transparent),
+    6vw 2vh color-mix(in srgb, var(--accent-color) 54%, transparent),
+    9vw 39vh color-mix(in srgb, var(--text-primary) 72%, transparent),
+    12vw -20vh color-mix(in srgb, var(--text-secondary) 58%, transparent),
+    16vw 17vh color-mix(in srgb, var(--text-primary) 92%, transparent),
+    19vw -43vh color-mix(in srgb, var(--accent-color) 48%, transparent),
+    23vw -6vh color-mix(in srgb, var(--text-primary) 76%, transparent),
+    26vw 28vh color-mix(in srgb, var(--text-secondary) 70%, transparent),
+    30vw -31vh color-mix(in srgb, var(--text-primary) 84%, transparent),
+    34vw 9vh color-mix(in srgb, var(--accent-color) 52%, transparent),
+    37vw 34vh color-mix(in srgb, var(--text-primary) 90%, transparent),
+    41vw -15vh color-mix(in srgb, var(--text-secondary) 56%, transparent),
+    45vw 21vh color-mix(in srgb, var(--text-primary) 74%, transparent),
+    49vw -39vh color-mix(in srgb, var(--accent-color) 42%, transparent),
+    -46vw 12vh color-mix(in srgb, var(--text-primary) 82%, transparent),
+    -42vw 44vh color-mix(in srgb, var(--text-secondary) 54%, transparent),
+    -36vw 4vh color-mix(in srgb, var(--text-primary) 96%, transparent),
+    -33vw -45vh color-mix(in srgb, var(--accent-color) 40%, transparent),
+    -29vw 39vh color-mix(in srgb, var(--text-primary) 68%, transparent),
+    -24vw -13vh color-mix(in srgb, var(--text-secondary) 62%, transparent),
+    -19vw -35vh color-mix(in srgb, var(--text-primary) 88%, transparent),
+    -14vw 46vh color-mix(in srgb, var(--accent-color) 50%, transparent),
+    -9vw -2vh color-mix(in srgb, var(--text-primary) 78%, transparent),
+    -4vw -47vh color-mix(in srgb, var(--text-secondary) 60%, transparent),
+    2vw 47vh color-mix(in srgb, var(--text-primary) 90%, transparent),
+    7vw -8vh color-mix(in srgb, var(--accent-color) 44%, transparent),
+    11vw 23vh color-mix(in srgb, var(--text-primary) 74%, transparent),
+    15vw -49vh color-mix(in srgb, var(--text-secondary) 66%, transparent),
+    20vw 43vh color-mix(in srgb, var(--text-primary) 94%, transparent),
+    24vw 5vh color-mix(in srgb, var(--accent-color) 48%, transparent),
+    29vw -22vh color-mix(in srgb, var(--text-primary) 80%, transparent),
+    33vw 48vh color-mix(in srgb, var(--text-secondary) 58%, transparent),
+    39vw -34vh color-mix(in srgb, var(--text-primary) 86%, transparent),
+    44vw 1vh color-mix(in srgb, var(--accent-color) 46%, transparent),
+    48vw 41vh color-mix(in srgb, var(--text-primary) 72%, transparent),
+    -49vw 29vh color-mix(in srgb, var(--text-secondary) 68%, transparent),
+    -40vw -51vh color-mix(in srgb, var(--text-primary) 84%, transparent),
+    -34vw 16vh color-mix(in srgb, var(--accent-color) 56%, transparent),
+    -27vw 52vh color-mix(in srgb, var(--text-primary) 76%, transparent),
+    -20vw 0vh color-mix(in srgb, var(--text-secondary) 54%, transparent),
+    -11vw 54vh color-mix(in srgb, var(--text-primary) 92%, transparent),
+    0vw -55vh color-mix(in srgb, var(--accent-color) 42%, transparent),
+    10vw 55vh color-mix(in srgb, var(--text-primary) 82%, transparent),
+    18vw -1vh color-mix(in srgb, var(--text-secondary) 64%, transparent),
+    27vw 52vh color-mix(in srgb, var(--text-primary) 88%, transparent),
+    36vw 15vh color-mix(in srgb, var(--accent-color) 50%, transparent),
+    42vw -52vh color-mix(in srgb, var(--text-primary) 70%, transparent),
+    -47vw 3vh color-mix(in srgb, var(--text-primary) 64%, transparent),
+    -43vw 33vh color-mix(in srgb, var(--text-secondary) 58%, transparent),
+    -32vw -27vh color-mix(in srgb, var(--text-primary) 82%, transparent),
+    -23vw 11vh color-mix(in srgb, var(--accent-color) 44%, transparent),
+    -16vw -52vh color-mix(in srgb, var(--text-primary) 72%, transparent),
+    -6vw 36vh color-mix(in srgb, var(--text-secondary) 62%, transparent),
+    5vw -24vh color-mix(in srgb, var(--text-primary) 90%, transparent),
+    14vw 52vh color-mix(in srgb, var(--accent-color) 46%, transparent),
+    22vw -38vh color-mix(in srgb, var(--text-primary) 76%, transparent),
+    31vw 2vh color-mix(in srgb, var(--text-secondary) 56%, transparent),
+    40vw 29vh color-mix(in srgb, var(--text-primary) 84%, transparent),
+    47vw -9vh color-mix(in srgb, var(--accent-color) 42%, transparent);
+  opacity: 0.9;
+  transform-origin: center;
+  animation: evaLandingGalaxyWarp 14s linear infinite;
 }
 
-.eva-first-interface--landing::after {
+.eva-first-interface--landing::after,
+.eva-first-interface--generated::after {
   content: '';
   position: absolute;
   inset: -18%;
   z-index: 0;
   pointer-events: none;
   background:
-    radial-gradient(ellipse at 18% 34%, color-mix(in srgb, var(--accent-bg) 26%, transparent), transparent 32%),
-    radial-gradient(ellipse at 82% 26%, color-mix(in srgb, var(--warning-bg) 14%, transparent), transparent 28%),
-    radial-gradient(ellipse at 52% 82%, color-mix(in srgb, var(--accent-color) 16%, transparent), transparent 34%);
-  filter: blur(32px);
-  opacity: 0.52;
-  animation: evaLandingAura 18s ease-in-out infinite alternate;
+    radial-gradient(ellipse at 18% 34%, color-mix(in srgb, var(--accent-bg) 22%, transparent), transparent 34%),
+    radial-gradient(ellipse at 82% 24%, color-mix(in srgb, var(--text-primary) 16%, transparent), transparent 24%),
+    radial-gradient(ellipse at 52% 82%, color-mix(in srgb, var(--accent-color) 18%, transparent), transparent 38%);
+  filter: blur(var(--blur-200));
+  opacity: 0.48;
+  animation: evaLandingAura 56s ease-in-out infinite alternate;
 }
 
 .eva-first-interface--generated {
@@ -371,8 +456,8 @@ html[data-product='ai-agent-studio'] .app-header {
   align-self: stretch;
   min-height: 0;
   padding: 12px;
-  padding-right: var(--spacing-large);
-  padding-left: var(--spacing-large);
+  padding-right: 12px;
+  padding-left: 12px;
   overflow: hidden;
 }
 
@@ -460,6 +545,77 @@ html[data-product='ai-agent-studio'] .app-header {
   padding: 0;
 }
 
+.eva-generated-layout {
+  position: relative;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(calc(var(--spacing-big) * 4), calc(var(--spacing-big) * 5));
+  grid-template-rows: minmax(0, 1fr);
+  gap: var(--spacing-small);
+  align-items: stretch;
+  overflow: hidden;
+  min-height: 0;
+  flex: 1 1 auto;
+  height: 100%;
+}
+
+.eva-generated-layout--side-collapsed {
+  grid-template-columns: minmax(0, 1fr) 44px;
+}
+
+.eva-generated-layout__main {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-small);
+  min-width: 0;
+  min-height: 0;
+  overflow: hidden;
+  padding-bottom: 0;
+}
+
+.eva-generated-side-panel {
+  align-self: start;
+  max-height: calc(100vh - 160px);
+  overflow: auto;
+}
+
+.eva-generated-side-panel--collapsed {
+  overflow: visible;
+}
+
+.eva-generated-side-panel__toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+  gap: var(--spacing-xx-small);
+  min-width: 0;
+}
+
+.eva-generated-side-panel--collapsed .eva-generated-side-panel__toolbar {
+  justify-content: center;
+}
+
+.eva-side-icon-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  border: var(--border-width-small) solid var(--border-color);
+  border-radius: var(--border-radius-half-height);
+  background: var(--bg-glass);
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.eva-side-icon-btn:hover {
+  background: var(--button-secondary-active);
+  color: var(--text-primary);
+}
+
 .eva-first-interface--generated .eva-dialogue,
 .eva-first-interface--generated .eva-first-interface__chat,
 .eva-first-interface--generated .eva-ai-footer {
@@ -474,6 +630,8 @@ html[data-product='ai-agent-studio'] .app-header {
 .eva-first-interface--generated .eva-ai-footer .ai-footer__group {
   align-items: stretch;
   width: 100%;
+  padding: var(--spacing-xx-small) var(--spacing-small) var(--spacing-x-small);
+  border-radius: 12px;
 }
 
 .eva-first-interface--generated .eva-ai-footer .ai-footer__input-row {
@@ -482,8 +640,12 @@ html[data-product='ai-agent-studio'] .app-header {
 }
 
 .eva-first-interface--generated .eva-dialogue {
+  flex: 1 1 auto;
+  min-height: 0;
+  max-height: 100%;
+  overflow-y: auto;
   gap: var(--spacing-small);
-  padding: 0;
+  padding: 0 0 calc(var(--spacing-big) * 4);
 }
 
 .eva-first-interface > * {
@@ -797,39 +959,39 @@ html[data-product='ai-agent-studio'] .app-header {
 
 .eva-canvas-json,
 .eva-flowbox__body,
-.eva-canvas-eva-window__thread {
+.eva-mini-assistant__thread {
   scrollbar-width: thin;
   scrollbar-color: transparent transparent;
 }
 
 .eva-canvas-json:hover,
 .eva-flowbox__body:hover,
-.eva-canvas-eva-window__thread:hover {
+.eva-mini-assistant__thread:hover {
   scrollbar-color: var(--mds-color-theme-scrollbar-background-secondary-normal, rgba(255, 255, 255, 0.11)) transparent;
 }
 
 .eva-canvas-json::-webkit-scrollbar,
 .eva-flowbox__body::-webkit-scrollbar,
-.eva-canvas-eva-window__thread::-webkit-scrollbar {
+.eva-mini-assistant__thread::-webkit-scrollbar {
   width: 6px;
 }
 
 .eva-canvas-json::-webkit-scrollbar-track,
 .eva-flowbox__body::-webkit-scrollbar-track,
-.eva-canvas-eva-window__thread::-webkit-scrollbar-track {
+.eva-mini-assistant__thread::-webkit-scrollbar-track {
   background: transparent;
 }
 
 .eva-canvas-json::-webkit-scrollbar-thumb,
 .eva-flowbox__body::-webkit-scrollbar-thumb,
-.eva-canvas-eva-window__thread::-webkit-scrollbar-thumb {
+.eva-mini-assistant__thread::-webkit-scrollbar-thumb {
   background: transparent;
   border-radius: 3px;
 }
 
 .eva-canvas-json:hover::-webkit-scrollbar-thumb,
 .eva-flowbox__body:hover::-webkit-scrollbar-thumb,
-.eva-canvas-eva-window__thread:hover::-webkit-scrollbar-thumb {
+.eva-mini-assistant__thread:hover::-webkit-scrollbar-thumb {
   background: var(--mds-color-theme-scrollbar-background-secondary-normal, rgba(255, 255, 255, 0.11));
 }
 
@@ -909,6 +1071,11 @@ html[data-product='ai-agent-studio'] .app-header {
   margin-top: var(--spacing-small);
 }
 
+.eva-ai-response.ai-response {
+  padding-top: var(--spacing-x-small);
+  padding-left: var(--spacing-small);
+}
+
 .eva-ai-response .ai-response__body {
   gap: var(--spacing-small);
 }
@@ -954,6 +1121,63 @@ html[data-product='ai-agent-studio'] .app-header {
 @media (max-width: 760px) {
   .eva-config-grid--responsive-two {
     grid-template-columns: 1fr;
+  }
+
+  .eva-form-builder__generation-layout {
+    grid-template-columns: 1fr;
+    grid-template-rows: auto;
+    /* On narrow viewports the layout stacks and we want the page itself to
+       scroll the combined column instead of fighting two inner scroll
+       regions in a single column. Override the desktop flex sizing so the
+       layout grows naturally and the page-level scroll re-engages below. */
+    flex: 0 0 auto;
+    min-height: 0;
+  }
+
+  .eva-generated-layout {
+    grid-template-columns: 1fr;
+  }
+
+  .eva-form-builder__side-panel {
+    position: static;
+    order: -1;
+    height: auto;
+    overflow: visible;
+  }
+
+  .eva-form-builder__generation-layout > .eva-form-builder__side-panel {
+    position: static;
+    top: auto;
+    right: auto;
+    bottom: auto;
+    width: auto;
+    height: auto;
+    overflow: visible;
+    z-index: auto;
+  }
+
+  /* On narrow viewports, the side panel collapses to inline flow so the
+     scroll wrapper and the docked assistant sit naturally in the page
+     instead of sharing a fixed-height column. */
+  .eva-form-builder__side-panel-scroll {
+    overflow-y: visible;
+    flex: 0 0 auto;
+    min-height: auto;
+  }
+
+  /* When the columns stack we let `.primary-content` scroll the whole
+     thing; the desktop "main column owns the scroll" rule would otherwise
+     trap the form inside a too-short box. */
+  .eva-form-builder.primary-content {
+    overflow-y: auto;
+  }
+
+  .eva-form-builder__main-column {
+    overflow-y: visible;
+  }
+
+  .eva-form-builder__review-assistant {
+    margin-top: var(--spacing-small);
   }
 }
 
@@ -1060,62 +1284,6 @@ html[data-product='ai-agent-studio'] .app-header {
 
 .eva-choice-list .toggle-track {
   margin-top: var(--spacing-micro);
-}
-
-.eva-actions-table {
-  display: flex;
-  flex-direction: column;
-  overflow: hidden;
-  border: var(--border-width-small) solid var(--border-color);
-  border-radius: var(--border-radius-large);
-  background: transparent;
-}
-
-.eva-actions-table__header,
-.eva-actions-table__row {
-  display: grid;
-  grid-template-columns: minmax(200px, 1.4fr) minmax(92px, 0.6fr) minmax(240px, 1.7fr) minmax(150px, 0.9fr) minmax(100px, 0.7fr) minmax(110px, 0.7fr);
-  align-items: center;
-  gap: var(--spacing-small);
-}
-
-.eva-actions-table__header {
-  padding: var(--spacing-xx-small) var(--spacing-small);
-  background: var(--bg-glass-light);
-  color: var(--text-secondary);
-  font-size: var(--font-size-body-small);
-  font-weight: var(--font-weight-medium);
-  line-height: var(--font-lineheight-body-small);
-}
-
-.eva-actions-table__row {
-  min-height: 44px;
-  padding: var(--spacing-xx-small) var(--spacing-small);
-  border-top: var(--border-width-small) solid var(--border-color);
-  color: var(--text-secondary);
-  font-size: var(--font-size-body-small);
-  line-height: var(--font-lineheight-body-small);
-}
-
-.eva-actions-table__name {
-  display: flex;
-  align-items: center;
-  gap: var(--spacing-xx-small);
-  min-width: 0;
-  color: var(--text-primary);
-}
-
-.eva-actions-table__name .toggle {
-  margin: 0;
-}
-
-.eva-actions-table__name strong {
-  overflow: hidden;
-  font-size: var(--font-size-body-small);
-  font-weight: var(--font-weight-medium);
-  line-height: var(--font-lineheight-body-small);
-  text-overflow: ellipsis;
-  white-space: nowrap;
 }
 
 .eva-security-panel {
@@ -1383,38 +1551,6 @@ html[data-product='ai-agent-studio'] .app-header {
   line-height: var(--font-lineheight-body-midsize);
 }
 
-.eva-config-step-card {
-  gap: var(--spacing-small);
-  padding: var(--spacing-small);
-  border-color: color-mix(in srgb, var(--accent-color) 22%, var(--border-color));
-  animation: evaConfigCardIn 0.28s ease-out;
-}
-
-.eva-config-step-card__header {
-  display: flex;
-  flex-direction: column;
-  gap: var(--spacing-xxx-small);
-  padding-bottom: var(--spacing-small);
-  border-bottom: var(--border-width-small) solid var(--border-color);
-}
-
-.eva-config-step-card__header span {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--spacing-xx-small);
-  color: var(--text-primary);
-  font-size: var(--font-size-body-large);
-  font-weight: var(--font-weight-medium);
-  line-height: var(--font-lineheight-body-large);
-}
-
-.eva-config-step-card__header p {
-  margin: 0;
-  color: var(--text-secondary);
-  font-size: var(--font-size-body-small);
-  line-height: var(--font-lineheight-body-small);
-}
-
 .eva-ai-footer {
   width: min(100%, 960px);
   margin: 0 auto;
@@ -1427,6 +1563,7 @@ html[data-product='ai-agent-studio'] .app-header {
 
 .eva-first-interface:not(.eva-first-interface--generated) .eva-ai-footer.ai-footer {
   padding: var(--spacing-x-small) 0 var(--spacing-x-small);
+  background: transparent;
 }
 
 .eva-first-interface:not(.eva-first-interface--generated) .eva-ai-footer .ai-footer__group {
@@ -1739,28 +1876,36 @@ html[data-product='ai-agent-studio'] .app-header {
 
 @keyframes evaLandingAura {
   from {
-    transform: translate3d(-2%, -1%, 0) scale(1);
+    transform: translate3d(-3%, -2%, 0) scale(1);
   }
   to {
-    transform: translate3d(2%, 1%, 0) scale(1.05);
+    transform: translate3d(3%, 2%, 0) scale(1.08);
   }
 }
 
 @keyframes evaLandingGradientDrift {
   from {
-    background-position: 0% 0%, 100% 12%, 0 0;
+    background-position: 50% 18%, 100% 70%, 0% 56%, 0 0;
   }
   to {
-    background-position: 18% 12%, 82% 0%, 0 0;
+    background-position: 48% 24%, 82% 78%, 14% 48%, 0 0;
   }
 }
 
-@keyframes evaLandingDataRain {
-  from {
-    background-position: 0 0, 0 0, 0 0;
+@keyframes evaLandingGalaxyWarp {
+  0% {
+    opacity: 0.08;
+    transform: translate3d(-50%, -50%, 0) scale(0.28);
   }
-  to {
-    background-position: 20px 20px, 120px 180px, -160px 220px;
+  20% {
+    opacity: 0.94;
+  }
+  78% {
+    opacity: 0.94;
+  }
+  100% {
+    opacity: 0.08;
+    transform: translate3d(-50%, -50%, 0) scale(2.8);
   }
 }
 
@@ -1926,6 +2071,12 @@ html[data-product='ai-agent-studio'] .app-header {
   margin: auto 0 0;
 }
 
+.eva-first-interface--landing:not(.eva-first-interface--generated) .eva-first-interface__chat {
+  flex: 0 0 auto;
+  width: min(100%, 960px);
+  margin: var(--spacing-xxx-large) auto 0;
+}
+
 .eva-first-interface__chat--sticky {
   position: sticky;
   bottom: 0;
@@ -1934,6 +2085,36 @@ html[data-product='ai-agent-studio'] .app-header {
   min-height: 0;
   margin: auto auto 0;
   padding: 0;
+}
+
+.eva-generated-layout__main .eva-first-interface__chat--sticky {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  width: auto !important;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  border-top: var(--border-width-small) solid var(--border-color);
+  border-radius: 12px;
+  /* Glass surface: opaque enough to mask scrolling form content underneath,
+     paired with backdrop blur for the design-system glass look. */
+  background: color-mix(
+    in srgb,
+    var(--mds-color-theme-background-solid-primary-normal, var(--bg-primary)) 88%,
+    transparent
+  );
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  box-shadow: 0 -8px 24px rgba(0, 0, 0, 0.18);
+}
+
+.eva-generated-layout__main .eva-first-interface__chat--sticky .eva-ai-footer.ai-footer {
+  padding: 0;
+  border-radius: 12px;
+  /* keep transparent so the parent's glass surface shows through unaltered */
+  background: transparent;
 }
 
 .eva-first-interface__chat--sticky .eva-composer__box {
@@ -2311,18 +2492,79 @@ html[data-product='ai-agent-studio'] .app-header {
   overflow-wrap: anywhere;
 }
 
-.eva-canvas-page {
-  min-height: calc(100vh - 80px);
-  padding: 0;
+/* Sliding overlay container that hosts the canvas surface. Sits inside
+   `.main` (which is `position: relative`) and absolutely fills it, so the
+   chat/form view rendered just above remains in the document flow — that
+   stable "background" is what the open/close animation reveals/covers.
+   The overlay starts off-screen to the right and slides into place when
+   the route flips to `/agents/eva-canvas`. We explicitly opt out of
+   pointer + accessibility interaction while closed so the off-screen
+   panel can't intercept clicks or steal focus. */
+/* Sliding-reveal canvas overlay.
+   The canvas surface is rendered at full size while the overlay is open
+   (or closing); we animate `clip-path` to grow the visible region from
+   the right edge outward, so the reveal reads as the side panel
+   "morphing" into the canvas instead of a foreign panel sliding in from
+   the right.
+   At rest the overlay is FULLY hidden — closed state collapses the clip
+   to zero width at the right edge (`inset(0 0 0 100%)`). When open, the
+   clip animates to `inset(0)`, sweeping leftward across the main pane.
+   Keeping the canvas content stationary (instead of translating it in)
+   means positioned canvas nodes don't drift during the animation, and
+   the GPU can composite the clip without re-laying out the surface. */
+.eva-canvas-overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 30;
+  display: flex;
+  flex-direction: column;
   overflow: hidden;
-  overflow-x: hidden;
+  background: color-mix(in srgb, var(--mds-color-theme-background-solid-primary-normal) 85%, transparent);
+  backdrop-filter: blur(80px);
+  -webkit-backdrop-filter: blur(80px);
+  border-radius: 16px 0 0 0;
+  border-top: var(--border-width-small) solid var(--border-color);
+  border-left: var(--border-width-small) solid var(--border-color);
+  clip-path: inset(0 0 0 100%);
+  -webkit-clip-path: inset(0 0 0 100%);
+  transition: clip-path 360ms cubic-bezier(0.32, 0.72, 0, 1),
+              -webkit-clip-path 360ms cubic-bezier(0.32, 0.72, 0, 1);
+  pointer-events: none;
+}
+
+[data-theme='light'] .eva-canvas-overlay {
+  background: color-mix(in srgb, var(--mds-color-theme-background-solid-primary-normal) 75%, transparent);
+}
+
+.eva-canvas-overlay--open {
+  clip-path: inset(0);
+  -webkit-clip-path: inset(0);
+  pointer-events: auto;
+}
+
+/* Inner canvas workspace fills the overlay box. The workspace already
+   handles its own header/body flex layout; we just need to hand it the
+   full overlay area. */
+.eva-canvas-overlay > .eva-canvas-workspace {
+  flex: 1 1 auto;
+  height: 100%;
+  min-height: 0;
+}
+
+/* Respect users who prefer reduced motion — snap the clip-path open/close
+   instead of sweeping so the experience still works without the animation. */
+@media (prefers-reduced-motion: reduce) {
+  .eva-canvas-overlay {
+    transition: none;
+  }
 }
 
 .eva-canvas-workspace {
   display: flex;
   flex-direction: column;
-  min-height: calc(100vh - 80px);
-  overflow-x: hidden;
+  height: 100%;
+  min-height: 0;
+  overflow: hidden;
 }
 
 .eva-canvas-workspace__header {
@@ -2330,8 +2572,9 @@ html[data-product='ai-agent-studio'] .app-header {
   align-items: flex-start;
   justify-content: space-between;
   gap: var(--spacing-small);
-  padding: var(--spacing-small) var(--spacing-large);
+  padding: var(--spacing-large) var(--spacing-large) var(--spacing-small);
   border-bottom: var(--border-width-small) solid var(--border-color);
+  flex: 0 0 auto;
 }
 
 .eva-canvas-workspace__header h1 {
@@ -2353,16 +2596,25 @@ html[data-product='ai-agent-studio'] .app-header {
   grid-template-columns: minmax(0, 1fr);
   gap: var(--spacing-small);
   min-height: 0;
-  flex: 1;
+  flex: 1 1 auto;
   padding: var(--spacing-small);
-  overflow-x: hidden;
+  /* No scroll — the canvas is a fixed-viewport pan/zoom surface, so when
+     the body is shorter than the stage would naturally want to be, the
+     stage shrinks to fit instead of forcing a scrollbar. Users still
+     navigate the larger virtual canvas via pan + zoom inside the stage. */
+  overflow: hidden;
 }
 
 .eva-canvas-stage {
   position: relative;
   overflow: hidden;
-  overflow-x: hidden;
-  min-height: 720px;
+  /* No `min-height` — the stage flexes to whatever vertical space the
+     workspace body has available, so short viewports clip cleanly into
+     the pan/zoom surface instead of pushing a scrollbar onto the page.
+     `min-height: 0` (paired with the parent grid's `min-height: 0`)
+     lets the grid item actually shrink below its content's intrinsic
+     size, which is what allows the no-scroll behavior to work. */
+  min-height: 0;
   border: var(--border-width-small) solid var(--border-color);
   border-radius: 16px;
   background:
@@ -2652,17 +2904,18 @@ html[data-product='ai-agent-studio'] .app-header {
   box-shadow: var(--elevation-4);
 }
 
-.eva-canvas-eva-window {
-  position: absolute;
-  right: var(--spacing-small);
-  bottom: var(--spacing-small);
-  z-index: 19;
+/* Shared "mini Eva assistant" chrome — a small docked panel containing an
+   Eva header (sparkle + name + optional controls), a scrollable thread of
+   AiResponseMessage / AiUserMessage bubbles, and an AiFooter input row.
+   Used by both the canvas overlay (`.eva-mini-assistant--floating`) and the
+   form-builder side-panel composer (`.eva-mini-assistant--docked`) so the
+   two stay visually consistent. The base rule only owns the visual chrome —
+   placement (absolute / sticky), width, and max-height come from the
+   variant modifiers below so each host can size it appropriately. */
+.eva-mini-assistant {
   display: flex;
   flex-direction: column;
-  width: min(320px, calc(100% - var(--spacing-large)));
-  max-height: 360px;
   overflow: hidden;
-  overflow-x: hidden;
   border: var(--border-width-small) solid var(--mds-color-theme-outline-glass-normal);
   border-radius: 16px;
   background: var(--mds-color-theme-background-glass-normal);
@@ -2671,11 +2924,37 @@ html[data-product='ai-agent-studio'] .app-header {
   box-shadow: var(--elevation-3);
 }
 
-.eva-canvas-eva-window--collapsed {
+/* Floating overlay variant — used as an absolute-positioned panel inside
+   the canvas surface, so it sits over the world without taking flow space. */
+.eva-mini-assistant--floating {
+  position: absolute;
+  right: var(--spacing-small);
+  bottom: var(--spacing-small);
+  z-index: 19;
+  width: min(320px, calc(100% - var(--spacing-large)));
+  max-height: 360px;
+}
+
+.eva-mini-assistant--floating.eva-mini-assistant--collapsed {
   width: 220px;
 }
 
-.eva-canvas-eva-window__header {
+/* Docked variant — used inside the form-builder side panel. Sits as a
+   non-shrinking flex sibling at the bottom of the panel (positioning
+   handled by `.eva-form-builder__review-assistant`); fills the available
+   width and caps the thread height so it never crowds the cards above.
+   Re-declares the glass surface using the project's design tokens
+   (`--bg-glass`, `--border-color`) so the assistant matches the
+   Progress / Summary / Context cards above it (`.eva-side-card`) and
+   reads as a peer card rather than a subtle floating control. */
+.eva-mini-assistant--docked {
+  width: 100%;
+  max-height: 320px;
+  background: var(--bg-glass);
+  border-color: var(--border-color);
+}
+
+.eva-mini-assistant__header {
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -2683,11 +2962,11 @@ html[data-product='ai-agent-studio'] .app-header {
   border-bottom: var(--border-width-small) solid var(--mds-color-theme-outline-glass-normal);
 }
 
-.eva-canvas-eva-window--collapsed .eva-canvas-eva-window__header {
+.eva-mini-assistant--collapsed .eva-mini-assistant__header {
   border-bottom: 0;
 }
 
-.eva-canvas-eva-window__header span {
+.eva-mini-assistant__header span {
   display: inline-flex;
   align-items: center;
   gap: var(--spacing-xxx-small);
@@ -2697,13 +2976,13 @@ html[data-product='ai-agent-studio'] .app-header {
   line-height: var(--font-lineheight-body-midsize);
 }
 
-.eva-canvas-eva-window__controls {
+.eva-mini-assistant__controls {
   display: inline-flex;
   align-items: center;
   gap: var(--spacing-xxx-small);
 }
 
-.eva-canvas-eva-window__control {
+.eva-mini-assistant__control {
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -2717,12 +2996,12 @@ html[data-product='ai-agent-studio'] .app-header {
   cursor: pointer;
 }
 
-.eva-canvas-eva-window__control:hover {
+.eva-mini-assistant__control:hover {
   background: var(--button-secondary-hover);
   color: var(--text-primary);
 }
 
-.eva-canvas-eva-window__thread {
+.eva-mini-assistant__thread {
   display: flex;
   flex-direction: column;
   gap: var(--spacing-xx-small);
@@ -2732,58 +3011,58 @@ html[data-product='ai-agent-studio'] .app-header {
   overflow-y: auto;
 }
 
-.eva-canvas-eva-window__response.ai-response,
-.eva-canvas-eva-window__user-message.ai-user-msg {
+.eva-mini-assistant__response.ai-response,
+.eva-mini-assistant__user-message.ai-user-msg {
   min-width: 0;
   width: 100%;
   max-width: 100%;
 }
 
-.eva-canvas-eva-window__response.ai-response {
+.eva-mini-assistant__response.ai-response {
   padding: var(--spacing-xx-small);
 }
 
-.eva-canvas-eva-window__user-message.ai-user-msg {
+.eva-mini-assistant__user-message.ai-user-msg {
   gap: var(--spacing-xxx-small);
   padding: var(--spacing-xx-small);
 }
 
-.eva-canvas-eva-window__user-message .ai-user-msg__header {
+.eva-mini-assistant__user-message .ai-user-msg__header {
   gap: var(--spacing-xxx-small);
 }
 
-.eva-canvas-eva-window__response .ai-response__accent,
-.eva-canvas-eva-window__response .ai-response__actions {
+.eva-mini-assistant__response .ai-response__accent,
+.eva-mini-assistant__response .ai-response__actions {
   display: none;
 }
 
-.eva-canvas-eva-window__response .ai-response__header,
-.eva-canvas-eva-window__response .ai-response__body {
+.eva-mini-assistant__response .ai-response__header,
+.eva-mini-assistant__response .ai-response__body {
   min-width: 0;
   width: 100%;
   padding: 0;
 }
 
-.eva-canvas-eva-window__response .ai-response__content {
+.eva-mini-assistant__response .ai-response__content {
   min-width: 0;
   max-width: 100%;
 }
 
-.eva-canvas-eva-window__response .ai-response__label,
-.eva-canvas-eva-window__user-message .ai-user-msg__name {
+.eva-mini-assistant__response .ai-response__label,
+.eva-mini-assistant__user-message .ai-user-msg__name {
   font-size: var(--font-size-body-small);
   line-height: var(--font-lineheight-body-small);
 }
 
-.eva-canvas-eva-window__response .ai-symbol,
-.eva-canvas-eva-window__user-message .avatar {
+.eva-mini-assistant__response .ai-symbol,
+.eva-mini-assistant__user-message .avatar {
   width: var(--spacing-small) !important;
   height: var(--spacing-small) !important;
   font-size: 8px !important;
 }
 
-.eva-canvas-eva-window__response .ai-response__content p,
-.eva-canvas-eva-window__user-message .ai-user-msg__text {
+.eva-mini-assistant__response .ai-response__content p,
+.eva-mini-assistant__user-message .ai-user-msg__text {
   max-width: 100%;
   font-size: var(--font-size-body-small);
   line-height: var(--font-lineheight-body-small);
@@ -2791,20 +3070,20 @@ html[data-product='ai-agent-studio'] .app-header {
   word-break: break-word;
 }
 
-.eva-canvas-eva-window__footer.ai-footer {
+.eva-mini-assistant__footer.ai-footer {
   padding: var(--spacing-xx-small);
   border-top: var(--border-width-small) solid var(--mds-color-theme-outline-glass-normal);
   background: transparent;
 }
 
-.eva-canvas-eva-window__footer .ai-footer__input-row {
+.eva-mini-assistant__footer .ai-footer__input-row {
   height: 64px;
   min-height: 64px;
   min-width: 0;
 }
 
-.eva-canvas-eva-window__footer .ai-footer__sources-btn,
-.eva-canvas-eva-window__footer .ai-footer__disclaimer {
+.eva-mini-assistant__footer .ai-footer__sources-btn,
+.eva-mini-assistant__footer .ai-footer__disclaimer {
   display: none;
 }
 
@@ -4700,25 +4979,38 @@ html[data-product='ai-agent-studio'] .app-header {
 }
 
 /* Eva landing composer needs to fill the page frame instead of the shared AI
-   footer's centered max-width layout. Keep this scoped to Agents. */
+   footer's centered max-width layout. The same shell clipping is needed by
+   the form-builder variation: its `.main` has `margin-top: 64px` but the
+   base `.main` height is `calc(100vh - 56px)`, so without an override the
+   element overflows the viewport by 8px and triggers a body/html-level
+   scrollbar pinned to the very right edge of the page. Scoping by
+   `:has(.eva-form-builder.primary-content)` re-uses the same shell pin we
+   already use for the chat landing/build view, which keeps the fix opt-in
+   to the Eva agent surfaces. Keep this scoped to Agents. */
 html[data-product='ai-agent-studio']:has(.eva-agents-landing--flush),
 html[data-product='ai-agent-studio']:has(.eva-agents-landing--flush) body,
 html[data-product='ai-agent-studio']:has(.eva-agents-landing--flush) #root,
-html[data-product='ai-agent-studio']:has(.eva-agents-landing--flush) .app-shell-root {
+html[data-product='ai-agent-studio']:has(.eva-agents-landing--flush) .app-shell-root,
+html[data-product='ai-agent-studio']:has(.eva-form-builder.primary-content),
+html[data-product='ai-agent-studio']:has(.eva-form-builder.primary-content) body,
+html[data-product='ai-agent-studio']:has(.eva-form-builder.primary-content) #root,
+html[data-product='ai-agent-studio']:has(.eva-form-builder.primary-content) .app-shell-root {
   height: 100vh;
   height: 100dvh;
   min-height: 0;
   overflow: hidden;
 }
 
-.app--ai:has(.eva-agents-landing--flush) {
+.app--ai:has(.eva-agents-landing--flush),
+.app--ai:has(.eva-form-builder.primary-content) {
   height: 100vh;
   height: 100dvh;
   min-height: 0;
   overflow: hidden;
 }
 
-.app--ai .main:has(.eva-agents-landing--flush) {
+.app--ai .main:has(.eva-agents-landing--flush),
+.app--ai .main:has(.eva-form-builder.primary-content) {
   height: calc(100vh - var(--spacing-big));
   height: calc(100dvh - var(--spacing-big));
   overflow: hidden;
@@ -4734,10 +5026,11 @@ html[data-product='ai-agent-studio']:has(.eva-agents-landing--flush) .app-shell-
 .eva-agents-landing .eva-first-interface--landing {
   height: 100%;
   min-height: 0;
+  padding: 48px var(--spacing-large) var(--spacing-large);
 }
 
 .eva-agents-landing .eva-first-interface:not(.eva-first-interface--generated) .eva-first-interface__hero {
-  padding-top: var(--spacing-medium) !important;
+  padding-top: 0 !important;
 }
 
 .eva-agents-landing .eva-first-interface .eva-first-interface__chat,
@@ -4749,9 +5042,9 @@ html[data-product='ai-agent-studio']:has(.eva-agents-landing--flush) .app-shell-
 }
 
 .eva-agents-landing .eva-first-interface .eva-ai-footer.ai-footer {
-  background: var(--bg-glass) !important;
-  backdrop-filter: blur(24px);
-  -webkit-backdrop-filter: blur(24px);
+  background: transparent !important;
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
   padding-left: 0 !important;
   padding-right: 0 !important;
 }
@@ -4763,4 +5056,665 @@ html[data-product='ai-agent-studio']:has(.eva-agents-landing--flush) .app-shell-
 .eva-agents-landing .eva-first-interface .eva-ai-footer .ai-footer__input-row {
   align-self: stretch !important;
   min-width: 100% !important;
+}
+
+.eva-agents-landing .eva-first-interface--landing:not(.eva-first-interface--generated) .eva-first-interface__hero,
+.eva-agents-landing .eva-first-interface--landing:not(.eva-first-interface--generated) .eva-prompt-examples,
+.eva-agents-landing .eva-first-interface--landing:not(.eva-first-interface--generated) .eva-landing-actions,
+.eva-agents-landing .eva-first-interface--landing:not(.eva-first-interface--generated) .eva-first-interface__chat {
+  width: min(100%, 1080px) !important;
+}
+
+.eva-agents-landing .eva-first-interface--landing:not(.eva-first-interface--generated) .eva-first-interface__chat {
+  flex: 0 0 auto;
+  margin-top: auto;
+  margin-left: auto;
+  margin-right: auto;
+  margin-bottom: 0;
+}
+
+/* ── Eva Form Builder (Form bases design variation) ───────────── */
+
+.eva-form-builder.primary-content {
+  /* No bottom padding here — the configuration column owns the scroll, and
+     padding here would push the form past the visible scrollport. The main
+     column gets its own bottom breathing room via
+     `.eva-form-builder__main-column` so the form still has space below the
+     last accordion.
+
+     The outer `.primary-content` deliberately clips instead of scrolling so
+     the form view shows only the inner column scrollbars (configuration on
+     the left, side panel cards on the right) and not a duplicate
+     viewport-level scrollbar pinned to the very edge of the page. The
+     compact header sits above the generation layout in normal flow; the
+     layout itself flexes to fill the remaining viewport so the inner scroll
+     containers have a bounded height to scroll within. */
+  padding-bottom: 0;
+  padding-left: var(--spacing-large);
+  padding-right: var(--spacing-large);
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  overflow: hidden;
+}
+
+
+.eva-form-builder .page-header {
+  align-items: flex-start;
+  gap: var(--spacing-large);
+  flex-wrap: wrap;
+}
+
+.eva-form-builder .eva-shell__eyebrow {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--spacing-xxx-small);
+  color: var(--mds-color-theme-text-secondary-normal, var(--text-secondary));
+  font-size: 12px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  margin-bottom: var(--spacing-xxx-small);
+}
+
+.eva-form-builder__primary-actions {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--spacing-small);
+  flex-wrap: wrap;
+}
+
+.eva-form-builder__generation-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(calc(var(--spacing-big) * 4), calc(var(--spacing-big) * 5));
+  grid-template-rows: minmax(0, 1fr);
+  gap: var(--spacing-small);
+  align-items: stretch;
+  /* Fill the remaining viewport height so the columns inside can each own a
+     bounded scroll region. Without `flex: 1 1 auto` + `min-height: 0` the
+     grid would size to its content and force the outer `.primary-content`
+     to scroll, re-introducing the page-level scrollbar we just removed. */
+  flex: 1 1 auto;
+  min-height: 0;
+}
+
+.eva-form-builder__main-column {
+  min-width: 0;
+  min-height: 0;
+  /* Bottom space for the form column only; keeps the side panel free to
+     extend to the viewport bottom without leaving a blank strip below the
+     docked Eva mini-assistant. */
+  padding-bottom: var(--spacing-large);
+  /* The main column is the form's scroll container now that
+     `.primary-content` clips. This keeps the scrollbar visually tied to
+     the configuration form (where the user is reading/editing) instead of
+     pinning a second one to the page edge. */
+  overflow-y: auto;
+}
+
+.eva-form-builder__side-panel {
+  position: sticky;
+  top: var(--spacing-small);
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-small);
+  min-width: 0;
+}
+
+/* Pin the form-builder side panel inside the generation layout's grid row.
+   The main column now owns the form's vertical scroll, so the side panel
+   doesn't need `position: sticky` to stay put — it lives in its own grid
+   cell and inherits the row's full height via `align-self: stretch` (set
+   on the parent grid). The panel itself clips (`overflow: hidden`) so the
+   inner `.eva-form-builder__side-panel-scroll` can scroll the cards while
+   the docked Eva mini-assistant stays anchored to the panel's bottom edge.
+   Scoped with `>` so the override is limited to the form-builder
+   generation layout (the EvaChatExperience aside, which shares the base
+   class, keeps its own grid-flow behavior). */
+.eva-form-builder__generation-layout > .eva-form-builder__side-panel {
+  align-self: stretch;
+  min-height: 0;
+  height: 100%;
+  overflow: hidden;
+  z-index: 4;
+}
+
+/* Scrollable cards region inside the form-builder side panel. Owns the
+   vertical scroll so the docked assistant sibling below can stay anchored
+   to the panel's bottom edge without sticky positioning (which fights with
+   `margin-top: auto` when the cards overflow). `min-height: 0` is required
+   for a flex child to allow shrinking past its content size, otherwise the
+   inner scroll never engages and the cards push the assistant off-screen. */
+.eva-form-builder__side-panel-scroll {
+  flex: 1 1 0;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-small);
+  overflow-y: auto;
+}
+
+.eva-side-card {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-x-small);
+  padding: var(--spacing-small);
+  border: var(--border-width-small) solid var(--border-color);
+  border-radius: 16px;
+  background: var(--bg-glass);
+}
+
+.eva-side-card__header {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--spacing-xx-small);
+  color: var(--text-primary);
+}
+
+.eva-side-card__header h2 {
+  margin: 0;
+  color: inherit;
+  font-size: var(--font-size-body-midsize);
+  font-weight: var(--font-weight-medium);
+  line-height: var(--font-lineheight-body-midsize);
+}
+
+.eva-generation-progress {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-x-small);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.eva-generation-progress__item {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: var(--spacing-xx-small);
+  align-items: flex-start;
+  color: var(--text-secondary);
+}
+
+.eva-generation-progress__item strong,
+.eva-side-summary strong,
+.eva-side-context__section h3 {
+  display: block;
+  color: var(--text-primary);
+  font-size: var(--font-size-body-small);
+  font-weight: var(--font-weight-medium);
+  line-height: var(--font-lineheight-body-small);
+  margin: 0;
+}
+
+.eva-generation-progress__item small,
+.eva-side-summary p,
+.eva-side-summary span,
+.eva-side-context__section p {
+  margin: var(--spacing-xxx-small) 0 0;
+  color: var(--text-secondary);
+  font-size: var(--font-size-body-small);
+  line-height: var(--font-lineheight-body-small);
+}
+
+.eva-generation-progress__icon {
+  display: inline-flex;
+  color: var(--text-muted);
+}
+
+.eva-generation-progress__item--active .eva-generation-progress__icon,
+.eva-generation-progress__item--active strong {
+  color: var(--accent-color);
+}
+
+/* Pulse the icon and detail line on the currently-drafting step so the
+   Progress card reads as "live" while items are still streaming in. */
+.eva-generation-progress__item--active .eva-generation-progress__icon {
+  animation: eva-generation-progress-pulse 1.4s ease-in-out infinite;
+}
+
+.eva-generation-progress__item--active small {
+  background: linear-gradient(
+    100deg,
+    color-mix(in srgb, var(--text-secondary) 70%, transparent) 0%,
+    color-mix(in srgb, var(--text-primary) 95%, transparent) 50%,
+    color-mix(in srgb, var(--text-secondary) 70%, transparent) 100%
+  );
+  background-size: 200% 100%;
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  color: transparent;
+  animation: eva-generation-progress-shimmer 1.6s ease-in-out infinite;
+}
+
+@keyframes eva-generation-progress-pulse {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.5;
+  }
+}
+
+@keyframes eva-generation-progress-shimmer {
+  0% {
+    background-position: 200% 0;
+  }
+  100% {
+    background-position: -200% 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .eva-generation-progress__item--active .eva-generation-progress__icon,
+  .eva-generation-progress__item--active small {
+    animation: none;
+  }
+  .eva-generation-progress__item--active small {
+    -webkit-text-fill-color: var(--text-secondary);
+    color: var(--text-secondary);
+  }
+}
+
+.eva-generation-progress__item--done .eva-generation-progress__icon {
+  color: var(--success-color);
+}
+
+.eva-side-summary,
+.eva-side-context {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-x-small);
+}
+
+/* Loading state shown in Summary + Context side cards while Eva is thinking,
+   so the right rail visibly "generates" alongside the left planning trace. */
+.eva-side-card-skeleton {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-x-small);
+}
+
+.eva-side-card-skeleton__group {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-xx-small);
+}
+
+.eva-side-card-skeleton__bar {
+  height: 12px;
+  border-radius: 6px;
+  background: linear-gradient(
+    90deg,
+    var(--border-color) 0%,
+    var(--bg-secondary) 50%,
+    var(--border-color) 100%
+  );
+  background-size: 200% 100%;
+  animation: eva-side-card-skeleton-shimmer 1.4s ease-in-out infinite;
+}
+
+.eva-side-card-skeleton__bar--label {
+  height: 14px;
+  width: 35%;
+}
+
+.eva-side-card-skeleton__bar--short {
+  width: 45%;
+}
+
+.eva-side-card-skeleton__bar--medium {
+  width: 70%;
+}
+
+.eva-side-card-skeleton__bar--long {
+  width: 100%;
+}
+
+@keyframes eva-side-card-skeleton-shimmer {
+  0% {
+    background-position: 200% 0;
+  }
+  100% {
+    background-position: -200% 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .eva-side-card-skeleton__bar {
+    animation: none;
+  }
+}
+
+.eva-side-context {
+  margin: 0;
+}
+
+.eva-side-context__section {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-xx-small);
+  min-width: 0;
+}
+
+.eva-side-toggle-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-xx-small);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.eva-side-toggle-list__item {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: var(--spacing-xx-small);
+  align-items: center;
+  min-width: 0;
+}
+
+.eva-side-toggle-list__item .toggle {
+  min-width: 0;
+}
+
+.eva-side-toggle-list__item .toggle-label-area,
+.eva-side-toggle-list__item .toggle-label {
+  min-width: 0;
+}
+
+.eva-side-toggle-list__item .toggle-label {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.eva-side-edit-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  border: var(--border-width-small) solid var(--border-color);
+  border-radius: var(--border-radius-medium);
+  background: transparent;
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.eva-side-edit-btn:hover {
+  background: var(--button-secondary-active);
+  color: var(--text-primary);
+}
+
+.eva-side-context__section p {
+  overflow-wrap: anywhere;
+}
+
+.eva-form-builder__sections {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-small);
+}
+
+.eva-form-builder__sections .accordion-item__panel {
+  padding-block: var(--spacing-small);
+}
+
+.eva-form-builder__form-actions {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: var(--spacing-small);
+  margin-top: var(--spacing-medium);
+  padding-bottom: var(--spacing-large);
+}
+
+.eva-form-builder__followups {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-xx-small);
+  width: 100%;
+}
+
+.eva-form-builder__followups-label {
+  color: var(--text-secondary);
+  font-size: var(--font-size-body-small);
+  font-weight: var(--font-weight-medium);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.eva-form-builder__followups-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--spacing-xx-small);
+}
+
+.eva-form-section__title {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--spacing-x-small);
+  flex-wrap: wrap;
+}
+
+.eva-form-section__title strong {
+  font-size: 15px;
+  color: var(--mds-color-theme-text-primary-normal, var(--text-primary));
+}
+
+.eva-form-section__hint {
+  color: var(--mds-color-theme-text-secondary-normal, var(--text-secondary));
+  font-size: 13px;
+  font-weight: 400;
+  margin-left: var(--spacing-xx-small);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 360px;
+}
+
+.eva-form-builder__review-assistant {
+  /* Docks the mini-assistant to the bottom of the side panel as a
+     non-shrinking sibling of the cards' scroll region. The side panel
+     owns the fixed height + clipping (`overflow: hidden`); the cards above
+     own the scrolling (`.eva-form-builder__side-panel-scroll`). With this
+     split, the assistant always sits at the bottom of the visible side
+     panel regardless of how tall the cards above grow.
+     `flex-shrink: 0` keeps the assistant at its natural height when the
+     cards above are tall (without it, flex would compress the assistant
+     to fit), and `margin-top: var(--spacing-small)` matches the gap
+     between the other side-panel cards. The visual chrome (border, glass,
+     blur) comes from `.eva-mini-assistant`. */
+  flex: 0 0 auto;
+  margin-top: var(--spacing-small);
+}
+
+/* Wraps each configuration AccordionItem in the form builder. The base class
+   reserves space for the active outline (transparent at rest) so toggling
+   the modifier doesn't cause a layout shift, and a smooth transition fades
+   the accent color in as the user scrolls between sections. */
+.eva-form-section-wrapper {
+  border-radius: var(--border-radius-large);
+  outline: 2px solid transparent;
+  outline-offset: 2px;
+  transition: outline-color 0.18s ease, box-shadow 0.18s ease;
+}
+
+.eva-form-section-wrapper--active {
+  outline-color: var(--accent-color);
+  box-shadow: 0 0 0 4px color-mix(in srgb, var(--accent-color) 18%, transparent);
+}
+
+.eva-form-builder__custom-rules {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-x-small);
+  margin-top: var(--spacing-small);
+}
+
+.eva-form-builder__custom-rule-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-xxx-small);
+}
+
+.eva-form-builder__custom-rule-list li {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--spacing-x-small);
+  padding: var(--spacing-x-small) var(--spacing-small);
+  border-radius: var(--border-radius-medium);
+  background: var(--bg-glass);
+  border: 1px solid var(--mds-color-theme-outline-glass-normal, rgba(0, 0, 0, 0.06));
+  font-size: 14px;
+  color: var(--mds-color-theme-text-primary-normal, var(--text-primary));
+}
+
+.eva-form-builder__custom-rule-list button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  border-radius: var(--border-radius-small);
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  color: var(--mds-color-theme-text-secondary-normal, var(--text-secondary));
+}
+
+.eva-form-builder__custom-rule-list button:hover {
+  background: var(--mds-color-theme-background-secondary-hover, rgba(0, 0, 0, 0.06));
+  color: var(--mds-color-theme-text-primary-normal, var(--text-primary));
+}
+
+/* Shared "form-builder style" landing — hero centered at top, composer
+   directly below, prompt cards underneath. Used by all three design
+   variations (form-bases, chat-based landing, dashboard) so the entry
+   experience reads as one unified intro before each variation diverges
+   into its own flow. The form-builder-specific class is kept as an
+   alias for backwards compatibility with any existing scoped rules
+   below; new code should prefer `.eva-landing-shell`. */
+.eva-landing-shell,
+.eva-form-builder__landing-shell {
+  gap: var(--spacing-medium);
+}
+
+.eva-landing-shell .eva-first-interface__hero,
+.eva-form-builder__landing-shell .eva-first-interface__hero {
+  padding-top: calc(var(--spacing-large) * 2);
+  padding-bottom: 0;
+}
+
+.eva-landing-composer,
+.eva-form-builder__landing-composer {
+  position: relative;
+  z-index: 1;
+  width: min(100%, 720px);
+  margin: var(--spacing-small) auto 0;
+}
+
+.eva-landing-shell .eva-prompt-examples,
+.eva-form-builder__landing-shell .eva-prompt-examples {
+  margin-top: var(--spacing-small);
+}
+
+/* Compact header for non-landing phases */
+/* Top-align the action cluster with the eyebrow row (matches the canvas
+   workspace header — `.eva-canvas-workspace__header` uses
+   `align-items: flex-start`) so the "Start new agent" / "Canvas view"
+   buttons sit at the same vertical position they do on the canvas. The
+   prior `flex-end !important` pinned them to the subtitle baseline,
+   which made the two surfaces visibly inconsistent. */
+.eva-form-builder__compact-header {
+  align-items: flex-start !important;
+}
+
+.eva-form-builder__compact-header .page-title {
+  margin: 0;
+}
+
+.eva-form-builder__compact-header .page-subtitle {
+  max-width: 720px;
+}
+
+/* Right-aligned action cluster ("Start new agent" / "Canvas view") inside
+   the compact header. The parent `.page-header` is a flex with
+   `justify-content: space-between`, so this sibling pins to the right
+   while the title/eyebrow stays on the left. */
+/* Match the canvas view's right-aligned action cluster
+   (`.eva-view-actions__controls`) so the buttons in this compact header
+   sit in the same position with the same spacing across both surfaces.
+   `justify-content: flex-end` keeps them pinned to the right of the
+   header row, the tighter `xx-small` gap matches the canvas, and
+   `flex: 0 0 auto` prevents the cluster from collapsing/growing as the
+   header text on the left expands. `flex-wrap: nowrap` mirrors the
+   canvas behavior — small viewports get a horizontal row, not a wrap. */
+.eva-form-builder__compact-header-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: var(--spacing-xx-small);
+  flex: 0 0 auto;
+  flex-wrap: nowrap;
+}
+
+/* Planning waterfall block */
+.eva-form-builder__waterfall {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-small);
+  margin-bottom: var(--spacing-medium);
+}
+
+.eva-form-builder__waterfall .ai-response__body {
+  gap: 0;
+}
+
+.eva-form-builder__waterfall .ai-response__actions {
+  display: none;
+}
+
+.eva-planning-trace-group {
+  margin-top: var(--spacing-x-small);
+}
+
+.eva-planning-trace-group .accordion {
+  border: 0;
+}
+
+.eva-planning-trace-group .accordion__header {
+  color: var(--text-secondary);
+}
+
+.eva-planning-trace__title {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--spacing-xx-small);
+  font-size: 13px;
+  font-weight: 500;
+}
+
+/* Section reveal stagger animation when phase changes to waterfall */
+@keyframes evaFormSectionReveal {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.eva-form-builder--phase-waterfall .eva-form-builder__sections > *,
+.eva-form-builder--phase-complete .eva-form-builder__sections > * {
+  animation: evaFormSectionReveal 280ms ease-out both;
 }

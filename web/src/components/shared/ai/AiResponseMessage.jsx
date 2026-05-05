@@ -25,6 +25,7 @@ const NEGATIVE_OPTIONS = ['Incorrect', 'Unhelpful', 'Confusing', 'Incomplete']
  * @param {string} [props.assistantName='AI Assistant'] Label shown beside the AI symbol.
  * @param {'static'|'processing'|'responding'} [props.assistantState='static'] Motion state for the AI symbol.
  * @param {string} [props.className=''] Additional CSS class names merged onto the root container.
+ * @param {boolean} [props.showActions=true] When false, hides the feedback/copy/regenerate action bar (and its dependent feedback panel).
  * @example
  * <AiResponseMessage content="Here is the summary." sources={[{ title: 'Doc', url: 'https://example.com' }]} onCopy={() => {}} />
  */
@@ -43,6 +44,7 @@ function AiResponseMessage({
   assistantName = 'AI Assistant',
   assistantState = 'static',
   className = '',
+  showActions = true,
 }) {
   const [feedback, setFeedback] = useState(null)
   const [feedbackSent, setFeedbackSent] = useState(false)
@@ -103,32 +105,34 @@ function AiResponseMessage({
           </div>
         )}
 
-        <div className="ai-response__actions">
-          <button
-            type="button"
-            className={`ai-response__action-btn${feedback === 'up' ? ' ai-response__action-btn--active' : ''}`}
-            aria-label="Thumbs up"
-            onClick={() => setFeedback(feedback === 'up' ? null : 'up')}
-          >
-            <Icon name="like-bold" size={16} />
-          </button>
-          <button
-            type="button"
-            className={`ai-response__action-btn${feedback === 'down' ? ' ai-response__action-btn--active' : ''}`}
-            aria-label="Thumbs down"
-            onClick={() => setFeedback(feedback === 'down' ? null : 'down')}
-          >
-            <Icon name="dislike-bold" size={16} />
-          </button>
-          <button type="button" className="ai-response__action-btn" aria-label="Copy" onClick={onCopy}>
-            <Icon name="copy-bold" size={16} />
-          </button>
-          <button type="button" className="ai-response__action-btn" aria-label="Regenerate" onClick={onRegenerate}>
-            <Icon name="refresh-bold" size={16} />
-          </button>
-        </div>
+        {showActions && (
+          <div className="ai-response__actions">
+            <button
+              type="button"
+              className={`ai-response__action-btn${feedback === 'up' ? ' ai-response__action-btn--active' : ''}`}
+              aria-label="Thumbs up"
+              onClick={() => setFeedback(feedback === 'up' ? null : 'up')}
+            >
+              <Icon name="like-bold" size={16} />
+            </button>
+            <button
+              type="button"
+              className={`ai-response__action-btn${feedback === 'down' ? ' ai-response__action-btn--active' : ''}`}
+              aria-label="Thumbs down"
+              onClick={() => setFeedback(feedback === 'down' ? null : 'down')}
+            >
+              <Icon name="dislike-bold" size={16} />
+            </button>
+            <button type="button" className="ai-response__action-btn" aria-label="Copy" onClick={onCopy}>
+              <Icon name="copy-bold" size={16} />
+            </button>
+            <button type="button" className="ai-response__action-btn" aria-label="Regenerate" onClick={onRegenerate}>
+              <Icon name="refresh-bold" size={16} />
+            </button>
+          </div>
+        )}
 
-        {feedback && !feedbackSent && (
+        {showActions && feedback && !feedbackSent && (
           <div className="ai-response__feedback">
             <div className="ai-response__feedback-title">
               {feedback === 'up' ? 'What did you like?' : 'What went wrong?'}
@@ -161,7 +165,7 @@ function AiResponseMessage({
           </div>
         )}
 
-        {feedbackSent && (
+        {showActions && feedbackSent && (
           <div className="ai-response__feedback" style={{ alignItems: 'center', padding: '12px 16px' }}>
             <span style={{ fontSize: 13, color: 'var(--text-secondary)' }}>Thank you for your feedback!</span>
           </div>
