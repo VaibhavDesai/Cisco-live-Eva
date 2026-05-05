@@ -99,3 +99,101 @@ jobs:
       environment_variables_json: ${{ inputs.environment_variables_json }}
       enable_branch_auto_build: ${{ inputs.enable_branch_auto_build }}
     secrets: inherit
+
+  build-and-deploy:
+    # Builds the Vite app on a GitHub-hosted runner and uploads the
+    # pre-built artifacts to the Amplify app provisioned by the previous
+    # job. This is what actually ships our code; without it Amplify just
+    # serves its default placeholder page.
+    needs: deploy-amplify
+    if: inputs.action == 'create-or-update'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+
+      - name: Install dependencies
+        working-directory: web
+        run: npm ci
+
+      - name: Build
+        working-directory: web
+        # Build-time env vars for the Vite client bundle. Hardcoded here
+        # (instead of read from inputs.environment_variables_json) so the
+        # values are visible in the workflow file and easy to audit. The
+        # Supabase URL + anon key are the publishable pair, safe to ship
+        # to the client because they're guarded by RLS policies (see
+        # web/src/features/review/schema.sql); the service_role key is
+        # never used in this app.
+        env:
+          VITE_CHAT_API_URL: https://ai-agent-studio-proxy.sisun-ai.workers.dev
+          VITE_SUPABASE_URL: https://ddtwkthkyseukvpileck.supabase.co
+          VITE_SUPABASE_ANON_KEY: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRkdHdrdGhreXNldWt2cGlsZWNrIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzY4MDIyMjksImV4cCI6MjA5MjM3ODIyOX0.j8NcfCP6bmG7RCqyNHm6LfoNvyK-FbpLqLWbj8UqocU
+        run: npm run build
+
+      - name: Configure AWS credentials
+        uses: cisco-actions/configure-aws-credentials@1a221e28f5827bb587dec3ac0ba9a95d01e806e8
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+          aws-region: ${{ inputs.aws_region }}
+
+      - name: Deploy pre-built artifacts to Amplify
+        env:
+          APP_NAME: ${{ inputs.app_name || github.event.repository.name }}
+          BRANCH: ${{ inputs.branch }}
+        run: |
+          set -euo pipefail
+
+          APP_ID=$(aws amplify list-apps --query "apps[?name=='${APP_NAME}'].appId" --output text)
+          if [ -z "$APP_ID" ] || [ "$APP_ID" = "None" ]; then
+            echo "::error::Could not find Amplify app '${APP_NAME}' in ${{ inputs.aws_region }}"
+            exit 1
+          fi
+          echo "Found Amplify app: $APP_ID"
+
+          echo "--- Disabling Amplify auto-build (we deploy pre-built artifacts) ---"
+          aws amplify update-branch \
+            --app-id "$APP_ID" \
+            --branch-name "$BRANCH" \
+            --no-enable-auto-build 2>/dev/null || true
+
+          echo "--- Configuring SPA redirect rules ---"
+          aws amplify update-app \
+            --app-id "$APP_ID" \
+            --custom-rules '[{"source":"</^[^.]+$|\\.(?!(css|gif|ico|jpg|js|png|txt|svg|woff|woff2|ttf|map|json|webp)$)([^.]+$)/>","status":"200","target":"/index.html"}]'
+
+          echo "--- Zipping build artifacts ---"
+          cd web/dist
+          zip -qr ../../deploy.zip .
+          cd ../..
+          echo "Archive size: $(du -h deploy.zip | cut -f1)"
+
+          echo "--- Creating deployment ---"
+          DEPLOYMENT=$(aws amplify create-deployment \
+            --app-id "$APP_ID" \
+            --branch-name "$BRANCH")
+
+          JOB_ID=$(echo "$DEPLOYMENT" | python3 -c "import sys,json; print(json.load(sys.stdin)['jobId'])")
+          ZIP_URL=$(echo "$DEPLOYMENT" | python3 -c "import sys,json; print(json.load(sys.stdin)['zipUploadUrl'])")
+          echo "Created deployment job: $JOB_ID"
+
+          echo "--- Uploading artifacts ---"
+          curl --fail --silent --show-error -T deploy.zip "$ZIP_URL"
+          echo "Upload complete"
+
+          echo "--- Starting deployment ---"
+          aws amplify start-deployment \
+            --app-id "$APP_ID" \
+            --branch-name "$BRANCH" \
+            --job-id "$JOB_ID"
+          echo "Deployment started"
+
+          echo ""
+          echo "Deployment URL: https://${BRANCH}.${APP_ID}.amplifyapp.com"
