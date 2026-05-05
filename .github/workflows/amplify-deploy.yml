@@ -1,0 +1,101 @@
+name: AWS Amplify Deploy
+
+on:
+  workflow_dispatch:
+    inputs:
+      access_control:
+        description: 'Access control for the app'
+        required: true
+        default: 'public'
+        type: choice
+        options:
+          - public
+          - restricted
+      basic_auth_username:
+        description: 'Username for basic auth (required when access_control is restricted)'
+        required: false
+        type: string
+      basic_auth_password:
+        description: 'Password for basic auth (required when access_control is restricted, at least 7 characters)'
+        required: false
+        type: string
+      action:
+        description: 'Action to perform'
+        required: true
+        default: 'create-or-update'
+        type: choice
+        options:
+          - create-or-update
+          - delete        
+      branch:
+        description: 'Branch to deploy'
+        required: true
+        default: 'main'
+        type: string
+      aws_region:
+        description: 'AWS region'
+        required: true
+        default: 'us-west-2'
+        type: choice
+        options:
+          - us-east-1
+          - us-east-2
+          - us-west-2
+      framework:
+        description: 'Framework preset'
+        required: true
+        default: 'React - Vite'
+        type: choice
+        options:
+          - 'React - Vite'
+          - 'React'
+          - 'Next.js'
+          - 'Vue'
+          - 'Angular'
+          - 'Web'
+      build_command:
+        description: 'Build command (leave empty for Web - plain HTML/CSS/JS sites)'
+        required: false
+        default: 'npm run build'
+        type: string
+      output_dir:
+        description: 'Build output directory (use . for Web - plain HTML/CSS/JS sites)'
+        required: false
+        default: 'dist'
+        type: string
+      environment_variables_json:
+        description: 'Amplify environment variables JSON, for example {"API_URL":"https://example.com"}'
+        required: false
+        default: '{}'
+        type: string
+      app_name:
+        description: 'Amplify app name, defaults to repository name if not provided'
+        required: false
+        type: string        
+      enable_branch_auto_build:
+        description: 'Enable auto build on branch push'
+        required: false
+        default: true
+        type: boolean
+
+permissions:
+  id-token: write
+  contents: read
+
+jobs:
+  deploy-amplify:
+    uses: webexdesign/.github/.github/workflows/amplify-deploy.yml@main
+    with:
+      app_name: ${{ inputs.app_name || github.event.repository.name }} 
+      access_control: ${{ inputs.access_control }}
+      basic_auth_username: ${{ inputs.basic_auth_username }}
+      basic_auth_password: ${{ inputs.basic_auth_password }}
+      action: ${{ inputs.action }}
+      branch: ${{ inputs.branch }}
+      aws_region: ${{ inputs.aws_region }}
+      framework: ${{ inputs.framework }}
+      build_command: ${{ inputs.build_command }}
+      output_dir: ${{ inputs.output_dir }}
+      environment_variables_json: ${{ inputs.environment_variables_json }}
+      enable_branch_auto_build: ${{ inputs.enable_branch_auto_build }}
+    secrets: inherit
