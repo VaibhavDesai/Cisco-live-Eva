@@ -2180,20 +2180,14 @@ html[data-product='ai-agent-studio'] .app-header {
   margin: var(--spacing-medium) auto 0;
 }
 
-/* In free-chat mode the conversation must stretch from just below the
-   header all the way down to the top edge of the sticky composer —
-   without this rule the dialogue's content sits at the top of an empty
-   tall column and the user sees a large dead gap above the composer.
-   `justify-content: flex-end` anchors the messages to the bottom so the
-   latest exchange always sits right above the composer (chat-app
-   pattern), and `flex: 1 1 auto` + `min-height: 0` lets `overflow-y:
-   auto` from the base `.eva-dialogue` rule kick in once the
-   conversation grows past the visible height. Scoped to the free-chat
-   modifier so the build-flow dialogue (which has its own
+/* In free-chat mode the conversation stretches from just below the
+   header area to the top edge of the sticky composer, but messages
+   should start at the top of that available space. Scoped to the
+   free-chat modifier so the build-flow dialogue (which has its own
    `--generated`-scoped sizing) is unaffected. */
 .eva-first-interface--free-chat .eva-first-interface__free-chat {
   flex: 1 1 auto;
-  justify-content: flex-end;
+  justify-content: flex-start;
   min-height: 0;
 }
 

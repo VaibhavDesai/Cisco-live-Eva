@@ -133,7 +133,12 @@ function AiFooter({
   }, [])
 
   const transcribeBlob = useCallback(async (blob) => {
-    const res = await fetch('/api/transcribe', {
+    const chatApiUrl = import.meta.env.VITE_CHAT_API_URL
+    const transcribeApiUrl =
+      import.meta.env.VITE_TRANSCRIBE_API_URL ||
+      (chatApiUrl ? `${chatApiUrl.replace(/\/$/, '')}/transcribe` : '/api/transcribe')
+
+    const res = await fetch(transcribeApiUrl, {
       method: 'POST',
       headers: { 'Content-Type': blob.type || 'audio/webm' },
       body: blob,

@@ -1,6 +1,7 @@
 interface Env {
   CISCO_AI_AUTH: string;
   CISCO_AI_APPKEY: string;
+  ELEVENLABS_API_KEY?: string;
   ALLOWED_ORIGIN: string;
 }
 
@@ -49,6 +50,7 @@ export default {
   async fetch(request: Request, env: Env): Promise<Response> {
     const origin = request.headers.get('Origin') ?? '';
     const cors = corsHeaders(origin, env.ALLOWED_ORIGIN);
+    const url = new URL(request.url);
 
     if (request.method === 'OPTIONS') {
       return new Response(null, { status: 204, headers: cors });
@@ -62,6 +64,17 @@ export default {
     }
 
     try {
+      if (url.pathname === '/transcribe') {
+        return await handleTranscribe(request, env, cors);
+      }
+
+      if (url.pathname !== '/' && url.pathname !== '/chat') {
+        return new Response(JSON.stringify({ error: 'Not found' }), {
+          status: 404,
+          headers: { 'Content-Type': 'application/json', ...cors },
+        });
+      }
+
       const body: { messages: Array<{ role: string; content: string }> } = await request.json();
 
       if (!Array.isArray(body.messages)) {
@@ -113,3 +126,81 @@ export default {
     }
   },
 };
+
+async function handleTranscribe(
+  request: Request,
+  env: Env,
+  cors: Record<string, string>,
+): Promise<Response> {
+  if (!env.ELEVENLABS_API_KEY) {
+    return new Response(JSON.stringify({ error: 'ELEVENLABS_API_KEY not configured' }), {
+      status: 500,
+      headers: { 'Content-Type': 'application/json', ...cors },
+    });
+  }
+
+  const audioBuffer = await request.arrayBuffer();
+  if (audioBuffer.byteLength === 0) {
+    return new Response(JSON.stringify({ error: 'Empty audio body' }), {
+      status: 400,
+      headers: { 'Content-Type': 'application/json', ...cors },
+    });
+  }
+
+  const maxBytes = 25 * 1024 * 1024;
+  if (audioBuffer.byteLength > maxBytes) {
+    return new Response(JSON.stringify({ error: 'Audio too large (>25MB)' }), {
+      status: 413,
+      headers: { 'Content-Type': 'application/json', ...cors },
+    });
+  }
+
+  const incomingType = request.headers.get('Content-Type') || 'audio/webm';
+  const ext = incomingType.includes('mp4')
+    ? 'mp4'
+    : incomingType.includes('ogg')
+    ? 'ogg'
+    : incomingType.includes('wav')
+    ? 'wav'
+    : incomingType.includes('mpeg') || incomingType.includes('mp3')
+    ? 'mp3'
+    : 'webm';
+
+  const form = new FormData();
+  form.append('file', new Blob([audioBuffer], { type: incomingType }), `audio.${ext}`);
+  form.append('model_id', 'scribe_v1');
+
+  const sttRes = await fetch('https://api.elevenlabs.io/v1/speech-to-text', {
+    method: 'POST',
+    headers: {
+      'xi-api-key': env.ELEVENLABS_API_KEY,
+      Accept: 'application/json',
+    },
+    body: form,
+  });
+
+  if (!sttRes.ok) {
+    const details = await sttRes.text();
+    return new Response(
+      JSON.stringify({
+        error: `ElevenLabs STT error (${sttRes.status})`,
+        details,
+      }),
+      {
+        status: sttRes.status,
+        headers: { 'Content-Type': 'application/json', ...cors },
+      },
+    );
+  }
+
+  const data: { text?: string; language_code?: string } = await sttRes.json();
+  return new Response(
+    JSON.stringify({
+      text: (data.text ?? '').trim(),
+      language: data.language_code ?? null,
+    }),
+    {
+      headers: { 'Content-Type': 'application/json', ...cors },
+    },
+  );
+}
