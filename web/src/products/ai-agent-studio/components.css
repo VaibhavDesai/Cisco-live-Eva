@@ -2188,7 +2188,23 @@ html[data-product='ai-agent-studio'] .app-header {
 .eva-first-interface--free-chat .eva-first-interface__free-chat {
   flex: 1 1 auto;
   justify-content: flex-start;
+  width: min(100%, 960px);
+  max-width: none;
+  margin-left: auto;
+  margin-right: auto;
   min-height: 0;
+}
+
+/* Free-chat can temporarily share the `--generated` modifier while Eva is
+   thinking. The generated layout normally stretches `.eva-dialogue` to the
+   full pane width, which made user/reply/thinking bubbles jump between
+   widths across states. Keep the free-chat transcript locked to the same
+   centered conversation column in every state. */
+.eva-first-interface--generated.eva-first-interface--free-chat .eva-first-interface__free-chat {
+  width: min(100%, 960px);
+  max-width: none;
+  margin-left: auto;
+  margin-right: auto;
 }
 
 /* Free-chat composer width — when the chat-based variation is in
