@@ -67,6 +67,7 @@ function AiFooter({
   const [voiceError, setVoiceError] = useState('')
 
   const mediaRecorderRef = useRef(null)
+  const speechRecognitionRef = useRef(null)
   const audioChunksRef = useRef([])
   const audioStreamRef = useRef(null)
 
@@ -83,6 +84,12 @@ function AiFooter({
      the browser's tab indicator clears and we don't leak a hot stream. */
   useEffect(() => {
     return () => {
+      try {
+        speechRecognitionRef.current?.stop()
+      } catch {
+        /* SpeechRecognition.stop can throw after it has already ended; ignore. */
+      }
+      speechRecognitionRef.current = null
       try {
         if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') {
           mediaRecorderRef.current.stop()
@@ -168,6 +175,12 @@ function AiFooter({
        its final dataavailable event before we read the blob. */
     if (isRecording) {
       try {
+        speechRecognitionRef.current?.stop()
+        speechRecognitionRef.current = null
+      } catch {
+        /* already stopped */
+      }
+      try {
         mediaRecorderRef.current?.stop()
       } catch {
         /* already stopped */
@@ -179,9 +192,75 @@ function AiFooter({
     setVoiceError('')
 
     if (typeof navigator === 'undefined' || !navigator.mediaDevices?.getUserMedia) {
+      const SpeechRecognition =
+        typeof window !== 'undefined' &&
+        (window.SpeechRecognition || window.webkitSpeechRecognition)
+      if (!SpeechRecognition) {
+        setVoiceError('Microphone is not available in this browser.')
+        return
+      }
+    }
+
+    const SpeechRecognition =
+      typeof window !== 'undefined' &&
+      (window.SpeechRecognition || window.webkitSpeechRecognition)
+    if (SpeechRecognition) {
+      let recognition
+      try {
+        recognition = new SpeechRecognition()
+      } catch {
+        recognition = null
+      }
+
+      if (recognition) {
+        recognition.continuous = false
+        recognition.interimResults = false
+        recognition.lang = navigator.language || 'en-US'
+
+        recognition.onresult = (event) => {
+          const transcript = Array.from(event.results ?? [])
+            .map((result) => result?.[0]?.transcript ?? '')
+            .join(' ')
+            .trim()
+          if (transcript) {
+            setText((prev) => (prev ? `${prev.replace(/\s+$/, '')} ${transcript}` : transcript))
+          }
+        }
+
+        recognition.onerror = (event) => {
+          const message = event?.error === 'not-allowed'
+            ? 'Microphone permission denied.'
+            : 'Voice input failed. Please try again.'
+          setVoiceError(message)
+        }
+
+        recognition.onend = () => {
+          speechRecognitionRef.current = null
+          setIsRecording(false)
+          onVoiceToggle?.(false)
+        }
+
+        speechRecognitionRef.current = recognition
+        setIsRecording(true)
+        onVoiceToggle?.(true)
+
+        try {
+          recognition.start()
+        } catch {
+          speechRecognitionRef.current = null
+          setIsRecording(false)
+          onVoiceToggle?.(false)
+          setVoiceError('Voice input failed. Please try again.')
+        }
+        return
+      }
+    }
+
+    if (typeof navigator === 'undefined' || !navigator.mediaDevices?.getUserMedia) {
       setVoiceError('Microphone is not available in this browser.')
       return
     }
+
     if (typeof MediaRecorder === 'undefined') {
       setVoiceError('Recording is not supported in this browser.')
       return
