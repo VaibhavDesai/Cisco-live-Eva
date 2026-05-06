@@ -166,6 +166,64 @@ function AiFooter({
     return typeof data.text === 'string' ? data.text.trim() : ''
   }, [])
 
+  const startBrowserSpeechRecognition = useCallback(() => {
+    const SpeechRecognition =
+      typeof window !== 'undefined' &&
+      (window.SpeechRecognition || window.webkitSpeechRecognition)
+
+    if (!SpeechRecognition) return false
+
+    let recognition
+    try {
+      recognition = new SpeechRecognition()
+    } catch {
+      return false
+    }
+
+    recognition.continuous = false
+    recognition.interimResults = false
+    recognition.lang = navigator.language || 'en-US'
+
+    recognition.onresult = (event) => {
+      const transcript = Array.from(event.results ?? [])
+        .map((result) => result?.[0]?.transcript ?? '')
+        .join(' ')
+        .trim()
+      if (transcript) {
+        setText((prev) => (prev ? `${prev.replace(/\s+$/, '')} ${transcript}` : transcript))
+      }
+    }
+
+    recognition.onerror = (event) => {
+      const message = event?.error === 'not-allowed'
+        ? 'Microphone permission denied.'
+        : 'Voice input failed. Please try again.'
+      setVoiceError(message)
+    }
+
+    recognition.onend = () => {
+      speechRecognitionRef.current = null
+      setIsRecording(false)
+      onVoiceToggle?.(false)
+    }
+
+    speechRecognitionRef.current = recognition
+    setIsRecording(true)
+    onVoiceToggle?.(true)
+
+    try {
+      recognition.start()
+    } catch {
+      speechRecognitionRef.current = null
+      setIsRecording(false)
+      onVoiceToggle?.(false)
+      setVoiceError('Voice input failed. Please try again.')
+      return false
+    }
+
+    return true
+  }, [onVoiceToggle])
+
   const handleMicClick = useCallback(async () => {
     if (disabled || processing || isTranscribing) return
 
@@ -192,77 +250,16 @@ function AiFooter({
     setVoiceError('')
 
     if (typeof navigator === 'undefined' || !navigator.mediaDevices?.getUserMedia) {
-      const SpeechRecognition =
-        typeof window !== 'undefined' &&
-        (window.SpeechRecognition || window.webkitSpeechRecognition)
-      if (!SpeechRecognition) {
+      if (!startBrowserSpeechRecognition()) {
         setVoiceError('Microphone is not available in this browser.')
-        return
       }
-    }
-
-    const SpeechRecognition =
-      typeof window !== 'undefined' &&
-      (window.SpeechRecognition || window.webkitSpeechRecognition)
-    if (SpeechRecognition) {
-      let recognition
-      try {
-        recognition = new SpeechRecognition()
-      } catch {
-        recognition = null
-      }
-
-      if (recognition) {
-        recognition.continuous = false
-        recognition.interimResults = false
-        recognition.lang = navigator.language || 'en-US'
-
-        recognition.onresult = (event) => {
-          const transcript = Array.from(event.results ?? [])
-            .map((result) => result?.[0]?.transcript ?? '')
-            .join(' ')
-            .trim()
-          if (transcript) {
-            setText((prev) => (prev ? `${prev.replace(/\s+$/, '')} ${transcript}` : transcript))
-          }
-        }
-
-        recognition.onerror = (event) => {
-          const message = event?.error === 'not-allowed'
-            ? 'Microphone permission denied.'
-            : 'Voice input failed. Please try again.'
-          setVoiceError(message)
-        }
-
-        recognition.onend = () => {
-          speechRecognitionRef.current = null
-          setIsRecording(false)
-          onVoiceToggle?.(false)
-        }
-
-        speechRecognitionRef.current = recognition
-        setIsRecording(true)
-        onVoiceToggle?.(true)
-
-        try {
-          recognition.start()
-        } catch {
-          speechRecognitionRef.current = null
-          setIsRecording(false)
-          onVoiceToggle?.(false)
-          setVoiceError('Voice input failed. Please try again.')
-        }
-        return
-      }
-    }
-
-    if (typeof navigator === 'undefined' || !navigator.mediaDevices?.getUserMedia) {
-      setVoiceError('Microphone is not available in this browser.')
       return
     }
 
     if (typeof MediaRecorder === 'undefined') {
-      setVoiceError('Recording is not supported in this browser.')
+      if (!startBrowserSpeechRecognition()) {
+        setVoiceError('Recording is not supported in this browser.')
+      }
       return
     }
 
@@ -287,7 +284,9 @@ function AiFooter({
       mr = mimeType ? new MediaRecorder(stream, { mimeType }) : new MediaRecorder(stream)
     } catch {
       stopMicTracks()
-      setVoiceError('Recording is not supported in this browser.')
+      if (!startBrowserSpeechRecognition()) {
+        setVoiceError('Recording is not supported in this browser.')
+      }
       return
     }
     mediaRecorderRef.current = mr
@@ -346,7 +345,9 @@ function AiFooter({
       mr.start()
     } catch {
       stopMicTracks()
-      setVoiceError('Recording is not supported in this browser.')
+      if (!startBrowserSpeechRecognition()) {
+        setVoiceError('Recording is not supported in this browser.')
+      }
       return
     }
 
@@ -360,6 +361,7 @@ function AiFooter({
     pickRecorderMimeType,
     stopMicTracks,
     transcribeBlob,
+    startBrowserSpeechRecognition,
     onVoiceToggle,
   ])
 
