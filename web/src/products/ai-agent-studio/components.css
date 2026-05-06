@@ -2186,13 +2186,14 @@ html[data-product='ai-agent-studio'] .app-header {
    free-chat modifier so the build-flow dialogue (which has its own
    `--generated`-scoped sizing) is unaffected. */
 .eva-first-interface--free-chat .eva-first-interface__free-chat {
-  flex: 1 1 auto;
+  flex: 1 1 0;
   justify-content: flex-start;
   width: min(100%, 960px);
   max-width: none;
   margin-left: auto;
   margin-right: auto;
   min-height: 0;
+  overflow-y: auto;
 }
 
 /* Free-chat can temporarily share the `--generated` modifier while Eva is
@@ -2201,10 +2202,13 @@ html[data-product='ai-agent-studio'] .app-header {
    widths across states. Keep the free-chat transcript locked to the same
    centered conversation column in every state. */
 .eva-first-interface--generated.eva-first-interface--free-chat .eva-first-interface__free-chat {
+  flex: 1 1 0;
   width: min(100%, 960px);
   max-width: none;
   margin-left: auto;
   margin-right: auto;
+  min-height: 0;
+  overflow-y: auto;
 }
 
 /* Free-chat composer width — when the chat-based variation is in
@@ -2227,10 +2231,15 @@ html[data-product='ai-agent-studio'] .app-header {
    `--free-chat` modifier. */
 .eva-agents-landing .eva-first-interface.eva-first-interface--free-chat .eva-first-interface__chat,
 .eva-agents-landing .eva-first-interface.eva-first-interface--free-chat .eva-first-interface__chat--sticky {
+  flex: 0 0 auto !important;
   width: min(100%, 960px) !important;
   max-width: none !important;
   margin-left: auto !important;
   margin-right: auto !important;
+}
+
+.eva-first-interface.eva-first-interface--free-chat .eva-first-interface__chat {
+  flex: 0 0 auto;
 }
 
 .eva-generated-layout__main .eva-first-interface__chat--sticky {
@@ -5872,7 +5881,7 @@ html[data-product='ai-agent-studio']:has(.eva-form-builder.primary-content) .app
    scroll internally so the composer stays visible without forcing the
    entire page to scroll. */
 .eva-form-builder__landing-shell .eva-form-builder__landing-chat {
-  flex: 1 1 auto;
+  flex: 1 1 0;
   min-height: 0;
   overflow-y: auto;
 }

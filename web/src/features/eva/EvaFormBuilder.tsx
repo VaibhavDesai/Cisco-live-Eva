@@ -629,6 +629,21 @@ export default function EvaFormBuilder() {
     }, EVA_PLANNING_ROWS.length * PLANNING_TICK_MS + 320);
   };
 
+  const isTemplateOptionsIntent = (normalized: string) => (
+    normalized === 'template' ||
+    normalized === 'templates' ||
+    normalized === 'show template' ||
+    normalized === 'show templates' ||
+    normalized === 'template options' ||
+    normalized === 'starter templates' ||
+    normalized.includes('show me template') ||
+    normalized.includes('show me some template') ||
+    normalized.includes('give me template') ||
+    normalized.includes('give me some template') ||
+    normalized.includes('view template') ||
+    normalized.includes('see template')
+  );
+
   const handlePromptSubmit = (text: string) => {
     const trimmed = text.trim();
     if (!trimmed) return;
@@ -656,6 +671,21 @@ export default function EvaFormBuilder() {
       }
       return false;
     });
+
+    if (isTemplateOptionsIntent(normalized)) {
+      setChatMessages(prev => [
+        ...prev,
+        { role: 'user', text: trimmed },
+        {
+          role: 'assistant',
+          text: 'Here are the starter templates you can use. Choose one of these options to start the form setup.',
+          followups: STARTER_PROMPTS.slice(0, 4).map(prompt => prompt.prompt),
+        },
+      ]);
+      setChatThinking(false);
+      setShowOtherTemplates(false);
+      return;
+    }
 
     /* Deterministic fast path: if the user clearly described an agent
        we know how to build, kick off the form waterfall immediately and

@@ -674,6 +674,21 @@ export default function EvaChatExperience() {
     setFreeChatActive(false);
   };
 
+  const isTemplateOptionsIntent = (normalized: string) => (
+    normalized === 'template' ||
+    normalized === 'templates' ||
+    normalized === 'show template' ||
+    normalized === 'show templates' ||
+    normalized === 'template options' ||
+    normalized === 'starter templates' ||
+    normalized.includes('show me template') ||
+    normalized.includes('show me some template') ||
+    normalized.includes('give me template') ||
+    normalized.includes('give me some template') ||
+    normalized.includes('view template') ||
+    normalized.includes('see template')
+  );
+
   const handleSend = (text: string) => {
     const normalized = text.trim().toLowerCase();
     if (!normalized) return;
@@ -685,6 +700,22 @@ export default function EvaChatExperience() {
        focused on the live conversation rather than two competing
        layouts (cards above + new exchange below). */
     setShowOtherTemplates(false);
+
+    if (isTemplateOptionsIntent(normalized)) {
+      setLandingMode('build');
+      setFreeChatActive(true);
+      setEvaThinking(false);
+      setShowOtherTemplates(false);
+      setMessages(prev => [
+        ...prev,
+        {
+          role: 'assistant',
+          text: 'Here are the starter templates you can use. Choose one of these options to start the guided build flow.',
+          followups: starterPrompts.slice(0, 4).map(prompt => prompt.prompt),
+        },
+      ]);
+      return;
+    }
 
     if (isOrchestrationIntent(normalized) || normalized.includes('canvas') || normalized.includes('collaboration')) {
       showOrchestrationSuggestion();

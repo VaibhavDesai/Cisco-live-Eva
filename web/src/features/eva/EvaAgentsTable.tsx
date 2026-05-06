@@ -182,7 +182,7 @@ export default function EvaAgentsTable() {
           <p className="page-subtitle">Manage your AI agents</p>
         </div>
         <div className="eva-form-builder__compact-header-actions">
-          <Button variant="secondary" size="sm" onClick={handleStartWithEva}>
+          <Button variant="secondary" onClick={handleStartWithEva}>
             <Icon name="sparkle" weight="bold" size="sm" />
             Start with Eva
           </Button>
