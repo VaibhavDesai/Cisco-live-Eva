@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useApp } from '../../contexts/AppContext';
 import Button from '../../components/shared/Button';
@@ -24,25 +24,7 @@ const STATUS_OPTIONS = [
   { value: 'draft', label: 'Draft' },
 ];
 
-/* The dashboard variation now opens with the same hero/composer/templates
-   landing as the form-builder and chat-based variations, then falls into
-   the agents table once the user describes a need or picks a template.
-   We persist the phase in sessionStorage so that, after a refresh, the
-   user lands back where they last were instead of being kicked to the
-   intro screen every time they navigate. The flag is per-tab — that
-   matches the rest of the Eva session state which all uses
-   sessionStorage. */
-const PHASE_STORAGE_KEY = 'eva-agents-table-phase';
 type Phase = 'landing' | 'table';
-
-const readStoredPhase = (): Phase => {
-  try {
-    const raw = window.sessionStorage.getItem(PHASE_STORAGE_KEY);
-    return raw === 'table' ? 'table' : 'landing';
-  } catch {
-    return 'landing';
-  }
-};
 
 export default function EvaAgentsTable() {
   const navigate = useNavigate();
@@ -50,17 +32,13 @@ export default function EvaAgentsTable() {
   const [viewMode, setViewMode] = useState<'table' | 'grid'>('table');
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
-  const [phase, setPhase] = useState<Phase>(() => readStoredPhase());
+  /* The Dashboard variation uses the Dashboard route itself as the Eva
+     landing experience. The sidebar "AI Agents" destination should
+     therefore always open to the existing-agents table, not remember a
+     prior Eva landing state from sessionStorage. The table still keeps a
+     local "Start with Eva" escape hatch, but route entry starts here. */
+  const [phase, setPhase] = useState<Phase>('table');
   const [voiceActive, setVoiceActive] = useState(false);
-
-  useEffect(() => {
-    try {
-      window.sessionStorage.setItem(PHASE_STORAGE_KEY, phase);
-    } catch {
-      /* sessionStorage may be disabled (private mode / quota) — phase
-         just won't survive a reload, which is acceptable. */
-    }
-  }, [phase]);
 
   const handleAgentClick = (agentId: string) => {
     selectAgent(agentId);
