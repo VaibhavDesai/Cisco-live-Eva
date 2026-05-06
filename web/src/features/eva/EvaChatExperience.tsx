@@ -1,15 +1,22 @@
 import { useEffect, useRef, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useApp } from '../../contexts/AppContext';
+import { useDesignVariation } from '../../contexts/DesignVariationContext';
 import Button from '../../components/shared/Button';
 import { AccordionItem, AiFooter, AiResponseMessage, AiThreadPanel, AiUserMessage, Badge, Dropdown, Input, MenuItem, MenuOverlay, Slider, Table, TableBody, TableCell, TableHead, TableHeader, TableRow, Textarea, Toggle, useMenu } from '../../components/shared';
 import { AgentCard } from '../../components/agents';
 import { Icon } from '../../icons';
-import { EVA_CANVAS_NEW_THREAD_FLAG } from './EvaCanvasOverlay';
+import {
+  EVA_CANVAS_AGENTS_PATH,
+  EVA_CANVAS_DASHBOARD_PATH,
+  EVA_CANVAS_NEW_THREAD_FLAG,
+  EVA_CANVAS_ORIGIN_PATH_KEY,
+  EVA_CANVAS_PATHS,
+} from './EvaCanvasOverlay';
 import { EVA_TEMPLATES } from './evaTemplates';
 import type { EvaAgentDraft, EvaMessage, EvaTemplateId } from './types';
 import { formatRelative } from '../../pages/knowledge/utils';
-import { optimizeInstructions } from '../../api/ciscoAi';
+import { optimizeInstructions, sendEvaChat } from '../../api/ciscoAi';
 import {
   CHANNEL_PHONE_NUMBER_OPTIONS,
   DIGITAL_CHANNEL_DETAILS,
@@ -47,6 +54,127 @@ import {
 
 const gradient = 'linear-gradient(135deg, var(--accent-bg), var(--bg-glass-light))';
 
+/* System prompt for the Cisco LLM fallback in the main Eva chat. Used
+   when the user's message doesn't match any deterministic intent
+   (template starter, section jump, orchestration request, etc.) so the
+   reply still feels like Eva and stays anchored to the agent-design
+   workflow rather than wandering into general chitchat. */
+/* System prompt for the Cisco LLM call in the chat-based variation. We
+   mirror the form-builder behavior here: free-typed input always goes
+   to the LLM, and when the user describes a real agent the LLM emits
+   a JSON `options` block listing 3–4 concrete starter prompts. Those
+   become clickable follow-up chips below the reply. Each option must
+   contain a template trigger keyword so a click trips the deterministic
+   template router in `handleLlmFollowupClick` and launches the guided
+   build flow. The keyword list mirrors the matcher in that handler. */
+const EVA_SYSTEM_PROMPT = `You are Eva, a conversational AI assistant inside Webex AI Agent Studio. You help product designers and admins design AI agents — defining purpose, knowledge sources, available actions, security policies, voice, and language settings.
+
+Available starter templates (and the trigger keywords that launch the guided build flow): Customer support (keyword: "support"), Knowledge assistant (keywords: "healthcare", "reception"), Workflow automation (keywords: "IT", "ticket", "helpdesk"), Policy compliance (keyword: "compliance"), Sales enablement (keyword: "sales").
+
+Guidelines:
+- Keep replies concise (2–4 sentences). Be specific and actionable.
+- When the user describes an agent that fits one of the templates, recommend that template AND offer 3–4 concrete variations as clickable options. Each option's wording MUST contain the template's trigger keyword so clicking it launches the guided build flow.
+- Format the options as a JSON code block at the very end of your reply, like this:
+\`\`\`json
+{ "options": ["Customer support agent for insurance claims", "Customer support agent for policy questions", "Customer support agent for appointment scheduling"] }
+\`\`\`
+- Each option must be under 8 words and read naturally as a user message.
+- Do NOT include the JSON block when you are just answering a question, debating trade-offs, or chitchatting. Only emit it when you are recommending a template.
+- For pure questions ("what's the difference between X and Y", "how do guardrails work"), just answer directly with no JSON.
+- Never invent UI commands or features. If the user asks how to do something specific in the product and you're not sure, say so and suggest they explore the Profile, Knowledge, Action, or Security panels.
+- If the user clearly wants the multi-agent canvas (mentions "canvas", "orchestrate", "multi-agent", "delegate"), suggest opening the canvas view rather than answering inline.
+- Stay in scope. If the user asks about anything unrelated to designing AI agents in this product, politely steer back.`;
+
+/* Context-aware system prompt for the chat-based variation's guided
+   build flow. Once the user has picked a starter template the layout
+   becomes a step-by-step waterfall (Profile → Channel → Instruction →
+   Knowledge → Action → Security → Review). Inside that flow the user
+   often asks Eva for help with the field they're looking at — e.g.
+   "suggest a welcome message" while on Profile, or "tighten the
+   guardrails on PII" while on Security. Earlier the waterfall handler
+   would either swallow the question (treating it as the field's value)
+   or nudge them to the next step; we now route those to the LLM with
+   a step-aware system prompt so Eva can give a real suggestion.
+
+   The prompt embeds the current draft (name, description, welcome,
+   instructions, knowledge, actions, channel, guardrails) so the LLM
+   can ground its answer in what the user already configured instead
+   of inventing details. When asking Eva to draft text for a field,
+   the LLM should return the suggestion in plain prose so the user
+   can copy/paste — we deliberately don't ask for JSON here. */
+function buildWaterfallSystemPrompt(args: {
+  evaStep: EvaConversationStep;
+  agentName: string;
+  agentDescription: string;
+  welcomeMessage: string;
+  instructionPrompt: string;
+  selectedKnowledgeBases: string[];
+  selectedActions: string[];
+  channelSummary: string;
+  languageSummary: string;
+  customRules: string[];
+}): string {
+  const stepLabels: Record<EvaConversationStep, string> = {
+    profile: 'Profile (agent name, description, language, welcome message)',
+    channels: 'Channel (digital channel + address, or voice phone number)',
+    instructions: 'Instructions (the system prompt that guides the agent)',
+    knowledge: 'Knowledge (knowledge bases the agent can ground answers in)',
+    actions: 'Actions (MCP tools / integrations the agent can invoke)',
+    security: 'Security (standard or advanced guardrails, sensitivity, enforcement)',
+    review: 'Review (final summary before the agent is created)',
+  };
+
+  return `You are Eva, a conversational AI assistant inside Webex AI Agent Studio. The user is in the middle of configuring an AI agent through a step-by-step build flow and has asked you a question or for help.
+
+Current step: ${stepLabels[args.evaStep]}.
+
+Current draft state:
+- Agent name: ${args.agentName || '(not set)'}
+- Description: ${args.agentDescription || '(not set)'}
+- Welcome message: ${args.welcomeMessage || '(not set)'}
+- Channel: ${args.channelSummary}
+- Language: ${args.languageSummary}
+- Knowledge bases selected: ${args.selectedKnowledgeBases.length > 0 ? args.selectedKnowledgeBases.join(', ') : '(none yet)'}
+- Actions selected: ${args.selectedActions.length > 0 ? args.selectedActions.join(', ') : '(none yet)'}
+- Instructions: ${args.instructionPrompt ? args.instructionPrompt.slice(0, 500) : '(not set)'}
+- Custom guardrails: ${args.customRules.length > 0 ? args.customRules.join('; ') : '(none)'}
+
+Guidelines:
+- Keep replies concise (2–4 sentences) and ground them in the draft state above.
+- When the user asks you to draft a field value (welcome message, instruction prompt, description, custom guardrail), return the suggested text in plain prose so they can copy it directly. No JSON wrapping.
+- If the user asks "what should I pick" / "what's a good X", give a concrete recommendation tailored to their current draft, not generic advice.
+- If the user signals they're done with this step ("looks good", "continue", "next"), confirm briefly and tell them they can advance via the same composer.
+- Don't pretend you can change fields for them — explain what they should change and where (Profile / Knowledge / Action / Security panels).
+- Stay in scope: agent design only. Politely steer off-topic asks back to the current step.`;
+}
+
+/* Pulls a fenced JSON `options` array out of an LLM reply and returns
+   the prose stripped of that block. Returns just the prose if no valid
+   block is present so plain Q&A replies render unchanged. Same shape
+   as the helper in `EvaFormBuilder` — keeping them in sync ensures
+   both variations parse identical recommendation payloads. */
+function extractFollowupsAndProse(content: string): { prose: string; followups?: string[] } {
+  const match = content.match(/```json\s*([\s\S]*?)```/);
+  if (!match) return { prose: content.trim() };
+  try {
+    const parsed = JSON.parse(match[1].trim()) as { options?: unknown };
+    if (
+      Array.isArray(parsed.options) &&
+      parsed.options.length > 0 &&
+      parsed.options.every((option): option is string => typeof option === 'string' && option.trim().length > 0)
+    ) {
+      const prose = content.replace(/```json[\s\S]*?```/, '').trim();
+      return {
+        prose: prose || 'Pick one of these to keep going:',
+        followups: parsed.options.map(option => option.trim()),
+      };
+    }
+  } catch {
+    /* Malformed JSON — fall through and just render the raw reply. */
+  }
+  return { prose: content.trim() };
+}
+
 /* Number of items rendered in the right-rail Progress card. Kept in sync with
    `progressStepSource` below; centralizing it lets the planning ticker time
    its reveal cadence without re-deriving the array inside the component. */
@@ -61,6 +189,7 @@ export default function EvaChatExperience() {
   const navigate = useNavigate();
   const location = useLocation();
   const { agents, addAgent, aiEngines, selectAgent, setIsCreateModalOpen, showToast } = useApp();
+  const { setVariation } = useDesignVariation();
   const restoredEvaSessionRef = useRef<EvaSessionState | null>(null);
   if (restoredEvaSessionRef.current === null) {
     restoredEvaSessionRef.current = readEvaSessionState();
@@ -75,7 +204,29 @@ export default function EvaChatExperience() {
   const [messages, setMessages] = useState<EvaMessage[]>(restoredEvaSession?.messages ?? []);
   const [guidanceVisible, setGuidanceVisible] = useState(restoredEvaSession?.guidanceVisible ?? false);
   const [evaThinking, setEvaThinking] = useState(false);
+  /* Separate "thinking" flag for the in-flow LLM call inside the
+     guided build waterfall. When the user asks Eva for help mid-step
+     (e.g. "suggest a welcome message" while on Profile) we don't want
+     to flip `evaThinking` because that would hide the build flow and
+     show the planning hero instead. `waterfallThinking` only disables
+     the AiFooter and renders an inline "Eva is thinking..." bubble
+     under the user's message — the build flow itself stays visible. */
+  const [waterfallThinking, setWaterfallThinking] = useState(false);
   const [orchestrationSuggested, setOrchestrationSuggested] = useState(restoredEvaSession?.orchestrationSuggested ?? false);
+  /* Tracks whether the user is in a free-form chat with the Cisco LLM
+     (i.e. they asked a question that didn't match any deterministic
+     intent and we routed the message to /api/chat). Without this flag
+     the layout snaps back to the landing hero the moment evaThinking
+     flips to false, which would erase the LLM's reply from view. */
+  const [freeChatActive, setFreeChatActive] = useState(restoredEvaSession?.freeChatActive ?? false);
+  /* Local-only flag — when the user clicks the "View other options"
+     follow-up chip on an LLM reply, we re-reveal the four starter
+     template cards inline below the dialogue so they can pivot into
+     a templated build flow without re-typing. The flag is reset on
+     any new user message, on template selection, and on starting a
+     new thread, mirroring the form-based variation. Not persisted to
+     sessionStorage because it only makes sense in the active chat. */
+  const [showOtherTemplates, setShowOtherTemplates] = useState(false);
   const [voiceActive, setVoiceActive] = useState(false);
   const [evaStep, setEvaStep] = useState<EvaConversationStep>(restoredEvaSession?.evaStep ?? 'profile');
   const [agentName, setAgentName] = useState(restoredEvaSession?.agentName ?? EVA_TEMPLATES[0].draft.name);
@@ -137,6 +288,7 @@ export default function EvaChatExperience() {
       messages,
       guidanceVisible,
       orchestrationSuggested,
+      freeChatActive,
       evaStep,
       agentName,
       agentDescription,
@@ -167,7 +319,28 @@ export default function EvaChatExperience() {
 
   const openEvaCanvas = (overrides: Partial<EvaSessionState> = {}) => {
     persistEvaSession(overrides);
-    navigate('/agents/eva-canvas');
+    /* Remember the route the user is opening the canvas from so the
+       canvas's "Chat view" / "New thread" buttons can return them
+       there. Without this, opening the canvas from /dashboard (the
+       "Chat-based in Dashboard" variation) and clicking Chat view
+       would dump the user on /agents (EvaAgentsTable's landing
+       screen) with the impression their build state was lost. */
+    try {
+      if (location.pathname && !EVA_CANVAS_PATHS.includes(location.pathname)) {
+        window.sessionStorage.setItem(EVA_CANVAS_ORIGIN_PATH_KEY, location.pathname);
+      }
+    } catch {
+      /* sessionStorage unavailable — falls back to /agents on close. */
+    }
+    /* Pick the canvas route that lives under the same parent as the
+       user's current page. From / (Dashboard) we navigate to
+       /eva-canvas so the Dashboard sidebar item stays highlighted; from
+       anywhere else (notably /agents) we use /agents/eva-canvas. The
+       overlay component recognises both as "open" via EVA_CANVAS_PATHS. */
+    const canvasPath = location.pathname === '/'
+      ? EVA_CANVAS_DASHBOARD_PATH
+      : EVA_CANVAS_AGENTS_PATH;
+    navigate(canvasPath);
   };
 
   useEffect(() => {
@@ -198,6 +371,9 @@ export default function EvaChatExperience() {
     }
   }, []);
 
+  /* Track the latest user message text outside JSX so React deps are stable. */
+  const latestUserMessageText = [...messages].reverse().find(m => m.role === 'user')?.text ?? null;
+
   useEffect(() => {
     if (!guidanceVisible || evaThinking) return;
     const frameId = window.requestAnimationFrame(() => {
@@ -218,7 +394,34 @@ export default function EvaChatExperience() {
     return () => window.cancelAnimationFrame(frameId);
   }, [evaStep, guidanceVisible, evaThinking]);
 
+  /* Mid-step scroll: when the user asks Eva a question during the
+     waterfall (or Eva's reply lands), the new user/thinking/reply
+     bubbles render BELOW the active step's form (see the
+     `{renderUserPromptForStep(...)}` call placed after each
+     `</AiResponseMessage>`). Scrolling to the step anchor would still
+     leave those bubbles below the viewport, so we explicitly scroll
+     the dialogue to its bottom — bringing the latest user prompt and
+     Eva's reply right above the sticky composer.
+
+     Deps are deliberately limited to `latestUserMessageText` and
+     `waterfallThinking` so this effect only re-fires when a mid-step
+     exchange actually changes (new user message pushed, or LLM reply
+     landed) — NOT when the user advances steps or planning completes
+     (those are handled by the step-anchor scroll above). */
+  useEffect(() => {
+    const frameId = window.requestAnimationFrame(() => {
+      const scrollContainer = document.querySelector<HTMLElement>('.eva-dialogue');
+      if (!scrollContainer) return;
+      scrollContainer.scrollTo({ top: scrollContainer.scrollHeight, behavior: 'smooth' });
+    });
+    return () => window.cancelAnimationFrame(frameId);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [latestUserMessageText, waterfallThinking]);
+
   const completeEvaThinking = (callback: () => void) => {
+    /* Deterministic build flow — clear any prior free-chat state so the
+       LLM thread isn't lingering behind the configured form sections. */
+    setFreeChatActive(false);
     setEvaThinking(true);
     setGuidanceVisible(false);
     setEvaPlanningProgress(1);
@@ -275,6 +478,7 @@ export default function EvaChatExperience() {
 
   const handleTemplateSelect = (templateId: EvaTemplateId) => {
     setLandingMode('build');
+    setShowOtherTemplates(false);
     const template = EVA_TEMPLATES.find(item => item.id === templateId) ?? EVA_TEMPLATES[0];
     setMessages(prev => [
       ...prev,
@@ -314,6 +518,16 @@ export default function EvaChatExperience() {
     setIsCreateModalOpen(true);
   };
 
+  /* "Existing agent" landing button — switches the design variation
+     to the dashboard (table) view so the user lands on the existing
+     AI Agent landing page that lists their agents in a table. The
+     route stays on /agents; the variation context already swaps the
+     rendered component (see Agents.tsx). Mirrors the same secondary
+     entry point on the form-builder landing. */
+  const handleSwitchToExistingAgents = () => {
+    setVariation('dashboard');
+  };
+
   const handleNewEvaThread = () => {
     const id = `eva-thread-${Date.now()}`;
     setEvaThreads(prev => [{ id, title: 'New thread', group: 'Today' }, ...prev]);
@@ -322,20 +536,22 @@ export default function EvaChatExperience() {
     setGuidanceVisible(false);
     setEvaThinking(false);
     setOrchestrationSuggested(false);
+    setFreeChatActive(false);
+    setShowOtherTemplates(false);
     setLandingMode('build');
   };
 
   /* When the user clicks "New thread" on the canvas overlay header, the
      overlay sets a one-shot sessionStorage flag and navigates back to
-     /agents. Because the canvas is now an overlay (not a separate route
-     element) the chat experience never unmounts — so we can't rely on a
-     mount-time effect anymore. Watching `location.pathname` instead lets
-     us run the handoff every time the user returns to /agents from the
-     canvas, and only consume the flag when it's actually set (so plain
-     /agents loads or back/forward navigations don't spawn surprise
-     threads). */
+     the route they came from (which may be /agents OR /dashboard when
+     the chat experience is mounted via the "Chat-based in Dashboard"
+     variation). Because the canvas overlay only changes pathname rather
+     than unmounting EvaChatExperience on the /agents path, watching
+     `location.pathname` lets us consume the flag every time we land on
+     a non-canvas route — and we ignore the canvas path itself so the
+     handoff doesn't accidentally fire while the canvas is opening. */
   useEffect(() => {
-    if (location.pathname !== '/agents') return;
+    if (EVA_CANVAS_PATHS.includes(location.pathname)) return;
     let shouldStart = false;
     try {
       shouldStart = window.sessionStorage.getItem(EVA_CANVAS_NEW_THREAD_FLAG) === '1';
@@ -455,6 +671,7 @@ export default function EvaChatExperience() {
     setGuidanceVisible(false);
     setEvaThinking(false);
     setOrchestrationSuggested(true);
+    setFreeChatActive(false);
   };
 
   const handleSend = (text: string) => {
@@ -463,6 +680,11 @@ export default function EvaChatExperience() {
 
     setMessages(prev => [...prev, { role: 'user', text }]);
     setOrchestrationSuggested(false);
+    /* Collapse the inline starter cards if the user is typing again
+       after revealing them via "View other options" — keep the chat
+       focused on the live conversation rather than two competing
+       layouts (cards above + new exchange below). */
+    setShowOtherTemplates(false);
 
     if (isOrchestrationIntent(normalized) || normalized.includes('canvas') || normalized.includes('collaboration')) {
       showOrchestrationSuggestion();
@@ -489,57 +711,178 @@ export default function EvaChatExperience() {
       return;
     }
 
-    const matchedTemplate =
-      normalized.includes('healthcare') || normalized.includes('reception')
-        ? EVA_TEMPLATES.find(template => template.id === 'knowledge-assistant')
-        : normalized.includes('it ') || normalized.includes('ticket') || normalized.includes('support')
-          ? EVA_TEMPLATES.find(template => template.id === 'workflow-automation')
-          : normalized.includes('policy') || normalized.includes('compliance')
-            ? EVA_TEMPLATES.find(template => template.id === 'policy-compliance')
-            : normalized.includes('sales')
-              ? EVA_TEMPLATES.find(template => template.id === 'sales-enablement')
-              : EVA_TEMPLATES.find(template => template.id === (selectedTemplateId ?? 'customer-support'));
+    /* Free-typed text never auto-launches a template anymore. Earlier
+       versions matched substrings like "reception" or "support" against
+       the user's message and immediately spun up the guided build
+       (Progress + Summary side panel), which collapsed the landing into
+       a build flow before the user had selected anything. The user-
+       facing rule is now: type → chat with the LLM only; the guided
+       build only starts when the user explicitly clicks one of the
+       starter cards or a template-suggestion chip the LLM emitted. The
+       chip path is handled by `handleLlmFollowupClick` below. */
+    void runLlmReply(text);
+  };
 
+  /* Resolve a follow-up chip's text against the starter-template
+     keyword list. Same matcher shape used elsewhere in the variation;
+     centralized here so the chip click handler and any future entry
+     points use the same rules. Returns the matching template, or null
+     if the chip is just a free-chat continuation. */
+  const matchTemplateFromText = (text: string): typeof EVA_TEMPLATES[number] | null => {
+    const normalized = text.trim().toLowerCase();
+    if (!normalized) return null;
+    if (normalized.includes('healthcare') || normalized.includes('reception')) {
+      return EVA_TEMPLATES.find(template => template.id === 'knowledge-assistant') ?? null;
+    }
+    if (normalized.includes('it ') || normalized.includes('helpdesk') || normalized.includes('ticket')) {
+      return EVA_TEMPLATES.find(template => template.id === 'workflow-automation') ?? null;
+    }
+    if (normalized.includes('policy') || normalized.includes('compliance')) {
+      return EVA_TEMPLATES.find(template => template.id === 'policy-compliance') ?? null;
+    }
+    if (normalized.includes('sales')) {
+      return EVA_TEMPLATES.find(template => template.id === 'sales-enablement') ?? null;
+    }
+    if (normalized.includes('customer') || normalized.includes('support')) {
+      return EVA_TEMPLATES.find(template => template.id === 'customer-support') ?? null;
+    }
+    return null;
+  };
+
+  /* Label and sentinel for the extra chip we append after Eva's
+     follow-up options. We match on the visible label string in the
+     click handler — the system prompt instructs the LLM to generate
+     template-keyword variants, so a literal "View other options"
+     string from the model is extremely unlikely to collide. Mirrors
+     the form-based variation's sentinel chip. */
+  const OTHER_TEMPLATES_LABEL = 'View other options';
+
+  /* Click handler for the LLM's follow-up chips. Three paths:
+       1. The chip is the sentinel "View other options" → reveal the
+          four starter template cards inline below the dialogue so the
+          user can pivot to a templated path.
+       2. The chip text contains a template trigger keyword → that's an
+          explicit "start building this kind of agent" intent, so we kick
+          off the guided build flow (which sets `guidanceVisible` and
+          reveals the Progress + Summary right-rail panel).
+       3. Otherwise treat the click like a normal user message and route
+          back through `handleSend`, which calls the LLM. This covers
+          the (rare) case where the LLM emits non-template chips. */
+  const handleLlmFollowupClick = (option: string) => {
+    const trimmed = option.trim();
+    if (!trimmed) return;
+    if (trimmed === OTHER_TEMPLATES_LABEL) {
+      setShowOtherTemplates(true);
+      return;
+    }
+    const matched = matchTemplateFromText(trimmed);
+    if (!matched) {
+      handleSend(trimmed);
+      return;
+    }
+
+    setShowOtherTemplates(false);
+    setMessages(prev => [...prev, { role: 'user', text: trimmed }]);
+    setOrchestrationSuggested(false);
     completeEvaThinking(() => {
-      if (matchedTemplate) {
-        setSelectedTemplateId(matchedTemplate.id);
-        setDraft(matchedTemplate.draft);
-        setAgentName(matchedTemplate.draft.name);
-        setAgentDescription(matchedTemplate.draft.description);
-        setTimezone('Europe/London');
-        setAiEngine('Webex AI Pro 1.0');
-        setWelcomeMessage(buildWelcomeMessage(matchedTemplate.draft));
-        setInstructionPrompt(buildInstructionPrompt(matchedTemplate.draft));
-        setPersonality(prev => ({
-          ...prev,
-          llm: 'Webex AI Pro 1.0',
-          voice: 'ava',
-          language: 'en-US',
-        }));
-        setSelectedKnowledgeBases(matchedTemplate.draft.knowledgeBases.slice(0, 2).map(kb => kb.name));
-        setSelectedActions(matchedTemplate.draft.actions.slice(0, 2));
-      }
+      setSelectedTemplateId(matched.id);
+      setDraft(matched.draft);
+      setAgentName(matched.draft.name);
+      setAgentDescription(matched.draft.description);
+      setTimezone('Europe/London');
+      setAiEngine('Webex AI Pro 1.0');
+      setWelcomeMessage(buildWelcomeMessage(matched.draft));
+      setInstructionPrompt(buildInstructionPrompt(matched.draft));
+      setPersonality(prev => ({
+        ...prev,
+        llm: 'Webex AI Pro 1.0',
+        voice: 'ava',
+        language: 'en-US',
+      }));
+      setSelectedKnowledgeBases(matched.draft.knowledgeBases.slice(0, 2).map(kb => kb.name));
+      setSelectedActions(matched.draft.actions.slice(0, 2));
       setEvaStep('profile');
       setCustomRules([]);
       setMessages(prev => [
         ...prev,
         {
           role: 'assistant',
-          text: buildGuidanceMessage(matchedTemplate?.draft ?? draft),
+          text: buildGuidanceMessage(matched.draft),
           followups: ['Create this agent', 'Open the canvas', 'Open Knowledge setup', 'Open Security setup'],
         },
       ]);
     });
   };
 
+  const runLlmReply = async (latestUserText: string) => {
+    /* Mark free-chat mode active before the LLM responds so that when
+       evaThinking flips back to false the layout doesn't snap back to
+       the landing hero (showLandingOptions also checks freeChatActive
+       now). */
+    setFreeChatActive(true);
+    setEvaThinking(true);
+    try {
+      const history: { role: 'system' | 'user' | 'assistant'; content: string }[] = [
+        { role: 'system', content: EVA_SYSTEM_PROMPT },
+        ...messages.map(message => ({ role: message.role, content: message.text })),
+        { role: 'user', content: latestUserText },
+      ];
+      const reply = await sendEvaChat(history);
+      /* Pull the optional `options` JSON block out of the reply. When
+         present we render the items as clickable chips beneath Eva's
+         response so the user can launch a starter template with one
+         click; the prose above is what they actually read. */
+      const { prose, followups } = extractFollowupsAndProse(reply);
+      setMessages(prev => [
+        ...prev,
+        {
+          role: 'assistant',
+          text:
+            prose ||
+            'I\u2019m not sure how to respond to that yet \u2014 try rephrasing or pick a quick action below.',
+          followups,
+        },
+      ]);
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Unknown error';
+      setMessages(prev => [
+        ...prev,
+        {
+          role: 'assistant',
+          text: `I couldn\u2019t reach the assistant just now (${message}). Check that CISCO_AI_AUTH and CISCO_AI_APPKEY are set and try again.`,
+        },
+      ]);
+    } finally {
+      setEvaThinking(false);
+    }
+  };
+
   const handleWaterfallFollowup = (text: string) => {
     const trimmed = text.trim();
     if (!trimmed) return;
     const normalized = trimmed.toLowerCase();
-    setMessages(prev => [...prev, { role: 'user', text: trimmed }]);
+    /* Tag the user message with the active step so the mid-step
+       thread renderer can scope it to the right section. Untagged
+       user messages (e.g. the template-selection trigger pushed by
+       `handleTemplateSelect`) intentionally don't appear below the
+       form — they belong to the planning hero. */
+    setMessages(prev => [...prev, { role: 'user', text: trimmed, originStep: evaStep }]);
     setOrchestrationSuggested(false);
 
-    if (normalized === 'complete create agent' || normalized === 'complete agent creation') {
+    /* Explicit deterministic shortcuts kept from the previous handler.
+       Anything matching these is a clear intent ("create the agent",
+       "open the canvas", "advance to the next step", "jump to review")
+       and we want to take that action immediately rather than burning
+       an LLM round-trip on it. Everything else falls through to the
+       LLM so Eva can answer questions, draft suggested field values,
+       and offer guidance on the current step. */
+    if (
+      normalized === 'complete create agent' ||
+      normalized === 'complete agent creation' ||
+      normalized === 'create this agent' ||
+      normalized === 'create agent' ||
+      normalized === 'create draft agent'
+    ) {
       createDraftAgent();
       return;
     }
@@ -549,64 +892,97 @@ export default function EvaChatExperience() {
       return;
     }
 
-    if (normalized === 'create this agent' || normalized === 'create agent') {
-      createDraftAgent();
-      return;
-    }
-
-    if (normalized.includes('review configuration')) {
+    if (
+      normalized.includes('review configuration') ||
+      normalized === 'jump to review' ||
+      normalized === 'go to review'
+    ) {
       setEvaStep('review');
       return;
     }
 
-    if (normalized.includes('looks good') || normalized.includes('continue')) {
+    /* "Looks good" / "continue" / "next" all mean "advance". We keep
+       this deterministic so the user can tab through the waterfall
+       without waiting for the LLM, but only fire when the message is
+       clearly an advance intent (short phrases that don't include a
+       question). A user typing "looks good, but can you suggest…"
+       still falls through to the LLM. */
+    const isShortAdvance =
+      trimmed.length <= 20 &&
+      !normalized.includes('?') &&
+      (normalized === 'looks good' ||
+        normalized === 'continue' ||
+        normalized === 'next' ||
+        normalized === 'next step' ||
+        normalized === 'advance');
+    if (isShortAdvance) {
       const nextIndex = Math.min(currentStepIndex + 1, evaStepOrder.length - 1);
       setEvaStep(evaStepOrder[nextIndex]);
       return;
     }
 
-    if (normalized.includes('guardrail')) {
-      setCustomRules(prev => [...prev, trimmed]);
-      setInstructionPrompt(prev => `${prev}\n\nAdditional guardrail:\n- ${trimmed}`);
-      setEvaStep('review');
-      return;
-    }
+    /* Everything else routes to the Cisco LLM with step + draft
+       context so Eva can answer the user's question, suggest a field
+       value, or offer guidance instead of being silently absorbed
+       into a field or pushing the user forward. */
+    void runWaterfallLlmReply(trimmed);
+  };
 
-    if (evaStep === 'profile') {
-      setWelcomeMessage(trimmed);
-      setEvaStep('channels');
-      return;
-    }
+  /* Calls the Cisco LLM with a step-aware system prompt and pushes
+     Eva's reply onto the messages list. The reply renders in the
+     active step's section via `renderUserPromptForStep` (which now
+     also picks up the assistant message that follows the user's
+     latest prompt). Errors surface as an assistant message so the
+     user can see why nothing happened.
 
-    if (evaStep === 'channels') {
-      if (channelType === 'digital') {
-        setDigitalChannelAddress(trimmed);
-      } else {
-        setChannelPhoneNumber(trimmed);
-      }
-      setEvaStep('instructions');
-      return;
+     Uses `waterfallThinking` (not `evaThinking`) so the build flow
+     stays visible while the LLM is in flight; `evaThinking` is
+     reserved for the "Planning the agent setup..." hero shown when
+     the user first picks a template. */
+  const runWaterfallLlmReply = async (latestUserText: string) => {
+    setWaterfallThinking(true);
+    try {
+      const systemPrompt = buildWaterfallSystemPrompt({
+        evaStep,
+        agentName,
+        agentDescription,
+        welcomeMessage,
+        instructionPrompt,
+        selectedKnowledgeBases,
+        selectedActions,
+        channelSummary,
+        languageSummary,
+        customRules,
+      });
+      const history: { role: 'system' | 'user' | 'assistant'; content: string }[] = [
+        { role: 'system', content: systemPrompt },
+        ...messages.map(message => ({ role: message.role, content: message.text })),
+        { role: 'user', content: latestUserText },
+      ];
+      const reply = await sendEvaChat(history);
+      setMessages(prev => [
+        ...prev,
+        {
+          role: 'assistant',
+          text:
+            reply.trim() ||
+            'I don\u2019t have a suggestion for that yet \u2014 could you give me a bit more context?',
+          originStep: evaStep,
+        },
+      ]);
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Unknown error';
+      setMessages(prev => [
+        ...prev,
+        {
+          role: 'assistant',
+          text: `I couldn\u2019t reach the assistant just now (${message}). Check that CISCO_AI_AUTH and CISCO_AI_APPKEY are set and try again.`,
+          originStep: evaStep,
+        },
+      ]);
+    } finally {
+      setWaterfallThinking(false);
     }
-
-    if (evaStep === 'instructions') {
-      setInstructionPrompt(prev => `${prev}\n\nAdditional user direction:\n- ${trimmed}`);
-      setEvaStep('knowledge');
-      return;
-    }
-
-    if (evaStep === 'knowledge') {
-      setSelectedKnowledgeBases(prev => (prev.includes(trimmed) ? prev : [...prev, trimmed]));
-      setEvaStep('actions');
-      return;
-    }
-
-    if (evaStep === 'actions') {
-      setSelectedActions(prev => (prev.includes(trimmed) ? prev : [...prev, trimmed]));
-      setEvaStep('security');
-      return;
-    }
-
-    setCustomRules(prev => [...prev, trimmed]);
   };
 
   const handleNextStepSuggestion = (text: string) => {
@@ -638,8 +1014,13 @@ export default function EvaChatExperience() {
       (statusFilter === 'draft' && agent.status !== 'Published');
     return matchesSearch && matchesStatus;
   });
-  const showLandingOptions = !guidanceVisible && !evaThinking && !orchestrationSuggested;
-  const showBuildFlow = landingMode === 'build' || guidanceVisible || evaThinking || orchestrationSuggested;
+  /* `freeChatActive` keeps the layout out of landing while the user is
+     in a back-and-forth with the LLM. Without it the UI would fall back
+     to the hero + starter cards the moment evaThinking turns off,
+     erasing the assistant's reply. The chat-thread render below is gated
+     on the same flag. */
+  const showLandingOptions = !guidanceVisible && !evaThinking && !orchestrationSuggested && !freeChatActive;
+  const showBuildFlow = landingMode === 'build' || guidanceVisible || evaThinking || orchestrationSuggested || freeChatActive;
   const shouldShowEvaThreadPanel = showEvaThreadPanel && !showLandingOptions;
 
   const selectedLanguage = PROFILE_LANGUAGE_OPTIONS.find(option => option.value === personality.language);
@@ -653,7 +1034,14 @@ export default function EvaChatExperience() {
   const channelSummary = channelType === 'digital'
     ? `${selectedDigitalChannel.label} · ${channelDestination || 'Add address or number'}`
     : `Voice · ${channelPhoneNumber}`;
-  const showGeneratedSidePanel = guidanceVisible || evaThinking || orchestrationSuggested;
+  /* Right-rail Progress + Summary + Context panel ONLY appears once a
+     starter template is selected (guidanceVisible / orchestration /
+     template-flow thinking). Free-chat with the LLM no longer triggers
+     it — typing just shows the conversation thread above the composer
+     until the user explicitly clicks a starter card or template
+     suggestion chip. */
+  const showGeneratedSidePanel =
+    !freeChatActive && (guidanceVisible || evaThinking || orchestrationSuggested);
   const progressStepSource: Array<{ step: EvaConversationStep; label: string; detail: string }> = [
     {
       step: 'profile',
@@ -731,11 +1119,76 @@ export default function EvaChatExperience() {
     name: kb.name,
     enabled: selectedKnowledgeBaseSet.has(kb.name),
   }));
-  const renderUserPromptForStep = (step: EvaConversationStep) => (
-    latestUserMessage && evaStep === step
-      ? <AiUserMessage key={`user-${step}-${latestUserMessage.text}`} text={step === 'review' ? 'I want to review all my configurations to a agent' : latestUserMessage.text} />
-      : null
-  );
+  /* Renders the *mid-step* user/assistant exchange — i.e. messages
+     the user sent VIA the waterfall composer while on the active
+     step (and Eva's LLM replies to them). Untagged messages (e.g.
+     the template-selection trigger pushed by `handleTemplateSelect`)
+     are intentionally skipped — they belong to the planning hero,
+     not the in-step thread.
+
+     Anchored AFTER the step's `AiResponseMessage` (the form), so the
+     conversation reads naturally:
+        Eva: "Plan complete..." + form
+        You: "how to fill the welcome message?"
+        Eva is thinking...   →   Eva: "Try…"
+     Once the user advances to the next step, the now-previous step
+     stops matching `evaStep === step`, so the mid-step exchange is
+     hidden and the next step takes over. */
+  const renderUserPromptForStep = (step: EvaConversationStep) => {
+    if (evaStep !== step) return null;
+    /* Find the latest user message tagged with this step. Walk
+       backwards so we get the most recent question. */
+    const midStepUserMessage = (() => {
+      for (let i = messages.length - 1; i >= 0; i--) {
+        const msg = messages[i];
+        if (msg.role === 'user' && msg.originStep === step) return msg;
+      }
+      return null;
+    })();
+    if (!midStepUserMessage && !waterfallThinking) return null;
+    /* Eva's reply for THIS step is the most recent assistant message
+       tagged with this step (runWaterfallLlmReply tags both sides). */
+    const midStepAssistantReply = (() => {
+      for (let i = messages.length - 1; i >= 0; i--) {
+        const msg = messages[i];
+        if (msg.role === 'assistant' && msg.originStep === step) return msg;
+        if (msg.role === 'user' && msg.originStep === step) break;
+      }
+      return null;
+    })();
+    return (
+      <>
+        {midStepUserMessage && (
+          <AiUserMessage
+            key={`user-${step}-${midStepUserMessage.text}`}
+            text={midStepUserMessage.text}
+          />
+        )}
+        {/* While the LLM is in flight, show a processing bubble so
+            the user sees Eva is working on it. Once the reply lands,
+            swap it out for Eva's actual response. */}
+        {waterfallThinking && (
+          <AiResponseMessage
+            key={`thinking-${step}`}
+            className="eva-ai-response"
+            showActions={false}
+            assistantName="Eva is thinking..."
+            assistantState="processing"
+            content={null}
+          />
+        )}
+        {!waterfallThinking && midStepAssistantReply && (
+          <AiResponseMessage
+            key={`reply-${step}-${midStepAssistantReply.text}`}
+            className="eva-ai-response"
+            showActions={false}
+            assistantName="Eva"
+            content={midStepAssistantReply.text}
+          />
+        )}
+      </>
+    );
+  };
   const renderEvaPlanningRows = (visibleCount = evaPlanningRows.length, dynamic = false, complete = false) => (
     <div
       className={`eva-waterfall-card eva-waterfall-status eva-waterfall-status--planning${dynamic ? ' eva-waterfall-status--dynamic' : ''}`}
@@ -983,9 +1436,17 @@ export default function EvaChatExperience() {
       )}
 
       <div
-        className={`eva-first-interface${showLandingOptions ? ' eva-first-interface--landing eva-landing-shell' : ''}${guidanceVisible || evaThinking || orchestrationSuggested ? ' eva-first-interface--generated' : ''}`}
+        className={`eva-first-interface${showLandingOptions ? ' eva-first-interface--landing eva-landing-shell' : ''}${guidanceVisible || evaThinking || orchestrationSuggested ? ' eva-first-interface--generated' : ''}${freeChatActive && !guidanceVisible && !orchestrationSuggested ? ' eva-first-interface--free-chat' : ''}`}
       >
-        {!showLandingOptions && (
+        {/* Agent header (avatar + title + Draft badge + description) is
+            tied to the build flow only. While the user is just chatting
+            with Eva (`freeChatActive`) or waiting on the planning hero
+            (`evaThinking`), no template/agent has been confirmed yet,
+            so showing an agent name + "Draft" badge is misleading. The
+            header pops in the moment the build flow takes over
+            (`guidanceVisible`). Same gate applies across all design
+            variations that mount this experience. */}
+        {guidanceVisible && !evaThinking && (
           <div className="eva-view-actions">
             <div className="eva-view-header">
               <div className="agent-avatar eva-view-header__avatar" style={{ background: gradient }}>
@@ -1111,11 +1572,126 @@ export default function EvaChatExperience() {
           </section>
         )}
 
+        {/* Secondary entry points — same pattern used on the form-builder
+            landing. The "Or" divider separates the templated/free-text
+            path above from the two direct shortcuts below. */}
+        {showLandingOptions && landingMode === 'build' && (
+          <>
+            <div className="eva-landing-divider" role="separator" aria-label="or">
+              <span className="eva-landing-divider-line" aria-hidden="true" />
+              <span className="eva-landing-divider-text">Or</span>
+              <span className="eva-landing-divider-line" aria-hidden="true" />
+            </div>
+
+            <div className="eva-landing-secondary-actions">
+              <Button variant="secondary" onClick={handleSwitchToExistingAgents}>
+                <Icon name="user" weight="bold" size="sm" />
+                Existing agent
+              </Button>
+
+              <Button variant="secondary" onClick={handleBuildFromScratch}>
+                <Icon name="plus" weight="bold" size="sm" />
+                Start from scratch
+              </Button>
+            </div>
+          </>
+        )}
+
+        {/* Free-chat dialogue surface — renders ABOVE the right-rail
+            wrapper and is mutually exclusive with it. We're in this
+            state when the user has typed a message but hasn't yet
+            committed to a starter template. The Progress + Summary +
+            Context cards stay hidden until the user clicks a template
+            card or template-suggestion chip. */}
+        {freeChatActive && !guidanceVisible && !orchestrationSuggested && (
+          <section
+            className="eva-dialogue eva-first-interface__free-chat"
+            aria-label="Eva conversation"
+            aria-live="polite"
+          >
+            {messages.map((message, index) => {
+              if (message.role === 'user') {
+                return <AiUserMessage key={`free-${index}`} text={message.text} />;
+              }
+              /* When Eva attached follow-up options to a reply, append
+                 the "View other options" sentinel chip so the user can
+                 pivot to the full starter-card grid even after they've
+                 narrowed down to a specific template branch. Mirrors
+                 the form-based variation. */
+              const baseFollowups = message.followups ?? [];
+              const followups = baseFollowups.length > 0
+                ? [...baseFollowups, OTHER_TEMPLATES_LABEL]
+                : baseFollowups;
+              return (
+                <AiResponseMessage
+                  key={`free-${index}`}
+                  className="eva-ai-response"
+                  showActions={false}
+                  assistantName="Eva"
+                  content={message.text}
+                  followups={followups}
+                  onFollowup={handleLlmFollowupClick}
+                />
+              );
+            })}
+            {evaThinking && (
+              <AiResponseMessage
+                className="eva-ai-response"
+                showActions={false}
+                assistantName="Eva is thinking..."
+                assistantState="processing"
+                content={null}
+              />
+            )}
+          </section>
+        )}
+
+        {/* Inline starter cards revealed by the "View other options"
+            chip — same content as the landing's prompt-examples grid
+            but rendered above the composer during free-chat so the
+            user can drop into a templated build flow without losing
+            their conversation. Hidden during Eva's thinking state so
+            focus stays on the live response. */}
+        {freeChatActive && showOtherTemplates && !evaThinking && (
+          <>
+            <p
+              className="eva-first-interface__free-chat-encouragement"
+              aria-live="polite"
+            >
+              Pick one of the starter templates below, or keep chatting with Eva.
+            </p>
+            <section
+              className="eva-prompt-examples eva-first-interface__free-chat-cards"
+              aria-label="Quick templates"
+            >
+              {starterPrompts.slice(0, 4).map(prompt => (
+                <button
+                  key={prompt.templateId}
+                  type="button"
+                  className="eva-prompt-card"
+                  onClick={() => handleTemplateSelect(prompt.templateId)}
+                >
+                  <span className="eva-prompt-card__icon" aria-hidden="true">
+                    <Icon name={prompt.icon} weight="bold" size="md" />
+                  </span>
+                  <strong>{prompt.title}</strong>
+                  <span>{prompt.description}</span>
+                  <small>Use this example</small>
+                </button>
+              ))}
+            </section>
+          </>
+        )}
+
         {showGeneratedSidePanel && (
           <div className={`eva-generated-layout${showEvaGeneratedSidePanel ? '' : ' eva-generated-layout--side-collapsed'}`}>
             <div className="eva-generated-layout__main">
               {evaThinking && (
                 <section className="eva-dialogue" aria-label="Eva conversation flow" aria-live="polite">
+                  {/* Template-flow thinking state — `freeChatActive`
+                      is always false here because `showGeneratedSidePanel`
+                      now excludes it (free-chat thinking renders in the
+                      dedicated section above instead). */}
                   {latestUserMessage && <AiUserMessage text={latestUserMessage.text} />}
                   <AiResponseMessage
                     className="eva-ai-response"
@@ -1153,7 +1729,6 @@ export default function EvaChatExperience() {
             {visibleSteps.includes('profile') && (
               <>
                 <div className="eva-step-anchor" data-eva-step="profile" tabIndex={-1} />
-                {renderUserPromptForStep('profile')}
                 <AiResponseMessage
                   className="eva-ai-response"
                   showActions={false}
@@ -1243,13 +1818,13 @@ export default function EvaChatExperience() {
                     )}
                   </div>
                 </AiResponseMessage>
+                {renderUserPromptForStep('profile')}
               </>
             )}
 
             {visibleSteps.includes('channels') && (
               <>
                 <div className="eva-step-anchor" data-eva-step="channels" tabIndex={-1} />
-                {renderUserPromptForStep('channels')}
                 <AiResponseMessage
                   className="eva-ai-response"
                   showActions={false}
@@ -1318,13 +1893,13 @@ export default function EvaChatExperience() {
                     )}
                   </div>
                 </AiResponseMessage>
+                {renderUserPromptForStep('channels')}
               </>
             )}
 
             {visibleSteps.includes('instructions') && (
               <>
                 <div className="eva-step-anchor" data-eva-step="instructions" tabIndex={-1} />
-                {renderUserPromptForStep('instructions')}
                 <AiResponseMessage
                   className="eva-ai-response"
                   showActions={false}
@@ -1447,13 +2022,13 @@ export default function EvaChatExperience() {
                     )}
                   </div>
                 </AiResponseMessage>
+                {renderUserPromptForStep('instructions')}
               </>
             )}
 
             {visibleSteps.includes('knowledge') && (
               <>
                 <div className="eva-step-anchor" data-eva-step="knowledge" tabIndex={-1} />
-                {renderUserPromptForStep('knowledge')}
                 <AiResponseMessage
                   className="eva-ai-response"
                   showActions={false}
@@ -1508,13 +2083,13 @@ export default function EvaChatExperience() {
                     )}
                   </div>
                 </AiResponseMessage>
+                {renderUserPromptForStep('knowledge')}
               </>
             )}
 
             {visibleSteps.includes('actions') && (
               <>
                 <div className="eva-step-anchor" data-eva-step="actions" tabIndex={-1} />
-                {renderUserPromptForStep('actions')}
                 <AiResponseMessage
                   className="eva-ai-response"
                   showActions={false}
@@ -1577,13 +2152,13 @@ export default function EvaChatExperience() {
                     )}
                   </div>
                 </AiResponseMessage>
+                {renderUserPromptForStep('actions')}
               </>
             )}
 
             {visibleSteps.includes('security') && (
               <>
                 <div className="eva-step-anchor" data-eva-step="security" tabIndex={-1} />
-                {renderUserPromptForStep('security')}
                 <AiResponseMessage
                   className="eva-ai-response"
                   showActions={false}
@@ -1791,13 +2366,13 @@ export default function EvaChatExperience() {
                     )}
                   </div>
                 </AiResponseMessage>
+                {renderUserPromptForStep('security')}
               </>
             )}
 
             {visibleSteps.includes('review') && (
               <>
                 <div className="eva-step-anchor" data-eva-step="review" tabIndex={-1} />
-                {renderUserPromptForStep('review')}
                 <AiResponseMessage
                   className="eva-ai-response"
                   showActions={false}
@@ -1842,6 +2417,7 @@ export default function EvaChatExperience() {
                     </Button>
                   </div>
                 </AiResponseMessage>
+                {renderUserPromptForStep('review')}
               </>
             )}
                 </section>
@@ -1853,7 +2429,7 @@ export default function EvaChatExperience() {
                     fillContainer
                     onSend={guidanceVisible ? handleWaterfallFollowup : handleSend}
                     processing={false}
-                    disabled={evaThinking}
+                    disabled={evaThinking || waterfallThinking}
                     placeholder={guidanceVisible || orchestrationSuggested ? 'Tell Eva what to adjust or add...' : 'Type with Eva. Try: Create an AI agent for customer onboarding...'}
                     suggestions={[]}
                     voiceActive={voiceActive}
@@ -2026,7 +2602,7 @@ export default function EvaChatExperience() {
               fillContainer
               onSend={guidanceVisible ? handleWaterfallFollowup : handleSend}
               processing={false}
-              disabled={evaThinking}
+              disabled={evaThinking || waterfallThinking}
               placeholder={guidanceVisible || orchestrationSuggested ? 'Tell Eva what to adjust or add...' : 'Type with Eva. Try: Create an AI agent for customer onboarding...'}
               suggestions={[]}
               voiceActive={voiceActive}

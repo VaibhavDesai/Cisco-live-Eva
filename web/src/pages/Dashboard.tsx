@@ -6,6 +6,7 @@ import Badge from '../components/shared/Badge';
 import { Table, TableHead, TableBody, TableRow, TableHeader, TableCell } from '../components/shared/Table';
 import { useDesignVariation } from '../contexts/DesignVariationContext';
 import EvaChatExperience from '../features/eva/EvaChatExperience';
+import EvaCanvasOverlay from '../features/eva/EvaCanvasOverlay';
 
 export default function Dashboard() {
   const navigate = useNavigate();
@@ -13,7 +14,19 @@ export default function Dashboard() {
   const { variation } = useDesignVariation();
 
   if (variation === 'dashboard') {
-    return <EvaChatExperience />;
+    /* Render the canvas overlay alongside the chat experience so the
+       canvas can slide in over the Dashboard route (/eva-canvas) and
+       the Dashboard sidebar item stays highlighted while the canvas is
+       open. The overlay is path-driven (see EvaCanvasOverlay) — it stays
+       collapsed at / and animates open at /eva-canvas, keeping the chat
+       experience mounted underneath the whole time so its build-flow
+       state survives the open/close animation. */
+    return (
+      <>
+        <EvaChatExperience />
+        <EvaCanvasOverlay />
+      </>
+    );
   }
 
   const agentList = Object.values(agents);

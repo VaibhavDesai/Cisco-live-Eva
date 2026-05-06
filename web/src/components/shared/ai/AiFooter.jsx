@@ -24,6 +24,8 @@ import AiSymbol from './AiSymbol'
  * @param {function(boolean): void} [props.onVoiceToggle] - When provided, enables the mic button. Called with `true` when recording starts and `false` when it stops, so the parent can mirror state if needed.
  * @param {boolean} [props.fillContainer=false] - Removes composer width caps so the footer fills its parent.
  * @param {string} [props.className=''] - Extra classes merged onto the root `ai-footer` container.
+ * @param {string} [props.initialText] - Optional value pushed into the textarea whenever `prefillKey` changes. Use together with a parent-controlled key bump (e.g. an incrementing counter) to drop a fresh prompt into the composer without hijacking the user's in-progress edits.
+ * @param {string|number} [props.prefillKey] - Sentinel that tells the composer to replace its current text with `initialText`. Each unique value triggers exactly one prefill, so parents can re-trigger the same prompt by bumping the key.
  * @example
  * <AiFooter onSend={(msg) => console.log(msg)} suggestions={['Summarize', 'Next steps']} />
  */
@@ -37,9 +39,25 @@ function AiFooter({
   onVoiceToggle,
   fillContainer = false,
   className = '',
+  initialText = '',
+  prefillKey,
 }) {
-  const [text, setText] = useState('')
+  const [text, setText] = useState(initialText)
   const textareaRef = useRef(null)
+
+  /* Watch for parent-driven prefill triggers. A bumped `prefillKey`
+     replaces whatever's in the textarea with the latest `initialText` so
+     features like a "Load example" button can drop a prompt into the
+     composer on demand. We compare against the previous key (rather than
+     re-running on every `initialText` change) so editing the controlled
+     prompt elsewhere doesn't repeatedly clobber the user's typing. */
+  const previousPrefillKeyRef = useRef(prefillKey)
+  useEffect(() => {
+    if (prefillKey !== undefined && prefillKey !== previousPrefillKeyRef.current) {
+      setText(initialText)
+      previousPrefillKeyRef.current = prefillKey
+    }
+  }, [prefillKey, initialText])
 
   /* Live mic state. Held inside AiFooter so the recording lifecycle is
      centralized — every place that mounts AiFooter (chat composer, form

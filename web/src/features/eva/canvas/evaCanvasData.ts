@@ -164,3 +164,166 @@ export const initialEvaCanvasConnections: EvaCanvasConnection[] = [
 export function snapToEvaCanvasGrid(value: number) {
   return Math.round(value / EVA_CANVAS_GRID) * EVA_CANVAS_GRID;
 }
+
+// Which target node types each source type can connect to. The map is kept
+// symmetric so that compatibility doesn't depend on which end the user grabs
+// first while dragging. The `agent` node is the orchestration hub and can talk
+// to anything; capability nodes (knowledge, language, mcp, voice, exit) only
+// attach to an agent; `decision` (delegate) bridges agent ↔ metrics so that
+// routing decisions stay measurable.
+export const EVA_CANVAS_CONNECTION_RULES: Record<EvaCanvasNode['type'], Array<EvaCanvasNode['type']>> = {
+  agent: ['agent', 'knowledge', 'language', 'mcp', 'decision', 'voice', 'exit', 'metrics'],
+  knowledge: ['agent'],
+  language: ['agent'],
+  mcp: ['agent'],
+  voice: ['agent'],
+  exit: ['agent'],
+  decision: ['agent', 'metrics'],
+  metrics: ['agent', 'decision'],
+};
+
+export function isEvaConnectionCompatible(
+  sourceType: EvaCanvasNode['type'],
+  targetType: EvaCanvasNode['type'],
+): boolean {
+  return EVA_CANVAS_CONNECTION_RULES[sourceType]?.includes(targetType) ?? false;
+}
+
+/* Demo canvas that the "Load example" button drops onto a fresh tab. The
+   layout illustrates the prompt copy: a lead agent fronts a delegate
+   ("Triage") that routes between two specialist agents (Medical Qs and
+   Insurance Qs). Each specialist is grounded by its own knowledge base
+   and backed by its own action node so it can execute domain workflows.
+   The two specialist stacks are arranged vertically (medical on top,
+   insurance below) so each action node can plug into the agent's bottom
+   without the connection line cutting across the knowledge node sitting
+   to its right. Lead/Triage are vertically centered between the two
+   specialist stacks. */
+export const EVA_CANVAS_TRIAGE_EXAMPLE_NODES: EvaCanvasNode[] = [
+  {
+    id: 'example-agent-lead',
+    type: 'agent',
+    title: 'Lead agent',
+    description: 'Greets the user and hands off to the right specialist via the Triage delegate.',
+    x: 80,
+    y: 590,
+  },
+  {
+    id: 'example-decision-triage',
+    type: 'decision',
+    title: 'Triage',
+    description: 'Routes medical questions to Medical Qs and insurance questions to Insurance Qs.',
+    x: 460,
+    y: 590,
+  },
+  {
+    id: 'example-agent-medical',
+    type: 'agent',
+    title: 'Medical Qs',
+    description: 'Specialist for medical and clinical questions. Shares persona with Insurance Qs.',
+    x: 820,
+    y: 80,
+  },
+  {
+    id: 'example-knowledge-medical',
+    type: 'knowledge',
+    title: 'Medical knowledge',
+    description: 'Clinical guidelines, condition library, and triage protocols.',
+    x: 1180,
+    y: 80,
+  },
+  {
+    id: 'example-mcp-medical',
+    type: 'mcp',
+    title: 'Medical actions',
+    description: 'Schedule appointments, refill prescriptions, and trigger clinical workflows.',
+    x: 1180,
+    y: 420,
+  },
+  {
+    id: 'example-agent-insurance',
+    type: 'agent',
+    title: 'Insurance Qs',
+    description: 'Specialist for insurance, claims, and coverage questions. Shares persona with Medical Qs.',
+    x: 820,
+    y: 760,
+  },
+  {
+    id: 'example-knowledge-insurance',
+    type: 'knowledge',
+    title: 'Insurance FAQs',
+    description: 'Plan documents, claim flows, and coverage policies.',
+    x: 1180,
+    y: 760,
+  },
+  {
+    id: 'example-mcp-insurance',
+    type: 'mcp',
+    title: 'Insurance actions',
+    description: 'File claims, look up coverage, and dispatch policy updates.',
+    x: 1180,
+    y: 1100,
+  },
+];
+
+export const EVA_CANVAS_TRIAGE_EXAMPLE_CONNECTIONS: EvaCanvasConnection[] = [
+  {
+    id: 'example-conn-lead-triage',
+    from: 'example-agent-lead',
+    to: 'example-decision-triage',
+    fromSide: 'right',
+    toSide: 'left',
+    label: 'delegates',
+  },
+  {
+    id: 'example-conn-triage-medical',
+    from: 'example-decision-triage',
+    to: 'example-agent-medical',
+    fromSide: 'right',
+    toSide: 'left',
+    label: 'medical',
+  },
+  {
+    id: 'example-conn-triage-insurance',
+    from: 'example-decision-triage',
+    to: 'example-agent-insurance',
+    fromSide: 'right',
+    toSide: 'left',
+    label: 'insurance',
+  },
+  {
+    id: 'example-conn-medical-kb',
+    from: 'example-knowledge-medical',
+    to: 'example-agent-medical',
+    fromSide: 'left',
+    toSide: 'right',
+    label: 'grounds',
+  },
+  {
+    id: 'example-conn-medical-action',
+    from: 'example-mcp-medical',
+    to: 'example-agent-medical',
+    fromSide: 'top',
+    toSide: 'bottom',
+    label: 'executes',
+  },
+  {
+    id: 'example-conn-insurance-kb',
+    from: 'example-knowledge-insurance',
+    to: 'example-agent-insurance',
+    fromSide: 'left',
+    toSide: 'right',
+    label: 'grounds',
+  },
+  {
+    id: 'example-conn-insurance-action',
+    from: 'example-mcp-insurance',
+    to: 'example-agent-insurance',
+    fromSide: 'top',
+    toSide: 'bottom',
+    label: 'executes',
+  },
+];
+
+export const EVA_CANVAS_TRIAGE_EXAMPLE_PROMPT =
+  'Add two agents, one to handle medical queries and one to handle insurance questions. Use the same persona so it\u2019s seamless. Give each agent a knowledge base and respective actions to execute.';

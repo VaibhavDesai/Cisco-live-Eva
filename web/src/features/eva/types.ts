@@ -54,6 +54,13 @@ export interface EvaMessage {
   text: string;
   timestamp?: string;
   followups?: string[];
+  /* When set, marks the waterfall step a user message was sent in (or
+     the assistant message replied to). Used by EvaChatExperience to
+     render the mid-step user/assistant exchange below the active
+     step's form, scoped to that step only. Untagged messages (e.g.
+     the template-selection trigger) don't render in the mid-step
+     thread. */
+  originStep?: string;
 }
 
 export interface EvaCanvasNode {

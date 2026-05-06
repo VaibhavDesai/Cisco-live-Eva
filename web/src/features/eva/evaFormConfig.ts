@@ -387,6 +387,10 @@ export interface EvaSessionState {
   messages: EvaMessage[];
   guidanceVisible: boolean;
   orchestrationSuggested: boolean;
+  /* True when the user is in a free-form LLM chat that didn't kick off
+     the deterministic build flow. Optional so older persisted snapshots
+     keep deserializing cleanly. */
+  freeChatActive?: boolean;
   evaStep: EvaConversationStep;
   agentName: string;
   agentDescription: string;

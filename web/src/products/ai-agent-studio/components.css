@@ -314,14 +314,15 @@ html[data-product='ai-agent-studio'] .app-header {
      on a `.eva-step-anchor` deeper in the tree — does NOT shift this element's
      contents and leak across landing/generated state transitions. */
   overflow: clip;
-  padding: var(--spacing-small);
+  padding: var(--spacing-large);
   background:
     radial-gradient(circle at 50% 0, color-mix(in srgb, var(--accent-bg) 28%, transparent), transparent 40%),
     linear-gradient(135deg, var(--bg-primary), var(--bg-secondary));
 }
 
 .eva-first-interface--landing,
-.eva-first-interface--generated {
+.eva-first-interface--generated,
+.eva-first-interface--free-chat {
   isolation: isolate;
   cursor: default;
   background:
@@ -346,7 +347,8 @@ html[data-product='ai-agent-studio'] .app-header {
 }
 
 .eva-first-interface--landing::before,
-.eva-first-interface--generated::before {
+.eva-first-interface--generated::before,
+.eva-first-interface--free-chat::before {
   top: 50%;
   left: 50%;
   z-index: 0;
@@ -435,7 +437,8 @@ html[data-product='ai-agent-studio'] .app-header {
 }
 
 .eva-first-interface--landing::after,
-.eva-first-interface--generated::after {
+.eva-first-interface--generated::after,
+.eva-first-interface--free-chat::after {
   content: '';
   position: absolute;
   inset: -18%;
@@ -455,9 +458,7 @@ html[data-product='ai-agent-studio'] .app-header {
   height: 100%;
   align-self: stretch;
   min-height: 0;
-  padding: 12px;
-  padding-right: 12px;
-  padding-left: 12px;
+  padding: 24px;
   overflow: hidden;
 }
 
@@ -992,6 +993,73 @@ html[data-product='ai-agent-studio'] .app-header {
 .eva-canvas-json:hover::-webkit-scrollbar-thumb,
 .eva-flowbox__body:hover::-webkit-scrollbar-thumb,
 .eva-mini-assistant__thread:hover::-webkit-scrollbar-thumb {
+  background: var(--mds-color-theme-scrollbar-background-secondary-normal, rgba(255, 255, 255, 0.11));
+}
+
+/* Shared ghost scrollbar styling for the remaining scroll containers in
+   the AI Agent Studio shell. Each container is invisible at rest and the
+   thumb fades in only while the user is hovering the region. Keeps the
+   visual language identical to `.eva-dialogue`, `.eva-flowbox__body`, etc.
+   without requiring per-selector boilerplate. */
+.app--ai .primary-content,
+.eva-template-list,
+.eva-generated-side-panel,
+.edit-source-main-card,
+.issues-main-card,
+.eva-form-builder__main-column,
+.eva-form-builder__side-panel-scroll {
+  scrollbar-width: thin;
+  scrollbar-color: transparent transparent;
+}
+
+.app--ai .primary-content:hover,
+.eva-template-list:hover,
+.eva-generated-side-panel:hover,
+.edit-source-main-card:hover,
+.issues-main-card:hover,
+.eva-form-builder__main-column:hover,
+.eva-form-builder__side-panel-scroll:hover {
+  scrollbar-color: var(--mds-color-theme-scrollbar-background-secondary-normal, rgba(255, 255, 255, 0.11)) transparent;
+}
+
+.app--ai .primary-content::-webkit-scrollbar,
+.eva-template-list::-webkit-scrollbar,
+.eva-generated-side-panel::-webkit-scrollbar,
+.edit-source-main-card::-webkit-scrollbar,
+.issues-main-card::-webkit-scrollbar,
+.eva-form-builder__main-column::-webkit-scrollbar,
+.eva-form-builder__side-panel-scroll::-webkit-scrollbar {
+  width: 6px;
+}
+
+.app--ai .primary-content::-webkit-scrollbar-track,
+.eva-template-list::-webkit-scrollbar-track,
+.eva-generated-side-panel::-webkit-scrollbar-track,
+.edit-source-main-card::-webkit-scrollbar-track,
+.issues-main-card::-webkit-scrollbar-track,
+.eva-form-builder__main-column::-webkit-scrollbar-track,
+.eva-form-builder__side-panel-scroll::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.app--ai .primary-content::-webkit-scrollbar-thumb,
+.eva-template-list::-webkit-scrollbar-thumb,
+.eva-generated-side-panel::-webkit-scrollbar-thumb,
+.edit-source-main-card::-webkit-scrollbar-thumb,
+.issues-main-card::-webkit-scrollbar-thumb,
+.eva-form-builder__main-column::-webkit-scrollbar-thumb,
+.eva-form-builder__side-panel-scroll::-webkit-scrollbar-thumb {
+  background: transparent;
+  border-radius: 3px;
+}
+
+.app--ai .primary-content:hover::-webkit-scrollbar-thumb,
+.eva-template-list:hover::-webkit-scrollbar-thumb,
+.eva-generated-side-panel:hover::-webkit-scrollbar-thumb,
+.edit-source-main-card:hover::-webkit-scrollbar-thumb,
+.issues-main-card:hover::-webkit-scrollbar-thumb,
+.eva-form-builder__main-column:hover::-webkit-scrollbar-thumb,
+.eva-form-builder__side-panel-scroll:hover::-webkit-scrollbar-thumb {
   background: var(--mds-color-theme-scrollbar-background-secondary-normal, rgba(255, 255, 255, 0.11));
 }
 
@@ -2087,6 +2155,74 @@ html[data-product='ai-agent-studio'] .app-header {
   padding: 0;
 }
 
+/* Encouragement nudge that appears above the inline starter cards
+   when the user reveals them via the "View other options" chip in
+   free-chat mode. Mirrors the form-builder's
+   `.eva-form-builder__landing-prompt-encouragement` styling but lives
+   under the chat-based variation's free-chat surface so it inherits
+   the dialogue's 960px-centered column. */
+.eva-first-interface__free-chat-encouragement {
+  margin: var(--spacing-medium) auto 0;
+  width: min(100%, 960px);
+  text-align: center;
+  color: var(--text-secondary);
+  font-size: var(--font-size-body-large);
+  line-height: var(--line-height-body-large);
+}
+
+/* Inline starter-card grid revealed by "View other options". Same
+   visual cards as the landing's prompt-examples grid but constrained
+   to the 960px conversation column so they line up with the dialogue
+   and composer in free-chat. The base `.eva-prompt-examples` rule
+   uses 1080px, which would visually break out of the column. */
+.eva-prompt-examples.eva-first-interface__free-chat-cards {
+  width: min(100%, 960px);
+  margin: var(--spacing-medium) auto 0;
+}
+
+/* In free-chat mode the conversation must stretch from just below the
+   header all the way down to the top edge of the sticky composer —
+   without this rule the dialogue's content sits at the top of an empty
+   tall column and the user sees a large dead gap above the composer.
+   `justify-content: flex-end` anchors the messages to the bottom so the
+   latest exchange always sits right above the composer (chat-app
+   pattern), and `flex: 1 1 auto` + `min-height: 0` lets `overflow-y:
+   auto` from the base `.eva-dialogue` rule kick in once the
+   conversation grows past the visible height. Scoped to the free-chat
+   modifier so the build-flow dialogue (which has its own
+   `--generated`-scoped sizing) is unaffected. */
+.eva-first-interface--free-chat .eva-first-interface__free-chat {
+  flex: 1 1 auto;
+  justify-content: flex-end;
+  min-height: 0;
+}
+
+/* Free-chat composer width — when the chat-based variation is in
+   free-chat mode (user is talking to the LLM but hasn't picked a
+   template yet), the composer must visually match the conversation
+   block above it. The default rule on `.eva-first-interface__chat`
+   stretches the composer to 100% width during the non-landing,
+   non-generated state, but the dialogue surface is capped at 960px
+   centered (`.eva-dialogue`). Without this override the footer felt
+   like it belonged to a different layout (full-bleed bar vs. a
+   centered conversation column).
+
+   `!important` is required because the dashboard-context block lower
+   in this file (`.eva-agents-landing .eva-first-interface
+   .eva-first-interface__chat`) forces `width: 100% !important;
+   max-width: none !important;` on the composer to make the standard
+   build/landing layouts span the full main-content column. We can't
+   loosen that rule without regressing those layouts, so the free-chat
+   override must also be marked `!important` and scoped to the
+   `--free-chat` modifier. */
+.eva-agents-landing .eva-first-interface.eva-first-interface--free-chat .eva-first-interface__chat,
+.eva-agents-landing .eva-first-interface.eva-first-interface--free-chat .eva-first-interface__chat--sticky {
+  width: min(100%, 960px) !important;
+  max-width: none !important;
+  margin-left: auto !important;
+  margin-right: auto !important;
+}
+
 .eva-generated-layout__main .eva-first-interface__chat--sticky {
   position: absolute;
   left: 0;
@@ -2594,6 +2730,11 @@ html[data-product='ai-agent-studio'] .app-header {
 .eva-canvas-workspace__body {
   display: grid;
   grid-template-columns: minmax(0, 1fr);
+  /* Reserve a single auto-height row for the canvas tab strip, then let
+     the stage soak up the rest of the available vertical space. Without
+     the explicit row template, adding the tabs row would split the
+     height 50/50 with the stage. */
+  grid-template-rows: auto minmax(0, 1fr);
   gap: var(--spacing-small);
   min-height: 0;
   flex: 1 1 auto;
@@ -2603,6 +2744,49 @@ html[data-product='ai-agent-studio'] .app-header {
      stage shrinks to fit instead of forcing a scrollbar. Users still
      navigate the larger virtual canvas via pan + zoom inside the stage. */
   overflow: hidden;
+}
+
+/* Canvas tab strip. Sits above the stage and lets the user flip between
+   their working canvas and any generated example canvases (Triage demo,
+   etc.). The wrapper around each tab pairs the shared <Tab> button with
+   an inline close affordance for the tabs that are removable. */
+.eva-canvas-tabs {
+  /* Drop the default 16px bottom margin that `.tabs` ships with — the
+     parent grid's gap already provides the breathing room, and the extra
+     margin would push the stage down. */
+  margin-bottom: 0;
+  flex-wrap: wrap;
+}
+
+.eva-canvas-tab-item {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--spacing-xxx-small);
+}
+
+.eva-canvas-tab-close {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  padding: 0;
+  border: 0;
+  border-radius: var(--border-radius-half-height);
+  background: transparent;
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+
+.eva-canvas-tab-close:hover {
+  background: var(--mds-color-theme-button-secondary-hover, color-mix(in srgb, var(--text-primary) 12%, transparent));
+  color: var(--text-primary);
+}
+
+.eva-canvas-tab-close:focus-visible {
+  outline: var(--border-width-medium) solid var(--accent-color);
+  outline-offset: 1px;
 }
 
 .eva-canvas-stage {
@@ -2675,13 +2859,25 @@ html[data-product='ai-agent-studio'] .app-header {
   stroke: var(--accent-color);
   stroke-width: var(--border-width-medium);
   stroke-linecap: round;
-  stroke-dasharray: var(--spacing-xxx-small) var(--spacing-xxx-small);
   pointer-events: none;
 }
 
+/* Pending connection — the dashed line that "hangs" from the source dot
+   and follows the cursor while the user is dragging out a new
+   connection. Kept distinct from committed connections (which render as
+   a solid stroke above) so the in-progress drag reads as a different
+   state. The marching-ants animation makes the dashes flow toward the
+   cursor for extra "I'm tracking your pointer" feedback. */
 .eva-canvas-world__connection--pending {
-  opacity: 0.72;
-  stroke-dasharray: var(--spacing-xx-small) var(--spacing-xxx-small);
+  opacity: 0.85;
+  stroke-dasharray: var(--spacing-x-small) var(--spacing-xx-small);
+  animation: eva-canvas-connection-march 0.6s linear infinite;
+}
+
+@keyframes eva-canvas-connection-march {
+  to {
+    stroke-dashoffset: calc(-1 * (var(--spacing-x-small) + var(--spacing-xx-small)));
+  }
 }
 
 .eva-canvas-world__connection-hit {
@@ -2869,6 +3065,34 @@ html[data-product='ai-agent-studio'] .app-header {
   transform: translate(-50%, 50%);
 }
 
+/* Drag-time feedback: when the user drags out from a connection dot, every
+   other node's dots are recolored to telegraph whether dropping there will
+   create a valid connection. Green = compatible target (with a soft pulsing
+   halo so the eye is drawn to it), red = incompatible (and we set
+   not-allowed + reduced opacity so it reads as disabled). The source dot
+   keeps the default accent color. */
+.eva-flowbox__connection--compatible {
+  background: var(--success-color);
+  box-shadow: 0 0 0 var(--border-width-small) var(--success-color);
+  animation: eva-flowbox-connection-attract 1.2s ease-in-out infinite;
+}
+
+.eva-flowbox__connection--incompatible {
+  background: var(--danger-color);
+  box-shadow: 0 0 0 var(--border-width-small) var(--danger-color);
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+
+@keyframes eva-flowbox-connection-attract {
+  0%, 100% {
+    box-shadow: 0 0 0 var(--border-width-small) var(--success-color);
+  }
+  50% {
+    box-shadow: 0 0 0 5px var(--success-color);
+  }
+}
+
 .eva-flowbox--compact {
   align-items: center;
   justify-content: center;
@@ -3011,6 +3235,17 @@ html[data-product='ai-agent-studio'] .app-header {
   overflow-y: auto;
 }
 
+/* Quick-action chip row that lives between the Eva message thread and the
+   composer. Used today by the "Load example" button, but kept generic so
+   we can stack additional one-tap shortcuts (e.g. "Summarize flow") here
+   without rebuilding the layout. */
+.eva-mini-assistant__quick-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--spacing-xxx-small);
+  padding: 0 var(--spacing-xx-small) var(--spacing-xx-small);
+}
+
 .eva-mini-assistant__response.ai-response,
 .eva-mini-assistant__user-message.ai-user-msg {
   min-width: 0;
@@ -3076,9 +3311,17 @@ html[data-product='ai-agent-studio'] .app-header {
   background: transparent;
 }
 
+/* Let the mini-Eva composer grow with its content. AiFooter's autoResize
+   sizes the textarea to fit (capped at 200px), but the previous fixed
+   `height: 64px` on the input row capped the visible area to a single
+   line — long prefills like the "Load example" prompt got clipped after
+   the first line. Switch to a flexible height with a comfortable max so
+   long messages spill into a scrollable composer instead of disappearing
+   below the cut-off. */
 .eva-mini-assistant__footer .ai-footer__input-row {
-  height: 64px;
+  height: auto;
   min-height: 64px;
+  max-height: 200px;
   min-width: 0;
 }
 
@@ -5605,6 +5848,34 @@ html[data-product='ai-agent-studio']:has(.eva-form-builder.primary-content) .app
 .eva-landing-shell,
 .eva-form-builder__landing-shell {
   gap: var(--spacing-medium);
+  /* The shell is the flex column that stacks hero → composer → starter
+     cards → divider → secondary actions. It fills the viewport height
+     so each block can size naturally; the composer no longer auto-
+     anchors to the bottom because it now sits directly below the hero
+     (above the four template tiles) as the primary call-to-action. */
+  flex: 1 1 auto;
+  min-height: 0;
+}
+
+/* When the chat thread is the dominant child (i.e. the user has sent
+   at least one message), let it grow to fill the available space and
+   scroll internally so the composer stays visible without forcing the
+   entire page to scroll. */
+.eva-form-builder__landing-shell .eva-form-builder__landing-chat {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+}
+
+/* The initial landing composer sits directly below the hero and above
+   the starter cards. In chat/thinking landing state, the bottom variant
+   restores the original bottom-anchored composer behavior. */
+.eva-form-builder__landing-shell > .eva-form-builder__landing-composer {
+  flex: 0 0 auto;
+}
+
+.eva-form-builder__landing-shell > .eva-form-builder__landing-composer--bottom {
+  margin-top: auto;
 }
 
 .eva-landing-shell .eva-first-interface__hero,
@@ -5624,6 +5895,80 @@ html[data-product='ai-agent-studio']:has(.eva-form-builder.primary-content) .app
 .eva-landing-shell .eva-prompt-examples,
 .eva-form-builder__landing-shell .eva-prompt-examples {
   margin-top: var(--spacing-small);
+}
+
+/* Nudge that appears above the starter cards once the user has had a
+   free-chat exchange with Eva. Matches the hero subhead so it feels
+   like a continuation of Eva's voice rather than a separate UI block. */
+.eva-form-builder__landing-prompt-encouragement {
+  margin: var(--spacing-medium) auto 0;
+  width: min(100%, 720px);
+  text-align: center;
+  color: var(--text-secondary);
+  font-size: var(--font-size-body-large);
+  line-height: var(--line-height-body-large);
+}
+
+/* "Or" divider between the templated starter cards and the secondary
+   entry points (Existing agent / Start from scratch). The two
+   horizontal lines flank a centered text label, matching the common
+   form-divider pattern. Width is capped to the same column the cards
+   use so the rule lines don't extend past the content boundary.
+
+   The generic `.eva-landing-divider*` and `.eva-landing-secondary-actions`
+   selectors are aliased onto the form-builder-specific classes so the
+   chat-based and dashboard landings can reuse the same visual treatment
+   without duplicating rules. */
+.eva-form-builder__landing-divider,
+.eva-landing-divider {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-small);
+  width: min(100%, 720px);
+  margin: var(--spacing-medium) auto 0;
+  color: var(--text-secondary);
+}
+
+.eva-form-builder__landing-divider-line,
+.eva-landing-divider-line {
+  flex: 1 1 auto;
+  height: var(--border-width-small);
+  /* Gradient that fades from transparent at the outer edge to the
+     border color near the centered "OR" label, so the rule lines
+     emphasize the divider text instead of competing with it. The two
+     lines mirror each other via :first-child / :last-child rules so we
+     keep a single base declaration here. */
+  background: linear-gradient(to right, transparent, var(--border-color));
+}
+
+/* The first line sits to the left of "OR" — fade transparent → solid
+   moving toward the label. The default declaration above already does
+   this, so we only need to override the right-side line below. */
+
+.eva-form-builder__landing-divider-line:last-child,
+.eva-landing-divider-line:last-child {
+  background: linear-gradient(to right, var(--border-color), transparent);
+}
+
+.eva-form-builder__landing-divider-text,
+.eva-landing-divider-text {
+  flex: 0 0 auto;
+  font-size: var(--font-size-body-small);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+/* Row holding the two secondary action buttons. Centered under the
+   divider; on narrow viewports they wrap to a column so neither button
+   is forced to truncate. */
+.eva-form-builder__landing-secondary-actions,
+.eva-landing-secondary-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: var(--spacing-small);
+  width: min(100%, 720px);
+  margin: var(--spacing-small) auto 0;
 }
 
 /* Compact header for non-landing phases */

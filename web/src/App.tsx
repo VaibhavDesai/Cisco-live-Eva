@@ -33,6 +33,14 @@ function App() {
                   <Route path="/policy-studio-v2" element={<PolicyStudioV2 />} />
                   <Route path="/" element={<MainLayout />}>
                     <Route index element={<Dashboard />} />
+                    {/* Sibling canvas route under the Dashboard root.
+                        When the user is on / under the "Chat-based in
+                        Dashboard" variation, opening the canvas
+                        navigates to /eva-canvas instead of /agents/eva-canvas
+                        so the Dashboard sidebar item stays highlighted
+                        and Dashboard.tsx (which also renders the canvas
+                        overlay for that variation) stays mounted. */}
+                    <Route path="eva-canvas" element={<Dashboard />} />
                     <Route path="agents" element={<Agents />} />
                     {/* The canvas slides in as an overlay over the chat/form
                         view at /agents (see EvaCanvasOverlay). Pointing

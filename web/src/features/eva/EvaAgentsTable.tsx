@@ -91,6 +91,22 @@ export default function EvaAgentsTable() {
     setPhase('landing');
   };
 
+  /* "Existing agent" landing button — drops the user straight into the
+     agents table for this variation. They're already on the dashboard
+     variation, so there's no design-variation switch to do; just exit
+     the landing phase. Mirrors the same secondary entry point on the
+     form-builder and chat-based landings. */
+  const handleGoToExistingAgents = () => {
+    setPhase('table');
+  };
+
+  /* "Start from scratch" landing button — opens the global Create
+     Agent modal so the user can configure a fresh agent without going
+     through Eva's templated waterfall. */
+  const handleStartFromScratch = () => {
+    setIsCreateModalOpen(true);
+  };
+
   const getBadgeVariant = (statusClass: string): 'success' | 'warning' | 'default' => {
     if (statusClass === 'badge-success') return 'success';
     if (statusClass === 'badge-warning') return 'warning';
@@ -153,6 +169,28 @@ export default function EvaAgentsTable() {
               </button>
             ))}
           </section>
+
+          {/* Secondary entry points — mirrors the divider + buttons on
+              the form-builder and chat-based landings so all three
+              variations expose the same shortcuts: jump straight to the
+              existing-agents table, or open the bare Create Agent modal. */}
+          <div className="eva-landing-divider" role="separator" aria-label="or">
+            <span className="eva-landing-divider-line" aria-hidden="true" />
+            <span className="eva-landing-divider-text">Or</span>
+            <span className="eva-landing-divider-line" aria-hidden="true" />
+          </div>
+
+          <div className="eva-landing-secondary-actions">
+            <Button variant="secondary" onClick={handleGoToExistingAgents}>
+              <Icon name="user" weight="bold" size="sm" />
+              Existing agent
+            </Button>
+
+            <Button variant="secondary" onClick={handleStartFromScratch}>
+              <Icon name="plus" weight="bold" size="sm" />
+              Start from scratch
+            </Button>
+          </div>
         </div>
       </div>
     );

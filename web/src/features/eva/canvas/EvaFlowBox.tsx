@@ -25,6 +25,11 @@ interface EvaFlowBoxProps {
   onConnectionDragEnd: (clientX: number, clientY: number) => void;
   onOpenDetails: (id: string) => void;
   isConnecting?: boolean;
+  // Drives the green/red highlight on connection points while another node is
+  // being dragged from. `source` = this node started the drag; `compatible`
+  // and `incompatible` describe whether dropping onto this node would create a
+  // valid connection given the source node's type.
+  connectionState?: 'idle' | 'source' | 'compatible' | 'incompatible';
 }
 
 export default function EvaFlowBox({
@@ -42,6 +47,7 @@ export default function EvaFlowBox({
   onConnectionDragEnd,
   onOpenDetails,
   isConnecting = false,
+  connectionState = 'idle',
 }: EvaFlowBoxProps) {
   const meta = EVA_CANVAS_NODE_META[node.type];
   const [hovered, setHovered] = useState(false);
@@ -93,32 +99,41 @@ export default function EvaFlowBox({
     });
   };
 
-  const renderConnectionPoint = (side: 'left' | 'right' | 'top' | 'bottom') => (
-    <button
-      key={side}
-      type="button"
-      className={`eva-flowbox__connection eva-flowbox__connection--${side}`}
-      data-eva-connection-node-id={node.id}
-      data-eva-connection-side={side}
-      aria-label={`Connect from ${side}`}
-      onPointerDown={event => {
-        event.preventDefault();
-        event.stopPropagation();
-        onConnectionDragStart(node.id, side, event.clientX, event.clientY);
-      }}
-      onPointerUp={event => {
-        event.preventDefault();
-        event.stopPropagation();
-        onConnectionDragEnd(event.clientX, event.clientY);
-      }}
-      onClick={event => {
-        event.stopPropagation();
-        if (event.detail === 0) {
-          onConnectionPointClick(node.id, side);
-        }
-      }}
-    />
-  );
+  const renderConnectionPoint = (side: 'left' | 'right' | 'top' | 'bottom') => {
+    const stateClass = connectionState === 'compatible'
+      ? ' eva-flowbox__connection--compatible'
+      : connectionState === 'incompatible'
+        ? ' eva-flowbox__connection--incompatible'
+        : '';
+    return (
+      <button
+        key={side}
+        type="button"
+        className={`eva-flowbox__connection eva-flowbox__connection--${side}${stateClass}`}
+        data-eva-connection-node-id={node.id}
+        data-eva-connection-side={side}
+        data-eva-connection-state={connectionState}
+        aria-label={`Connect from ${side}`}
+        aria-disabled={connectionState === 'incompatible' || undefined}
+        onPointerDown={event => {
+          event.preventDefault();
+          event.stopPropagation();
+          onConnectionDragStart(node.id, side, event.clientX, event.clientY);
+        }}
+        onPointerUp={event => {
+          event.preventDefault();
+          event.stopPropagation();
+          onConnectionDragEnd(event.clientX, event.clientY);
+        }}
+        onClick={event => {
+          event.stopPropagation();
+          if (event.detail === 0) {
+            onConnectionPointClick(node.id, side);
+          }
+        }}
+      />
+    );
+  };
 
   if (compact) {
     const compactTransform = node.type === 'decision'

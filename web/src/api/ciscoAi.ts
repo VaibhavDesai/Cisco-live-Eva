@@ -159,6 +159,29 @@ export async function optimizeInstructions(instructions: string): Promise<Optimi
   };
 }
 
+/* Generic chat passthrough used by the conversational Eva surfaces (the
+   main chat experience and the canvas mini-Eva). Unlike `sendPolicyChat`
+   and `optimizeInstructions`, this one doesn't try to parse JSON out of
+   the reply — it just returns whatever the LLM responded with so the
+   caller can render it as a normal assistant message. */
+export async function sendEvaChat(messages: ChatMessage[]): Promise<string> {
+  const apiUrl = import.meta.env.VITE_CHAT_API_URL || '/api/chat';
+  const res = await fetch(apiUrl, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ messages }),
+  });
+
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({ error: 'Request failed' }));
+    throw new Error(err.error || `API error (${res.status})`);
+  }
+
+  const data = await res.json();
+  const content: string = typeof data.content === 'string' ? data.content : '';
+  return content.trim();
+}
+
 function parseAiResponse(content: string): PolicyAiResponse {
   const jsonMatch = content.match(/```json\s*([\s\S]*?)```/);
 

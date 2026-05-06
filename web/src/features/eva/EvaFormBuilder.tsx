@@ -1,12 +1,14 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { useApp } from '../../contexts/AppContext';
+import { useDesignVariation } from '../../contexts/DesignVariationContext';
 import {
   AccordionGroup,
   AccordionItem,
   AiFooter,
   AiPromptButton,
   AiResponseMessage,
+  AiUserMessage,
   Badge,
   Button,
   Dropdown,
@@ -22,9 +24,15 @@ import {
   Toggle,
 } from '../../components/shared';
 import { Icon } from '../../icons';
-import { optimizeInstructions } from '../../api/ciscoAi';
+import { optimizeInstructions, sendEvaChat } from '../../api/ciscoAi';
 import { formatRelative } from '../../pages/knowledge/utils';
 import { EVA_TEMPLATES } from './evaTemplates';
+import {
+  EVA_CANVAS_AGENTS_PATH,
+  EVA_CANVAS_DASHBOARD_PATH,
+  EVA_CANVAS_ORIGIN_PATH_KEY,
+  EVA_CANVAS_PATHS,
+} from './EvaCanvasOverlay';
 import type { EvaAgentDraft, EvaTemplateId } from './types';
 import {
   CHANNEL_PHONE_NUMBER_OPTIONS,
@@ -58,6 +66,122 @@ import {
 const gradient = 'linear-gradient(135deg, var(--accent-bg), var(--bg-glass-light))';
 const initialTemplateDraft: EvaAgentDraft = EVA_TEMPLATES[0].draft;
 
+/* System prompt for the Cisco LLM fallback in the form-based variation.
+   Same voice as the chat-based Eva, but explicitly nudges the model to
+   recommend a starter template by name when the user describes a real
+   agent so the form waterfall stays the right next step for them.
+
+   The "options" JSON block is parsed by `extractFollowupsAndProse`
+   below — when present we strip it from the prose and render the items
+   as clickable follow-up chips under Eva's reply. Each option must
+   include the template's domain keyword so a click trips the
+   deterministic template-router in `handlePromptSubmit` and launches
+   the form waterfall. */
+const FORM_BUILDER_EVA_SYSTEM_PROMPT = `You are Eva, a conversational AI assistant inside Webex AI Agent Studio's form-based agent builder. You help product designers and admins design AI agents — defining purpose, knowledge sources, available actions, security policies, voice, and language settings.
+
+Available starter templates (and the trigger keywords that launch the form waterfall): Customer support (keyword: "support"), Knowledge assistant (keywords: "healthcare", "reception"), Workflow automation (keywords: "IT", "ticket", "helpdesk"), Policy compliance (keyword: "compliance"), Sales enablement (keyword: "sales").
+
+Guidelines:
+- Keep replies concise (2–4 sentences). Be specific and actionable.
+- When the user describes an agent that fits one of the templates, recommend that template AND offer 3–4 concrete variations as clickable options. Each option's wording MUST contain the template's trigger keyword so clicking it launches the form waterfall.
+- Format the options as a JSON code block at the very end of your reply, like this:
+\`\`\`json
+{ "options": ["Customer support agent for insurance claims", "Customer support agent for policy questions", "Customer support agent for appointment scheduling"] }
+\`\`\`
+- Each option must be under 8 words and read naturally as a user message.
+- Do NOT include the JSON block when you are just answering a question, debating trade-offs, or chitchatting. Only emit it when you are recommending a template.
+- For pure questions ("what's the difference between X and Y", "how do guardrails work"), just answer directly with no JSON.
+- Never invent UI commands or features. If you're not sure how something works in the product, say so.
+- Stay in scope. If the user asks about anything unrelated to designing AI agents in this product, politely steer back.`;
+
+/* Context-aware system prompt for the docked side-panel mini Eva
+   that lives next to the generated form (waterfall + complete
+   phases). Once the user has picked a starter template the form
+   builder shows their full agent draft on the left rail; questions
+   they type into the mini Eva are almost always about THAT draft —
+   "make the welcome message friendlier", "what should I add for
+   knowledge?", "tighten the PII guardrail". The system prompt embeds
+   the live draft so Eva can ground answers in the actual configured
+   values rather than handing back generic advice.
+
+   We deliberately don't ask for the JSON `options` block here — at
+   this point the user has already committed to a template and is
+   refining it. Plain-prose suggestions can be copied directly into
+   the form's fields by hand. */
+function buildFormBuilderAssistantSystemPrompt(args: {
+  isGenerating: boolean;
+  agentName: string;
+  agentDescription: string;
+  welcomeMessage: string;
+  instructionPrompt: string;
+  selectedKnowledgeBases: string[];
+  selectedActions: string[];
+  channelSummary: string;
+  languageSummary: string;
+  customRules: string[];
+}): string {
+  const phaseHint = args.isGenerating
+    ? 'Eva is currently still drafting the form. The user can preview but most fields are filling in.'
+    : 'The form is fully drafted and the user is reviewing/adjusting it.';
+  return `You are Eva, a conversational AI assistant inside Webex AI Agent Studio's form-based agent builder. The user has already chosen a starter template and the form is being drafted on the left side of the page. The user is now refining the agent and asking you for help.
+
+${phaseHint}
+
+Current draft state:
+- Agent name: ${args.agentName || '(not set)'}
+- Description: ${args.agentDescription || '(not set)'}
+- Welcome message: ${args.welcomeMessage || '(not set)'}
+- Channel: ${args.channelSummary}
+- Language: ${args.languageSummary}
+- Knowledge bases selected: ${args.selectedKnowledgeBases.length > 0 ? args.selectedKnowledgeBases.join(', ') : '(none yet)'}
+- Actions selected: ${args.selectedActions.length > 0 ? args.selectedActions.join(', ') : '(none yet)'}
+- Instructions: ${args.instructionPrompt ? args.instructionPrompt.slice(0, 500) : '(not set)'}
+- Custom guardrails: ${args.customRules.length > 0 ? args.customRules.join('; ') : '(none)'}
+
+Guidelines:
+- Keep replies concise (2–4 sentences) and ground them in the draft state above.
+- When the user asks you to draft a field value (welcome message, instruction prompt, description, custom guardrail), return the suggested text in plain prose so they can copy it directly into the form. No JSON wrapping.
+- Recommend specific changes ("make the welcome message warmer by mentioning their name and the channel") rather than abstract advice.
+- Don't pretend you can change fields for the user — point them to the right form section (Profile / Channels / Instructions / Knowledge / Actions / Security / Review).
+- If the user asks about a different starter template or wants to start over, suggest they click "Create new agent" in the header rather than typing it as a free-form question.
+- Stay in scope: this agent's design only.`;
+}
+
+interface FormBuilderChatMessage {
+  role: 'user' | 'assistant';
+  text: string;
+  /* Clickable variations Eva attached to a template suggestion. Wired
+     into AiResponseMessage's `followups` prop so each one renders as a
+     chip under the reply; clicking calls handlePromptSubmit so the
+     deterministic template router can pick it up. */
+  followups?: string[];
+}
+
+/* Pulls a fenced JSON `options` array out of an LLM reply and returns
+   the prose stripped of that block. Returns just the prose if no valid
+   block is present so plain Q&A replies render unchanged. */
+function extractFollowupsAndProse(content: string): { prose: string; followups?: string[] } {
+  const match = content.match(/```json\s*([\s\S]*?)```/);
+  if (!match) return { prose: content.trim() };
+  try {
+    const parsed = JSON.parse(match[1].trim()) as { options?: unknown };
+    if (
+      Array.isArray(parsed.options) &&
+      parsed.options.length > 0 &&
+      parsed.options.every((option): option is string => typeof option === 'string' && option.trim().length > 0)
+    ) {
+      const prose = content.replace(/```json[\s\S]*?```/, '').trim();
+      return {
+        prose: prose || 'Pick one of these to keep going:',
+        followups: parsed.options.map(option => option.trim()),
+      };
+    }
+  } catch {
+    /* Malformed JSON — fall through and just render the raw reply. */
+  }
+  return { prose: content.trim() };
+}
+
 const FORM_SECTION_IDS = [
   'profile',
   'channels',
@@ -83,7 +207,9 @@ type FormBuilderPhase = 'landing' | 'planning' | 'waterfall' | 'complete';
 
 export default function EvaFormBuilder() {
   const navigate = useNavigate();
-  const { addAgent, aiEngines, showToast } = useApp();
+  const location = useLocation();
+  const { addAgent, aiEngines, setIsCreateModalOpen, showToast } = useApp();
+  const { setVariation } = useDesignVariation();
 
   const restoredRef = useRef<EvaSessionState | null>(null);
   if (restoredRef.current === null) {
@@ -173,6 +299,18 @@ export default function EvaFormBuilder() {
   const [activeSectionIndex, setActiveSectionIndex] = useState<number | null>(null);
   const [userPrompt, setUserPrompt] = useState<string>('');
   const [voiceActive, setVoiceActive] = useState(false);
+  /* Free-form chat with the Cisco LLM. The form builder's primary flow
+     is a structured waterfall, but if the user asks a question that
+     doesn't match a template keyword we keep them on the landing screen
+     and answer inline instead of forcing them through the form. */
+  const [chatMessages, setChatMessages] = useState<FormBuilderChatMessage[]>([]);
+  const [chatThinking, setChatThinking] = useState(false);
+  /* Once the user has sent a message we hide the 4 starter template
+     cards by default. They re-appear when the user clicks the "Other
+     templates" chip beside Eva's suggested follow-ups. Reset to false
+     whenever a new user message is sent so the cards stay hidden until
+     explicitly requested again. */
+  const [showOtherTemplates, setShowOtherTemplates] = useState(false);
   /* Collapsed/expanded state for the side-panel mini Eva assistant. Mirrors
      the canvas Eva window's behavior so the user can shrink it down to just
      the header when they need more vertical space for the Progress / Summary
@@ -519,16 +657,128 @@ export default function EvaFormBuilder() {
       return false;
     });
 
-    if (matched) applyTemplate(matched.id);
+    /* Deterministic fast path: if the user clearly described an agent
+       we know how to build, kick off the form waterfall immediately and
+       wipe any prior free-chat thread so the new build starts clean. */
+    if (matched) {
+      setChatMessages([]);
+      applyTemplate(matched.id);
+      setUserPrompt(trimmed);
+      startPlanningWaterfall();
+      return;
+    }
 
-    setUserPrompt(trimmed);
-    startPlanningWaterfall();
+    /* Free-chat path: nothing matched, so route the message to the
+       Cisco LLM and stay on the landing screen. The chat thread renders
+       above the composer so the user can keep asking follow-ups without
+       being forced into a form they didn't ask for. */
+    const historySnapshot = chatMessages;
+    setChatMessages(prev => [...prev, { role: 'user', text: trimmed }]);
+    setChatThinking(true);
+    /* If the user is typing again after viewing the template cards via
+       "Other templates", collapse the cards back so the conversation
+       stays the focal point. */
+    setShowOtherTemplates(false);
+
+    void (async () => {
+      try {
+        const reply = await sendEvaChat([
+          { role: 'system', content: FORM_BUILDER_EVA_SYSTEM_PROMPT },
+          ...historySnapshot.map(message => ({ role: message.role, content: message.text })),
+          { role: 'user', content: trimmed },
+        ]);
+        const { prose, followups } = extractFollowupsAndProse(reply);
+        setChatMessages(prev => [
+          ...prev,
+          {
+            role: 'assistant',
+            text:
+              prose ||
+              'I\u2019m not sure how to respond to that yet \u2014 try rephrasing, or describe the agent you want to build to launch the form setup.',
+            followups,
+          },
+        ]);
+      } catch (err) {
+        const message = err instanceof Error ? err.message : 'Unknown error';
+        setChatMessages(prev => [
+          ...prev,
+          {
+            role: 'assistant',
+            text: `I couldn\u2019t reach the assistant just now (${message}). Check that CISCO_AI_AUTH and CISCO_AI_APPKEY are set in the dev server environment and try again.`,
+          },
+        ]);
+      } finally {
+        setChatThinking(false);
+      }
+    })();
   };
 
   const handleTemplateClick = (templateId: EvaTemplateId, prompt: string) => {
+    setChatMessages([]);
+    setShowOtherTemplates(false);
     applyTemplate(templateId);
     setUserPrompt(prompt);
     startPlanningWaterfall();
+  };
+
+  /* Send handler for the docked side-panel mini Eva that's visible
+     during waterfall + complete phases. Unlike `handlePromptSubmit`
+     (the landing composer), this one does NOT try to match template
+     keywords — the user is already in a templated flow, so a free-typed
+     "customer support agent for X" should not blow away the in-progress
+     draft and restart the planning waterfall. Instead we always route
+     to the Cisco LLM with a context-aware system prompt that embeds the
+     live draft, push both the user message and Eva's reply onto
+     `chatMessages`, and the mini Eva thread renders them inline. */
+  const handleAssistantSend = (text: string) => {
+    const trimmed = text.trim();
+    if (!trimmed) return;
+
+    const historySnapshot = chatMessages;
+    setChatMessages(prev => [...prev, { role: 'user', text: trimmed }]);
+    setChatThinking(true);
+
+    void (async () => {
+      try {
+        const systemPrompt = buildFormBuilderAssistantSystemPrompt({
+          isGenerating,
+          agentName,
+          agentDescription,
+          welcomeMessage,
+          instructionPrompt,
+          selectedKnowledgeBases,
+          selectedActions,
+          channelSummary,
+          languageSummary,
+          customRules,
+        });
+        const reply = await sendEvaChat([
+          { role: 'system', content: systemPrompt },
+          ...historySnapshot.map(message => ({ role: message.role, content: message.text })),
+          { role: 'user', content: trimmed },
+        ]);
+        setChatMessages(prev => [
+          ...prev,
+          {
+            role: 'assistant',
+            text:
+              reply.trim() ||
+              'I don\u2019t have a suggestion for that yet \u2014 could you give me a bit more context about what you want to change?',
+          },
+        ]);
+      } catch (err) {
+        const message = err instanceof Error ? err.message : 'Unknown error';
+        setChatMessages(prev => [
+          ...prev,
+          {
+            role: 'assistant',
+            text: `I couldn\u2019t reach the assistant just now (${message}). Check that CISCO_AI_AUTH and CISCO_AI_APPKEY are set in the dev server environment and try again.`,
+          },
+        ]);
+      } finally {
+        setChatThinking(false);
+      }
+    })();
   };
 
   /* Sends the user back to the landing prompt screen so they can start a new
@@ -551,10 +801,67 @@ export default function EvaFormBuilder() {
     setRevealedSections(0);
     setVisitedSections(new Set());
     setActiveSectionIndex(null);
+    setChatMessages([]);
+    setChatThinking(false);
+    setShowOtherTemplates(false);
   };
 
   const handleOpenCanvas = () => {
-    navigate('/agents/eva-canvas');
+    /* Remember the route the user is on so the canvas's "Chat view"
+       button can return them here. Form-based variation typically lives
+       on /agents, but tracking the origin keeps the close-route logic
+       consistent across all variations and survives any future routing
+       changes. */
+    try {
+      if (location.pathname && !EVA_CANVAS_PATHS.includes(location.pathname)) {
+        window.sessionStorage.setItem(EVA_CANVAS_ORIGIN_PATH_KEY, location.pathname);
+      }
+    } catch {
+      /* sessionStorage unavailable — falls back to /agents on close. */
+    }
+    /* Pick the canvas path that sits under the same parent as the
+       user's current page so the sidebar selection doesn't jump while
+       the canvas is open. */
+    const canvasPath = location.pathname === '/'
+      ? EVA_CANVAS_DASHBOARD_PATH
+      : EVA_CANVAS_AGENTS_PATH;
+    navigate(canvasPath);
+  };
+
+  /* "Start from scratch" landing button — opens the global Create
+     Agent modal so the user can name a fresh agent and configure it
+     without going through Eva's template waterfall. Mirrors the same
+     entry point used by the +Create Agent buttons elsewhere. */
+  const handleStartFromScratch = () => {
+    setIsCreateModalOpen(true);
+  };
+
+  /* "Existing agent" landing button — switches the design variation
+     to the dashboard (table) view so the user lands on the existing
+     AI Agent landing page that lists their agents in a table. The
+     route stays on /agents; the variation context already swaps the
+     rendered component (see Agents.tsx). */
+  const handleSwitchToExistingAgents = () => {
+    setVariation('dashboard');
+  };
+
+  /* Label and sentinel for the extra chip we append after Eva's
+     follow-up options. We match on the visible label string in the
+     click handler — the system prompt instructs the LLM to generate
+     template-keyword variants, so a literal "Other templates" string
+     from the model is extremely unlikely to collide. */
+  const OTHER_TEMPLATES_LABEL = 'Other templates';
+
+  /* Followup chip click handler. Clicking the "Other templates" chip
+     reveals the 4 starter cards inline; everything else is a real user
+     message that flows back through the deterministic / LLM router so
+     a click is identical to typing the option text. */
+  const handleFollowupClick = (option: string) => {
+    if (option === OTHER_TEMPLATES_LABEL) {
+      setShowOtherTemplates(true);
+      return;
+    }
+    handlePromptSubmit(option);
   };
 
   const createDraftAgent = () => {
@@ -703,48 +1010,168 @@ export default function EvaFormBuilder() {
     >
       {phase === 'landing' ? (
         <div className="eva-first-interface eva-first-interface--landing eva-form-builder__landing-shell">
-          <section
-            className="eva-first-interface__hero"
-            aria-labelledby="eva-form-builder-hero"
-          >
-            <h1 id="eva-form-builder-hero">Hi I&rsquo;m Eva!</h1>
-            <h2>Build smart agent anytime, anywhere.</h2>
-            <p>
-              Describe the business need, persona, tools, data, routing, or guardrails. I&rsquo;ll
-              plan the setup and lay out every section as a form for you to review.
-            </p>
-          </section>
+          {chatMessages.length === 0 && !chatThinking && (
+            <section
+              className="eva-first-interface__hero"
+              aria-labelledby="eva-form-builder-hero"
+            >
+              <h1 id="eva-form-builder-hero">Hi I&rsquo;m Eva!</h1>
+              <h2>Build smart agent anytime, anywhere.</h2>
+              <p>
+                Describe the business need, persona, tools, data, routing, or guardrails. I&rsquo;ll
+                plan the setup and lay out every section as a form for you to review.
+              </p>
+            </section>
+          )}
 
-          <div className="eva-form-builder__landing-composer" aria-label="Talk to Eva">
+          {(chatMessages.length > 0 || chatThinking) && (
+            <section
+              className="eva-dialogue eva-form-builder__landing-chat"
+              aria-label="Eva conversation"
+              aria-live="polite"
+            >
+              {/* Free-chat transcript: rendered when the user asks a
+                  question that didn't match any deterministic template
+                  keyword. Stays on the landing screen so they can keep
+                  asking, and only flips to the form waterfall when they
+                  actually describe an agent. */}
+              {chatMessages.map((message, index) => {
+                if (message.role === 'user') {
+                  return <AiUserMessage key={`form-chat-${index}`} text={message.text} />;
+                }
+                /* When Eva attached follow-up options to a reply, append
+                   an "Other templates" chip so the user can pivot to
+                   the full starter-card grid even after they've gone
+                   down a specific template branch. */
+                const baseFollowups = message.followups ?? [];
+                const followups = baseFollowups.length > 0
+                  ? [...baseFollowups, OTHER_TEMPLATES_LABEL]
+                  : baseFollowups;
+                return (
+                  <AiResponseMessage
+                    key={`form-chat-${index}`}
+                    className="eva-ai-response"
+                    showActions={false}
+                    assistantName="Eva"
+                    content={message.text}
+                    followups={followups}
+                    onFollowup={handleFollowupClick}
+                  />
+                );
+              })}
+              {chatThinking && (
+                <AiResponseMessage
+                  className="eva-ai-response"
+                  showActions={false}
+                  assistantName="Eva is thinking..."
+                  assistantState="processing"
+                  content={null}
+                />
+              )}
+            </section>
+          )}
+
+          {/* Initial landing only: put the composer above the four
+              template tiles so the typing surface is the primary CTA.
+              Once the user starts chatting, the composer renders again
+              at the bottom of the landing state below. */}
+          {chatMessages.length === 0 && !chatThinking && (
+          <div
+            className="eva-form-builder__landing-composer eva-form-builder__landing-composer--initial"
+            aria-label="Talk to Eva"
+          >
             <AiFooter
               className="eva-ai-footer"
               fillContainer
               onSend={handlePromptSubmit}
               onVoiceToggle={() => setVoiceActive(active => !active)}
               processing={false}
+              disabled={chatThinking}
               placeholder="Type with Eva. Try: Create an AI agent for customer onboarding..."
               suggestions={[]}
               voiceActive={voiceActive}
             />
           </div>
+          )}
 
-          <section className="eva-prompt-examples" aria-label="Quick templates">
-            {STARTER_PROMPTS.slice(0, 4).map(prompt => (
-              <button
-                key={prompt.templateId}
-                type="button"
-                className="eva-prompt-card"
-                onClick={() => handleTemplateClick(prompt.templateId, prompt.prompt)}
-              >
-                <span className="eva-prompt-card__icon" aria-hidden="true">
-                  <Icon name={prompt.icon} weight="bold" size="md" />
-                </span>
-                <strong>{prompt.title}</strong>
-                <span>{prompt.description}</span>
-                <small>Use this example</small>
-              </button>
-            ))}
-          </section>
+          {/* Starter cards: shown on the initial landing screen, hidden
+              the moment the user starts a conversation, and revealed
+              again only when they explicitly click the "Other
+              templates" follow-up chip. Hidden during Eva's thinking
+              state so the focus stays on the live response. */}
+          {!chatThinking && (chatMessages.length === 0 || showOtherTemplates) && (
+            <>
+              {showOtherTemplates && chatMessages.length > 0 && (
+                <p
+                  className="eva-form-builder__landing-prompt-encouragement"
+                  aria-live="polite"
+                >
+                  Pick one of the starter templates below, or keep chatting with Eva.
+                </p>
+              )}
+              <section className="eva-prompt-examples" aria-label="Quick templates">
+                {STARTER_PROMPTS.slice(0, 4).map(prompt => (
+                  <button
+                    key={prompt.templateId}
+                    type="button"
+                    className="eva-prompt-card"
+                    onClick={() => handleTemplateClick(prompt.templateId, prompt.prompt)}
+                  >
+                    <span className="eva-prompt-card__icon" aria-hidden="true">
+                      <Icon name={prompt.icon} weight="bold" size="md" />
+                    </span>
+                    <strong>{prompt.title}</strong>
+                    <span>{prompt.description}</span>
+                    <small>Use this example</small>
+                  </button>
+                ))}
+              </section>
+
+              {/* Secondary entry points for users who don't want to use
+                  Eva's template flow at all — either pick up an agent
+                  they've already created, or open the bare Create Agent
+                  modal to start with no preset. The divider's "Or" label
+                  visually separates these from the templated path above. */}
+              <div className="eva-form-builder__landing-divider" role="separator" aria-label="or">
+                <span className="eva-form-builder__landing-divider-line" aria-hidden="true" />
+                <span className="eva-form-builder__landing-divider-text">Or</span>
+                <span className="eva-form-builder__landing-divider-line" aria-hidden="true" />
+              </div>
+
+              <div className="eva-form-builder__landing-secondary-actions">
+                <Button variant="secondary" onClick={handleSwitchToExistingAgents}>
+                  <Icon name="user" weight="bold" size="sm" />
+                  Existing agent
+                </Button>
+
+                <Button variant="secondary" onClick={handleStartFromScratch}>
+                  <Icon name="plus" weight="bold" size="sm" />
+                  Start from scratch
+                </Button>
+              </div>
+            </>
+          )}
+
+          {/* Chat/thinking landing state: keep the composer at the bottom
+              like the original free-chat layout. */}
+          {(chatMessages.length > 0 || chatThinking) && (
+          <div
+            className="eva-form-builder__landing-composer eva-form-builder__landing-composer--bottom"
+            aria-label="Talk to Eva"
+          >
+            <AiFooter
+              className="eva-ai-footer"
+              fillContainer
+              onSend={handlePromptSubmit}
+              onVoiceToggle={() => setVoiceActive(active => !active)}
+              processing={false}
+              disabled={chatThinking}
+              placeholder="Type with Eva. Try: Create an AI agent for customer onboarding..."
+              suggestions={[]}
+              voiceActive={voiceActive}
+            />
+          </div>
+          )}
         </div>
       ) : (
         <div className="page-header eva-form-builder__compact-header">
@@ -1917,26 +2344,75 @@ export default function EvaFormBuilder() {
           {!reviewAssistantCollapsed && (
             <>
               <div className="eva-mini-assistant__thread">
-                <AiResponseMessage
-                  className="eva-mini-assistant__response"
-                  assistantName="Eva"
-                  assistantState={isGenerating ? 'processing' : 'static'}
-                  content={
-                    isGenerating
-                      ? 'Drafting your agent setup. I\'ll be ready for follow-up adjustments once each section is in place.'
-                      : 'I can help adjust this agent setup. Try asking me to change the persona, swap the channel, tighten guardrails, or add knowledge sources.'
-                  }
-                />
+                {/* Show a static intro AiResponseMessage only when the
+                    user hasn't started chatting yet. As soon as they
+                    send a message we replace it with the real Eva
+                    conversation history (chatMessages). The static
+                    intro covers two states:
+                      - while the form is still drafting (planning /
+                        waterfall): explain Eva is working
+                      - once it's fully drafted (complete): invite
+                        the user to ask follow-ups about the draft */}
+                {chatMessages.length === 0 && !chatThinking && (
+                  <AiResponseMessage
+                    className="eva-mini-assistant__response"
+                    assistantName="Eva"
+                    assistantState={isGenerating ? 'processing' : 'static'}
+                    content={
+                      isGenerating
+                        ? 'Drafting your agent setup. I\'ll be ready for follow-up adjustments once each section is in place.'
+                        : 'I can help adjust this agent setup. Try asking me to change the persona, swap the channel, tighten guardrails, or add knowledge sources.'
+                    }
+                  />
+                )}
+                {/* Mini-Eva conversation thread. Both user prompts and
+                    Eva's replies render here so the user can scroll back
+                    through the side-panel exchange while the form on
+                    the left rail stays focused on the draft itself. */}
+                {chatMessages.map((message, index) => (
+                  message.role === 'user' ? (
+                    <AiUserMessage
+                      key={`mini-chat-${index}`}
+                      className="eva-mini-assistant__user-message"
+                      text={message.text}
+                    />
+                  ) : (
+                    <AiResponseMessage
+                      key={`mini-chat-${index}`}
+                      className="eva-mini-assistant__response"
+                      assistantName="Eva"
+                      content={message.text}
+                    />
+                  )
+                ))}
+                {chatThinking && (
+                  <AiResponseMessage
+                    className="eva-mini-assistant__response"
+                    assistantName="Eva is thinking..."
+                    assistantState="processing"
+                    content={null}
+                  />
+                )}
               </div>
+              {/* The composer stays interactive even while Eva is
+                  still drafting the form (`isGenerating`) so the user
+                  can ask for opinions, clarifications, and field
+                  recommendations the moment a question crosses their
+                  mind — they shouldn't have to wait for the reveal
+                  animation to finish before being able to talk to
+                  Eva. We only swap the input for the processing
+                  indicator when the LLM is actively in flight
+                  (`chatThinking`), which prevents the user from
+                  firing a second request before the first returns. */}
               <AiFooter
                 className="eva-mini-assistant__footer"
-                onSend={handlePromptSubmit}
+                onSend={handleAssistantSend}
                 onVoiceToggle={() => setVoiceActive(active => !active)}
-                processing={isGenerating}
-                disabled={isGenerating}
+                processing={chatThinking}
+                disabled={chatThinking}
                 placeholder={
                   isGenerating
-                    ? 'Eva is drafting the setup...'
+                    ? 'Ask Eva for help while the form is drafting...'
                     : 'Ask Eva to adjust the setup...'
                 }
                 suggestions={[]}

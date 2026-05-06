@@ -50,6 +50,14 @@ export default function Sidebar({ collapsed = false }: SidebarProps) {
     return location.pathname === path || location.pathname.startsWith(path + '/');
   };
 
+  /* Map canvas overlay routes back onto the parent tab so the sidebar
+     highlight stays put while the canvas is open. /eva-canvas opens
+     over the Dashboard root, /agents/eva-canvas opens over AI Agents —
+     both already match via the standard isActive check, but we treat
+     /eva-canvas explicitly as Dashboard so the index ('/') item stays
+     highlighted instead of going inactive. */
+  const isDashboardActive = location.pathname === '/' || location.pathname === '/eva-canvas';
+
   return (
     <aside className={`sidebar${collapsed ? ' sidebar--collapsed' : ''}`}>
       <div className="sidebar-main">
@@ -60,7 +68,9 @@ export default function Sidebar({ collapsed = false }: SidebarProps) {
                 const itemActive =
                   item.path === '/settings'
                     ? location.pathname === '/settings'
-                    : isActive(item.path, item.path === '/');
+                    : item.path === '/'
+                      ? isDashboardActive
+                      : isActive(item.path, item.path === '/');
 
                 return (
                   <SideNav.Item
