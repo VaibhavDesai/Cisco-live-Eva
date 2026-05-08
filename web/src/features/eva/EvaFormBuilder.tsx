@@ -908,13 +908,12 @@ export default function EvaFormBuilder() {
     setIsCreateModalOpen(true);
   };
 
-  /* "Existing agent" landing button — switches the design variation
-     to the dashboard (table) view so the user lands on the existing
-     AI Agent landing page that lists their agents in a table. The
-     route stays on /agents; the variation context already swaps the
-     rendered component (see Agents.tsx). */
+  /* "Existing agent" landing button — switches the design variation to
+     the table view and navigates to AI Agents, including when this
+     landing is mounted from another route. */
   const handleSwitchToExistingAgents = () => {
     setVariation('dashboard');
+    navigate('/agents');
   };
 
   /* Label and sentinel for the extra chip we append after Eva's

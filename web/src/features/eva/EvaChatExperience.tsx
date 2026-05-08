@@ -1042,14 +1042,12 @@ export default function EvaChatExperience() {
     setIsCreateModalOpen(true);
   };
 
-  /* "Existing agent" landing button — switches the design variation
-     to the dashboard (table) view so the user lands on the existing
-     AI Agent landing page that lists their agents in a table. The
-     route stays on /agents; the variation context already swaps the
-     rendered component (see Agents.tsx). Mirrors the same secondary
-     entry point on the form-builder landing. */
+  /* "Existing agent" landing button — switches the design variation to
+     the table view and navigates to AI Agents, including when this
+     landing is mounted from the Dashboard route. */
   const handleSwitchToExistingAgents = () => {
     setVariation('dashboard');
+    navigate('/agents');
   };
 
   const isRetailReceptionistStoryIntent = (normalized: string) => (
