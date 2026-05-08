@@ -643,14 +643,28 @@ function getReadinessRecommendationFixMeta(recommendation: string): {
   };
 }
 
-export default function EvaChatExperience() {
+export default function EvaChatExperience({
+  resetSessionOnInitialMount = false,
+}: {
+  resetSessionOnInitialMount?: boolean;
+} = {}) {
   const navigate = useNavigate();
   const location = useLocation();
   const { agents, addAgent, aiEngines, selectAgent, setIsCreateModalOpen, showToast } = useApp();
   const { setVariation } = useDesignVariation();
-  const restoredEvaSessionRef = useRef<EvaSessionState | null>(null);
-  if (restoredEvaSessionRef.current === null) {
-    restoredEvaSessionRef.current = readEvaSessionState();
+  const restoredEvaSessionRef = useRef<EvaSessionState | null | undefined>(undefined);
+  if (restoredEvaSessionRef.current === undefined) {
+    if (resetSessionOnInitialMount && location.pathname === '/') {
+      try {
+        window.sessionStorage.removeItem(EVA_SESSION_STORAGE_KEY);
+        window.sessionStorage.removeItem(EVA_AUTO_START_VOICE_PREVIEW_KEY);
+      } catch {
+        /* sessionStorage may be unavailable; fall back to a fresh in-memory landing. */
+      }
+      restoredEvaSessionRef.current = null;
+    } else {
+      restoredEvaSessionRef.current = readEvaSessionState();
+    }
   }
   const restoredEvaSession = restoredEvaSessionRef.current;
   const [landingMode, setLandingMode] = useState<EvaLandingMode>(restoredEvaSession?.landingMode ?? 'build');

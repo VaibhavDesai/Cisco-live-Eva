@@ -23,7 +23,7 @@ export default function Dashboard() {
        state survives the open/close animation. */
     return (
       <>
-        <EvaChatExperience />
+        <EvaChatExperience resetSessionOnInitialMount />
         <EvaCanvasOverlay />
       </>
     );
