@@ -14,7 +14,7 @@ export type DesignVariation = 'landing' | 'dashboard' | 'form-bases';
 
 export const DESIGN_VARIATIONS: DesignVariation[] = ['landing', 'dashboard', 'form-bases'];
 
-export const DEFAULT_DESIGN_VARIATION: DesignVariation = 'landing';
+export const DEFAULT_DESIGN_VARIATION: DesignVariation = 'dashboard';
 
 export interface DesignVariationContextValue {
   variation: DesignVariation;

@@ -191,8 +191,7 @@ export default function EvaAgentsTable() {
      "+ Create Agent" affordance is the natural next step — wiring the
      prompt directly into the create-agent modal would need new prefill
      props on `CreateAgentModal`, which is out of scope for this design
-     pass. The "Start with Eva" button in the table header restores the
-     landing whenever the user wants to step back. */
+     pass. */
   const handleLandingSubmit = (_text: string) => {
     setPhase('table');
   };
@@ -202,7 +201,8 @@ export default function EvaAgentsTable() {
   };
 
   const handleStartWithEva = () => {
-    setPhase('landing');
+    setVariation('dashboard');
+    navigate('/');
   };
 
   /* "Existing agent" landing button — drops the user straight into the
