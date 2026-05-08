@@ -2432,6 +2432,14 @@ html[data-product='ai-agent-studio'] .app-header {
   flex: 0 0 auto;
 }
 
+.eva-first-interface.eva-first-interface--free-chat .eva-ai-footer.ai-footer {
+  padding: var(--spacing-x-small) 0 var(--spacing-x-small) !important;
+}
+
+.eva-first-interface.eva-first-interface--free-chat .eva-ai-footer .ai-footer__group {
+  padding: 0 !important;
+}
+
 .eva-generated-layout__main .eva-first-interface__chat--sticky {
   position: absolute;
   left: 0;
@@ -6613,19 +6621,31 @@ html[data-product='ai-agent-studio']:has(.eva-form-builder.primary-content) .app
   align-items: center;
   justify-content: center;
   margin-left: var(--spacing-micro);
-  padding: 0;
+  width: 18px;
+  height: 18px;
+  padding: var(--spacing-micro);
   border: 0;
+  border-radius: 50%;
   background: transparent;
   color: currentColor;
   cursor: pointer;
   opacity: 0.75;
+  transition: background 0.15s ease, opacity 0.15s ease;
 }
 
 .eva-retail-connected-chip__close:hover {
+  background: color-mix(in srgb, currentColor 14%, transparent);
   opacity: 1;
 }
 
+.eva-retail-connected-chip__close:focus-visible {
+  background: color-mix(in srgb, currentColor 18%, transparent);
+  outline: var(--border-width-small) solid currentColor;
+  outline-offset: 2px;
+}
+
 .eva-retail-connected-chip__close:disabled {
+  background: transparent;
   cursor: default;
   opacity: 0.35;
 }
@@ -6687,6 +6707,10 @@ html[data-product='ai-agent-studio']:has(.eva-form-builder.primary-content) .app
   flex: 0 0 18px;
   color: var(--accent-color);
   line-height: 0;
+}
+
+.eva-retail-recommendation-card--selected > .icon {
+  color: var(--mds-color-theme-common-text-success-normal, #3cc29a) !important;
 }
 
 .eva-retail-recommendation-card > .icon .mds-icon-inline-svg {

@@ -1266,7 +1266,7 @@ export default function EvaChatExperience() {
       if (answer.trim() === RETAIL_CONTINUE_TO_ACTIONS_LABEL || normalized.includes('action')) {
         setRetailPrototypeStep('actions');
         addOnboardingAssistantMessage(
-          'Now let’s review connected actions and recommended integrations for this agent.',
+          'Now let’s review connected and recommended actions for this agent.',
           undefined,
           'retail-actions-choice',
         );
@@ -4026,21 +4026,30 @@ ${previewTranscript}`,
                       <div className="eva-retail-recommendation-section">
                         <span className="eva-retail-recommendation-eyebrow">Recommended for this agent</span>
                         <div className="eva-retail-recommendation-list">
-                          {RETAIL_RECOMMENDED_KNOWLEDGE_BASES.map(option => (
-                            <button
-                              key={option.name}
-                              type="button"
-                              className={`eva-retail-recommendation-card${selectedKnowledgeBases.includes(option.name) ? ' eva-retail-recommendation-card--selected' : ''}`}
-                              disabled={isRetailKnowledgeLocked}
-                              onClick={() => handleLlmFollowupClick(option.name)}
-                            >
-                              <Icon className="icon" name="files" weight="regular" size={24} />
-                              <span>
-                                <strong>{option.name}</strong>
-                                <small>{option.description}</small>
-                              </span>
-                            </button>
-                          ))}
+                          {RETAIL_RECOMMENDED_KNOWLEDGE_BASES.map(option => {
+                            const isSelected = selectedKnowledgeBases.includes(option.name);
+                            return (
+                              <button
+                                key={option.name}
+                                type="button"
+                                className={`eva-retail-recommendation-card${isSelected ? ' eva-retail-recommendation-card--selected' : ''}`}
+                                disabled={isRetailKnowledgeLocked}
+                                onClick={() => handleLlmFollowupClick(option.name)}
+                              >
+                                <Icon
+                                  className="icon"
+                                  name={isSelected ? 'check-circle-filled' : 'files'}
+                                  weight={isSelected ? 'bold' : 'regular'}
+                                  size={24}
+                                  color={isSelected ? 'var(--mds-color-theme-common-text-success-normal, #3cc29a)' : undefined}
+                                />
+                                <span>
+                                  <strong>{option.name}</strong>
+                                  <small>{option.description}</small>
+                                </span>
+                              </button>
+                            );
+                          })}
                         </div>
                       </div>
                       {!isRetailKnowledgeLocked && (
@@ -4080,22 +4089,31 @@ ${previewTranscript}`,
                       <div className="eva-retail-recommendation-section">
                         <span className="eva-retail-recommendation-eyebrow">Recommended for this agent</span>
                         <div className="eva-retail-recommendation-list">
-                          {RETAIL_RECOMMENDED_ACTIONS.map(option => (
-                            <button
-                              key={option.name}
-                              type="button"
-                              className={`eva-retail-recommendation-card${selectedActions.includes(option.name) ? ' eva-retail-recommendation-card--selected' : ''}`}
-                              disabled={isRetailActionsLocked}
-                              onClick={() => handleLlmFollowupClick(option.name)}
-                            >
-                              <Icon className="icon" name="tools" weight="regular" size={24} />
-                              <span>
-                                <strong>{option.name}</strong>
-                                <em>{option.provider}</em>
-                                <small>{option.description}</small>
-                              </span>
-                            </button>
-                          ))}
+                          {RETAIL_RECOMMENDED_ACTIONS.map(option => {
+                            const isSelected = selectedActions.includes(option.name);
+                            return (
+                              <button
+                                key={option.name}
+                                type="button"
+                                className={`eva-retail-recommendation-card${isSelected ? ' eva-retail-recommendation-card--selected' : ''}`}
+                                disabled={isRetailActionsLocked}
+                                onClick={() => handleLlmFollowupClick(option.name)}
+                              >
+                                <Icon
+                                  className="icon"
+                                  name={isSelected ? 'check-circle-filled' : 'tools'}
+                                  weight={isSelected ? 'bold' : 'regular'}
+                                  size={24}
+                                  color={isSelected ? 'var(--mds-color-theme-common-text-success-normal, #3cc29a)' : undefined}
+                                />
+                                <span>
+                                  <strong>{option.name}</strong>
+                                  <em>{option.provider}</em>
+                                  <small>{option.description}</small>
+                                </span>
+                              </button>
+                            );
+                          })}
                         </div>
                       </div>
                       {!isRetailActionsLocked && (
