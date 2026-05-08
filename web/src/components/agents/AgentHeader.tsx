@@ -41,8 +41,8 @@ export default function AgentHeader({ agent, activeTab, showPublishButton = true
   const tabs = [
     { id: 'configure', label: 'Configuration', path: '/configure' },
     { id: 'sessions', label: 'Sessions', path: '/sessions' },
+    { id: 'analytics', label: 'Testing', path: '/analytics' },
     { id: 'history', label: 'History', path: '/history' },
-    { id: 'analytics', label: 'Analytics', path: '/analytics' },
   ];
 
   const handlePublishToggle = () => {

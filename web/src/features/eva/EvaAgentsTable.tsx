@@ -1,37 +1,158 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useApp } from '../../contexts/AppContext';
+import { useApp, type Agent } from '../../contexts/AppContext';
+import { useDesignVariation } from '../../contexts/DesignVariationContext';
 import Button from '../../components/shared/Button';
 import {
   AiFooter,
   Badge,
+  Card,
   Dropdown,
   Input,
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
 } from '../../components/shared';
-import { AgentCard } from '../../components/agents';
 import { Icon } from '../../icons';
-import { STARTER_PROMPTS } from './evaFormConfig';
+import {
+  buildInstructionPrompt,
+  buildWelcomeMessage,
+  EVA_ACTION_ROWS,
+  EVA_ADVANCED_GUARDRAIL_GROUPS,
+  EVA_AUTO_START_VOICE_PREVIEW_KEY,
+  EVA_SESSION_STORAGE_KEY,
+  EVA_STANDARD_GUARDRAILS,
+  STARTER_PROMPTS,
+  type EvaSessionState,
+} from './evaFormConfig';
+import { EVA_TEMPLATES } from './evaTemplates';
+import type { EvaAgentDraft, EvaKnowledgeRecommendation } from './types';
 
-const STATUS_OPTIONS = [
-  { value: 'all', label: 'All Status' },
-  { value: 'published', label: 'Published' },
-  { value: 'draft', label: 'Draft' },
+type AgentTileType = 'Autonomous' | 'Scripted';
+
+const TYPE_OPTIONS = [
+  { value: 'all', label: 'All types' },
+  { value: 'Autonomous', label: 'Autonomous' },
+  { value: 'Scripted', label: 'Scripted' },
 ];
 
 type Phase = 'landing' | 'table';
 
+const AGENT_TILE_META: Record<string, { type: AgentTileType; updatedOn: string; updatedBy: string }> = {
+  cs: { type: 'Autonomous', updatedOn: '17 Apr, 26', updatedBy: 'newstartup_imi' },
+  sa: { type: 'Autonomous', updatedOn: '12 Apr, 26', updatedBy: 'Team Alpha' },
+  it: { type: 'Scripted', updatedOn: '15 Apr, 26', updatedBy: 'svc-bot-builder' },
+  'webex-elec': { type: 'Autonomous', updatedOn: 'Just now', updatedBy: 'Matt' },
+};
+
+const RETAIL_AGENT_PREVIEW_DETAILS = {
+  description: 'Answers store calls for Webex Electronics in San Jose, checks product availability, handles FAQs, and escalates to Matt when needed.',
+  welcomeMessage: 'Hi, thanks for calling Webex Electronics in San Jose. I can help with store hours, directions, product availability, common questions, or connect you with Matt when needed.',
+  knowledgeBases: [
+    {
+      name: 'Webex Electronics store profile',
+      description: 'Store hours, address, parking, warranty policy, escalation rules, and local FAQs.',
+      sources: 26,
+      usedBy: 1,
+      lastUpdatedAt: new Date().toISOString(),
+    },
+    {
+      name: 'Inventory Manager integration',
+      description: 'Live product availability and hold-for-pickup status for the San Jose location.',
+      sources: 84,
+      usedBy: 1,
+      lastUpdatedAt: new Date().toISOString(),
+    },
+  ] satisfies EvaKnowledgeRecommendation[],
+  actions: ['Check product availability', 'Route manager escalation', 'Create follow-up task'],
+};
+
+function buildPreviewDraft(agent: Agent): EvaAgentDraft {
+  const baseDraft = EVA_TEMPLATES.find(template => template.id === 'customer-support')?.draft ?? EVA_TEMPLATES[0].draft;
+  const isRetailAgent = agent.id === 'webex-elec';
+
+  return {
+    ...baseDraft,
+    name: agent.name,
+    description: isRetailAgent ? RETAIL_AGENT_PREVIEW_DETAILS.description : agent.description,
+    goals: isRetailAgent
+      ? [
+          'Answer incoming calls with a warm receptionist experience',
+          'Confirm store hours, directions, FAQs, and current inventory status',
+          'Escalate urgent or manager-specific requests to Matt',
+        ]
+      : baseDraft.goals,
+    knowledgeBases: isRetailAgent
+      ? RETAIL_AGENT_PREVIEW_DETAILS.knowledgeBases
+      : baseDraft.knowledgeBases,
+    actions: isRetailAgent
+      ? RETAIL_AGENT_PREVIEW_DETAILS.actions
+      : baseDraft.actions,
+    language: 'English (US)',
+    voiceName: 'Ava',
+  };
+}
+
+function buildPreviewSession(agent: Agent): EvaSessionState {
+  const draft = buildPreviewDraft(agent);
+  const welcomeMessage = agent.id === 'webex-elec'
+    ? RETAIL_AGENT_PREVIEW_DETAILS.welcomeMessage
+    : buildWelcomeMessage(draft);
+
+  return {
+    landingMode: 'build',
+    selectedTemplateId: 'customer-support',
+    draft,
+    messages: [
+      {
+        role: 'assistant',
+        text: `I opened the live preview for ${agent.name}. The voice preview is starting now so you can hear how the agent greets callers.`,
+        originStep: 'preview',
+      },
+    ],
+    guidanceVisible: true,
+    orchestrationSuggested: false,
+    freeChatActive: false,
+    conversationalOnboardingStep: 'idle',
+    evaStep: 'preview',
+    agentName: draft.name,
+    agentDescription: draft.description,
+    avatarUrl: 'https://us.webexbotbuilder.com/static/assets/images/agent-avatar-eva.png',
+    timezone: agent.id === 'webex-elec' ? 'America/Los_Angeles' : 'Europe/London',
+    aiEngine: 'Webex AI Pro 1.0',
+    welcomeMessage,
+    instructionPrompt: buildInstructionPrompt(draft),
+    selectedKnowledgeBases: draft.knowledgeBases.map(kb => kb.name),
+    selectedActions: draft.actions.filter(action => EVA_ACTION_ROWS.some(row => row.name === action)),
+    optimizeAccepted: true,
+    preOptimizeText: '',
+    optimizeSummary: {
+      changes: ['Preview session loaded from the published agent card.'],
+      reasoning: ['This reuses the same generated preview panel and voice runtime used in Eva Studio.'],
+    },
+    securityTier: 'standard',
+    channelType: 'voice',
+    digitalChannel: 'chat',
+    digitalChannelAddress: 'webex-electronics-chat',
+    channelPhoneNumber: '+1 415 555 0198',
+    standardGuardrails: EVA_STANDARD_GUARDRAILS,
+    advancedGuardrails: EVA_ADVANCED_GUARDRAIL_GROUPS,
+    customRules: [],
+  };
+}
+
+function getAgentTileMeta(agent: Agent, index: number) {
+  return AGENT_TILE_META[agent.id] ?? {
+    type: agent.status === 'Published' ? 'Autonomous' : 'Scripted',
+    updatedOn: ['17 Apr, 26', '15 Apr, 26', '14 Apr, 26', '12 Apr, 26'][index % 4],
+    updatedBy: ['newstartup_imi', 'svc-bot-builder', 'Team Alpha', 'Ayesh Reddy'][index % 4],
+  };
+}
+
 export default function EvaAgentsTable() {
   const navigate = useNavigate();
   const { agents, selectAgent, setIsCreateModalOpen } = useApp();
-  const [viewMode, setViewMode] = useState<'table' | 'grid'>('table');
+  const { setVariation } = useDesignVariation();
   const [searchQuery, setSearchQuery] = useState('');
-  const [statusFilter, setStatusFilter] = useState('all');
+  const [typeFilter, setTypeFilter] = useState('all');
+  const [creatorFilter, setCreatorFilter] = useState('all');
   /* The Dashboard variation uses the Dashboard route itself as the Eva
      landing experience. The sidebar "AI Agents" destination should
      therefore always open to the existing-agents table, not remember a
@@ -48,6 +169,20 @@ export default function EvaAgentsTable() {
   const handleConfigureClick = (agentId: string) => {
     selectAgent(agentId);
     navigate(`/agents/${agentId}/configure`);
+  };
+
+  const handlePreviewClick = (agent: Agent) => {
+    selectAgent(agent.id);
+
+    try {
+      window.sessionStorage.setItem(EVA_SESSION_STORAGE_KEY, JSON.stringify(buildPreviewSession(agent)));
+      window.sessionStorage.setItem(EVA_AUTO_START_VOICE_PREVIEW_KEY, '1');
+    } catch {
+      /* If storage is blocked, still switch the user into Eva's preview surface. */
+    }
+
+    setVariation('landing');
+    navigate('/agents');
   };
 
   /* Both landing entry points (free-text composer + template card click)
@@ -85,19 +220,41 @@ export default function EvaAgentsTable() {
     setIsCreateModalOpen(true);
   };
 
-  const getBadgeVariant = (statusClass: string): 'success' | 'warning' | 'default' => {
-    if (statusClass === 'badge-success') return 'success';
-    if (statusClass === 'badge-warning') return 'warning';
-    return 'default';
-  };
+  const agentTiles = useMemo(
+    () =>
+      Object.values(agents)
+        .map((agent, index) => ({
+          agent,
+          ...getAgentTileMeta(agent, index),
+        }))
+        .sort((a, b) => {
+          if (a.agent.id === 'webex-elec') return -1;
+          if (b.agent.id === 'webex-elec') return 1;
+          return 0;
+        }),
+    [agents],
+  );
 
-  const filteredAgents = Object.values(agents).filter(agent => {
-    const matchesSearch = agent.name.toLowerCase().includes(searchQuery.toLowerCase());
-    const matchesStatus =
-      statusFilter === 'all' ||
-      (statusFilter === 'published' && agent.status === 'Published') ||
-      (statusFilter === 'draft' && agent.status !== 'Published');
-    return matchesSearch && matchesStatus;
+  const creatorOptions = useMemo(
+    () => [
+      { value: 'all', label: 'All creators' },
+      ...Array.from(new Set(agentTiles.map(tile => tile.updatedBy))).map(creator => ({
+        value: creator,
+        label: creator,
+      })),
+    ],
+    [agentTiles],
+  );
+
+  const filteredAgents = agentTiles.filter(({ agent, type, updatedBy }) => {
+    const normalizedSearch = searchQuery.trim().toLowerCase();
+    const matchesSearch =
+      normalizedSearch.length === 0 ||
+      agent.name.toLowerCase().includes(normalizedSearch) ||
+      updatedBy.toLowerCase().includes(normalizedSearch);
+    const matchesType = typeFilter === 'all' || type === typeFilter;
+    const matchesCreator = creatorFilter === 'all' || updatedBy === creatorFilter;
+    return matchesSearch && matchesType && matchesCreator;
   });
 
   if (phase === 'landing') {
@@ -176,12 +333,12 @@ export default function EvaAgentsTable() {
 
   return (
     <div className="primary-content">
-      <div className="page-header">
+      <div className="page-header ai-agents-header">
         <div>
-          <h1 className="page-title">Agents</h1>
-          <p className="page-subtitle">Manage your AI agents</p>
+          <h1 className="page-title">AI Agents</h1>
+          <p className="page-subtitle">Manage and preview your AI agents</p>
         </div>
-        <div className="eva-form-builder__compact-header-actions">
+        <div className="eva-form-builder__compact-header-actions ai-agents-header-actions">
           <Button variant="secondary" onClick={handleStartWithEva}>
             <Icon name="sparkle" weight="bold" size="sm" />
             Start with Eva
@@ -190,106 +347,105 @@ export default function EvaAgentsTable() {
         </div>
       </div>
 
-      <div className="secondary-content">
-        <div className="filter-bar">
+      <div className="secondary-content ai-agents-dashboard">
+        <div className="ai-agents-toolbar">
           <Input
-            placeholder="Search agents..."
+            placeholder="Search by agent name"
             value={searchQuery}
             onChange={event => setSearchQuery(event.target.value)}
             leadingIcon="search"
             clearable
             onClear={() => setSearchQuery('')}
-            className="filter-bar-search"
+            className="ai-agents-search-wrap"
           />
           <Dropdown
-            options={STATUS_OPTIONS}
-            value={statusFilter}
-            onChange={setStatusFilter}
+            options={TYPE_OPTIONS}
+            value={typeFilter}
+            onChange={setTypeFilter}
           />
-          <div className="view-switcher">
-            <button
-              type="button"
-              className={`view-switcher-btn ${viewMode === 'table' ? 'active' : ''}`}
-              onClick={() => setViewMode('table')}
-              aria-label="Show table view"
-            >
-              <Icon name="view-list" weight="bold" size="sm" />
-            </button>
-            <button
-              type="button"
-              className={`view-switcher-btn ${viewMode === 'grid' ? 'active' : ''}`}
-              onClick={() => setViewMode('grid')}
-              aria-label="Show grid view"
-            >
-              <Icon name="view-thumbnail" weight="bold" size="sm" />
-            </button>
-          </div>
+          <Dropdown
+            options={creatorOptions}
+            value={creatorFilter}
+            onChange={setCreatorFilter}
+          />
         </div>
 
-        {viewMode === 'table' && (
-          <Table>
-            <TableHead>
-              <TableRow>
-                <TableHeader>Agent</TableHeader>
-                <TableHeader>Status</TableHeader>
-                <TableHeader>Sessions</TableHeader>
-                <TableHeader>Success Rate</TableHeader>
-                <TableHeader>Actions</TableHeader>
-              </TableRow>
-            </TableHead>
-            <TableBody empty={filteredAgents.length === 0} colSpan={5}>
-              {filteredAgents.map(agent => (
-                <TableRow key={agent.id} onClick={() => handleAgentClick(agent.id)}>
-                  <TableCell>
-                    <div className="agents-table-agent">
-                      <div
-                        className="agents-table-agent__avatar"
-                        style={{ background: agent.gradient }}
-                      >
-                        {agent.initials}
+        {filteredAgents.length > 0 ? (
+          <div className="ai-agents-grid">
+            {filteredAgents.map(({ agent, type, updatedOn, updatedBy }) => (
+              <Card key={agent.id} className="ai-agents-agent-card ai-agents-agent-card--clickable">
+                <button
+                  type="button"
+                  className="ai-agents-agent-card__hit-area"
+                  onClick={() => handleAgentClick(agent.id)}
+                  aria-label={`Open ${agent.name}`}
+                />
+                <div className="ai-agents-agent-card-slot">
+                  <div className="ai-agents-agent-card-head">
+                    <span
+                      className={`ai-agents-agent-avatar ${
+                        type === 'Autonomous' ? 'ai-agents-agent-avatar--purple' : 'ai-agents-agent-avatar--teal'
+                      }`}
+                      aria-hidden="true"
+                    >
+                      <Icon name={type === 'Autonomous' ? 'sparkle' : 'ucm-cloud'} weight="bold" size="md" />
+                    </span>
+                    <div className="ai-agents-agent-card-head-text">
+                      <div className="ai-agents-agent-title-row">
+                        <button
+                          type="button"
+                          className="ai-agents-agent-name-button"
+                          onClick={(event) => {
+                            event.stopPropagation();
+                            handleConfigureClick(agent.id);
+                          }}
+                        >
+                          {agent.name}
+                        </button>
+                        <Button
+                          type="button"
+                          variant="tertiary"
+                          size="sm"
+                          aria-label={`More actions for ${agent.name}`}
+                          onClick={(event) => event.stopPropagation()}
+                        >
+                          <Icon name="more" weight="bold" size={16} />
+                        </Button>
                       </div>
-                      <div>
-                        <div className="agents-table-agent__name">{agent.name}</div>
-                        <div className="agents-table-agent__description">
-                          {agent.description}
-                        </div>
-                      </div>
+                      <Badge variant={type === 'Autonomous' ? 'success' : 'info'}>
+                        {type}
+                      </Badge>
                     </div>
-                  </TableCell>
-                  <TableCell>
-                    <Badge variant={getBadgeVariant(agent.statusClass)}>{agent.status}</Badge>
-                  </TableCell>
-                  <TableCell>{agent.sessions}</TableCell>
-                  <TableCell>{agent.successRate}</TableCell>
-                  <TableCell>
+                  </div>
+                  <div className="ai-agents-agent-content">
+                    <p className="ai-agents-agent-meta">
+                      Updated on {updatedOn}
+                      <br />
+                      by {updatedBy}
+                    </p>
+                  </div>
+                  <div className="ai-agents-agent-footer">
                     <Button
+                      type="button"
                       variant="secondary"
                       size="sm"
-                      onClick={event => {
+                      onClick={(event) => {
                         event.stopPropagation();
-                        handleConfigureClick(agent.id);
+                        handlePreviewClick(agent);
                       }}
                     >
-                      Configure
+                      Preview
                     </Button>
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        )}
-
-        {viewMode === 'grid' && (
-          <div className="agents-card-grid">
-            {filteredAgents.map(agent => (
-              <AgentCard
-                key={agent.id}
-                agent={agent}
-                onSelect={() => handleAgentClick(agent.id)}
-                onConfigure={() => handleConfigureClick(agent.id)}
-              />
+                  </div>
+                </div>
+              </Card>
             ))}
           </div>
+        ) : (
+          <Card className="ai-agents-empty-card">
+            <strong>No agents found</strong>
+            <span>Try changing the search or filters.</span>
+          </Card>
         )}
       </div>
     </div>

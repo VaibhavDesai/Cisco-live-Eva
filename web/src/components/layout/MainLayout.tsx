@@ -25,7 +25,7 @@ function LegacyToastBridge() {
 
 export default function MainLayout() {
   const { isCreateModalOpen, setIsCreateModalOpen } = useApp();
-  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(true);
 
   return (
     <>

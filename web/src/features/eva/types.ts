@@ -54,6 +54,8 @@ export interface EvaMessage {
   text: string;
   timestamp?: string;
   followups?: string[];
+  suggestion?: EvaFieldSuggestion;
+  suggestionAccepted?: boolean;
   /* When set, marks the waterfall step a user message was sent in (or
      the assistant message replied to). Used by EvaChatExperience to
      render the mid-step user/assistant exchange below the active
@@ -61,6 +63,18 @@ export interface EvaMessage {
      the template-selection trigger) don't render in the mid-step
      thread. */
   originStep?: string;
+}
+
+export type EvaSuggestionField =
+  | 'welcomeMessage'
+  | 'agentDescription'
+  | 'instructionPrompt'
+  | 'customRule';
+
+export interface EvaFieldSuggestion {
+  field: EvaSuggestionField;
+  value: string;
+  originalRequest: string;
 }
 
 export interface EvaCanvasNode {

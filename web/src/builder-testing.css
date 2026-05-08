@@ -1,0 +1,1344 @@
+/* Cloned from webexdesign/builder src/index.css for simulated testing UI. */
+/* builder index.css lines 62-110 */
+/* Momentum typography utilities — https://momentum.design/en/tokens/font/ */
+.mds-type-body-midsize-medium {
+  font-family: var(--mds-font-family-primary, var(--font-family-primary));
+  font-size: var(--mds-font-size-body-midsize, var(--font-size-body-midsize, 14px));
+  line-height: var(--mds-font-lineheight-body-midsize, var(--font-lineheight-body-midsize, 20px));
+  font-weight: var(--mds-font-weight-medium, var(--font-weight-medium, 500));
+}
+
+.mds-type-body-midsize-regular {
+  font-family: var(--mds-font-family-primary, var(--font-family-primary));
+  font-size: var(--mds-font-size-body-midsize, var(--font-size-body-midsize, 14px));
+  line-height: var(--mds-font-lineheight-body-midsize, var(--font-lineheight-body-midsize, 20px));
+  font-weight: var(--mds-font-weight-regular, var(--font-weight-regular, 400));
+}
+
+.mds-type-body-small-regular {
+  font-family: var(--mds-font-family-primary, var(--font-family-primary));
+  font-size: var(--mds-font-size-body-small, var(--font-size-body-small, 12px));
+  line-height: var(--mds-font-lineheight-body-small, var(--font-lineheight-body-small, 16px));
+  font-weight: var(--mds-font-weight-regular, var(--font-weight-regular, 400));
+}
+
+.mds-type-body-small-medium {
+  font-family: var(--mds-font-family-primary, var(--font-family-primary));
+  font-size: var(--mds-font-size-body-small, var(--font-size-body-small, 12px));
+  line-height: var(--mds-font-lineheight-body-small, var(--font-lineheight-body-small, 16px));
+  font-weight: var(--mds-font-weight-medium, var(--font-weight-medium, 500));
+}
+
+.mds-type-body-large-medium {
+  font-family: var(--mds-font-family-primary, var(--font-family-primary));
+  font-size: var(--mds-font-size-body-large, var(--font-size-body-large, 16px));
+  line-height: var(--mds-font-lineheight-body-large, var(--font-lineheight-body-large, 24px));
+  font-weight: var(--mds-font-weight-medium, var(--font-weight-medium, 500));
+}
+
+.mds-type-heading-large-medium {
+  font-family: var(--mds-font-family-primary, var(--font-family-primary));
+  font-size: var(--mds-font-size-heading-large, var(--font-size-heading-large, 32px));
+  line-height: var(--mds-font-lineheight-heading-large, var(--font-lineheight-heading-large, 40px));
+  font-weight: var(--mds-font-weight-medium, var(--font-weight-medium, 500));
+}
+
+.mds-type-section-title {
+  font-family: var(--mds-font-family-primary, var(--font-family-primary));
+  font-size: var(--mds-font-size-body-large, var(--font-size-body-large, 16px));
+  line-height: var(--mds-font-lineheight-body-large, var(--font-lineheight-body-large, 24px));
+  font-weight: var(--mds-font-weight-bold, var(--font-weight-bold, 700));
+}
+
+/* Builder typography token aliases for this app's local token names. */
+.agent-testing-page--builder,
+.clus-kpi-dashboard-root {
+  --mds-font-family-primary: var(--font-family-primary);
+  --mds-font-size-body-small: var(--font-size-body-small, 12px);
+  --mds-font-size-body-midsize: var(--font-size-body-midsize, 14px);
+  --mds-font-size-body-large: var(--font-size-body-large, 16px);
+  --mds-font-size-heading-large: var(--font-size-heading-large, 32px);
+  --mds-font-lineheight-body-small: var(--font-lineheight-body-small, 16px);
+  --mds-font-lineheight-body-midsize: var(--font-lineheight-body-midsize, 20px);
+  --mds-font-lineheight-body-large: var(--font-lineheight-body-large, 24px);
+  --mds-font-lineheight-heading-large: var(--font-lineheight-heading-large, 40px);
+  --mds-font-weight-regular: var(--font-weight-regular, 400);
+  --mds-font-weight-medium: var(--font-weight-medium, 500);
+  --mds-font-weight-bold: var(--font-weight-bold, 700);
+}
+
+/*
+  Cloned builder Momentum button host rules: pill / pill-with-icon horizontal
+  padding lives on the custom-element host, not the inner part.
+*/
+mdc-button:is([data-btn-type='pill'], [data-btn-type='pill-with-icon'])[size='40'] {
+  padding-inline: 16px;
+}
+
+mdc-button:is([data-btn-type='pill'], [data-btn-type='pill-with-icon'])[size='32'],
+mdc-button:is([data-btn-type='pill'], [data-btn-type='pill-with-icon'])[size='28'] {
+  padding-inline: 12px;
+}
+
+mdc-button:is([data-btn-type='pill'], [data-btn-type='pill-with-icon'])[size='24'] {
+  padding-inline: 12px;
+}
+
+mdc-button[variant='secondary'] {
+  box-sizing: border-box;
+  border: 1px solid var(--mds-color-theme-outline-button-normal);
+  --mdc-button-border-color: var(--mds-color-theme-outline-button-normal);
+}
+
+mdc-button[variant='secondary'][active],
+mdc-button[variant='secondary'][aria-pressed='true'] {
+  border-color: var(--mds-color-theme-outline-primary-normal);
+  --mdc-button-border-color: var(--mds-color-theme-outline-primary-normal);
+}
+
+.agent-testing-page--builder > mdc-themeprovider > mdc-iconprovider > .tabs {
+  margin-bottom: 8px;
+}
+
+.agent-testing-page__cloned-panel {
+  margin-top: 0;
+}
+/*
+ * Scenarios | Variables (line tabs) under Test scenarios: keep the shared tabs
+ * aligned with the toolbar controls.
+ */
+.clus-kpi-testing-scenarios-section .testing-scenarios-subtabs {
+  margin-block: 0;
+  padding-block: 4px;
+  padding-inline: 4px 12px;
+  margin-inline-start: -4px;
+}
+
+/* Toolbar (search inline with Scenarios | Variables tabs): align Searchfield with 32px Buttons */
+.clus-kpi-testing-scenarios-section .testing-scenarios-tab-toolbar-row mdc-searchfield::part(input-container) {
+  box-sizing: border-box;
+  height: 32px;
+  min-height: 32px;
+  border-radius: 8px;
+}
+
+/* Run tests — MenuPopover (Momentum): below trigger; scroll only after ~5 items */
+.clus-kpi-testing-scenarios-section mdc-menupopover.clus-kpi-run-tests-menu::part(popover-content) {
+  box-sizing: border-box;
+  display: flex;
+  width: 180px;
+  min-height: 0;
+  max-height: calc(5 * 2.75rem + 24px); /* five rows at ~44px + vertical padding (12px × 2) */
+  padding: 12px 8px;
+  flex-direction: column;
+  align-items: flex-start;
+  overflow-x: hidden;
+  overflow-y: auto;
+}
+
+.run-tests-menu-icon-play-circle {
+  box-sizing: border-box;
+  display: inline-flex;
+  height: 20px;
+  width: 20px;
+  align-items: center;
+  justify-content: center;
+  border-radius: 9999px;
+  border: 1px solid currentColor;
+}
+
+/* Add test scenario modal — section panels + method cards (Momentum tokens, 4px rhythm) */
+.add-test-scenario-dialog-body {
+  box-sizing: border-box;
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+}
+
+.modal.add-test-scenario-dialog {
+  width: min(62rem, calc(100vw - 48px));
+  max-height: min(calc(100vh - 32px), 56rem);
+  overflow: hidden;
+}
+
+.modal.add-test-scenario-dialog .add-test-scenario-dialog-body {
+  flex: 1 1 auto;
+  min-height: 0;
+  max-height: min(calc(100vh - 14rem), 48rem);
+  overflow-x: hidden;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+.modal.add-test-scenario-dialog .modal-footer {
+  flex-shrink: 0;
+}
+
+/*
+  Momentum dialog body uses height: 100% + vertical centering, which blocks inner scroll and
+  leaves empty space when width is fixed. Tighten width and let the body shrink/scroll.
+*/
+mdc-dialog.add-test-scenario-dialog[visible] {
+  /* Wide enough for two method cards (e.g. “Generate a scenario”) on one line */
+  --mdc-dialog-width: min(62rem, calc(100vw - 48px));
+  max-height: min(calc(100vh - 32px), 56rem);
+  overflow: hidden;
+  justify-content: flex-start;
+  align-items: stretch;
+}
+
+mdc-dialog.add-test-scenario-dialog::part(body) {
+  flex: 1 1 auto;
+  min-height: 0;
+  max-height: min(calc(100vh - 14rem), 48rem);
+  height: auto;
+  overflow-x: hidden;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  justify-content: flex-start;
+  align-items: stretch;
+}
+
+/* Add variable modal — same body scroll pattern, narrower default width */
+.add-variable-dialog-body {
+  box-sizing: border-box;
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+}
+
+mdc-dialog.add-variable-dialog[visible] {
+  --mdc-dialog-width: min(40rem, calc(100vw - 48px));
+  max-height: min(calc(100vh - 32px), 48rem);
+  overflow: hidden;
+  justify-content: flex-start;
+  align-items: stretch;
+}
+
+mdc-dialog.add-variable-dialog::part(body) {
+  flex: 1 1 auto;
+  min-height: 0;
+  max-height: min(calc(100vh - 14rem), 40rem);
+  height: auto;
+  overflow-x: hidden;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  justify-content: flex-start;
+  align-items: stretch;
+}
+
+/* Add variable — variable name beside value; trash aligned with value row */
+.add-variable-dialog-form mdc-select,
+.add-variable-dialog-form mdc-input {
+  width: 100%;
+  --mdc-select-width: 100%;
+}
+
+/*
+  Fixed-position select popovers resolve percentage widths against the viewport, so the listbox
+  can grow wider than the combobox. Tie listbox max-width to this column via container queries.
+*/
+.add-variable-dialog-select-cell {
+  container-type: inline-size;
+  container-name: add-variable-dialog-select;
+}
+
+/*
+  Variable-name Select — dark stacked dropdown (reference): black trigger + panel, subtle border,
+  white labels, blue (#58a6ff) hover/focus/selected rows, list flush below trigger, scrollbar after ~5 rows.
+*/
+mdc-dialog.add-variable-dialog .add-variable-dialog-select-cell mdc-select,
+mdc-dialog.add-test-scenario-dialog .add-test-scenario-dialog-select-cell mdc-select {
+  --mdc-select-listbox-width: 100cqw;
+  --mdc-select-background-color: #000000;
+  --mdc-select-border-color: #30363d;
+  --mdc-select-text-color: #8b949e;
+  --mdc-popover-primary-background-color: #000000;
+  --mdc-popover-border-color: #30363d;
+  --mdc-popover-elevation-3: none;
+  --mdc-listitem-default-background-color: transparent;
+  --mdc-listitem-default-active-background-color: transparent;
+  --mdc-listitem-background-color-hover: #58a6ff;
+  --mdc-listitem-background-color-active: #4493f8;
+  --mdc-listitem-primary-label-color: #f0f6fc;
+  --mdc-listitem-secondary-label-color: #8b949e;
+}
+
+mdc-dialog.add-variable-dialog .add-variable-dialog-select-cell mdc-select::part(popover-content),
+mdc-dialog.add-test-scenario-dialog .add-test-scenario-dialog-select-cell mdc-select::part(popover-content) {
+  padding: 2px 0 0;
+  box-sizing: border-box;
+}
+
+mdc-dialog.add-variable-dialog mdc-select mdc-selectlistbox,
+mdc-dialog.add-test-scenario-dialog mdc-select mdc-selectlistbox {
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 8px;
+  max-height: calc(5 * 2.75rem + 24px);
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+mdc-dialog.add-variable-dialog mdc-select mdc-option,
+mdc-dialog.add-test-scenario-dialog mdc-select mdc-option {
+  margin-inline: 0 !important;
+  max-width: 100% !important;
+  --mdc-listitem-padding-top-bottom: 10px;
+  --mdc-listitem-padding-left-right: 12px;
+}
+
+mdc-dialog.add-variable-dialog mdc-select mdc-option:hover,
+mdc-dialog.add-test-scenario-dialog mdc-select mdc-option:hover,
+mdc-dialog.add-variable-dialog mdc-select mdc-option[data-focused],
+mdc-dialog.add-test-scenario-dialog mdc-select mdc-option[data-focused],
+mdc-dialog.add-variable-dialog mdc-select mdc-option[selected],
+mdc-dialog.add-test-scenario-dialog mdc-select mdc-option[selected] {
+  --mdc-listitem-primary-label-color: #ffffff;
+  background-color: #58a6ff !important;
+}
+
+mdc-dialog.add-variable-dialog mdc-select mdc-option[data-focused],
+mdc-dialog.add-test-scenario-dialog mdc-select mdc-option[data-focused] {
+  box-shadow: none !important;
+}
+
+mdc-dialog.add-variable-dialog mdc-select mdc-option::part(trailing),
+mdc-dialog.add-test-scenario-dialog mdc-select mdc-option::part(trailing) {
+  display: none;
+}
+
+.add-variable-dialog-value-with-action mdc-input {
+  width: 100%;
+}
+
+/* Evaluation detail — narrower than default large dialog; body scrolls when content is tall */
+.evaluation-detail-dialog-body {
+  box-sizing: border-box;
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+}
+
+/*
+  Summary row — three equal cards on a single line. Use explicit grid template so this
+  layout is independent of Tailwind utility ordering and any slotted-content quirks.
+*/
+.evaluation-detail-dialog-summary {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+  align-items: stretch;
+  width: 100%;
+  min-width: 0;
+}
+
+.evaluation-detail-dialog-summary > * {
+  min-width: 0;
+}
+
+.evaluation-detail-dialog {
+  /* Wider dialog; summary row uses compact cards (see EvaluationDetailModal) */
+  width: min(48rem, calc(100vw - var(--spacing-x-large)));
+  max-height: min(calc(100vh - var(--spacing-x-large)), 56rem);
+  overflow: hidden;
+  justify-content: flex-start;
+  align-items: stretch;
+}
+
+.evaluation-detail-dialog .evaluation-detail-dialog-body {
+  flex: 1 1 auto;
+  min-height: 0;
+  max-height: min(calc(100vh - 14rem), 48rem);
+  height: auto;
+  overflow-x: hidden;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  justify-content: flex-start;
+  align-items: stretch;
+}
+
+.evaluation-detail-dialog-aggregated-metrics-surface {
+  padding-block: var(--spacing-medium);
+}
+
+/* Run evaluation — description before run (matches evaluation modal body scroll pattern) */
+.run-evaluation-description-dialog-body {
+  box-sizing: border-box;
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+}
+
+mdc-dialog.run-evaluation-description-dialog[visible] {
+  --mdc-dialog-width: min(40rem, calc(100vw - 48px));
+  max-height: min(calc(100vh - 32px), 48rem);
+  overflow: hidden;
+  justify-content: flex-start;
+  align-items: stretch;
+}
+
+mdc-dialog.run-evaluation-description-dialog::part(body) {
+  flex: 1 1 auto;
+  min-height: 0;
+  max-height: min(calc(100vh - 14rem), 40rem);
+  height: auto;
+  overflow-x: hidden;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  justify-content: flex-start;
+  align-items: stretch;
+}
+
+/* Delete variable — compact destructive confirmation */
+mdc-dialog.delete-variable-confirm-dialog[visible] {
+  --mdc-dialog-width: min(28rem, calc(100vw - 48px));
+}
+
+/* Scenario detail — deep view opened from the evaluation modal; mirrors evaluation modal sizing */
+.scenario-detail-dialog-body {
+  box-sizing: border-box;
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+}
+
+.scenario-detail-dialog {
+  /* Match evaluation detail dialog width */
+  width: min(48rem, calc(100vw - var(--spacing-x-large)));
+  max-height: min(calc(100vh - var(--spacing-x-large)), 56rem);
+  overflow: hidden;
+  justify-content: flex-start;
+  align-items: stretch;
+}
+
+.scenario-detail-dialog .scenario-detail-dialog-body {
+  flex: 1 1 auto;
+  min-height: 0;
+  max-height: min(calc(100vh - 14rem), 48rem);
+  height: auto;
+  overflow-x: hidden;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  justify-content: flex-start;
+  align-items: stretch;
+}
+
+.scenario-detail-dialog-summary-banner {
+  display: grid;
+  gap: var(--spacing-x-small);
+}
+
+.scenario-detail-dialog-back-button.btn {
+  width: 40px;
+  min-width: 40px;
+  padding: 0;
+}
+
+.clus-kpi-st-table-pagination.pagination {
+  padding: 8px 12px;
+  border-top: 1px solid var(--mds-color-theme-outline-secondary-normal);
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.clus-kpi-st-table-pagination .pagination-capacity,
+.clus-kpi-st-table-pagination .pagination-nav {
+  flex: 0 1 auto;
+}
+
+.clus-kpi-dashboard-root .btn[aria-pressed='true'] {
+  background: var(--button-secondary-active);
+  border-color: var(--outline-button);
+}
+
+/* Observability Settings layout — matches the compact builder configuration screen. */
+.observability-configuration-tab .app-heading-block > h2 + p {
+  margin-top: 4px;
+}
+
+.observability-configuration-tab .obs-config-track-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  margin-top: 20px !important;
+}
+
+.observability-configuration-tab .obs-config-track-row-toggle {
+  flex: 1 1 280px;
+  min-width: 0;
+}
+
+.observability-configuration-tab .obs-config-track-row-actions {
+  flex-shrink: 0;
+}
+
+.observability-configuration-tab .gr-panel__rail-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  margin-top: 24px;
+}
+
+.observability-configuration-tab .obs-config-category {
+  margin-top: 40px;
+}
+
+.observability-configuration-tab .obs-config-category:first-child {
+  margin-top: 0;
+}
+
+.observability-configuration-tab .obs-config-category-heading-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: flex-start;
+  gap: 12px;
+  margin-bottom: 8px;
+}
+
+.observability-configuration-tab .obs-config-category-heading-row .gr-panel__section-title {
+  flex: 1 1 160px;
+  min-width: 0;
+  margin: 0;
+  font-size: var(--mds-font-size-heading-small, 20px);
+  font-weight: var(--mds-font-weight-bold, 700);
+  line-height: var(--mds-font-lineheight-heading-small, 28px);
+}
+
+.observability-configuration-tab .obs-config-category-heading-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  gap: 12px;
+  margin-left: auto;
+  flex-shrink: 0;
+}
+
+.observability-configuration-tab .obs-config-category-expand-slot {
+  display: flex;
+  align-items: flex-start;
+}
+
+.observability-configuration-tab .obs-config-category-inner {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.observability-configuration-tab .obs-config-category-metrics {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  margin-top: 16px;
+}
+
+.observability-configuration-tab .obs-config-metric-wrap {
+  display: block;
+  min-width: 0;
+}
+
+.observability-configuration-tab .sec-tab__rail-card {
+  border: 1px solid var(--mds-color-theme-outline-secondary-normal, rgba(255, 255, 255, 0.12));
+  border-radius: 8px;
+  background: var(--mds-color-theme-background-solid-secondary-normal, #1a1a2e);
+  overflow: hidden;
+}
+
+.observability-configuration-tab .sec-tab__rail-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  width: 100%;
+  padding: 12px 16px;
+  background: none;
+  border: none;
+  cursor: pointer;
+  text-align: left;
+  color: inherit;
+}
+
+.observability-configuration-tab .sec-tab__rail-header.obs-config-rail-header {
+  align-items: center;
+}
+
+.observability-configuration-tab .sec-tab__rail-header-left {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  min-width: 0;
+  flex: 1;
+}
+
+.observability-configuration-tab .obs-config-rail-header-toggle {
+  flex: 1;
+  min-width: 0;
+}
+
+.observability-configuration-tab .obs-config-rail-header-actions {
+  display: flex;
+  flex-shrink: 0;
+  align-items: center;
+  gap: 24px;
+}
+
+.observability-configuration-tab .obs-config-rail-header-reorder {
+  display: inline-flex;
+  align-items: center;
+}
+
+.observability-configuration-tab .sec-tab__rail-body {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  padding: 0 20px 20px;
+}
+
+.observability-configuration-tab .obs-config-metric-desc {
+  margin: 0;
+  padding: 0 20px 16px;
+  font-size: var(--mds-font-size-body-midsize, 14px);
+  line-height: var(--mds-font-lineheight-body-midsize, 20px);
+}
+
+.observability-configuration-tab .obs-config-threshold-fields {
+  display: flex;
+  flex-flow: row wrap;
+  align-items: flex-start;
+  gap: 16px;
+}
+
+.observability-configuration-tab .obs-config-threshold-fields > * {
+  flex: 1 1 200px;
+  min-width: 0;
+}
+
+.observability-configuration-tab .obs-config-card--dimmed {
+  opacity: 0.55;
+}
+
+.observability-configuration-tab .obs-config-sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+.observability-configuration-tab .btn-group {
+  display: inline-flex;
+  align-items: center;
+  gap: 0;
+}
+
+.observability-configuration-tab .btn-group .btn {
+  width: 24px;
+  min-width: 24px;
+  height: 24px;
+  padding: 0;
+}
+
+.observability-configuration-tab .btn-group .btn:first-child {
+  border-radius: 999px 0 0 999px;
+}
+
+.observability-configuration-tab .btn-group .btn:last-child {
+  margin-left: -1px;
+  border-radius: 0 999px 999px 0;
+}
+
+.observability-configuration-tab .obs-config-category-expand-slot .btn {
+  height: 24px;
+  min-height: 24px;
+  padding: 2px 10px;
+  border-radius: 999px;
+  font-size: var(--mds-font-size-body-small, 12px);
+  line-height: var(--mds-font-lineheight-body-small, 16px);
+}
+
+.observability-configuration-tab .obs-config-track-row-actions .btn {
+  height: 32px;
+  padding: 6px 12px;
+  border-radius: 999px;
+}
+
+.observability-configuration-tab .toggle {
+  align-items: flex-start;
+}
+
+.observability-configuration-tab .toggle-label {
+  font-size: var(--mds-font-size-body-midsize, 14px);
+  line-height: var(--mds-font-lineheight-body-midsize, 20px);
+}
+
+.observability-configuration-tab .toggle-helper {
+  margin-top: 2px;
+  font-size: var(--mds-font-size-body-midsize, 14px);
+  line-height: var(--mds-font-lineheight-body-midsize, 20px);
+}
+
+.add-test-scenario-dialog-section {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+  box-sizing: border-box;
+  padding: 24px;
+  border-radius: 8px;
+  border: 1px solid var(--mds-color-theme-outline-secondary-normal);
+  background-color: var(--mds-color-theme-background-solid-secondary-normal);
+}
+
+/* Add test scenario — two selectable cards side by side (CX Studio / Momentum CardCheckbox, narrower than default 20rem min) */
+.add-test-scenario-method-cards-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+  width: 100%;
+  min-width: 0;
+}
+
+.add-test-scenario-method-card {
+  flex: 1 1 calc(50% - 8px);
+  box-sizing: border-box;
+  min-width: min(100%, 15rem) !important;
+  max-width: 100%;
+  padding: 16px;
+  border: 1px solid var(--mds-color-theme-outline-secondary-normal);
+  border-radius: 8px;
+  background: var(--mds-color-theme-background-solid-secondary-normal);
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  transition:
+    background-color 0.15s ease,
+    border-color 0.15s ease,
+    box-shadow 0.15s ease;
+}
+
+.add-test-scenario-method-card:hover {
+  background: var(--mds-color-theme-background-secondary-normal);
+}
+
+.add-test-scenario-method-card:focus-visible {
+  outline: 2px solid var(--mds-color-theme-text-accent-normal);
+  outline-offset: 2px;
+}
+
+.add-test-scenario-method-card--selected {
+  border-color: var(--mds-color-theme-outline-primary-normal);
+  box-shadow: inset 0 0 0 1px var(--mds-color-theme-outline-primary-normal);
+}
+
+.add-test-scenario-method-card__title,
+.add-test-scenario-method-card__body {
+  display: block;
+}
+
+/* Test variables — select fills row; Add stays beside trigger (see items-end on toolbar) */
+.add-test-scenario-variable-toolbar mdc-select {
+  width: 100%;
+  --mdc-select-width: 100%;
+}
+
+.add-test-scenario-dialog-select-cell {
+  container-type: inline-size;
+  container-name: add-test-scenario-dialog-select;
+}
+
+/* Generate flow — creativity slider (Add test scenario): accent progress, gray remainder, black thumb, Low/Med/High */
+.add-test-scenario-creativity-slider {
+  width: 50%;
+  max-width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
+}
+
+.add-test-scenario-creativity-slider mdc-slider {
+  /* Track fill (left) vs remainder (right) — JS applies linear-gradient using these tokens */
+  --mdc-slider-progress-color: var(--mds-color-theme-text-accent-normal);
+  --mdc-slider-track-color: var(--mds-color-theme-control-indicator-inactive-normal);
+  /* Thumb: black fill, light stroke (matches design reference) */
+  --mdc-slider-thumb-color: #000000;
+  --mdc-slider-thumb-border-color: var(--mds-color-theme-outline-secondary-normal);
+  --mdc-slider-thumb-size: 1rem;
+  --mdc-slider-track-height: 1.5rem;
+  --mdc-slider-input-size: 0.5rem;
+  --mdc-slider-tick-size: 0.125rem;
+}
+
+.add-test-scenario-creativity-slider mdc-slider:hover {
+  --mdc-slider-thumb-color: #000000;
+  --mdc-slider-thumb-border-color: var(--mds-color-theme-outline-input-normal);
+}
+
+.add-test-scenario-creativity-slider mdc-slider::part(slider-labels) {
+  display: none;
+}
+
+.add-test-scenario-creativity-slider mdc-slider::part(single-slider) {
+  border-radius: 9999px;
+}
+
+.add-test-scenario-creativity-slider-labels {
+  width: 100%;
+}
+
+/* Simulated testing — overview: compact date preset next to section title (one row) */
+.testing-overview-date-range-select {
+  flex-shrink: 0;
+  width: 9rem;
+  max-width: min(100%, 12rem);
+}
+
+.testing-overview-date-range-select mdc-select {
+  width: 100%;
+  --mdc-select-width: 100%;
+  --mdc-select-listbox-width: min(100vw - 48px, 11rem);
+}
+
+/* Non-interactive projection metric card at end of Voice/Digital usage sections (no sparkline).
+   Solid secondary surface so it reads clearly on `.clus-kpi-split-main` (opaque primary bg). */
+.obs-kpi-projection-card.kpi-card {
+  cursor: default;
+  width: 100%;
+  background: var(--mds-color-theme-background-solid-secondary-normal);
+  border: 1px solid var(--mds-color-theme-outline-secondary-normal);
+}
+
+/*
+  KPI cards — glass surface + 4-up grid (compact two-row layout: title row + value/sparkline/delta).
+*/
+.kpi-card-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 16px;
+}
+
+@media (min-width: 640px) {
+  .kpi-card-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (min-width: 1024px) {
+  .kpi-card-grid {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+}
+
+.kpi-card-grid__expanded {
+  grid-column: 1 / -1;
+}
+
+.kpi-card {
+  position: relative;
+  display: block;
+  width: 100%;
+  margin: 0;
+  padding: 0;
+  border: none;
+  text-align: left;
+  font: inherit;
+  cursor: default;
+  border-radius: 8px;
+  overflow: visible;
+  container-type: inline-size;
+  container-name: kpi-card;
+  transition:
+    box-shadow 0.2s ease,
+    background-color 0.2s ease,
+    transform 0.2s ease;
+}
+
+.kpi-card__primary {
+  display: block;
+  box-sizing: border-box;
+  width: 100%;
+  min-height: auto;
+  margin: 0;
+  padding: 0;
+  border: none;
+  background: transparent;
+  text-align: left;
+  font: inherit;
+  cursor: pointer;
+  border-radius: 8px;
+  color: inherit;
+}
+
+.kpi-card__primary:focus-visible {
+  outline: 2px solid var(--mds-color-theme-text-accent-normal);
+  outline-offset: 2px;
+}
+
+.kpi-card--glass {
+  background: var(--mds-color-theme-background-glass-normal, rgba(255, 255, 255, 0.05));
+  border: 1px solid var(--mds-color-theme-outline-glass-0, rgba(255, 255, 255, 0.11));
+  /* No backdrop-filter here: nested blur inside `overflow: auto` main caused scroll compositing glitches. */
+}
+
+.kpi-card--active {
+  background: color-mix(
+    in srgb,
+    var(--mds-color-theme-text-accent-normal) 12%,
+    var(--mds-color-theme-background-glass-normal, rgba(255, 255, 255, 0.05))
+  );
+  box-shadow: 0 0 0 2px var(--mds-color-theme-text-accent-normal);
+}
+
+.kpi-card__inner {
+  box-sizing: border-box;
+  display: flex;
+  width: 100%;
+  flex-direction: column;
+  align-items: stretch;
+  justify-content: flex-start;
+  gap: 12px;
+  min-height: auto;
+  padding: 12px 16px;
+  overflow: hidden;
+  border-radius: 8px;
+}
+
+.kpi-card__header {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  width: 100%;
+  min-width: 0;
+}
+
+.kpi-card__header--reserve-pin {
+  padding-right: 28px;
+}
+
+.kpi-card__title-with-icon {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.kpi-card__title {
+  flex: 1 1 auto;
+  margin: 0;
+  min-width: 0;
+}
+
+.kpi-card__threshold-icon {
+  display: inline-flex;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  line-height: 0;
+}
+
+.kpi-card__threshold-icon-glyph {
+  display: block;
+  flex-shrink: 0;
+}
+
+.kpi-card__header-actions {
+  display: flex;
+  flex-shrink: 0;
+  align-items: center;
+  gap: 4px;
+}
+
+.kpi-card__pin-hit {
+  position: absolute;
+  top: 12px;
+  right: 16px;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  padding: 0;
+  border: none;
+  border-radius: 9999px;
+  background: transparent;
+  font: inherit;
+  color: inherit;
+  cursor: pointer;
+  transition: background-color 0.15s ease;
+}
+
+.kpi-card__pin-hit:hover {
+  background: var(--mds-color-theme-background-solid-secondary-normal);
+}
+
+.kpi-card__pin-hit:focus-visible {
+  outline: 2px solid var(--mds-color-theme-text-accent-normal);
+  outline-offset: 2px;
+}
+
+.kpi-card__info-tooltip-trigger {
+  cursor: help;
+}
+
+/* KPI info tooltips: host uses popover width (default max-content); cap host + inner part */
+mdc-tooltip.kpi-card-tooltip {
+  --mdc-popover-max-width: min(360px, calc(100vw - 32px));
+  --mdc-tooltip-max-width: min(360px, calc(100vw - 32px));
+  box-sizing: border-box;
+}
+
+mdc-tooltip.kpi-card-tooltip::part(popover-content) {
+  overflow-wrap: break-word;
+}
+
+.kpi-card__value-row {
+  display: flex;
+  flex-wrap: nowrap;
+  align-items: center;
+  gap: 8px;
+  min-height: 32px;
+  width: 100%;
+  min-width: 0;
+}
+
+/* Primary metric: may shrink so the fixed-width sparkline never overlaps digits */
+.kpi-card__value {
+  flex: 1 1 0%;
+  margin: 0;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Reserve horizontal space for the SVG; rendered size follows `.kpi-card__sparkline svg` rules below */
+.kpi-card__sparkline {
+  flex: 0 0 auto;
+  display: flex;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: flex-end;
+  margin-left: 0;
+}
+
+/* SVG scales down on narrow cards so value + delta + trend stay one row without overlap */
+.kpi-card__sparkline svg {
+  display: block;
+  width: 64px;
+  height: 24px;
+}
+
+.kpi-card__delta {
+  flex: 0 1 auto;
+  margin: 0;
+  white-space: nowrap;
+  min-width: 0;
+}
+
+.kpi-card__delta:empty {
+  display: none;
+}
+
+@container kpi-card (max-width: 320px) {
+  .kpi-card__value-row {
+    gap: 4px;
+  }
+
+  .kpi-card__sparkline svg {
+    width: 48px;
+    height: 20px;
+  }
+}
+
+@container kpi-card (max-width: 260px) {
+  .kpi-card__sparkline svg {
+    width: 40px;
+    height: 16px;
+  }
+}
+
+@container kpi-card (max-width: 220px) {
+  .kpi-card__sparkline svg {
+    width: 32px;
+    height: 12px;
+  }
+}
+/* builder index.css lines 9296-9525 */
+/* CLUS KPI — semantic theme tokens (clus-kpi-theme.ts); Momentum CSS variables */
+.clus-kpi-ck-text {
+  color: var(--mds-color-theme-text-primary-normal);
+}
+
+.clus-kpi-ck-text-muted {
+  color: var(--mds-color-theme-text-secondary-normal);
+}
+
+.clus-kpi-ck-text-success {
+  color: var(--mds-color-theme-text-success-normal);
+}
+
+.clus-kpi-ck-text-error {
+  color: var(--mds-color-theme-text-error-normal);
+}
+
+.clus-kpi-ck-text-warning {
+  color: var(--mds-color-theme-text-warning-normal);
+}
+
+.clus-kpi-ck-text-accent {
+  color: var(--mds-color-theme-text-accent-normal);
+}
+
+.clus-kpi-ck-text-inverted {
+  color: var(--mds-color-theme-inverted-text-primary-normal);
+  --mdc-icon-fill-color: var(--mds-color-theme-inverted-text-primary-normal);
+}
+
+/* Foreground on accent-colored fills: inverted-text-* swaps in dark Webex; common text stays light in both themes */
+.clus-kpi-ck-text-on-accent {
+  color: var(--mds-color-theme-common-text-primary-normal);
+  --mdc-icon-fill-color: var(--mds-color-theme-common-text-primary-normal);
+}
+
+.clus-kpi-ck-border {
+  border-color: var(--mds-color-theme-outline-secondary-normal);
+}
+
+/* Transcript bubbles — explicit radii (replaces arbitrary Tailwind rounded-[…] utilities) */
+.clus-kpi-chat-bubble-customer {
+  border-radius: 12px 12px 12px 0;
+}
+
+.clus-kpi-chat-bubble-agent {
+  border-radius: 12px 12px 0 12px;
+}
+
+.clus-kpi-ck-bg-deep {
+  background-color: var(--mds-color-theme-background-solid-primary-normal);
+}
+
+.clus-kpi-ck-bg-surface {
+  background-color: var(--mds-color-theme-background-solid-secondary-normal);
+}
+
+.clus-kpi-ck-bg-subtle {
+  background-color: var(--mds-color-theme-background-secondary-normal);
+}
+
+.clus-kpi-ck-bg-hover:hover {
+  background-color: var(--mds-color-theme-background-secondary-normal);
+}
+
+.clus-kpi-ck-hover-text:hover {
+  color: var(--mds-color-theme-text-primary-normal);
+}
+
+.clus-kpi-ck-divide-y > tr + tr {
+  border-top-width: 1px;
+  border-top-style: solid;
+  border-top-color: var(--mds-color-theme-outline-secondary-normal);
+}
+
+.clus-kpi-section-heading {
+  padding-bottom: 4px;
+  color: var(--mds-color-theme-text-primary-normal);
+}
+
+.clus-kpi-table-title {
+  padding-bottom: 4px;
+  color: var(--mds-color-theme-text-primary-normal);
+}
+
+.clus-kpi-table-card {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  min-width: 0;
+  overflow: hidden;
+  border-radius: 8px;
+  border-width: 1px;
+  border-style: solid;
+  background-color: var(--mds-color-theme-background-solid-secondary-normal);
+  border-color: var(--mds-color-theme-outline-secondary-normal);
+}
+
+/* Simulated testing — Scenarios + Change log: denser cells than default Row Table */
+.clus-kpi-table-card--testing-compact .clus-kpi-table-th {
+  padding: 8px 12px;
+}
+
+.clus-kpi-table-card--testing-compact .clus-kpi-table-td {
+  padding: 8px 12px;
+  min-height: 40px;
+}
+
+.clus-kpi-table-scroll {
+  width: 100%;
+  min-width: 0;
+  overflow: auto;
+}
+
+/* Row table (Momentum Web — Row Table template): solid-tertiary header, input-outline separator, 48px body rows */
+.clus-kpi-table-thead {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  background-color: var(--mds-color-theme-background-solid-tertiary-normal);
+}
+
+.clus-kpi-table-thead-row {
+  border-color: var(--mds-color-theme-outline-input-normal);
+}
+
+.clus-kpi-table-thead-row:hover {
+  background: transparent;
+}
+
+/* Header: body/small/medium, secondary — matches Figma column header (~36px row) */
+.clus-kpi-table-th {
+  padding: 8px 12px;
+  box-sizing: border-box;
+  vertical-align: middle;
+  font-family: var(--mds-font-family-primary);
+  font-size: var(--mds-font-size-body-small);
+  line-height: var(--mds-font-lineheight-body-small);
+  font-weight: var(--mds-font-weight-medium);
+  color: var(--mds-color-theme-text-secondary-normal);
+  border-bottom: 1px solid var(--mds-color-theme-outline-input-normal);
+}
+
+.clus-kpi-table-th--sortable {
+  cursor: pointer;
+}
+
+.clus-kpi-table-tr {
+  border-color: var(--mds-color-theme-outline-secondary-normal);
+  background-color: var(--mds-color-theme-background-primary-ghost);
+}
+
+.clus-kpi-table-tr:hover {
+  background-color: var(--mds-color-theme-background-secondary-normal);
+}
+
+/* Body cell rhythm — Figma Row Table /.Body Cell Base px-12, 48px row */
+.clus-kpi-table-td {
+  padding: 12px;
+  box-sizing: border-box;
+  min-height: 48px;
+  vertical-align: middle;
+}
+
+.clus-kpi-table-footer {
+  display: flex;
+  flex: none;
+  align-items: center;
+  justify-content: space-between;
+  border-top-width: 1px;
+  border-top-style: solid;
+  padding: 8px 12px;
+  font-size: 14px;
+  border-color: var(--mds-color-theme-outline-secondary-normal);
+  background-color: var(--mds-color-theme-background-solid-secondary-normal);
+  color: var(--mds-color-theme-text-secondary-normal);
+}
+
+.clus-kpi-agent-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: var(--mds-font-size-body-midsize);
+  line-height: var(--mds-font-lineheight-body-midsize);
+  font-family: var(--mds-font-family-primary);
+  text-align: left;
+}
+
+.clus-kpi-agent-table td {
+  padding: 12px;
+  box-sizing: border-box;
+  text-align: left;
+  border-bottom: 1px solid var(--mds-color-theme-outline-secondary-normal);
+}
+
+/* Agent name: real link (hash `#/agent/…` syncs with ClusKpiDashboardRoot) */
+.clus-kpi-agent-name-link {
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--mds-color-theme-text-accent-normal);
+  text-decoration: none;
+}
+
+.clus-kpi-agent-name-link:hover {
+  text-decoration: underline;
+}
+
+/* Failed test IDs — plain accent text (no native button fill) */
+button.clus-kpi-test-id-link {
+  appearance: none;
+  -webkit-appearance: none;
+  margin: 0;
+  font-family: inherit;
+  font-size: 14px;
+  font-weight: 500;
+  line-height: inherit;
+  color: var(--mds-color-theme-text-accent-normal);
+  background: transparent;
+  border: none;
+  box-shadow: none;
+  text-decoration: none;
+}
+
+button.clus-kpi-test-id-link:hover,
+button.clus-kpi-test-id-link:active,
+button.clus-kpi-test-id-link:focus,
+button.clus-kpi-test-id-link:focus-visible {
+  background: transparent;
+  box-shadow: none;
+}
+
+/* Failed test IDs — chip treatment used by the cloned simulated testing tables. */
+button.clus-kpi-eval-id-link {
+  appearance: none;
+  -webkit-appearance: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 20px;
+  margin: 0;
+  padding: 0 8px;
+  border: 1px solid var(--mds-color-theme-common-outline-secondary-normal);
+  border-radius: 2px;
+  background: var(--mds-color-theme-common-background-solid-light);
+  box-shadow: none;
+  color: var(--mds-color-theme-common-inverted-text-primary-normal);
+  font-family: inherit;
+  font-size: 12px;
+  font-weight: 500;
+  line-height: 16px;
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+button.clus-kpi-eval-id-link:hover,
+button.clus-kpi-eval-id-link:active,
+button.clus-kpi-eval-id-link:focus,
+button.clus-kpi-eval-id-link:focus-visible {
+  background: var(--mds-color-theme-common-button-primary-hover);
+  box-shadow: none;
+  text-decoration: none;
+}
+
+button.clus-kpi-eval-id-link:focus-visible {
+  outline: 2px solid var(--mds-color-theme-text-accent-normal);
+  outline-offset: 2px;
+}
+

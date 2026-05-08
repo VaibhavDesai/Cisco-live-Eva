@@ -1,0 +1,57 @@
+Category,Metric (Unit),Autonomous,Scripted,Primary Consumer,Target (illustrative),Calculation Logic,Phase 1
+Action Performance,Action/Intent Success Rate (%),?,?,Dev,? 98 %,Successful Action/Intent calls / correctly recognised intents (to be displayed as a heatmap vs intents/actions),Phase 1
+Action Performance,Autonomous Action Coverage (%),?,—,Dev,< 85 %,# actions taken by agent / # actions required,Phase 1
+Action Performance,Workflow Completion Rate,?,—,Dev,? 92%,End-to-end business processes completed / initiated,Phase 1
+Action Performance,Average Actions per Conversation (#),?,?,Dev,? 4,Total actions / total conversations,Phase 1
+Action Performance,Fallback Rate (%),?,?,Dev,? 5 %,Fallback turns / total turns,Phase 1
+Action Performance,Fulfilment Success Rate (%),?,—,Dev,< 90 %,# actions achieving expected API response / total,Phase 1
+Action Performance,Fulfilment  Latency P95 (ms),?,—,Dev,> 2 000 ms,p95 round-trip for fulfilment,Phase 1
+AI Quality,Hallucination Rate (%),?,—,Dev,? 2 %,Hallucination flags / total LLM answers,Phase 1
+AI Quality,Answer Correctness (%),?,—,Dev,? 90 %,Correct labels / total labelled,Phase 1
+Security,Guardrails Trigger Flag (%),?,—,Dev,0%,Flagged conversations / total conversations,Phase 1
+AI Quality,Goal Completion Rate (%),?,?,Dev,? 85 %,Completed goals / total goals,Phase 1
+AI Quality,Intent Recognition Accuracy (%),?,?,Dev,? 88 %,Correct intents / total labelled intents (at an intent level),Phase 1
+AI Quality,RAG Context Relevance (%),?,—,Dev,< 92 %,RAG level relevance,Phase 1
+AI Quality,Instruction Adherence (%),?,—,Dev,< 98 %,LLM checks scripted flow steps executed in order,Phase 1
+AI Quality,Context Switch Accuracy (%),?,—,Dev,< 95 %,# correct topic switches / total switches (LLM),Phase 1
+AI Quality,Multi-intent Accuracy (%),?,—,Dev,< 85 %,LLM judges if all sub-intents addressed,Phase 1
+Business Impact,AHT Reduction (%),?,?,Supervisor,< 10 %,(Baseline AHT – AI AHT) / Baseline AHT,Phase 1
+Business Impact,First-Contact Resolution (%),?,?,Supervisor,>=65 %,Sessions solved without return within 'x' time for an intent,Phase 1
+Business Impact,AutoCSAT Improvement,?,?,Supervisor,5%,Source granular data from AutoCSAT and use  average,Phase 1
+Action Performance,Action call Acknowledgement Latency (ms),?,—,Dev,> 1 500 ms,p95 time from customer msg to agent “ack” trigger for an action call,Phase 1
+Customer Experience,Negative Sentiment Rate (%),?,?,Supervisor,> 15 %,LLM judges last 'x' customer turn = negative,Phase 1
+Customer Experience,CSAT Predictor (0-5) (AutoCSAT),?,?,Supervisor,< 3.8,AutoCSAT,Phase 1
+Customer Experience,Politeness Score (1-5),?,?,Supervisor,< 4.0,LLM grades agent last turn courtesy,Phase 1
+Customer Experience,Empathy Match (%),?,—,Supervisor,< 90 %,LLM judges agent emotional tone ? customer need,Phase 1
+Customer Experience,Containment Rate (%),?,?,Supervisor,? 70 %,% of all conversations across all agents that never escalate,Phase 1
+Customer Experience,Transfer / Escalation Rate (%),?,?,Supervisor,? 15 %,Escalated conversations / total conversations,Phase 1
+Customer Experience,Avg. Turns-to-Solve,?,?,Dev,> 5,sum(turns per session) / sessions,Phase 1
+Digital-specific,Average Response Latency (ms),?,?,Dev,? 500 ms,95-pctl all digital turns,Phase 1
+Knowledge Performance,Knowledge Staleness Rate (%),?,—,Dev,<5%,# queries hitting outdated KB sources / total KB-sourced queries,Phase 1
+Knowledge Performance,RAG Context Sufficiency,?,—,Dev,? 80 %,Average precision across all RAG calls,Phase 1
+Knowledge Performance,Missing-Content Trigger (count),?,—,Dev,> 50 / day,# queries with zero relevant chunk (small talk to be removed),Phase 1
+Knowledge Performance,Knowledge Coverage (%),?,—,Dev,? 90 %, queries where the sufficiency score + RAG retrieval high/ total queries,Phase 1
+Knowledge Performance,Knowledge Confidence (%),?,—,Dev,< 0.75,avg confidence score of retrieved chunks,Phase 1
+Security,Adversarial Prompt Detection & Block Rate (%),?,—,Dev,0 incidents,Malicious prompts blocked / total attempted attacks,Phase 1
+Security,Adversarial Prompt Detection & Block Count ,?,—,Supervisor,0,Count of detected and blocked attacks,Phase 1
+Security,Toxic Content Generation (%),?,—,Dev,any > 0,Safety filter flags output,Phase 1
+Security,Policy Violation / Guardrail Block Rate (%),?,—,Dev,? 0.5 %,Blocked messages / total messages,Phase 1
+Security,PCI Leakage,?,—,Dev,<1%,PCI not masked/total interaction,Phase 1
+Voice-specific,Client Barge-in Rate (%),?,?,Supervisor,? 5 %,voice sessions with user interruption,Phase 1
+Voice-specific,DTMF Fallback Rate (%),?,?,Supervisor,? 3 %,conv switched to keypad,Phase 1
+Voice-specific,Average Response Latency (ms),?,?,Dev,? 500 ms,95-pctl all voice turns,Phase 1
+,,,,,,,
+,,,,,,,
+,,,,,,,
+,,,,,,,
+,,,,,,,
+,,,,,,,
+,,,,,,,
+,,,,,,,
+,,,,,,,
+,,,,,,,
+,,,,,,,
+,,,,,,,
+,,,,,,,
+,,,,,,,
+,,,,,,,

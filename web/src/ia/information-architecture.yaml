@@ -1,0 +1,388 @@
+# Information architecture - single source of truth for routes and navigation
+# Edit this file to add sections, screens, or change the app structure
+
+projects:
+  - id: ai-agent-studio
+    name: AI Customer Studio
+    description: Primary Builder workspace for agents, knowledge, integrations, preferences, and settings demos.
+    default: true
+    navSectionIds:
+      - home
+      - ai-agents
+      - interactions
+      - knowledge
+      - integrations
+      - preferences
+      - filters
+      - ai-assistant-skills
+      - settings
+      - screen-improvements
+      - component-showcase
+      - ai3-triangle-support
+  - id: ai-studio-concept
+    name: AI Studio Concept
+    description: Concept shell with AI Studio navigation; routes render empty canvas for structure and Figma exploration.
+    default: false
+    navSectionIds:
+      - asc-agents
+      - asc-ai-assistant-skills
+      - asc-knowledge
+      - asc-integrations
+      - asc-observability
+      - asc-ai-engine
+  - id: ai3
+    name: AI3
+    description: AI3 triangle support suite demo project.
+    navSectionIds:
+      - triangle-support-suite
+  - id: clus
+    name: CLUS
+    description: Cisco Live US demo surfaces (home, simulated testing, KPI dashboard).
+    navSectionIds:
+      - clus-ai-agents
+      - clus-ai-assistant-skills
+      - clus-knowledge
+      - clus-integrations
+      - clus-kpi-dashboard
+      - clus-ai-engine
+  - id: wfm
+    name: WFM
+    description: Workforce management forecasting demo project.
+    navSectionIds:
+      - wfm-forecasting
+  - id: knowledge
+    name: Knowledge
+    description: Knowledge-focused navigation subset for scoped demos.
+    navSectionIds:
+      - knowledge
+  - id: project-10479
+    name: '10479'
+    description: Ticket 10479 prototype (surf shop sessions).
+    navSectionIds:
+      - surf-shop-sessions
+  - id: coveo-integration
+    name: Coveo Integration
+    description: Knowledge-focused Coveo search and indexing demos.
+    navSectionIds:
+      - knowledge
+
+sections:
+  - id: surf-shop-sessions
+    path: /surf-shop-sessions
+    screen: SurfShopSessionsScreen
+    label: Sessions
+    icon: history-bold
+  - id: screen-improvements
+    path: /screen-improvements
+    screen: ScreenImprovementsScreen
+    label: Screen improvements
+    icon: edit-bold
+  - id: component-showcase
+    path: /component-showcase
+    screen: ComponentShowcaseScreen
+    label: Component showcase
+    icon: widget-bold
+  - id: home
+    path: /
+    screen: HomeScreen
+    label: Home
+    icon: home-bold
+  - id: clus-home
+    path: /clus
+    screen: ClusHomeScreen
+    label: Home
+    icon: home-bold
+  - id: clus-ai-agents
+    path: /clus/ai-agents
+    screen: AiAgentsScreen
+    label: AI Agents
+    icon: bot-customer-assistant-bold
+    iconActive: bot-customer-assistant-filled
+    # Keep "AI Agents" selected when viewing the Billing Support flow (Testing,
+    # Configuration, Interactions, History, Analytics all share /simulated-testing).
+    activeForPathPrefixes:
+      - /simulated-testing
+  - id: clus-ai-assistant-skills
+    path: /clus/ai-assistant-skills
+    screen: AiAssistantSkillsScreen
+    label: AI Assistant
+    icon: primary-participant-bold
+  - id: clus-knowledge
+    path: /clus/knowledge
+    screen: KnowledgeScreen
+    label: Knowledge
+    icon: widget-bold
+  - id: clus-integrations
+    path: /clus/integrations
+    screen: IntegrationsScreen
+    label: Integrations
+    icon: integrations-bold
+  - id: clus-ai-engine
+    path: /clus/ai-engine
+    screen: AiEngineScreen
+    label: AI Engine
+    icon: tools-bold
+  - id: clus-simulated-testing
+    path: /simulated-testing
+    screen: ClusSimulatedTestingScreen
+    label: Testing
+    icon: bot-customer-assistant-bold
+    iconActive: bot-customer-assistant-filled
+  - id: clus-kpi-dashboard
+    path: /kpi-dashboard
+    screen: ClusKpiDashboardScreen
+    label: Observability
+    icon: multiline-chart-bold
+  - id: command-centre
+    path: /command-centre
+    screen: CommandCentreScreen
+    label: Command centre
+    icon: analysis-bold
+  - id: interactions
+    path: /interactions
+    screen: InteractionsScreen
+    label: Interactions
+    icon: chat-bold
+  - id: interactions-detail
+    path: /interactions/:id
+    screen: InteractionsSessionDetailScreen
+  - id: ai-agents
+    path: /ai-agents
+    screen: AiAgentsScreen
+    label: AI Agents
+    icon: bot-customer-assistant-bold
+    # Keep "AI Agents" selected when viewing the Billing Support flow (Testing,
+    # Configuration, Interactions, History, Analytics all share /simulated-testing).
+    activeForPathPrefixes:
+      - /simulated-testing
+    children:
+      - id: create-agent
+        path: create
+        screen: CreateAgentScreen
+        label: Create agent
+        icon: plus-bold
+      - id: flow-designer
+        path: flow-designer
+        screen: AgentFlowDesignerScreen
+        label: Flow designer
+        icon: workflow-deployments-bold
+      - id: profile-form
+        path: profile
+        screen: ProfileFormScreen
+        label: Profile
+        icon: user-bold
+      - id: agent-conversation
+        path: conversation
+        screen: AutonomousConfigurationProfileScreen
+        label: Conversation
+        icon: chat-bold
+      - id: simulated-testing
+        path: testing
+        screen: SimulatedTestingOverviewScreen
+        label: Testing
+        icon: test-tube-bold
+      - id: journey
+        path: journey
+        screen: JourneyScreen
+        label: Journey
+        icon: workflow-deployments-bold
+      - id: journey-canvas
+        path: journey/canvas
+        screen: JourneyCanvasScreen
+        label: Canvas
+        icon: workflow-deployments-bold
+        showInNav: false
+      - id: summary-template
+        path: summary-template
+        screen: SummaryTemplateScreen
+        label: Summary template
+        icon: notes-bold
+      - id: ai-guardrails
+        path: guardrails
+        screen: AiAgentGuardrailsScreen
+        label: AI guardrails
+        icon: shield-bold
+  - id: ai3-triangle-support
+    path: /triangle-support
+    screen: Ai3TriangleSupportScreen
+    label: Triangle support
+    icon: announcement-bold
+  - id: wfm-forecasting
+    path: /wfm
+    label: WFM forecasting
+    icon: chart-line-bold
+    children:
+      - id: wfm-forecasts-list
+        path: ''
+        screen: WfmForecastsListScreen
+        label: Forecasts list
+        icon: list-bullets-bold
+      - id: wfm-create-forecast
+        path: create
+        screen: WfmCreateForecastScreen
+        label: Create forecast
+        icon: plus-bold
+      - id: wfm-forecast-detail
+        path: details
+        screen: WfmForecastDetailScreen
+        label: Forecast details
+        icon: edit-bold
+      - id: wfm-review-anomalies
+        path: review-anomalies
+        screen: WfmReviewAnomaliesScreen
+        label: Review anomalies
+        icon: warning-bold
+  - id: triangle-support-suite
+    path: /triangle-support-suite
+    label: Triangle support
+    icon: announcement-bold
+    children:
+      - id: ai3-customer-chat-surface
+        path: customer-chat
+        screen: Ai3CustomerChatSurfaceScreen
+        label: Customer chat surface
+        icon: chat-bold
+      - id: ai3-agent-desktop
+        path: agent-desktop
+        screen: Ai3AgentDesktopScreen
+        label: Agent desktop
+        icon: primary-participant-bold
+      - id: ai3-supervisor-admin
+        path: supervisor-admin
+        screen: Ai3SupervisorAdminScreen
+        label: Supervisor and admin
+        icon: settings-bold
+      - id: ai3-knowledge-manager
+        path: knowledge-manager
+        screen: Ai3KnowledgeManagerScreen
+        label: Knowledge manager
+        icon: notes-bold
+      - id: ai3-privacy-audit-analytics
+        path: privacy-analytics
+        screen: Ai3PrivacyAuditAnalyticsScreen
+        label: Privacy and analytics
+        icon: shield-bold
+  - id: ai-assistant-skills
+    path: /ai-assistant-skills
+    screen: AiAssistantSkillsScreen
+    label: AI Assistant
+    icon: primary-participant-bold
+  - id: knowledge
+    path: /knowledge
+    label: Knowledge
+    icon: widget-bold
+    children:
+      - id: knowledge-home
+        path: ''
+        screen: KnowledgeScreen
+        label: Knowledge
+        icon: widget-bold
+      - id: extract-websites
+        path: extract-websites
+        screen: ExtractWebsitesScreen
+        label: Extract websites
+        icon: language-bold
+      - id: knowledge-base-detail
+        path: bases/:kbId
+        screen: KnowledgeBaseDetailScreen
+        label: Knowledge base
+        showInNav: false
+        icon: widget-bold
+        children:
+          - id: knowledge-source-detail
+            path: sources/:sourceId
+            screen: KnowledgeSourceDetailScreen
+            label: Source
+            showInNav: false
+            icon: widget-bold
+  - id: integrations
+    path: /integrations
+    screen: IntegrationsScreen
+    label: Integrations
+    icon: integrations-bold
+  - id: preferences
+    path: /preferences
+    screen: PreferencesFormScreen
+    label: Preferences
+    icon: settings-bold
+  - id: filters
+    path: /filters
+    screen: FiltersScreen
+    label: Filters
+    icon: filter-bold
+  - id: settings
+    path: /settings
+    label: Settings
+    icon: settings-bold
+    children:
+      - id: profile
+        path: profile
+        screen: ProfileScreen
+        label: Profile
+        icon: user-bold
+      - id: voice
+        path: voice
+        screen: VoiceSettingsScreen
+        label: Voice
+        icon: microphone-bold
+      - id: timezone
+        path: timezone
+        screen: TimezoneSelectionScreen
+        label: Timezone
+        icon: schedule-send-bold
+      - id: enterprise-profile
+        path: enterprise-profile
+        screen: EnterpriseProfileScreen
+        label: Settings
+        icon: company-bold
+      - id: ai-transparency-settings
+        path: ai-transparency
+        screen: AgentAiTransparencySettingsScreen
+        label: AI transparency
+        icon: announcement-bold
+  - id: asc-agents
+    path: /concept/ai-agents
+    screen: AiStudioConceptEmptyScreen
+    label: AI Agents
+    icon: bot-customer-assistant-bold
+    iconActive: bot-customer-assistant-filled
+  - id: asc-ai-assistant-skills
+    path: /concept/ai-assistant-skills
+    screen: AiStudioConceptAiAssistantSkillsScreen
+    label: AI Assistant
+    icon: primary-participant-bold
+    activeForPathPrefixes:
+      - /concept/summary-template
+      - /concept/test-customer
+  - id: asc-knowledge
+    path: /concept/knowledge
+    screen: AiStudioConceptEmptyScreen
+    label: Knowledge
+    icon: widget-bold
+  - id: asc-integrations
+    path: /concept/integrations
+    screen: AiStudioConceptEmptyScreen
+    label: Integrations
+    icon: integrations-bold
+  - id: asc-observability
+    path: /concept/observability
+    screen: AiStudioConceptEmptyScreen
+    label: Observability
+    icon: multiline-chart-bold
+  - id: asc-ai-engine
+    path: /concept/ai-engine
+    screen: AiStudioConceptEmptyScreen
+    label: AI Engine
+    icon: tools-bold
+  - id: asc-test-customer
+    path: /concept/test-customer
+    screen: TestCustomerScreen
+    label: Create AI customer
+    icon: people-bold
+    showInNav: false
+  - id: asc-summary-template
+    path: /concept/summary-template
+    screen: AiStudioConceptSummaryTemplateScreen
+    label: Summary template
+    icon: notes-bold
+    showInNav: false

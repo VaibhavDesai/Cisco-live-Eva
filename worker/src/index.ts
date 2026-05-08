@@ -2,6 +2,7 @@ interface Env {
   CISCO_AI_AUTH: string;
   CISCO_AI_APPKEY: string;
   ELEVENLABS_API_KEY?: string;
+  ELEVENLABS_AGENT_ID?: string;
   ALLOWED_ORIGIN: string;
 }
 
@@ -32,9 +33,31 @@ async function getCiscoToken(auth: string): Promise<string> {
   return cachedToken;
 }
 
+function originMatchesAllowedEntry(origin: string, allowedEntry: string): boolean {
+  if (allowedEntry === '*') return true;
+  if (allowedEntry === origin) return true;
+
+  if (!allowedEntry.includes('*')) return false;
+
+  try {
+    const requestOrigin = new URL(origin);
+    const allowedOrigin = new URL(allowedEntry);
+
+    if (requestOrigin.protocol !== allowedOrigin.protocol) return false;
+
+    const allowedHost = allowedOrigin.hostname;
+    if (!allowedHost.startsWith('*.')) return false;
+
+    const suffix = allowedHost.slice(1);
+    return requestOrigin.hostname.endsWith(suffix);
+  } catch {
+    return false;
+  }
+}
+
 function corsHeaders(origin: string, allowedOrigin: string): Record<string, string> {
-  const allowed = allowedOrigin.split(',').map(o => o.trim());
-  const isAllowed = allowed.includes(origin) || allowed.includes('*');
+  const allowed = allowedOrigin.split(',').map(o => o.trim()).filter(Boolean);
+  const isAllowed = allowed.some(entry => originMatchesAllowedEntry(origin, entry));
 
   if (!isAllowed) return {};
 
@@ -64,6 +87,10 @@ export default {
     }
 
     try {
+      if (url.pathname === '/convai/signed-url') {
+        return await handleElevenLabsSignedUrl(env, cors);
+      }
+
       if (url.pathname === '/transcribe') {
         return await handleTranscribe(request, env, cors);
       }
@@ -126,6 +153,62 @@ export default {
     }
   },
 };
+
+async function handleElevenLabsSignedUrl(
+  env: Env,
+  cors: Record<string, string>,
+): Promise<Response> {
+  if (!env.ELEVENLABS_API_KEY) {
+    return new Response(JSON.stringify({ error: 'ELEVENLABS_API_KEY not configured' }), {
+      status: 500,
+      headers: { 'Content-Type': 'application/json', ...cors },
+    });
+  }
+
+  if (!env.ELEVENLABS_AGENT_ID) {
+    return new Response(JSON.stringify({ error: 'ELEVENLABS_AGENT_ID not configured' }), {
+      status: 500,
+      headers: { 'Content-Type': 'application/json', ...cors },
+    });
+  }
+
+  const signedUrlRes = await fetch(
+    `https://api.elevenlabs.io/v1/convai/conversation/get-signed-url?agent_id=${encodeURIComponent(env.ELEVENLABS_AGENT_ID)}`,
+    {
+      method: 'GET',
+      headers: {
+        'xi-api-key': env.ELEVENLABS_API_KEY,
+        Accept: 'application/json',
+      },
+    },
+  );
+
+  if (!signedUrlRes.ok) {
+    const details = await signedUrlRes.text();
+    return new Response(
+      JSON.stringify({
+        error: `ElevenLabs signed URL error (${signedUrlRes.status})`,
+        details,
+      }),
+      {
+        status: signedUrlRes.status,
+        headers: { 'Content-Type': 'application/json', ...cors },
+      },
+    );
+  }
+
+  const data: { signed_url?: string } = await signedUrlRes.json();
+  if (!data.signed_url) {
+    return new Response(JSON.stringify({ error: 'ElevenLabs did not return a signed URL' }), {
+      status: 502,
+      headers: { 'Content-Type': 'application/json', ...cors },
+    });
+  }
+
+  return new Response(JSON.stringify({ signedUrl: data.signed_url }), {
+    headers: { 'Content-Type': 'application/json', ...cors },
+  });
+}
 
 async function handleTranscribe(
   request: Request,

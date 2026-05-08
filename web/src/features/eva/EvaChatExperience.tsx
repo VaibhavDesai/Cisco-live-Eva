@@ -3,7 +3,7 @@ import { useLocation, useNavigate } from 'react-router-dom';
 import { useApp } from '../../contexts/AppContext';
 import { useDesignVariation } from '../../contexts/DesignVariationContext';
 import Button from '../../components/shared/Button';
-import { AccordionItem, AiFooter, AiResponseMessage, AiThreadPanel, AiUserMessage, Badge, Dropdown, Input, MenuItem, MenuOverlay, Slider, Table, TableBody, TableCell, TableHead, TableHeader, TableRow, Textarea, Toggle, useMenu } from '../../components/shared';
+import { AccordionItem, AiFooter, AiResponseMessage, AiSymbol, AiThreadPanel, AiUserMessage, Badge, Banner, Dropdown, Input, MenuItem, MenuOverlay, Modal, ModalBody, ModalFooter, ModalHeader, Radio, RadioGroup, Slider, Table, TableBody, TableCell, TableHead, TableHeader, TableRow, Textarea, Toggle, useMenu } from '../../components/shared';
 import { AgentCard } from '../../components/agents';
 import { Icon } from '../../icons';
 import {
@@ -14,15 +14,21 @@ import {
   EVA_CANVAS_PATHS,
 } from './EvaCanvasOverlay';
 import { EVA_TEMPLATES } from './evaTemplates';
-import type { EvaAgentDraft, EvaMessage, EvaTemplateId } from './types';
+import type { EvaAgentDraft, EvaFieldSuggestion, EvaMessage, EvaTemplateId } from './types';
 import { formatRelative } from '../../pages/knowledge/utils';
-import { optimizeInstructions, sendEvaChat } from '../../api/ciscoAi';
+import { getElevenLabsConversationSignedUrl, optimizeInstructions, sendEvaChat } from '../../api/ciscoAi';
+import {
+  FIELD_SUGGESTION_RESPONSE_RULES,
+  extractFieldSuggestionAndProse,
+  getFieldSuggestionLabel,
+} from './evaSuggestion';
 import {
   CHANNEL_PHONE_NUMBER_OPTIONS,
   DIGITAL_CHANNEL_DETAILS,
   DIGITAL_CHANNEL_OPTIONS,
   EVA_ACTION_ROWS,
   EVA_ADVANCED_GUARDRAIL_GROUPS,
+  EVA_AUTO_START_VOICE_PREVIEW_KEY,
   EVA_PLANNING_ROWS,
   EVA_SESSION_STORAGE_KEY,
   EVA_STANDARD_GUARDRAILS,
@@ -41,6 +47,7 @@ import {
   summarizeInstructionPrompt,
   valueToSensitivity,
   type EvaChannelType,
+  type EvaConversationalOnboardingStep,
   type EvaConversationStep,
   type EvaDigitalChannel,
   type EvaDirection,
@@ -53,6 +60,55 @@ import {
 } from './evaFormConfig';
 
 const gradient = 'linear-gradient(135deg, var(--accent-bg), var(--bg-glass-light))';
+
+type EvaVoiceCallStatus = 'idle' | 'connecting' | 'listening' | 'speaking' | 'ended' | 'error';
+
+function arrayBufferToBase64(buffer: ArrayBuffer): string {
+  const bytes = new Uint8Array(buffer);
+  let binary = '';
+  for (let i = 0; i < bytes.byteLength; i += 1) {
+    binary += String.fromCharCode(bytes[i]);
+  }
+  return window.btoa(binary);
+}
+
+function base64ToArrayBuffer(base64: string): ArrayBuffer {
+  const binary = window.atob(base64);
+  const bytes = new Uint8Array(binary.length);
+  for (let i = 0; i < binary.length; i += 1) {
+    bytes[i] = binary.charCodeAt(i);
+  }
+  return bytes.buffer;
+}
+
+function downsampleTo16Khz(input: Float32Array, inputSampleRate: number): Float32Array {
+  if (inputSampleRate === 16000) return input;
+  const ratio = inputSampleRate / 16000;
+  const outputLength = Math.max(1, Math.round(input.length / ratio));
+  const output = new Float32Array(outputLength);
+  for (let i = 0; i < outputLength; i += 1) {
+    const start = Math.floor(i * ratio);
+    const end = Math.min(Math.floor((i + 1) * ratio), input.length);
+    let sum = 0;
+    let count = 0;
+    for (let j = start; j < end; j += 1) {
+      sum += input[j];
+      count += 1;
+    }
+    output[i] = count > 0 ? sum / count : 0;
+  }
+  return output;
+}
+
+function float32ToPcm16Base64(input: Float32Array): string {
+  const buffer = new ArrayBuffer(input.length * 2);
+  const view = new DataView(buffer);
+  for (let i = 0; i < input.length; i += 1) {
+    const sample = Math.max(-1, Math.min(1, input[i]));
+    view.setInt16(i * 2, sample < 0 ? sample * 0x8000 : sample * 0x7fff, true);
+  }
+  return arrayBufferToBase64(buffer);
+}
 
 /* System prompt for the Cisco LLM fallback in the main Eva chat. Used
    when the user's message doesn't match any deterministic intent
@@ -82,7 +138,7 @@ Guidelines:
 - Do NOT include the JSON block when you are just answering a question, debating trade-offs, or chitchatting. Only emit it when you are recommending a template.
 - For pure questions ("what's the difference between X and Y", "how do guardrails work"), just answer directly with no JSON.
 - Never invent UI commands or features. If the user asks how to do something specific in the product and you're not sure, say so and suggest they explore the Profile, Knowledge, Action, or Security panels.
-- If the user clearly wants the multi-agent canvas (mentions "canvas", "orchestrate", "multi-agent", "delegate"), suggest opening the canvas view rather than answering inline.
+- If the user clearly wants the multi-agent canvas (mentions "canvas", "orchestrate", "multi-agent", "delegate", "collaboration", "collaborative agents", or agents collaborating), suggest opening the canvas view rather than answering inline.
 - Stay in scope. If the user asks about anything unrelated to designing AI agents in this product, politely steer back.`;
 
 /* Context-aware system prompt for the chat-based variation's guided
@@ -121,6 +177,8 @@ function buildWaterfallSystemPrompt(args: {
     knowledge: 'Knowledge (knowledge bases the agent can ground answers in)',
     actions: 'Actions (MCP tools / integrations the agent can invoke)',
     security: 'Security (standard or advanced guardrails, sensitivity, enforcement)',
+    preview: 'Preview / Test (simulate a user session before creation)',
+    testing: 'Testing and Observability (score launch readiness and reporting)',
     review: 'Review (final summary before the agent is created)',
   };
 
@@ -141,11 +199,12 @@ Current draft state:
 
 Guidelines:
 - Keep replies concise (2–4 sentences) and ground them in the draft state above.
-- When the user asks you to draft a field value (welcome message, instruction prompt, description, custom guardrail), return the suggested text in plain prose so they can copy it directly. No JSON wrapping.
 - If the user asks "what should I pick" / "what's a good X", give a concrete recommendation tailored to their current draft, not generic advice.
 - If the user signals they're done with this step ("looks good", "continue", "next"), confirm briefly and tell them they can advance via the same composer.
 - Don't pretend you can change fields for them — explain what they should change and where (Profile / Knowledge / Action / Security panels).
-- Stay in scope: agent design only. Politely steer off-topic asks back to the current step.`;
+- Stay in scope: agent design only. Politely steer off-topic asks back to the current step.
+
+${FIELD_SUGGESTION_RESPONSE_RULES}`;
 }
 
 /* Pulls a fenced JSON `options` array out of an LLM reply and returns
@@ -178,12 +237,364 @@ function extractFollowupsAndProse(content: string): { prose: string; followups?:
 /* Number of items rendered in the right-rail Progress card. Kept in sync with
    `progressStepSource` below; centralizing it lets the planning ticker time
    its reveal cadence without re-deriving the array inside the component. */
-const TOTAL_PROGRESS_STEPS = 7;
+const TOTAL_PROGRESS_STEPS = 9;
 
 const evaStepOrder: EvaConversationStep[] = EVA_STEP_ORDER;
 
 const evaPlanningRows = EVA_PLANNING_ROWS;
 const starterPrompts = STARTER_PROMPTS;
+
+const CONTINUE_TO_STUDIO_LABEL = 'Continue in AI Agent Studio';
+const RETAIL_VOICE_LABEL = 'Voice';
+const RETAIL_DIGITAL_LABEL = 'Digital';
+const RETAIL_AGENT_NAME_LABEL = 'Webex Electronics Receptionist';
+const RETAIL_CUSTOM_AGENT_NAME_LABEL = 'Type a different name';
+const RETAIL_AGENT_NAME_CUSTOM_LABEL = 'Use typed name';
+const COMPLETE_RETAIL_AGENT_LABEL = 'Complete creating agent';
+const ENTER_AGENT_STUDIO_LABEL = 'Enter Agent Studio';
+const PREVIEW_RETAIL_AGENT_LABEL = 'Preview agent';
+type RetailPrototypeStep =
+  | 'idle'
+  | 'discovering'
+  | 'channel'
+  | 'phone'
+  | 'agent-name'
+  | 'welcome'
+  | 'ready-to-create';
+
+const RETAIL_RECEPTIONIST_AGENT_NAME = 'Webex Electronics Receptionist';
+const RETAIL_RECEPTIONIST_DESCRIPTION = 'Voice receptionist for Webex Electronics in San Jose';
+const RETAIL_RECOMMENDED_WELCOME_MESSAGES = [
+  {
+    recommended: true,
+    shortReason: 'Warm and friendly',
+    tone: 'Warm, helpful, concise, and professional.',
+    reason: 'Best for a neighborhood store receptionist because it sounds friendly and covers all core tasks.',
+    text: 'Hi, thanks for calling Webex Electronics in San Jose. I can help with store hours, directions, product availability, common questions, how can I help you today?',
+  },
+  {
+    shortReason: 'Concise and professional',
+    tone: 'Concise and professional.',
+    reason: 'Good when Matt wants a shorter greeting that still mentions inventory and routing.',
+    text: 'Welcome to Webex Electronics San Jose. I can check product availability, answer common store questions, and route you to the right person.',
+  },
+  {
+    shortReason: 'Support-focused',
+    tone: 'Operational and support-focused.',
+    reason: 'Best when warranty questions and manager escalation are the main call drivers.',
+    text: 'Thanks for contacting Webex Electronics. I can help with today’s inventory, store hours, warranty questions, and escalation to Matt for manager support.',
+  },
+];
+const RETAIL_DISCOVERY_ROWS = [
+  {
+    title: 'Store website',
+    detail: 'Found San Jose hours, location, parking notes, FAQs, warranty policy, and escalation rules.',
+  },
+  {
+    title: 'Inventory manager integration',
+    detail: 'Connected and checked stock signals for laptops, monitors, routers, headsets, and accessories.',
+  },
+  {
+    title: 'Organization profile',
+    detail: 'Confirmed Matt’s store context, Pacific time zone, English customer-facing language, and manager escalation.',
+  },
+];
+
+const RETAIL_CHANNEL_OPTIONS = [
+  {
+    label: RETAIL_VOICE_LABEL,
+    icon: 'phone',
+    title: 'Voice receptionist',
+    description: 'Answer incoming store calls, check inventory, answer FAQs, and escalate to Matt when needed.',
+  },
+  {
+    label: RETAIL_DIGITAL_LABEL,
+    icon: 'chat',
+    title: 'Digital receptionist',
+    description: 'Start with chat messaging for store questions, product availability, and guided handoff.',
+  },
+];
+
+const matchEvaTemplateFromText = (text: string): typeof EVA_TEMPLATES[number] | null => {
+  const normalized = text.trim().toLowerCase();
+  if (!normalized) return null;
+  if (normalized.includes('healthcare') || normalized.includes('reception')) {
+    return EVA_TEMPLATES.find(template => template.id === 'knowledge-assistant') ?? null;
+  }
+  if (normalized.includes('it ') || normalized.includes('helpdesk') || normalized.includes('ticket')) {
+    return EVA_TEMPLATES.find(template => template.id === 'workflow-automation') ?? null;
+  }
+  if (normalized.includes('policy') || normalized.includes('compliance')) {
+    return EVA_TEMPLATES.find(template => template.id === 'policy-compliance') ?? null;
+  }
+  if (normalized.includes('sales')) {
+    return EVA_TEMPLATES.find(template => template.id === 'sales-enablement') ?? null;
+  }
+  if (normalized.includes('customer') || normalized.includes('support')) {
+    return EVA_TEMPLATES.find(template => template.id === 'customer-support') ?? null;
+  }
+  return null;
+};
+
+const cleanAgentNameCandidate = (candidate: string) => {
+  const cleaned = candidate
+    .replace(/^(an?|the)\s+/i, '')
+    .replace(/\s+(please|pls)$/i, '')
+    .replace(/[.?!,;:]+$/g, '')
+    .trim();
+
+  if (!cleaned) return '';
+  return /\bagent\b/i.test(cleaned) ? cleaned : `${cleaned} agent`;
+};
+
+const extractAgentNameFromCreateRequest = (text: string) => {
+  const normalized = text.replace(/\s+/g, ' ').trim();
+  const patterns = [
+    /\b(?:i\s+want|i'd\s+like|i\s+would\s+like|help\s+me|can\s+you|please)?\s*(?:to\s+)?(?:create|build|make|set\s+up|setup)\s+(?:me\s+)?(?:an?\s+)?(.+?)$/i,
+    /\b(?:need|want)\s+(?:an?\s+)?(.+?)$/i,
+  ];
+
+  for (const pattern of patterns) {
+    const match = normalized.match(pattern);
+    const candidate = match?.[1] ? cleanAgentNameCandidate(match[1]) : '';
+    if (candidate && !/^(agent|ai agent)$/i.test(candidate)) return candidate;
+  }
+
+  return '';
+};
+
+const isCreateAgentIntent = (normalized: string) => (
+  normalized.includes('create') ||
+  normalized.includes('build') ||
+  normalized.includes('make') ||
+  normalized.includes('set up') ||
+  normalized.includes('setup')
+) && normalized.includes('agent');
+
+type EvaReadinessCheckStatus = 'pass' | 'warning' | 'fail';
+
+interface EvaReadinessCheck {
+  label: string;
+  status: EvaReadinessCheckStatus;
+  detail: string;
+}
+
+interface EvaReadinessReport {
+  score: number;
+  summary: string;
+  checks: EvaReadinessCheck[];
+  recommendations: string[];
+}
+
+type EvaTestingScenarioMethod = 'manual' | 'generate';
+
+type EvaTestingScenarioStep =
+  | 'choose-method'
+  | 'manual-basic'
+  | 'manual-instructions'
+  | 'manual-variables'
+  | 'generate-count'
+  | 'generate-creativity'
+  | 'generate-instructions'
+  | 'evaluation-description'
+  | 'ready';
+
+interface EvaTestingScenarioDraft {
+  method: EvaTestingScenarioMethod | null;
+  name: string;
+  description: string;
+  instructions: string;
+  expectedOutcome: string;
+  variables: string;
+  generateTestCaseCount: string;
+  creativityLevel: string;
+  generateCustomInstructions: string;
+  evaluationDescription: string;
+}
+
+type EvaTestingScenarioField = Exclude<keyof EvaTestingScenarioDraft, 'method'>;
+
+const MANUAL_TESTING_STEPS: EvaTestingScenarioStep[] = [
+  'manual-basic',
+  'manual-instructions',
+  'manual-variables',
+  'evaluation-description',
+];
+
+const GENERATED_TESTING_STEPS: EvaTestingScenarioStep[] = [
+  'generate-count',
+  'generate-creativity',
+  'generate-instructions',
+  'evaluation-description',
+];
+
+const TESTING_SCENARIO_STEP_COPY: Record<
+  EvaTestingScenarioStep,
+  { label: string; question: string; helper: string; placeholder: string }
+> = {
+  'choose-method': {
+    label: 'Scenario creation method',
+    question: 'How do you want to build this test scenario?',
+    helper: 'Choose Create manually to define the scenario yourself, or Generate a scenario to let AI draft one.',
+    placeholder: 'Choose Create manually or Generate a scenario',
+  },
+  'manual-basic': {
+    label: 'Basic information',
+    question: 'Fill out the basic information: scenario name and description.',
+    helper: 'This matches the Basic information card in Add test scenario.',
+    placeholder: 'Example: Knowledge retrieval grounding | A customer asks about claim status and needs a grounded answer.',
+  },
+  'manual-instructions': {
+    label: 'Instructions and expected outcome',
+    question: 'Now add the instructions and expected outcome.',
+    helper: 'Define what the agent should do and what success looks like.',
+    placeholder: 'Example: Ask for claim status, then ask what documents are required next. Expected: grounded answer, no unsupported promises, escalation offered.',
+  },
+  'manual-variables': {
+    label: 'Test variables',
+    question: 'Add any test variables, or type Skip.',
+    helper: 'Variables come from the Variables tab and can be used by the scenario runner.',
+    placeholder: 'Example: customer_type=premium, policy_status=active',
+  },
+  'generate-count': {
+    label: 'Number of test cases',
+    question: 'How many test cases should AI generate?',
+    helper: 'Maximum 10 test cases per generation.',
+    placeholder: 'Example: 2',
+  },
+  'generate-creativity': {
+    label: 'Creativity level',
+    question: 'Choose a creativity level: Low, Mid, or High.',
+    helper: 'Higher creativity generates more diverse and exploratory scenarios.',
+    placeholder: 'Example: Mid',
+  },
+  'generate-instructions': {
+    label: 'Custom instructions',
+    question: 'Describe what you want the AI-generated scenarios to evaluate.',
+    helper: 'These instructions guide the generated scenario set.',
+    placeholder: 'Example: Focus on knowledge grounding, handoff behavior, and policy-question accuracy.',
+  },
+  'evaluation-description': {
+    label: 'Evaluation description',
+    question: 'Review or edit the evaluation description before running the test.',
+    helper: 'This is the description attached to the evaluation run.',
+    placeholder: 'Example: Comprehensive agent test covering scenario behavior, guardrails, observability, and knowledge/action coverage.',
+  },
+  ready: {
+    label: 'Ready to run',
+    question: 'Scenario setup is complete. Run this test to generate the passing report.',
+    helper: 'The run will evaluate scenario quality, guardrails, observability, and knowledge/action coverage.',
+    placeholder: 'Click Run this test',
+  },
+};
+
+const emptyTestingScenarioDraft: EvaTestingScenarioDraft = {
+  method: null,
+  name: '',
+  description: '',
+  instructions: '',
+  expectedOutcome: '',
+  variables: '',
+  generateTestCaseCount: '2',
+  creativityLevel: 'Mid',
+  generateCustomInstructions: '',
+  evaluationDescription: '',
+};
+
+type EvaRecommendationFixCategory =
+  | 'testing'
+  | 'guardrails'
+  | 'knowledge'
+  | 'actions'
+  | 'preview'
+  | 'instructions'
+  | 'general';
+
+function getReadinessRecommendationFixMeta(recommendation: string): {
+  category: EvaRecommendationFixCategory;
+  actionLabel: string;
+  title: string;
+  fieldLabel: string;
+  placeholder: string;
+  targetStep: EvaConversationStep;
+} {
+  const normalized = recommendation.toLowerCase();
+
+  if (normalized.includes('guardrail') || normalized.includes('security') || normalized.includes('privacy')) {
+    return {
+      category: 'guardrails',
+      actionLabel: 'Update guardrail',
+      title: 'Update guardrail',
+      fieldLabel: 'Guardrail adjustment',
+      placeholder: 'Example: Enable PII redaction and block policy claims without approved knowledge grounding.',
+      targetStep: 'security',
+    };
+  }
+
+  if (normalized.includes('knowledge') || normalized.includes('rag') || normalized.includes('ground')) {
+    return {
+      category: 'knowledge',
+      actionLabel: 'Update knowledge',
+      title: 'Update knowledge sources',
+      fieldLabel: 'Knowledge update',
+      placeholder: 'Example: Add the billing policy KB and mark claim-status articles as approved grounding sources.',
+      targetStep: 'knowledge',
+    };
+  }
+
+  if (normalized.includes('action') || normalized.includes('tool') || normalized.includes('case')) {
+    return {
+      category: 'actions',
+      actionLabel: 'Update action',
+      title: 'Update action setup',
+      fieldLabel: 'Action update',
+      placeholder: 'Example: Enable case creation and document required create/update traces.',
+      targetStep: 'actions',
+    };
+  }
+
+  if (normalized.includes('preview') || normalized.includes('conversation') || normalized.includes('response')) {
+    return {
+      category: 'preview',
+      actionLabel: 'Run preview',
+      title: 'Run preview validation',
+      fieldLabel: 'Preview adjustment',
+      placeholder: 'Example: Captured a transcript covering fallback, escalation, and grounded answer behavior.',
+      targetStep: 'preview',
+    };
+  }
+
+  if (normalized.includes('instruction') || normalized.includes('prompt')) {
+    return {
+      category: 'instructions',
+      actionLabel: 'Update instructions',
+      title: 'Update instructions',
+      fieldLabel: 'Instruction update',
+      placeholder: 'Example: Added explicit escalation criteria and evidence requirements for answers.',
+      targetStep: 'instructions',
+    };
+  }
+
+  if (normalized.includes('scenario') || normalized.includes('transcript') || normalized.includes('test')) {
+    return {
+      category: 'testing',
+      actionLabel: 'Update scenario',
+      title: 'Update test scenario',
+      fieldLabel: 'Scenario update',
+      placeholder: 'Example: Added concrete scenarios and a representative preview transcript.',
+      targetStep: 'testing',
+    };
+  }
+
+  return {
+    category: 'general',
+    actionLabel: 'Address fix',
+    title: 'Address recommendation',
+    fieldLabel: 'What changed?',
+    placeholder: 'Describe the update you made to address this recommendation.',
+    targetStep: 'testing',
+  };
+}
 
 export default function EvaChatExperience() {
   const navigate = useNavigate();
@@ -219,6 +630,13 @@ export default function EvaChatExperience() {
      the layout snaps back to the landing hero the moment evaThinking
      flips to false, which would erase the LLM's reply from view. */
   const [freeChatActive, setFreeChatActive] = useState(restoredEvaSession?.freeChatActive ?? false);
+  const [conversationalOnboardingStep, setConversationalOnboardingStep] = useState<EvaConversationalOnboardingStep>(
+    restoredEvaSession?.conversationalOnboardingStep ?? 'idle',
+  );
+  const [retailPrototypeStep, setRetailPrototypeStep] = useState<RetailPrototypeStep>('idle');
+  const [retailDiscoveryProgress, setRetailDiscoveryProgress] = useState(0);
+  const [retailAgentNameInput, setRetailAgentNameInput] = useState(RETAIL_RECEPTIONIST_AGENT_NAME);
+  const [retailAgentNameInputVisible, setRetailAgentNameInputVisible] = useState(false);
   /* Local-only flag — when the user clicks the "View other options"
      follow-up chip on an LLM reply, we re-reveal the four starter
      template cards inline below the dialogue so they can pivot into
@@ -260,7 +678,19 @@ export default function EvaChatExperience() {
     gender: 'neutral',
   });
   const [customRules, setCustomRules] = useState<string[]>(restoredEvaSession?.customRules ?? []);
+  const [previewMessages, setPreviewMessages] = useState<EvaMessage[]>([]);
+  const [previewThinking, setPreviewThinking] = useState(false);
+  const [voiceCallStatus, setVoiceCallStatus] = useState<EvaVoiceCallStatus>('idle');
+  const [voiceCallError, setVoiceCallError] = useState('');
+  const [readinessReport, setReadinessReport] = useState<EvaReadinessReport | null>(null);
+  const [readinessTesting, setReadinessTesting] = useState(false);
+  const [fixedReadinessRecommendations, setFixedReadinessRecommendations] = useState<Set<string>>(() => new Set());
+  const [activeRecommendationFix, setActiveRecommendationFix] = useState<string | null>(null);
+  const [recommendationFixNote, setRecommendationFixNote] = useState('');
+  const [testingScenarioStep, setTestingScenarioStep] = useState<EvaTestingScenarioStep>('choose-method');
+  const [testingScenarioDraft, setTestingScenarioDraft] = useState<EvaTestingScenarioDraft>(emptyTestingScenarioDraft);
   const [showEvaGeneratedSidePanel, setShowEvaGeneratedSidePanel] = useState(true);
+  const [sideContextExpanded, setSideContextExpanded] = useState(false);
   const [showEvaThreadPanel, setShowEvaThreadPanel] = useState(false);
   const [activeEvaThreadId, setActiveEvaThreadId] = useState('eva-thread-current');
   const [evaThreads, setEvaThreads] = useState<EvaThread[]>([
@@ -278,6 +708,23 @@ export default function EvaChatExperience() {
   const thinkingTimerRef = useRef<number | null>(null);
   const planningIntervalRef = useRef<number | null>(null);
   const sidePanelProgressIntervalRef = useRef<number | null>(null);
+  const sidePanelPreviewCardRef = useRef<HTMLElement | null>(null);
+  const pendingPreviewScrollRef = useRef(false);
+  const retailDiscoveryTimerRef = useRef<number | null>(null);
+  const onboardingResponseTimerRef = useRef<number | null>(null);
+  const voiceWsRef = useRef<WebSocket | null>(null);
+  const voiceMicStreamRef = useRef<MediaStream | null>(null);
+  const voiceAudioContextRef = useRef<AudioContext | null>(null);
+  const voicePlaybackContextRef = useRef<AudioContext | null>(null);
+  const voiceInputSourceRef = useRef<MediaStreamAudioSourceNode | null>(null);
+  const voiceScriptProcessorRef = useRef<ScriptProcessorNode | null>(null);
+  const voiceOutputFormatRef = useRef('pcm_16000');
+  const voicePlaybackTimeRef = useRef(0);
+  const voiceSpeakingTimerRef = useRef<number | null>(null);
+  const voiceCallStatusRef = useRef<EvaVoiceCallStatus>('idle');
+  const voiceConversationReadyRef = useRef(false);
+  const voiceInitialGreetingPendingRef = useRef(false);
+  const voiceMicStreamingEnabledRef = useRef(false);
   const panelMenu = useMenu();
 
   const persistEvaSession = (overrides: Partial<EvaSessionState> = {}) => {
@@ -289,6 +736,7 @@ export default function EvaChatExperience() {
       guidanceVisible,
       orchestrationSuggested,
       freeChatActive,
+      conversationalOnboardingStep,
       evaStep,
       agentName,
       agentDescription,
@@ -369,7 +817,24 @@ export default function EvaChatExperience() {
     if (sidePanelProgressIntervalRef.current) {
       window.clearInterval(sidePanelProgressIntervalRef.current);
     }
+    if (retailDiscoveryTimerRef.current) {
+      window.clearInterval(retailDiscoveryTimerRef.current);
+    }
+    if (onboardingResponseTimerRef.current) {
+      window.clearTimeout(onboardingResponseTimerRef.current);
+    }
+    stopVoiceCall(null);
   }, []);
+
+  useEffect(() => {
+    voiceCallStatusRef.current = voiceCallStatus;
+  }, [voiceCallStatus]);
+
+  useEffect(() => {
+    if (channelType !== 'voice' && voiceCallStatusRef.current !== 'idle') {
+      stopVoiceCall('ended');
+    }
+  }, [channelType]);
 
   /* Track the latest user message text outside JSX so React deps are stable. */
   const latestUserMessageText = [...messages].reverse().find(m => m.role === 'user')?.text ?? null;
@@ -403,20 +868,29 @@ export default function EvaChatExperience() {
      the dialogue to its bottom — bringing the latest user prompt and
      Eva's reply right above the sticky composer.
 
-     Deps are deliberately limited to `latestUserMessageText` and
-     `waterfallThinking` so this effect only re-fires when a mid-step
-     exchange actually changes (new user message pushed, or LLM reply
-     landed) — NOT when the user advances steps or planning completes
-     (those are handled by the step-anchor scroll above). */
+     Also runs for free-chat/prototype message growth so chip/card
+     selections and hardcoded assistant replies stay focused without the
+     user manually scrolling. */
   useEffect(() => {
     const frameId = window.requestAnimationFrame(() => {
-      const scrollContainer = document.querySelector<HTMLElement>('.eva-dialogue');
+      const scrollContainer = document.querySelector<HTMLElement>(
+        freeChatActive && !guidanceVisible && !orchestrationSuggested
+          ? '.eva-first-interface__free-chat'
+          : '.eva-dialogue',
+      );
       if (!scrollContainer) return;
+      if (freeChatActive && !guidanceVisible && !orchestrationSuggested) {
+        const latestBlock = scrollContainer.lastElementChild as HTMLElement | null;
+        if (!latestBlock) return;
+        const offset = latestBlock.offsetTop - scrollContainer.offsetTop - 24;
+        scrollContainer.scrollTo({ top: Math.max(0, offset), behavior: 'smooth' });
+        return;
+      }
       scrollContainer.scrollTo({ top: scrollContainer.scrollHeight, behavior: 'smooth' });
     });
     return () => window.cancelAnimationFrame(frameId);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [latestUserMessageText, waterfallThinking]);
+  }, [latestUserMessageText, messages.length, waterfallThinking, evaThinking, retailDiscoveryProgress, freeChatActive, guidanceVisible, orchestrationSuggested]);
 
   const completeEvaThinking = (callback: () => void) => {
     /* Deterministic build flow — clear any prior free-chat state so the
@@ -528,6 +1002,392 @@ export default function EvaChatExperience() {
     setVariation('dashboard');
   };
 
+  const isRetailReceptionistStoryIntent = (normalized: string) => (
+    normalized.includes('receptionist') &&
+    normalized.includes('webex electronics') &&
+    normalized.includes('san jose')
+  );
+
+  const addOnboardingAssistantMessage = (text: string, followups?: string[], originStep?: string) => {
+    if (onboardingResponseTimerRef.current) {
+      window.clearTimeout(onboardingResponseTimerRef.current);
+    }
+    setEvaThinking(true);
+    onboardingResponseTimerRef.current = window.setTimeout(() => {
+      setMessages(prev => [...prev, { role: 'assistant', text, followups, originStep }]);
+      setEvaThinking(false);
+      onboardingResponseTimerRef.current = null;
+    }, 850);
+  };
+
+  const refreshDraftBasics = (updates: Partial<Pick<EvaAgentDraft, 'name' | 'description' | 'goals'>>) => {
+    setDraft(prev => ({
+      ...prev,
+      ...updates,
+    }));
+  };
+
+  const seedRetailReceptionistDraft = () => {
+    const baseDraft = EVA_TEMPLATES.find(template => template.id === 'customer-support')?.draft ?? EVA_TEMPLATES[0].draft;
+    const nextDraft: EvaAgentDraft = {
+      ...baseDraft,
+      name: RETAIL_RECEPTIONIST_AGENT_NAME,
+      description: RETAIL_RECEPTIONIST_DESCRIPTION,
+      goals: [
+        'Answer store hours, location, parking, and FAQ questions',
+        'Check product availability from the inventory manager integration',
+        'Escalate VIP customers, complex warranty issues, and manager requests to Matt',
+      ],
+    };
+
+    setLandingMode('build');
+    setSelectedTemplateId('customer-support');
+    setDraft(nextDraft);
+    setAgentName(RETAIL_RECEPTIONIST_AGENT_NAME);
+    setAgentDescription(RETAIL_RECEPTIONIST_DESCRIPTION);
+    setTimezone('America/Los_Angeles');
+    setAiEngine('Webex AI Pro 1.0');
+    setWelcomeMessage('Hi, thanks for calling Webex Electronics in San Jose. I can help with store hours, directions, product availability, common questions, how can I help you today?');
+    setInstructionPrompt(buildInstructionPrompt(nextDraft));
+    setPersonality(prev => ({
+      ...prev,
+      llm: 'Webex AI Pro 1.0',
+      voice: 'ava',
+      language: 'en-US',
+    }));
+    setChannelType('voice');
+    setChannelPhoneNumber(CHANNEL_PHONE_NUMBER_OPTIONS[0].value);
+    setSelectedKnowledgeBases(['Webex Electronics Store FAQ', 'San Jose Store Policies']);
+    setSelectedActions(['Inventory lookup', 'Create support case']);
+    setCustomRules(['Escalate urgent customer, warranty, and store-manager requests to Matt.']);
+    setRetailAgentNameInput(RETAIL_RECEPTIONIST_AGENT_NAME);
+    setRetailAgentNameInputVisible(false);
+  };
+
+  const beginRetailReceptionistStory = () => {
+    seedRetailReceptionistDraft();
+    setGuidanceVisible(false);
+    setEvaThinking(false);
+    setFreeChatActive(true);
+    setShowOtherTemplates(false);
+    setRetailPrototypeStep('discovering');
+    setRetailDiscoveryProgress(0);
+    setConversationalOnboardingStep('idle');
+    if (retailDiscoveryTimerRef.current) {
+      window.clearInterval(retailDiscoveryTimerRef.current);
+    }
+    retailDiscoveryTimerRef.current = window.setInterval(() => {
+      setRetailDiscoveryProgress(prev => {
+        const next = Math.min(prev + 1, RETAIL_DISCOVERY_ROWS.length);
+        if (next >= RETAIL_DISCOVERY_ROWS.length && retailDiscoveryTimerRef.current) {
+          window.clearInterval(retailDiscoveryTimerRef.current);
+          retailDiscoveryTimerRef.current = null;
+          window.setTimeout(() => {
+            setRetailPrototypeStep('channel');
+            addOnboardingAssistantMessage(
+              'Great, I would like to help you with that. I found Webex Electronics in San Jose from Matt’s organization profile and connected store systems. What channel do you want to connect first?',
+              undefined,
+              'retail-channel-choice',
+            );
+          }, 2450);
+        }
+        return next;
+      });
+    }, 700);
+  };
+
+  const completeRetailReceptionistAgent = () => {
+    const agent = addAgent({
+      name: RETAIL_RECEPTIONIST_AGENT_NAME,
+      description: RETAIL_RECEPTIONIST_DESCRIPTION,
+      gradient: 'linear-gradient(135deg, #0051af, #00bceb)',
+      status: 'Ready to Publish',
+      statusClass: 'badge-warning',
+      knowledgeBases: ['Webex Electronics Store FAQ', 'San Jose Store Policies'],
+    });
+    selectAgent(agent.id);
+    showToast(`Successfully created "${agent.name}".`, 'success');
+    setVariation('dashboard');
+    navigate('/agents');
+  };
+
+  const previewRetailReceptionistAgent = () => {
+    setChannelType('voice');
+    addOnboardingAssistantMessage(
+      'Here is a live preview of the receptionist agent. Start the call to simulate how callers will talk with the agent you are building.',
+      undefined,
+      'retail-inline-preview',
+    );
+
+    window.setTimeout(() => {
+      void startVoiceCall();
+    }, 650);
+  };
+
+  const handleRetailReceptionistStoryAnswer = (answer: string) => {
+    const normalized = answer.trim().toLowerCase();
+
+    if (retailPrototypeStep === 'channel') {
+      if (normalized.includes('voice') || normalized.includes('phone') || normalized.includes('call')) {
+        setChannelType('voice');
+        setRetailPrototypeStep('phone');
+        addOnboardingAssistantMessage(
+          'Voice is a good fit for a receptionist. Which connected phone number should this agent answer?',
+          CHANNEL_PHONE_NUMBER_OPTIONS.map(option => option.label),
+        );
+        return true;
+      }
+
+      if (normalized.includes('digital') || normalized.includes('chat') || normalized.includes('email') || normalized.includes('sms')) {
+        setChannelType('digital');
+        setDigitalChannel('chat');
+        setDigitalChannelAddress('webex-electronics-san-jose');
+        setRetailPrototypeStep('agent-name');
+        addOnboardingAssistantMessage('Got it. I’ll start with the Webex Electronics digital entry point. What should we name this agent?', [RETAIL_AGENT_NAME_LABEL]);
+        return true;
+      }
+
+      addOnboardingAssistantMessage('Should this receptionist start with voice or digital?', undefined, 'retail-channel-choice');
+      return true;
+    }
+
+    if (retailPrototypeStep === 'phone') {
+      const connectedPhone = CHANNEL_PHONE_NUMBER_OPTIONS.find(option => option.label === answer.trim() || option.value === answer.trim());
+      setChannelPhoneNumber(connectedPhone?.value ?? answer.trim() ?? CHANNEL_PHONE_NUMBER_OPTIONS[0].value);
+      setRetailPrototypeStep('agent-name');
+      addOnboardingAssistantMessage('Perfect. What should we name this agent?', undefined, 'retail-agent-name');
+      return true;
+    }
+
+    if (retailPrototypeStep === 'agent-name') {
+      const nextName = (
+        answer.trim() === RETAIL_AGENT_NAME_CUSTOM_LABEL
+          ? retailAgentNameInput.trim()
+          : answer.trim()
+      ) || RETAIL_RECEPTIONIST_AGENT_NAME;
+      setAgentName(nextName);
+      setDraft(prev => ({ ...prev, name: nextName }));
+      setRetailPrototypeStep('welcome');
+      addOnboardingAssistantMessage(
+        'I got a few recommended welcome messages for you to consider. Which one should the agent use?',
+        undefined,
+        'retail-welcome-choice',
+      );
+      return true;
+    }
+
+    if (retailPrototypeStep === 'welcome') {
+      const matchedWelcome = RETAIL_RECOMMENDED_WELCOME_MESSAGES.find(option => option.text === answer.trim());
+      const nextWelcome = matchedWelcome?.text ?? (answer.trim() || RETAIL_RECOMMENDED_WELCOME_MESSAGES[0].text);
+      setWelcomeMessage(nextWelcome);
+      setRetailPrototypeStep('ready-to-create');
+      addOnboardingAssistantMessage(
+        `Great. ${agentName} is ready with the store website knowledge, inventory manager integration, voice channel, escalation to Matt, and your selected greeting. You can complete creation now, then continue into AI Agent Studio for advanced configuration.`,
+        undefined,
+        'retail-final-actions',
+      );
+      return true;
+    }
+
+    if (retailPrototypeStep === 'ready-to-create') {
+      if (
+        normalized.includes('complete') ||
+        normalized.includes('create') ||
+        normalized.includes('done') ||
+        normalized.includes('publish')
+      ) {
+        completeRetailReceptionistAgent();
+        return true;
+      }
+    }
+
+    return false;
+  };
+
+  const beginConversationalOnboarding = (initialRequest: string) => {
+    const matched = matchEvaTemplateFromText(initialRequest);
+    const inferredName = extractAgentNameFromCreateRequest(initialRequest);
+    const baseDraft = matched?.draft ?? EVA_TEMPLATES[0].draft;
+    const nextName = inferredName || baseDraft.name;
+    const nextDraft = {
+      ...baseDraft,
+      name: nextName,
+      description: inferredName ? '' : baseDraft.description,
+    };
+
+    setLandingMode('build');
+    setSelectedTemplateId(matched?.id ?? null);
+    setDraft(nextDraft);
+    setAgentName(nextName);
+    setAgentDescription(nextDraft.description);
+    setWelcomeMessage(buildWelcomeMessage(nextDraft));
+    setInstructionPrompt(buildInstructionPrompt(nextDraft));
+    setSelectedKnowledgeBases(baseDraft.knowledgeBases.slice(0, 2).map(kb => kb.name));
+    setSelectedActions(baseDraft.actions.slice(0, 2));
+    setTimezone('Europe/London');
+    setAiEngine('Webex AI Pro 1.0');
+    setPersonality(prev => ({
+      ...prev,
+      llm: 'Webex AI Pro 1.0',
+      voice: 'ava',
+      language: 'en-US',
+    }));
+    setGuidanceVisible(false);
+    setEvaThinking(false);
+    setFreeChatActive(true);
+    setShowOtherTemplates(false);
+    setConversationalOnboardingStep(inferredName ? 'profile-purpose' : 'profile-name');
+
+    addOnboardingAssistantMessage(
+      inferredName
+        ? `Great, let's set up ${nextName}. What should this agent help users do?`
+        : 'Absolutely. Let’s start with the basics. What should we call this agent?',
+    );
+  };
+
+  const completeConversationalOnboarding = () => {
+    const nextStep: EvaConversationalOnboardingStep = 'ready-for-studio';
+    const nextEvaStep: EvaConversationStep = 'instructions';
+    setConversationalOnboardingStep(nextStep);
+    setEvaStep(nextEvaStep);
+    setFreeChatActive(false);
+    setGuidanceVisible(true);
+    setEvaThinking(false);
+    setOrchestrationSuggested(false);
+    setShowEvaGeneratedSidePanel(true);
+    persistEvaSession({
+      conversationalOnboardingStep: nextStep,
+      freeChatActive: false,
+      guidanceVisible: true,
+      orchestrationSuggested: false,
+      evaStep: nextEvaStep,
+    });
+  };
+
+  const enterRetailAgentStudio = () => {
+    const nextEvaStep: EvaConversationStep = 'instructions';
+    setConversationalOnboardingStep('idle');
+    setEvaStep(nextEvaStep);
+    setFreeChatActive(false);
+    setGuidanceVisible(true);
+    setEvaThinking(false);
+    setOrchestrationSuggested(false);
+    setShowEvaGeneratedSidePanel(true);
+    persistEvaSession({
+      conversationalOnboardingStep: 'idle',
+      freeChatActive: false,
+      guidanceVisible: true,
+      orchestrationSuggested: false,
+      evaStep: nextEvaStep,
+    });
+  };
+
+  const handleConversationalOnboardingAnswer = (answer: string) => {
+    const normalized = answer.trim().toLowerCase();
+
+    if (conversationalOnboardingStep === 'profile-name') {
+      const nextName = cleanAgentNameCandidate(answer) || answer.trim();
+      if (!nextName) {
+        addOnboardingAssistantMessage('What should we call this agent?');
+        return true;
+      }
+      setAgentName(nextName);
+      refreshDraftBasics({ name: nextName });
+      setWelcomeMessage(`Hi, I am ${nextName.replace(/\s+Eva Agent$/i, '').replace(/\s+Agent$/i, '')}. I can help with your request and guide you to the right next step.`);
+      setConversationalOnboardingStep('profile-purpose');
+      addOnboardingAssistantMessage(`Nice. What should ${nextName} help users do?`);
+      return true;
+    }
+
+    if (conversationalOnboardingStep === 'profile-purpose') {
+      const purpose = answer.trim();
+      const nextDraft = {
+        ...draft,
+        name: agentName,
+        description: purpose,
+        goals: [`Help users with ${purpose.toLowerCase()}`],
+      };
+      setAgentDescription(purpose);
+      setDraft(nextDraft);
+      setInstructionPrompt(buildInstructionPrompt(nextDraft));
+      setWelcomeMessage(`Hi, I am ${agentName.replace(/\s+Eva Agent$/i, '').replace(/\s+Agent$/i, '')}. I can ${purpose.toLowerCase()} and guide you to the right next step.`);
+      setConversationalOnboardingStep('channel-type');
+      addOnboardingAssistantMessage('Where should this agent be available first: voice or digital?');
+      return true;
+    }
+
+    if (conversationalOnboardingStep === 'channel-type') {
+      if (normalized.includes('voice') || normalized.includes('phone') || normalized.includes('call')) {
+        setChannelType('voice');
+        setConversationalOnboardingStep('voice-phone');
+        addOnboardingAssistantMessage(
+          `Which phone number should ${agentName} use? These connected numbers are available from your organization account.`,
+          CHANNEL_PHONE_NUMBER_OPTIONS.map(option => option.label),
+        );
+        return true;
+      }
+
+      if (
+        normalized.includes('digital') ||
+        normalized.includes('chat') ||
+        normalized.includes('email') ||
+        normalized.includes('sms') ||
+        normalized.includes('message')
+      ) {
+        setChannelType('digital');
+        setConversationalOnboardingStep('digital-channel');
+        addOnboardingAssistantMessage('Which digital entry point should we start with: chat, email, or SMS?');
+        return true;
+      }
+
+      addOnboardingAssistantMessage('Should this agent start on voice or digital?');
+      return true;
+    }
+
+    if (conversationalOnboardingStep === 'digital-channel') {
+      const nextChannel: EvaDigitalChannel = normalized.includes('email')
+        ? 'email'
+        : normalized.includes('sms') || normalized.includes('text')
+          ? 'sms'
+          : 'chat';
+      setDigitalChannel(nextChannel);
+      setConversationalOnboardingStep('digital-address');
+      const channelDetails = DIGITAL_CHANNEL_DETAILS[nextChannel];
+      addOnboardingAssistantMessage(`What ${channelDetails.label.toLowerCase()} should this agent use?`);
+      return true;
+    }
+
+    if (conversationalOnboardingStep === 'digital-address') {
+      setDigitalChannelAddress(answer.trim());
+      setConversationalOnboardingStep('ready-for-studio');
+      addOnboardingAssistantMessage(
+        `Great. I have the basic profile and channel details for ${agentName}. You can continue in AI Agent Studio from Step 3, where we’ll configure instructions, knowledge, actions, guardrails, preview, and evaluation.`,
+        [CONTINUE_TO_STUDIO_LABEL],
+      );
+      return true;
+    }
+
+    if (conversationalOnboardingStep === 'voice-phone') {
+      const nextPhoneNumber = normalized.includes('default') ? CHANNEL_PHONE_NUMBER_OPTIONS[0].value : answer.trim();
+      setChannelPhoneNumber(nextPhoneNumber || CHANNEL_PHONE_NUMBER_OPTIONS[0].value);
+      setConversationalOnboardingStep('ready-for-studio');
+      addOnboardingAssistantMessage(
+        `Great. I have the basic profile and voice channel details for ${agentName}. You can continue in AI Agent Studio from Step 3, where we’ll configure instructions, knowledge, actions, guardrails, preview, and evaluation.`,
+        [CONTINUE_TO_STUDIO_LABEL],
+      );
+      return true;
+    }
+
+    if (conversationalOnboardingStep === 'ready-for-studio') {
+      if (normalized.includes('continue') || normalized.includes('studio') || normalized.includes('next')) {
+        completeConversationalOnboarding();
+        return true;
+      }
+    }
+
+    return false;
+  };
+
   const handleNewEvaThread = () => {
     const id = `eva-thread-${Date.now()}`;
     setEvaThreads(prev => [{ id, title: 'New thread', group: 'Today' }, ...prev]);
@@ -537,6 +1397,8 @@ export default function EvaChatExperience() {
     setEvaThinking(false);
     setOrchestrationSuggested(false);
     setFreeChatActive(false);
+    setConversationalOnboardingStep('idle');
+    setRetailPrototypeStep('idle');
     setShowOtherTemplates(false);
     setLandingMode('build');
   };
@@ -722,6 +1584,24 @@ export default function EvaChatExperience() {
       return;
     }
 
+    if (retailPrototypeStep !== 'idle' && handleRetailReceptionistStoryAnswer(text)) {
+      return;
+    }
+
+    if (isRetailReceptionistStoryIntent(normalized)) {
+      beginRetailReceptionistStory();
+      return;
+    }
+
+    if (conversationalOnboardingStep !== 'idle' && handleConversationalOnboardingAnswer(text)) {
+      return;
+    }
+
+    if (isCreateAgentIntent(normalized)) {
+      beginConversationalOnboarding(text);
+      return;
+    }
+
     if (normalized.includes('knowledge')) {
       handleSectionJump('Knowledge');
       return;
@@ -760,24 +1640,7 @@ export default function EvaChatExperience() {
      points use the same rules. Returns the matching template, or null
      if the chip is just a free-chat continuation. */
   const matchTemplateFromText = (text: string): typeof EVA_TEMPLATES[number] | null => {
-    const normalized = text.trim().toLowerCase();
-    if (!normalized) return null;
-    if (normalized.includes('healthcare') || normalized.includes('reception')) {
-      return EVA_TEMPLATES.find(template => template.id === 'knowledge-assistant') ?? null;
-    }
-    if (normalized.includes('it ') || normalized.includes('helpdesk') || normalized.includes('ticket')) {
-      return EVA_TEMPLATES.find(template => template.id === 'workflow-automation') ?? null;
-    }
-    if (normalized.includes('policy') || normalized.includes('compliance')) {
-      return EVA_TEMPLATES.find(template => template.id === 'policy-compliance') ?? null;
-    }
-    if (normalized.includes('sales')) {
-      return EVA_TEMPLATES.find(template => template.id === 'sales-enablement') ?? null;
-    }
-    if (normalized.includes('customer') || normalized.includes('support')) {
-      return EVA_TEMPLATES.find(template => template.id === 'customer-support') ?? null;
-    }
-    return null;
+    return matchEvaTemplateFromText(text);
   };
 
   /* Label and sentinel for the extra chip we append after Eva's
@@ -804,6 +1667,46 @@ export default function EvaChatExperience() {
     if (!trimmed) return;
     if (trimmed === OTHER_TEMPLATES_LABEL) {
       setShowOtherTemplates(true);
+      return;
+    }
+    if (trimmed === CONTINUE_TO_STUDIO_LABEL) {
+      setMessages(prev => [...prev, { role: 'user', text: trimmed }]);
+      completeConversationalOnboarding();
+      return;
+    }
+    if (trimmed === RETAIL_CUSTOM_AGENT_NAME_LABEL) {
+      setRetailAgentNameInputVisible(true);
+      return;
+    }
+    if (
+      trimmed === RETAIL_VOICE_LABEL ||
+      trimmed === RETAIL_DIGITAL_LABEL ||
+      trimmed === RETAIL_AGENT_NAME_LABEL ||
+      trimmed === RETAIL_AGENT_NAME_CUSTOM_LABEL ||
+      CHANNEL_PHONE_NUMBER_OPTIONS.some(option => option.label === trimmed || option.value === trimmed) ||
+      RETAIL_RECOMMENDED_WELCOME_MESSAGES.some(option => option.text === trimmed)
+    ) {
+      setMessages(prev => [...prev, { role: 'user', text: trimmed }]);
+      void handleRetailReceptionistStoryAnswer(trimmed);
+      return;
+    }
+    if (trimmed === COMPLETE_RETAIL_AGENT_LABEL) {
+      setMessages(prev => [...prev, { role: 'user', text: trimmed }]);
+      completeRetailReceptionistAgent();
+      return;
+    }
+    if (trimmed === PREVIEW_RETAIL_AGENT_LABEL) {
+      setMessages(prev => [...prev, { role: 'user', text: trimmed }]);
+      previewRetailReceptionistAgent();
+      return;
+    }
+    if (trimmed === ENTER_AGENT_STUDIO_LABEL) {
+      setMessages(prev => [...prev, { role: 'user', text: trimmed }]);
+      if (retailPrototypeStep !== 'idle') {
+        enterRetailAgentStudio();
+        return;
+      }
+      completeConversationalOnboarding();
       return;
     }
     const matched = matchTemplateFromText(trimmed);
@@ -888,6 +1791,319 @@ export default function EvaChatExperience() {
     }
   };
 
+  const applyFieldSuggestion = (suggestion: EvaFieldSuggestion, messageIndex: number) => {
+    switch (suggestion.field) {
+      case 'welcomeMessage':
+        setWelcomeMessage(suggestion.value);
+        break;
+      case 'agentDescription':
+        setAgentDescription(suggestion.value);
+        break;
+      case 'instructionPrompt':
+        setInstructionPrompt(suggestion.value);
+        break;
+      case 'customRule':
+        setCustomRules(prev => (
+          prev.includes(suggestion.value) ? prev : [...prev, suggestion.value]
+        ));
+        setEvaStep('security');
+        break;
+    }
+
+    setMessages(prev => prev.map((message, index) => (
+      index === messageIndex ? { ...message, suggestionAccepted: true } : message
+    )));
+    showToast(`Updated the ${getFieldSuggestionLabel(suggestion.field)}.`, 'success');
+  };
+
+  const tryAnotherFieldSuggestion = (suggestion: EvaFieldSuggestion) => {
+    const label = getFieldSuggestionLabel(suggestion.field);
+    const prompt = `Try another option for the ${label}. Original request: ${suggestion.originalRequest}`;
+    setMessages(prev => [...prev, { role: 'user', text: 'Try another option', originStep: evaStep }]);
+    void runWaterfallLlmReply(prompt);
+  };
+
+  const addTestingAssistantMessage = (text: string) => {
+    setMessages(prev => [...prev, { role: 'assistant', text, originStep: 'testing' }]);
+  };
+
+  const startTestingScenarioWizard = () => {
+    setReadinessReport(null);
+    setTestingScenarioDraft(emptyTestingScenarioDraft);
+    setTestingScenarioStep('choose-method');
+    addTestingAssistantMessage(TESTING_SCENARIO_STEP_COPY['choose-method'].question);
+  };
+
+  const hasVisitedTestingStep =
+    readinessReport !== null || readinessTesting || testingScenarioStep !== 'choose-method';
+
+  const handlePreviewTestingAction = () => {
+    if (hasVisitedTestingStep) {
+      setReadinessReport(null);
+      setReadinessTesting(false);
+      setFixedReadinessRecommendations(new Set());
+      setActiveRecommendationFix(null);
+      setRecommendationFixNote('');
+      setTestingScenarioDraft(emptyTestingScenarioDraft);
+      setTestingScenarioStep('choose-method');
+      setEvaStep('testing');
+      return;
+    }
+
+    setEvaStep('testing');
+  };
+
+  const buildEvaluationDescription = (draftForDescription = testingScenarioDraft) => {
+    const scenarioLabel =
+      draftForDescription.method === 'generate'
+        ? `${draftForDescription.generateTestCaseCount || '2'} AI-generated scenario cases`
+        : draftForDescription.name || 'Manual test scenario';
+
+    return `Comprehensive agent test for ${agentName || 'this agent'} covering ${scenarioLabel}, preview behavior, guardrails, observability, and knowledge/action coverage.`;
+  };
+
+  const getScenarioStepsForMethod = (method: EvaTestingScenarioMethod) =>
+    method === 'manual' ? MANUAL_TESTING_STEPS : GENERATED_TESTING_STEPS;
+
+  const completeTestingScenarioFlowStep = (nextDraft: EvaTestingScenarioDraft) => {
+    if (!nextDraft.method) return;
+    const steps = getScenarioStepsForMethod(nextDraft.method);
+    const currentIndex = steps.indexOf(testingScenarioStep);
+    const nextStep = steps[currentIndex + 1];
+    if (nextStep === 'evaluation-description') {
+      const withDescription = {
+        ...nextDraft,
+        evaluationDescription: buildEvaluationDescription(nextDraft),
+      };
+      setTestingScenarioDraft(withDescription);
+      setTestingScenarioStep('evaluation-description');
+      addTestingAssistantMessage(`${TESTING_SCENARIO_STEP_COPY['evaluation-description'].question}\n\nSuggested description: ${withDescription.evaluationDescription}`);
+      return;
+    }
+
+    setTestingScenarioDraft(nextDraft);
+    if (nextStep) {
+      setTestingScenarioStep(nextStep);
+      addTestingAssistantMessage(TESTING_SCENARIO_STEP_COPY[nextStep].question);
+    } else {
+      setTestingScenarioStep('ready');
+      addTestingAssistantMessage(TESTING_SCENARIO_STEP_COPY.ready.question);
+    }
+  };
+
+  const selectTestingScenarioMethod = (method: EvaTestingScenarioMethod) => {
+    setReadinessReport(null);
+    const nextDraft = { ...emptyTestingScenarioDraft, method };
+    setTestingScenarioDraft(nextDraft);
+    const nextStep = method === 'manual' ? 'manual-basic' : 'generate-count';
+    setTestingScenarioStep(nextStep);
+    addTestingAssistantMessage(TESTING_SCENARIO_STEP_COPY[nextStep].question);
+  };
+
+  const updateTestingScenarioDraft = (patch: Partial<EvaTestingScenarioDraft>) => {
+    setReadinessReport(null);
+    setTestingScenarioDraft(prev => ({ ...prev, ...patch }));
+  };
+
+  const isTestingScenarioStepSubmittable = () => {
+    switch (testingScenarioStep) {
+      case 'manual-basic':
+        return testingScenarioDraft.name.trim().length > 0 && testingScenarioDraft.description.trim().length > 0;
+      case 'manual-instructions':
+        return testingScenarioDraft.instructions.trim().length > 0 && testingScenarioDraft.expectedOutcome.trim().length > 0;
+      case 'manual-variables':
+        return true;
+      case 'generate-count': {
+        const count = Number.parseInt(testingScenarioDraft.generateTestCaseCount, 10);
+        return Number.isFinite(count) && count >= 1 && count <= 10;
+      }
+      case 'generate-creativity':
+        return ['Low', 'Mid', 'High'].includes(testingScenarioDraft.creativityLevel);
+      case 'generate-instructions':
+        return testingScenarioDraft.generateCustomInstructions.trim().length > 0;
+      case 'evaluation-description':
+        return testingScenarioDraft.evaluationDescription.trim().length > 0;
+      default:
+        return false;
+    }
+  };
+
+  const submitTestingScenarioFormStep = () => {
+    if (testingScenarioStep === 'ready' || testingScenarioStep === 'choose-method') return;
+    if (!isTestingScenarioStepSubmittable()) return;
+
+    if (testingScenarioStep === 'evaluation-description') {
+      const nextDraft = {
+        ...testingScenarioDraft,
+        evaluationDescription: testingScenarioDraft.evaluationDescription.trim() || buildEvaluationDescription(),
+      };
+      setTestingScenarioDraft(nextDraft);
+      setTestingScenarioStep('ready');
+      addTestingAssistantMessage(TESTING_SCENARIO_STEP_COPY.ready.question);
+      return;
+    }
+
+    if (testingScenarioStep === 'generate-count') {
+      const rawCount = Number.parseInt(testingScenarioDraft.generateTestCaseCount, 10);
+      const count = Number.isFinite(rawCount) ? Math.min(10, Math.max(1, rawCount)) : 2;
+      completeTestingScenarioFlowStep({ ...testingScenarioDraft, generateTestCaseCount: String(count) });
+      return;
+    }
+
+    completeTestingScenarioFlowStep({
+      ...testingScenarioDraft,
+      name: testingScenarioDraft.name.trim(),
+      description: testingScenarioDraft.description.trim(),
+      instructions: testingScenarioDraft.instructions.trim(),
+      expectedOutcome: testingScenarioDraft.expectedOutcome.trim(),
+      variables: testingScenarioDraft.variables.trim(),
+      generateCustomInstructions: testingScenarioDraft.generateCustomInstructions.trim(),
+      evaluationDescription: testingScenarioDraft.evaluationDescription.trim(),
+    });
+  };
+
+  const goToTestingScenarioPage = (page: number) => {
+    const pages: EvaTestingScenarioStep[] = testingScenarioDraft.method
+      ? ['choose-method', ...getScenarioStepsForMethod(testingScenarioDraft.method)]
+      : ['choose-method'];
+    const clampedPage = Math.min(Math.max(1, page), pages.length);
+    const currentPage = Math.max(1, pages.indexOf(testingScenarioStep) + 1);
+
+    if (clampedPage === currentPage) return;
+    if (clampedPage > currentPage && testingScenarioStep !== 'choose-method' && !isTestingScenarioStepSubmittable()) {
+      return;
+    }
+
+    if (clampedPage === currentPage + 1 && testingScenarioStep !== 'choose-method') {
+      submitTestingScenarioFormStep();
+      return;
+    }
+
+    const nextStep = pages[clampedPage - 1];
+    if (nextStep === 'evaluation-description' && !testingScenarioDraft.evaluationDescription.trim()) {
+      setTestingScenarioDraft(prev => ({
+        ...prev,
+        evaluationDescription: buildEvaluationDescription(prev),
+      }));
+    }
+    setTestingScenarioStep(nextStep);
+  };
+
+  const goBackTestingScenarioStep = () => {
+    if (testingScenarioStepNumber <= 1) return;
+    goToTestingScenarioPage(testingScenarioStepNumber - 1);
+  };
+
+  const completeTestingScenarioAnswer = (answer: string) => {
+    if (testingScenarioStep === 'ready') return false;
+
+    const value = answer.trim();
+    if (!value) return true;
+
+    if (testingScenarioStep === 'choose-method') {
+      const normalized = value.toLowerCase();
+      if (normalized.includes('manual')) {
+        selectTestingScenarioMethod('manual');
+        return true;
+      }
+      if (normalized.includes('generate') || normalized.includes('ai')) {
+        selectTestingScenarioMethod('generate');
+        return true;
+      }
+      addTestingAssistantMessage('Choose Create manually or Generate a scenario so I can ask for the right setup details.');
+      return true;
+    }
+
+    if (testingScenarioStep === 'evaluation-description') {
+      const nextDraft = {
+        ...testingScenarioDraft,
+        evaluationDescription:
+          ['yes', 'use default', 'default', 'looks good', 'continue', 'ok', 'okay'].includes(value.toLowerCase())
+            ? testingScenarioDraft.evaluationDescription || buildEvaluationDescription()
+            : value,
+      };
+      setTestingScenarioDraft(nextDraft);
+      setTestingScenarioStep('ready');
+      addTestingAssistantMessage(TESTING_SCENARIO_STEP_COPY.ready.question);
+      return true;
+    }
+
+    if (testingScenarioStep === 'manual-basic') {
+      const [namePart, ...descriptionParts] = value.split(/\s+\|\s+|\n+/);
+      const nextDraft = {
+        ...testingScenarioDraft,
+        name: namePart?.trim() || value,
+        description: descriptionParts.join(' ').trim() || value,
+      };
+      completeTestingScenarioFlowStep(nextDraft);
+      return true;
+    }
+
+    if (testingScenarioStep === 'manual-instructions') {
+      const [instructionsPart, ...expectedParts] = value.split(/\s+Expected:\s+|\nExpected:\s+/i);
+      const nextDraft = {
+        ...testingScenarioDraft,
+        instructions: instructionsPart.trim(),
+        expectedOutcome: expectedParts.join(' ').trim() || value,
+      };
+      completeTestingScenarioFlowStep(nextDraft);
+      return true;
+    }
+
+    if (testingScenarioStep === 'manual-variables') {
+      completeTestingScenarioFlowStep({
+        ...testingScenarioDraft,
+        variables: value.toLowerCase() === 'skip' ? '' : value,
+      });
+      return true;
+    }
+
+    if (testingScenarioStep === 'generate-count') {
+      const rawCount = Number.parseInt(value.replace(/\D/g, ''), 10);
+      const count = Number.isFinite(rawCount) ? Math.min(10, Math.max(1, rawCount)) : 2;
+      completeTestingScenarioFlowStep({ ...testingScenarioDraft, generateTestCaseCount: String(count) });
+      return true;
+    }
+
+    if (testingScenarioStep === 'generate-creativity') {
+      const normalized = value.toLowerCase();
+      const creativityLevel = normalized.includes('low')
+        ? 'Low'
+        : normalized.includes('high')
+          ? 'High'
+          : 'Mid';
+      completeTestingScenarioFlowStep({ ...testingScenarioDraft, creativityLevel });
+      return true;
+    }
+
+    if (testingScenarioStep === 'generate-instructions') {
+      completeTestingScenarioFlowStep({ ...testingScenarioDraft, generateCustomInstructions: value });
+      return true;
+    }
+
+    return true;
+  };
+
+  const handleTestingStepChat = (trimmed: string, normalized: string) => {
+    if (testingScenarioStep !== 'ready') {
+      return completeTestingScenarioAnswer(trimmed);
+    }
+
+    if (
+      testingScenarioStep === 'ready' &&
+      (normalized.includes('run test') ||
+        normalized.includes('run this') ||
+        normalized.includes('run task') ||
+        normalized.includes('run the task') ||
+        normalized === 'run')
+    ) {
+      handleRunReadinessTest();
+      return true;
+    }
+
+    return false;
+  };
+
   const handleWaterfallFollowup = (text: string) => {
     const trimmed = text.trim();
     if (!trimmed) return;
@@ -899,6 +2115,10 @@ export default function EvaChatExperience() {
        form — they belong to the planning hero. */
     setMessages(prev => [...prev, { role: 'user', text: trimmed, originStep: evaStep }]);
     setOrchestrationSuggested(false);
+
+    if (evaStep === 'testing' && handleTestingStepChat(trimmed, normalized)) {
+      return;
+    }
 
     /* Explicit deterministic shortcuts kept from the previous handler.
        Anything matching these is a clear intent ("create the agent",
@@ -959,6 +2179,649 @@ export default function EvaChatExperience() {
     void runWaterfallLlmReply(trimmed);
   };
 
+  const buildPreviewSystemPrompt = () => `You are simulating the configured agent in a pre-launch test session. Reply as the agent, not as Eva.
+
+Configured agent:
+- Name: ${agentName || draft.name}
+- Description: ${agentDescription || draft.description}
+- Welcome message: ${welcomeMessage || '(not set)'}
+- Channel: ${channelSummary}
+- Language: ${languageSummary}
+- Voice/personality: ${agentCharacterSummary}
+- Knowledge sources available: ${selectedKnowledgeBases.length > 0 ? selectedKnowledgeBases.join(', ') : '(none selected)'}
+- Actions enabled: ${selectedActions.length > 0 ? selectedActions.join(', ') : '(none enabled)'}
+- Instructions: ${instructionPrompt || buildInstructionPrompt(draft)}
+- Guardrails: {[...draft.security, ...customRules].join('; ') || '(none configured)'}
+
+Simulation rules:
+- Answer as the configured agent would answer an end user.
+- Stay within the configured purpose, instructions, knowledge, actions, and guardrails.
+- If a request requires an enabled action, describe the action you would take and what information you need before taking it.
+- If the request is outside scope or unsafe, decline briefly and offer an allowed next step.
+- Keep responses concise and realistic for a preview session.`;
+
+  const handlePreviewSend = (text: string) => {
+    const trimmed = text.trim();
+    if (!trimmed || previewThinking) return;
+
+    const historySnapshot = previewMessages;
+    setPreviewMessages(prev => [...prev, { role: 'user', text: trimmed }]);
+    setPreviewThinking(true);
+
+    void (async () => {
+      try {
+        const reply = await sendEvaChat([
+          { role: 'system', content: buildPreviewSystemPrompt() },
+          ...historySnapshot.map(message => ({ role: message.role, content: message.text })),
+          { role: 'user', content: trimmed },
+        ]);
+        setPreviewMessages(prev => [
+          ...prev,
+          {
+            role: 'assistant',
+            text: reply.trim() || 'I need a little more detail to test that scenario.',
+          },
+        ]);
+      } catch (err) {
+        const message = err instanceof Error ? err.message : 'Unknown error';
+        setPreviewMessages(prev => [
+          ...prev,
+          {
+            role: 'assistant',
+            text: `The preview session could not reach the model just now (${message}).`,
+          },
+        ]);
+      } finally {
+        setPreviewThinking(false);
+      }
+    })();
+  };
+
+  function stopVoiceCall(nextStatus: EvaVoiceCallStatus | null = 'ended') {
+    if (voiceSpeakingTimerRef.current) {
+      window.clearTimeout(voiceSpeakingTimerRef.current);
+      voiceSpeakingTimerRef.current = null;
+    }
+
+    const ws = voiceWsRef.current;
+    voiceWsRef.current = null;
+    voiceConversationReadyRef.current = false;
+    voiceInitialGreetingPendingRef.current = false;
+    voiceMicStreamingEnabledRef.current = false;
+    if (ws && (ws.readyState === WebSocket.OPEN || ws.readyState === WebSocket.CONNECTING)) {
+      ws.close();
+    }
+
+    voiceScriptProcessorRef.current?.disconnect();
+    voiceScriptProcessorRef.current = null;
+    voiceInputSourceRef.current?.disconnect();
+    voiceInputSourceRef.current = null;
+    voiceMicStreamRef.current?.getTracks().forEach(track => track.stop());
+    voiceMicStreamRef.current = null;
+
+    if (voiceAudioContextRef.current && voiceAudioContextRef.current.state !== 'closed') {
+      void voiceAudioContextRef.current.close();
+    }
+    voiceAudioContextRef.current = null;
+
+    if (voicePlaybackContextRef.current && voicePlaybackContextRef.current.state !== 'closed') {
+      void voicePlaybackContextRef.current.close();
+    }
+    voicePlaybackContextRef.current = null;
+    voicePlaybackTimeRef.current = 0;
+    setVoiceActive(false);
+
+    if (nextStatus) {
+      voiceCallStatusRef.current = nextStatus;
+      setVoiceCallStatus(nextStatus);
+    }
+  }
+
+  function getVoicePreviewDynamicVariables() {
+    return {
+      agent_name: agentName,
+      agent_description: agentDescription,
+      welcome_message: welcomeMessage,
+      language: languageSummary,
+      voice: agentCharacterSummary,
+      instructions: instructionPrompt || buildInstructionPrompt(draft),
+      knowledge_sources: selectedKnowledgeBases.join(', ') || 'No sources selected',
+      enabled_actions: selectedActions.join(', ') || 'No actions enabled',
+      guardrails: [...draft.security, ...customRules].join(', ') || 'No guardrails configured',
+    };
+  }
+
+  function playVoiceAudioChunk(audioBase64: string) {
+    if (!audioBase64) return;
+
+    const audioContext = voicePlaybackContextRef.current ?? new AudioContext();
+    voicePlaybackContextRef.current = audioContext;
+
+    const rawBuffer = base64ToArrayBuffer(audioBase64);
+    const format = voiceOutputFormatRef.current || 'pcm_16000';
+    const sampleRateMatch = format.match(/_(\d+)/);
+    const sampleRate = sampleRateMatch ? Number(sampleRateMatch[1]) : 16000;
+
+    const playPcm = () => {
+      const pcm = new Int16Array(rawBuffer);
+      const audioBuffer = audioContext.createBuffer(1, pcm.length, sampleRate);
+      const channelData = audioBuffer.getChannelData(0);
+      for (let i = 0; i < pcm.length; i += 1) {
+        channelData[i] = pcm[i] / 0x8000;
+      }
+      scheduleVoiceAudioBuffer(audioContext, audioBuffer);
+    };
+
+    if (format.startsWith('pcm_')) {
+      playPcm();
+      return;
+    }
+
+    audioContext.decodeAudioData(rawBuffer.slice(0))
+      .then(audioBuffer => scheduleVoiceAudioBuffer(audioContext, audioBuffer))
+      .catch(playPcm);
+  }
+
+  function scheduleVoiceAudioBuffer(audioContext: AudioContext, audioBuffer: AudioBuffer) {
+    const source = audioContext.createBufferSource();
+    source.buffer = audioBuffer;
+    source.connect(audioContext.destination);
+
+    const startTime = Math.max(audioContext.currentTime, voicePlaybackTimeRef.current);
+    source.start(startTime);
+    voicePlaybackTimeRef.current = startTime + audioBuffer.duration;
+    voiceCallStatusRef.current = 'speaking';
+    setVoiceCallStatus('speaking');
+
+    if (voiceSpeakingTimerRef.current) {
+      window.clearTimeout(voiceSpeakingTimerRef.current);
+    }
+    const remainingMs = Math.max(0, (voicePlaybackTimeRef.current - audioContext.currentTime) * 1000);
+    voiceSpeakingTimerRef.current = window.setTimeout(() => {
+      voiceSpeakingTimerRef.current = null;
+      if (voiceWsRef.current && voiceCallStatusRef.current === 'speaking') {
+        if (voiceInitialGreetingPendingRef.current) {
+          voiceInitialGreetingPendingRef.current = false;
+          voiceMicStreamingEnabledRef.current = true;
+        }
+        voiceCallStatusRef.current = 'listening';
+        setVoiceCallStatus('listening');
+      }
+    }, remainingMs + 160);
+  }
+
+  async function startVoiceCall() {
+    if (voiceCallStatus === 'connecting' || voiceCallStatus === 'listening' || voiceCallStatus === 'speaking') {
+      return;
+    }
+
+    if (!navigator.mediaDevices?.getUserMedia) {
+      setVoiceCallError('Microphone is not available in this browser.');
+      setVoiceCallStatus('error');
+      return;
+    }
+
+    setVoiceCallError('');
+    setVoiceCallStatus('connecting');
+    voiceCallStatusRef.current = 'connecting';
+    voiceInitialGreetingPendingRef.current = true;
+    voiceMicStreamingEnabledRef.current = false;
+
+    try {
+      const signedUrl = await getElevenLabsConversationSignedUrl();
+      const micStream = await navigator.mediaDevices.getUserMedia({
+        audio: {
+          channelCount: 1,
+          echoCancellation: true,
+          noiseSuppression: true,
+          autoGainControl: true,
+        },
+      });
+
+      const ws = new WebSocket(signedUrl);
+      voiceWsRef.current = ws;
+      voiceMicStreamRef.current = micStream;
+
+      ws.onopen = () => {
+        if (voiceWsRef.current !== ws) return;
+
+        ws.send(JSON.stringify({
+          type: 'conversation_initiation_client_data',
+          dynamic_variables: getVoicePreviewDynamicVariables(),
+        }));
+
+        const audioContext = new AudioContext();
+        voiceAudioContextRef.current = audioContext;
+        const source = audioContext.createMediaStreamSource(micStream);
+        const processor = audioContext.createScriptProcessor(4096, 1, 1);
+        voiceInputSourceRef.current = source;
+        voiceScriptProcessorRef.current = processor;
+
+        processor.onaudioprocess = event => {
+          if (
+            ws.readyState !== WebSocket.OPEN ||
+            !voiceConversationReadyRef.current ||
+            !voiceMicStreamingEnabledRef.current
+          ) {
+            return;
+          }
+          const input = event.inputBuffer.getChannelData(0);
+          const downsampled = downsampleTo16Khz(input, audioContext.sampleRate);
+          ws.send(JSON.stringify({ user_audio_chunk: float32ToPcm16Base64(downsampled) }));
+        };
+
+        source.connect(processor);
+        processor.connect(audioContext.destination);
+        setVoiceActive(true);
+        voiceCallStatusRef.current = 'speaking';
+        setVoiceCallStatus('speaking');
+      };
+
+      ws.onmessage = event => {
+        if (typeof event.data !== 'string') return;
+
+        let data: {
+          type?: string;
+          audio_event?: { audio_base_64?: string };
+          ping_event?: { event_id?: number };
+          conversation_initiation_metadata_event?: { agent_output_audio_format?: string };
+        };
+        try {
+          data = JSON.parse(event.data);
+        } catch {
+          return;
+        }
+
+        if (data.type === 'conversation_initiation_metadata') {
+          voiceOutputFormatRef.current = data.conversation_initiation_metadata_event?.agent_output_audio_format || 'pcm_16000';
+          voiceConversationReadyRef.current = true;
+          return;
+        }
+
+        if (data.type === 'ping' && typeof data.ping_event?.event_id === 'number') {
+          ws.send(JSON.stringify({ type: 'pong', event_id: data.ping_event.event_id }));
+          return;
+        }
+
+        if (data.type === 'audio' && data.audio_event?.audio_base_64) {
+          playVoiceAudioChunk(data.audio_event.audio_base_64);
+          return;
+        }
+
+        if (data.type === 'interruption') {
+          voicePlaybackTimeRef.current = voicePlaybackContextRef.current?.currentTime ?? 0;
+          if (voiceCallStatusRef.current !== 'ended') {
+            voiceCallStatusRef.current = 'listening';
+            setVoiceCallStatus('listening');
+          }
+        }
+      };
+
+      ws.onerror = () => {
+        setVoiceCallError('Voice preview connection failed.');
+        stopVoiceCall('error');
+      };
+
+      ws.onclose = event => {
+        if (voiceWsRef.current === ws) {
+          if (voiceCallStatusRef.current === 'error') {
+            stopVoiceCall('error');
+            return;
+          }
+
+          if (event.code !== 1000 || event.reason) {
+            const reason = event.reason ? ` ${event.reason}` : '';
+            setVoiceCallError(`Voice preview ended unexpectedly (${event.code}).${reason}`);
+            stopVoiceCall('error');
+            return;
+          }
+
+          stopVoiceCall('ended');
+        }
+      };
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Voice preview could not start.';
+      setVoiceCallError(message);
+      stopVoiceCall('error');
+    }
+  }
+
+  useEffect(() => {
+    if (evaStep !== 'preview' || channelType !== 'voice' || voiceCallStatus !== 'idle') return;
+
+    let shouldAutoStart = false;
+    try {
+      shouldAutoStart = window.sessionStorage.getItem(EVA_AUTO_START_VOICE_PREVIEW_KEY) === '1';
+      if (shouldAutoStart) {
+        window.sessionStorage.removeItem(EVA_AUTO_START_VOICE_PREVIEW_KEY);
+      }
+    } catch {
+      /* sessionStorage unavailable; preview remains manual. */
+    }
+
+    if (!shouldAutoStart) return;
+
+    setShowEvaGeneratedSidePanel(true);
+    pendingPreviewScrollRef.current = true;
+    const timer = window.setTimeout(() => {
+      void startVoiceCall();
+    }, 250);
+
+    return () => window.clearTimeout(timer);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [evaStep, channelType, voiceCallStatus]);
+
+  const renderVoicePreviewCall = () => {
+    const callLive = voiceCallStatus === 'connecting' || voiceCallStatus === 'listening' || voiceCallStatus === 'speaking';
+    const statusCopy: Record<EvaVoiceCallStatus, string> = {
+      idle: 'Ready to start a voice preview.',
+      connecting: 'Connecting voice preview...',
+      listening: 'Listening...',
+      speaking: `${agentName || 'Agent'} is speaking...`,
+      ended: 'Voice preview ended.',
+      error: voiceCallError || 'Voice preview failed.',
+    };
+
+    return (
+      <div className={`eva-voice-preview eva-voice-preview--${voiceCallStatus}`} aria-label="Voice preview call simulation">
+        <div className="eva-voice-preview__agent">
+          <div className="agent-avatar eva-voice-preview__avatar" style={{ background: gradient }}>
+            {profileInitials}
+          </div>
+          <div>
+            <strong>{agentName || 'Preview agent'}</strong>
+            <span>{channelPhoneNumber}</span>
+          </div>
+        </div>
+        <div className="eva-voice-preview__visualizer" aria-hidden="true">
+          {Array.from({ length: 18 }).map((_, index) => (
+            <span key={index} style={{ animationDelay: `${index * 55}ms` }} />
+          ))}
+        </div>
+        <p className="eva-voice-preview__status" role="status">{statusCopy[voiceCallStatus]}</p>
+        {voiceCallError && voiceCallStatus === 'error' && (
+          <p className="eva-voice-preview__error">{voiceCallError}</p>
+        )}
+        <div className="eva-voice-preview__actions">
+          <Button
+            size="sm"
+            onClick={startVoiceCall}
+            disabled={callLive}
+          >
+            <Icon name="phone" weight="bold" size="sm" />
+            {voiceCallStatus === 'ended' || voiceCallStatus === 'error' ? 'Start again' : 'Start call'}
+          </Button>
+          <Button
+            variant="secondary"
+            size="sm"
+            onClick={() => stopVoiceCall('ended')}
+            disabled={!callLive}
+          >
+            End call
+          </Button>
+        </div>
+      </div>
+    );
+  };
+
+  const renderPreviewSession = () => channelType === 'voice' ? (
+    <div className="eva-preview-session" aria-label="Agent preview test session">
+      <div className="eva-preview-session__meta">
+        <Badge variant="info">Voice preview</Badge>
+      </div>
+      {renderVoicePreviewCall()}
+    </div>
+  ) : (
+    <div className="eva-preview-session" aria-label="Agent preview test session">
+      <div className="eva-preview-session__meta">
+        <Badge variant="info">Simulation</Badge>
+        <span>
+          Uses the current profile, instructions, knowledge, actions, and guardrails.
+        </span>
+      </div>
+      <div className="eva-preview-session__thread" aria-live="polite">
+        {previewMessages.length === 0 && !previewThinking && (
+          <AiResponseMessage
+            className="eva-ai-response"
+            showActions={false}
+            assistantName={agentName || 'Preview agent'}
+            content={welcomeMessage || 'Hi, I am ready to help. What would you like to do?'}
+          />
+        )}
+        {previewMessages.map((message, index) => (
+          message.role === 'user' ? (
+            <AiUserMessage key={`preview-${index}`} text={message.text} />
+          ) : (
+            <AiResponseMessage
+              key={`preview-${index}`}
+              className="eva-ai-response"
+              showActions={false}
+              assistantName={agentName || 'Preview agent'}
+              content={message.text}
+            />
+          )
+        ))}
+        {previewThinking && (
+          <AiResponseMessage
+            className="eva-ai-response"
+            showActions={false}
+            assistantName={`${agentName || 'Preview agent'} is responding...`}
+            assistantState="processing"
+            content={null}
+          />
+        )}
+      </div>
+      <AiFooter
+        className="eva-preview-session__footer"
+        fillContainer
+        onSend={handlePreviewSend}
+        processing={previewThinking}
+        disabled={previewThinking}
+        placeholder={
+          channelType === 'voice'
+            ? 'Speak with the mic or type a caller message...'
+            : 'Test the agent. Try: I need help with my request...'
+        }
+        suggestions={[]}
+        voiceActive={voiceActive}
+        onVoiceToggle={() => setVoiceActive(prev => !prev)}
+      />
+      <div className="eva-preview-session__actions">
+        <Button variant="secondary" size="sm" onClick={() => setPreviewMessages([])} disabled={previewMessages.length === 0 || previewThinking}>
+          Reset test
+        </Button>
+        <Button size="sm" onClick={handlePreviewTestingAction}>
+          Testing
+        </Button>
+      </div>
+    </div>
+  );
+
+  const parseReadinessReport = (content: string): EvaReadinessReport => {
+    const match = content.match(/```json\s*([\s\S]*?)```/);
+    if (match) {
+      try {
+        const parsed = JSON.parse(match[1].trim()) as Partial<EvaReadinessReport>;
+        const score = typeof parsed.score === 'number'
+          ? Math.max(0, Math.min(100, Math.round(parsed.score)))
+          : 70;
+        const checks = Array.isArray(parsed.checks)
+          ? parsed.checks
+              .filter((check): check is EvaReadinessCheck => (
+                check != null &&
+                typeof check === 'object' &&
+                'label' in check &&
+                'status' in check &&
+                'detail' in check &&
+                typeof check.label === 'string' &&
+                typeof check.detail === 'string' &&
+                ['pass', 'warning', 'fail'].includes(String(check.status))
+              ))
+              .slice(0, 6)
+          : [];
+        return {
+          score,
+          summary: typeof parsed.summary === 'string' && parsed.summary.trim()
+            ? parsed.summary.trim()
+            : 'The agent is ready for a limited pilot with the checks below.',
+          checks: checks.length > 0 ? checks : [
+            { label: 'Configuration completeness', status: 'warning', detail: 'The evaluator did not return detailed checks.' },
+          ],
+          recommendations: Array.isArray(parsed.recommendations)
+            ? parsed.recommendations.filter((item): item is string => typeof item === 'string' && item.trim().length > 0).slice(0, 4)
+            : [],
+        };
+      } catch {
+        /* Fall through to prose fallback below. */
+      }
+    }
+
+    return {
+      score: 70,
+      summary: content.trim() || 'The readiness test completed, but the report could not be parsed into structured checks.',
+      checks: [
+        { label: 'Report format', status: 'warning', detail: 'Review the model response manually before launch.' },
+      ],
+      recommendations: ['Run the readiness test again before publishing.'],
+    };
+  };
+
+  const handleRunReadinessTest = () => {
+    if (readinessTesting) return;
+    setReadinessTesting(true);
+    setFixedReadinessRecommendations(new Set());
+    setActiveRecommendationFix(null);
+    setRecommendationFixNote('');
+
+    const previewTranscript = previewMessages.length > 0
+      ? previewMessages.map(message => `${message.role}: ${message.text}`).join('\n')
+      : '(No preview transcript yet)';
+    const testingScenarioSummary = testingScenarioStep === 'ready'
+      ? testingScenarioDraft.method === 'generate'
+        ? `Creation method: Generate a scenario
+Number of test cases: ${testingScenarioDraft.generateTestCaseCount || '2'}
+Creativity level: ${testingScenarioDraft.creativityLevel || 'Mid'}
+Custom instructions: ${testingScenarioDraft.generateCustomInstructions || '(not set)'}
+Evaluation description: ${testingScenarioDraft.evaluationDescription || '(not set)'}`
+        : `Creation method: Create manually
+Scenario name: ${testingScenarioDraft.name || '(not set)'}
+Description: ${testingScenarioDraft.description || '(not set)'}
+Instructions: ${testingScenarioDraft.instructions || '(not set)'}
+Expected outcome: ${testingScenarioDraft.expectedOutcome || '(not set)'}
+Variables: ${testingScenarioDraft.variables || '(none)'}
+Evaluation description: ${testingScenarioDraft.evaluationDescription || '(not set)'}`
+      : '(No custom test scenario configured yet)';
+
+    void (async () => {
+      try {
+        const reply = await sendEvaChat([
+          {
+            role: 'system',
+            content: `You are an AI agent launch-readiness evaluator. Evaluate the configured agent and return a concise report.
+
+Return ONLY a short prose summary followed by a fenced JSON block in this exact shape:
+\`\`\`json
+{
+  "score": 82,
+  "summary": "One sentence readiness summary.",
+  "checks": [
+    { "label": "Configuration completeness", "status": "pass", "detail": "Specific result." },
+    { "label": "Instruction quality", "status": "warning", "detail": "Specific result." }
+  ],
+  "recommendations": ["Specific recommendation"]
+}
+\`\`\`
+
+Allowed check statuses: "pass", "warning", "fail". Score must be 0-100. Use 4-6 checks. Include scenario quality, observability/logging, guardrails, channel readiness, knowledge/action coverage, and preview behavior when applicable.`,
+          },
+          {
+            role: 'user',
+            content: `Evaluate this configured agent for launch readiness.
+
+Agent name: ${agentName}
+Description: ${agentDescription}
+Welcome message: ${welcomeMessage}
+Channel: ${channelSummary}
+Language: ${languageSummary}
+Voice/personality: ${agentCharacterSummary}
+Instructions: ${instructionPrompt || buildInstructionPrompt(draft)}
+Knowledge sources: ${selectedKnowledgeBases.join(', ') || '(none selected)'}
+Actions enabled: ${selectedActions.join(', ') || '(none enabled)'}
+Guardrails: {[...draft.security, ...customRules].join('; ') || '(none configured)'}
+Custom test scenario:
+${testingScenarioSummary}
+Preview transcript:
+${previewTranscript}`,
+          },
+        ]);
+        setReadinessReport(parseReadinessReport(reply));
+      } catch (err) {
+        const message = err instanceof Error ? err.message : 'Unknown error';
+        setReadinessReport({
+          score: 0,
+          summary: `Readiness testing failed: ${message}`,
+          checks: [
+            { label: 'Evaluator availability', status: 'fail', detail: 'The readiness evaluator could not be reached.' },
+          ],
+          recommendations: ['Check the Cisco LLM connection and run the test again.'],
+        });
+      } finally {
+        setReadinessTesting(false);
+      }
+    })();
+  };
+
+  const handleAddressReadinessRecommendation = (recommendation: string) => {
+    const meta = getReadinessRecommendationFixMeta(recommendation);
+    if (!['guardrails', 'actions', 'knowledge'].includes(meta.category)) {
+      setEvaStep(meta.targetStep);
+    }
+    setActiveRecommendationFix(recommendation);
+    setRecommendationFixNote('');
+  };
+
+  const updateEnabledStandardGuardrails = (
+    key: 'enforcement' | 'direction',
+    value: EvaEnforcement | EvaDirection,
+  ) => {
+    setStandardGuardrails(prev => prev.map(item => (
+      item.enabled ? { ...item, [key]: value } : item
+    )));
+  };
+
+  const closeRecommendationFixModal = () => {
+    setActiveRecommendationFix(null);
+    setRecommendationFixNote('');
+  };
+
+  const saveRecommendationFix = () => {
+    if (!activeRecommendationFix) return;
+    const meta = getReadinessRecommendationFixMeta(activeRecommendationFix);
+    if (meta.category !== 'actions' && !recommendationFixNote.trim()) return;
+
+    if (meta.category === 'guardrails') {
+      setSecurityTier('advanced');
+      setCustomRules(prev => (
+        prev.includes(recommendationFixNote.trim()) ? prev : [...prev, recommendationFixNote.trim()]
+      ));
+    }
+
+    if (meta.category === 'actions' && selectedActions.length === 0 && EVA_ACTION_ROWS[0]) {
+      setSelectedActions([EVA_ACTION_ROWS[0].name]);
+    }
+
+    if (meta.category === 'knowledge' && selectedKnowledgeBases.length === 0 && draft.knowledgeBases[0]) {
+      setSelectedKnowledgeBases([draft.knowledgeBases[0].name]);
+    }
+
+    if (meta.category === 'testing' && testingScenarioStep === 'choose-method') {
+      selectTestingScenarioMethod('manual');
+    }
+
+    setFixedReadinessRecommendations(prev => new Set(prev).add(activeRecommendationFix));
+    closeRecommendationFixModal();
+  };
+
   /* Calls the Cisco LLM with a step-aware system prompt and pushes
      Eva's reply onto the messages list. The reply renders in the
      active step's section via `renderUserPromptForStep` (which now
@@ -991,13 +2854,15 @@ export default function EvaChatExperience() {
         { role: 'user', content: latestUserText },
       ];
       const reply = await sendEvaChat(history);
+      const { prose, suggestion } = extractFieldSuggestionAndProse(reply, latestUserText);
       setMessages(prev => [
         ...prev,
         {
           role: 'assistant',
           text:
-            reply.trim() ||
+            prose ||
             'I don\u2019t have a suggestion for that yet \u2014 could you give me a bit more context?',
+          suggestion,
           originStep: evaStep,
         },
       ]);
@@ -1022,12 +2887,27 @@ export default function EvaChatExperience() {
     showToast('Added task to the agent instructions.', 'success');
   };
 
+  const handleReviewPreviewAction = () => {
+    if (visibleSteps.includes('preview')) {
+      setEvaStep('testing');
+      return;
+    }
+
+    pendingPreviewScrollRef.current = true;
+    setShowEvaGeneratedSidePanel(true);
+    setEvaStep('preview');
+  };
+
   const generatedName = draft.name.includes('Customer')
     ? 'ClaimClarity'
     : draft.name.replace(/\s+Eva Agent$/, '').replace(/\s+Agent$/, '') || 'EvaAgent';
 
   const currentStepIndex = evaStepOrder.indexOf(evaStep);
   const visibleSteps = evaStepOrder.slice(0, currentStepIndex + 1);
+  const hideConversationalOnboardingForms =
+    conversationalOnboardingStep === 'ready-for-studio' &&
+    guidanceVisible &&
+    currentStepIndex >= evaStepOrder.indexOf('instructions');
   const latestUserMessage = [...messages].reverse().find(message => message.role === 'user');
   const existingAgentList = Object.values(agents);
   const aiEngineOptions = aiEngines.map(engine => ({ value: engine.name, label: engine.name }));
@@ -1054,6 +2934,22 @@ export default function EvaChatExperience() {
   const showBuildFlow = landingMode === 'build' || guidanceVisible || evaThinking || orchestrationSuggested || freeChatActive;
   const shouldShowEvaThreadPanel = showEvaThreadPanel && !showLandingOptions;
 
+  useEffect(() => {
+    if (!pendingPreviewScrollRef.current || !showEvaGeneratedSidePanel || evaStep !== 'preview') {
+      return;
+    }
+
+    const timer = window.setTimeout(() => {
+      sidePanelPreviewCardRef.current?.scrollIntoView({
+        behavior: 'smooth',
+        block: 'end',
+      });
+      pendingPreviewScrollRef.current = false;
+    }, 80);
+
+    return () => window.clearTimeout(timer);
+  }, [evaStep, showEvaGeneratedSidePanel]);
+
   const selectedLanguage = PROFILE_LANGUAGE_OPTIONS.find(option => option.value === personality.language);
   const selectedVoice = PROFILE_VOICE_OPTIONS.find(option => option.value === personality.voice);
   const languageSummary = selectedLanguage?.label ?? personality.language;
@@ -1065,6 +2961,23 @@ export default function EvaChatExperience() {
   const channelSummary = channelType === 'digital'
     ? `${selectedDigitalChannel.label} · ${channelDestination || 'Add address or number'}`
     : `Voice · ${channelPhoneNumber}`;
+  const activeTestingScenarioCopy = TESTING_SCENARIO_STEP_COPY[testingScenarioStep];
+  const activeTestingScenarioSteps = testingScenarioDraft.method
+    ? getScenarioStepsForMethod(testingScenarioDraft.method)
+    : ['choose-method' as EvaTestingScenarioStep];
+  const testingScenarioPageSteps: EvaTestingScenarioStep[] = testingScenarioDraft.method
+    ? ['choose-method', ...activeTestingScenarioSteps]
+    : ['choose-method'];
+  const testingScenarioTotalCount = testingScenarioPageSteps.length;
+  const testingScenarioStepNumber = testingScenarioStep === 'ready'
+    ? testingScenarioTotalCount
+    : testingScenarioPageSteps.includes(testingScenarioStep)
+      ? testingScenarioPageSteps.indexOf(testingScenarioStep) + 1
+      : 1;
+  const testingScenarioCanSubmitCurrentStep = isTestingScenarioStepSubmittable();
+  const previewLaunchInstruction = channelType === 'voice'
+    ? `Voice is selected as the channel for ${agentName}. Use the mic in this preview to speak as the caller, and I will simulate how the configured agent would respond.`
+    : `Before creating ${agentName}, run a quick preview session. Type or speak as an end user, and I will simulate how the configured agent would respond.`;
   /* Right-rail Progress + Summary + Context panel ONLY appears once a
      starter template is selected (guidanceVisible / orchestration /
      template-flow thinking). Free-chat with the LLM no longer triggers
@@ -1109,6 +3022,24 @@ export default function EvaChatExperience() {
       label: '7. Review',
       detail: 'Final configuration check',
     },
+    {
+      step: 'preview',
+      label: '8. Preview',
+      detail: channelType === 'voice'
+        ? 'Voice test session'
+        : previewMessages.length > 0
+        ? `${previewMessages.filter(message => message.role === 'user').length} test message${previewMessages.filter(message => message.role === 'user').length === 1 ? '' : 's'}`
+        : 'Run a test session',
+    },
+    {
+      step: 'testing',
+      label: '9. Testing',
+      detail: readinessReport
+        ? `${readinessReport.score}/100 readiness score`
+        : testingScenarioStep === 'ready'
+          ? 'Scenario ready to run'
+          : `Scenario setup ${testingScenarioStepNumber}/${testingScenarioTotalCount}`,
+    },
   ];
   /* While Eva is thinking, only reveal the first `sidePanelStepCount` items so
      the right-rail Progress card animates in alongside the left-pane planning
@@ -1132,6 +3063,25 @@ export default function EvaChatExperience() {
             ? 'active'
             : 'queued',
     }));
+  const groupedProgressSections: Array<{
+    title: string;
+    items: typeof generationProgressSteps;
+  }> = [
+    {
+      title: 'Configuration',
+      items: generationProgressSteps.filter(step =>
+        ['profile', 'channels', 'instructions', 'knowledge', 'actions', 'security', 'review'].includes(step.step),
+      ),
+    },
+    {
+      title: 'Preview',
+      items: generationProgressSteps.filter(step => step.step === 'preview'),
+    },
+    {
+      title: 'Testing and Observability',
+      items: generationProgressSteps.filter(step => step.step === 'testing'),
+    },
+  ].filter(section => section.items.length > 0);
   const openSidePanelStep = (step: EvaConversationStep) => {
     setEvaThinking(false);
     setGuidanceVisible(true);
@@ -1177,12 +3127,13 @@ export default function EvaChatExperience() {
       return null;
     })();
     if (!midStepUserMessage && !waterfallThinking) return null;
+    if (step === 'testing' && midStepUserMessage?.text === 'Redo testing') return null;
     /* Eva's reply for THIS step is the most recent assistant message
        tagged with this step (runWaterfallLlmReply tags both sides). */
     const midStepAssistantReply = (() => {
       for (let i = messages.length - 1; i >= 0; i--) {
         const msg = messages[i];
-        if (msg.role === 'assistant' && msg.originStep === step) return msg;
+        if (msg.role === 'assistant' && msg.originStep === step) return { message: msg, index: i };
         if (msg.role === 'user' && msg.originStep === step) break;
       }
       return null;
@@ -1210,16 +3161,117 @@ export default function EvaChatExperience() {
         )}
         {!waterfallThinking && midStepAssistantReply && (
           <AiResponseMessage
-            key={`reply-${step}-${midStepAssistantReply.text}`}
+            key={`reply-${step}-${midStepAssistantReply.message.text}`}
             className="eva-ai-response"
             showActions={false}
             assistantName="Eva"
-            content={midStepAssistantReply.text}
-          />
+            content={midStepAssistantReply.message.text}
+          >
+            {midStepAssistantReply.message.suggestion && (
+              <div className="eva-field-suggestion">
+                <div className="eva-field-suggestion__label">
+                  Suggested {getFieldSuggestionLabel(midStepAssistantReply.message.suggestion.field)}
+                </div>
+                <blockquote className="eva-field-suggestion__value">
+                  {midStepAssistantReply.message.suggestion.value}
+                </blockquote>
+                <div className="eva-field-suggestion__actions">
+                  <Button
+                    size="sm"
+                    onClick={() => applyFieldSuggestion(
+                      midStepAssistantReply.message.suggestion!,
+                      midStepAssistantReply.index,
+                    )}
+                    disabled={midStepAssistantReply.message.suggestionAccepted}
+                  >
+                    {midStepAssistantReply.message.suggestionAccepted ? 'Accepted' : 'Accept'}
+                  </Button>
+                  <Button
+                    variant="secondary"
+                    size="sm"
+                    onClick={() => tryAnotherFieldSuggestion(midStepAssistantReply.message.suggestion!)}
+                  >
+                    Try another option
+                  </Button>
+                </div>
+              </div>
+            )}
+          </AiResponseMessage>
         )}
       </>
     );
   };
+
+  const renderRetailDiscoveryProcess = () => (
+    <AiResponseMessage
+      className="eva-ai-response"
+      showActions={false}
+      assistantName="Eva is checking Matt’s store context..."
+      assistantState="processing"
+      content="I’m looking up the store profile and connected systems before I ask Matt for the setup choices."
+    >
+      <div className="eva-waterfall-card eva-waterfall-status eva-waterfall-status--planning eva-waterfall-status--dynamic" aria-label="Eva discovery process">
+        {RETAIL_DISCOVERY_ROWS.map((row, index) => {
+          const resolvedCount = Math.max(1, retailDiscoveryProgress);
+          const isPlaceholder = index >= resolvedCount;
+          const status = index === resolvedCount - 1 && resolvedCount < RETAIL_DISCOVERY_ROWS.length
+            ? 'active'
+            : 'done';
+          if (isPlaceholder) {
+            return (
+              <div
+                key={row.title}
+                className="eva-waterfall-status__row eva-waterfall-status__row--placeholder"
+                aria-hidden="true"
+              >
+                <Icon name="shape-circle" weight="bold" size="sm" />
+                <span className="eva-retail-discovery-placeholder">
+                  <span />
+                  <span />
+                </span>
+              </div>
+            );
+          }
+          return (
+            <div key={row.title} className={`eva-waterfall-status__row eva-waterfall-status__row--${status}`}>
+              <Icon name={status === 'done' ? 'check-circle-filled' : 'shape-circle'} weight="bold" size="sm" />
+              <span>
+                <strong>{row.title}</strong>
+                {row.detail}
+              </span>
+            </div>
+          );
+        })}
+      </div>
+    </AiResponseMessage>
+  );
+
+  const renderRetailDiscoveryTrace = () => (
+    <AccordionItem
+      title={(
+        <span className="eva-retail-discovery-trace__title">
+          <Icon name="sparkle" weight="bold" size="sm" />
+          Eva checked store website, inventory manager, and organization profile
+        </span>
+      )}
+      className="eva-retail-discovery-trace"
+      size="small"
+      styleVariant="borderless"
+    >
+      <div className="eva-waterfall-card eva-waterfall-status eva-waterfall-status--planning eva-waterfall-status--dynamic" aria-label="Completed Eva discovery process">
+        {RETAIL_DISCOVERY_ROWS.map(row => (
+          <div key={row.title} className="eva-waterfall-status__row eva-waterfall-status__row--done">
+            <Icon name="check-circle-filled" weight="bold" size="sm" />
+            <span>
+              <strong>{row.title}</strong>
+              {row.detail}
+            </span>
+          </div>
+        ))}
+      </div>
+    </AccordionItem>
+  );
+
   const renderEvaPlanningRows = (visibleCount = evaPlanningRows.length, dynamic = false, complete = false) => (
     <div
       className={`eva-waterfall-card eva-waterfall-status eva-waterfall-status--planning${dynamic ? ' eva-waterfall-status--dynamic' : ''}`}
@@ -1553,12 +3605,9 @@ export default function EvaChatExperience() {
 
         {showLandingOptions && (
           <section className="eva-first-interface__hero" aria-labelledby="eva-landing-title">
-            <h1 id="eva-landing-title">Hi I'm Eva!</h1>
-            <h2>Build smart agent anytime, anywhere.</h2>
-            <p>
-              Describe the business need, persona, tools, data, routing, or guardrails.
-              Eva will decide when your request should become a guided agent configuration.
-            </p>
+            <AiSymbol className="eva-landing-hero-symbol" size="large" />
+            <h1 id="eva-landing-title">AI Agent Studio</h1>
+            <h2>Build, deploy, and manage AI agents across every collaboration moment.</h2>
           </section>
         )}
 
@@ -1575,7 +3624,7 @@ export default function EvaChatExperience() {
               onSend={handleSend}
               processing={false}
               disabled={evaThinking}
-              placeholder="Type with Eva. Try: Create an AI agent for customer onboarding..."
+              placeholder="Describe what you need, start from a template, or manage existing agents."
               suggestions={[]}
               voiceActive={voiceActive}
               onVoiceToggle={() => setVoiceActive(prev => !prev)}
@@ -1635,8 +3684,22 @@ export default function EvaChatExperience() {
             Context cards stay hidden until the user clicks a template
             card or template-suggestion chip. */}
         {freeChatActive && !guidanceVisible && !orchestrationSuggested && (
+          <Button
+            type="button"
+            variant="tertiary"
+            size="sm"
+            className="eva-free-chat-new-thread"
+            onClick={handleNewEvaThread}
+            aria-label="Start a new chat"
+            title="Start a new chat"
+          >
+            <Icon name="edit" weight="bold" size="sm" />
+          </Button>
+        )}
+
+        {freeChatActive && !guidanceVisible && !orchestrationSuggested && (
           <section
-            className="eva-dialogue eva-first-interface__free-chat"
+            className={`eva-dialogue eva-first-interface__free-chat${messages.some(message => message.originStep === 'retail-welcome-choice') ? ' eva-first-interface__free-chat--dense-bottom' : ''}`}
             aria-label="Eva conversation"
             aria-live="polite"
           >
@@ -1650,7 +3713,18 @@ export default function EvaChatExperience() {
                  narrowed down to a specific template branch. Mirrors
                  the form-based variation. */
               const baseFollowups = message.followups ?? [];
-              const followups = baseFollowups.length > 0
+              const isRetailChannelChoice = message.originStep === 'retail-channel-choice';
+              const isRetailAgentNamePrompt = message.originStep === 'retail-agent-name';
+              const isRetailWelcomePrompt = message.originStep === 'retail-welcome-choice';
+              const isRetailFinalActions = message.originStep === 'retail-final-actions';
+              const isRetailInlinePreview = message.originStep === 'retail-inline-preview';
+              const isControlledPrototypePrompt =
+                baseFollowups.includes(CONTINUE_TO_STUDIO_LABEL) ||
+                baseFollowups.includes(RETAIL_VOICE_LABEL) ||
+                baseFollowups.includes(RETAIL_AGENT_NAME_LABEL) ||
+                baseFollowups.some(option => RETAIL_RECOMMENDED_WELCOME_MESSAGES.some(welcome => welcome.text === option)) ||
+                baseFollowups.includes(COMPLETE_RETAIL_AGENT_LABEL);
+              const followups = baseFollowups.length > 0 && !isControlledPrototypePrompt
                 ? [...baseFollowups, OTHER_TEMPLATES_LABEL]
                 : baseFollowups;
               return (
@@ -1659,12 +3733,134 @@ export default function EvaChatExperience() {
                   className="eva-ai-response"
                   showActions={false}
                   assistantName="Eva"
-                  content={message.text}
-                  followups={followups}
+                  content={isRetailChannelChoice ? (
+                    <>
+                      {renderRetailDiscoveryTrace()}
+                      <p>{message.text}</p>
+                    </>
+                  ) : message.text}
+                  followups={isRetailChannelChoice || isRetailAgentNamePrompt || isRetailWelcomePrompt || isRetailFinalActions || isRetailInlinePreview ? [] : followups}
                   onFollowup={handleLlmFollowupClick}
-                />
+                >
+                  {isRetailChannelChoice && (
+                    <>
+                      <div className="eva-retail-channel-options" role="group" aria-label="Channel options">
+                        {RETAIL_CHANNEL_OPTIONS.map(option => (
+                          <button
+                            key={option.label}
+                            type="button"
+                            className="eva-retail-channel-option"
+                            onClick={() => handleLlmFollowupClick(option.label)}
+                          >
+                            <span className="eva-retail-channel-option__icon" aria-hidden="true">
+                              <Icon name={option.icon} weight="bold" size="md" />
+                            </span>
+                            <span>
+                              <strong>{option.title}</strong>
+                              <small>{option.description}</small>
+                            </span>
+                          </button>
+                        ))}
+                      </div>
+                    </>
+                  )}
+                  {isRetailAgentNamePrompt && (
+                    <div className="eva-retail-agent-name-options">
+                      {!retailAgentNameInputVisible ? (
+                        <>
+                          <button
+                            type="button"
+                            className="ai-footer__suggestion"
+                            onClick={() => handleLlmFollowupClick(RETAIL_AGENT_NAME_LABEL)}
+                          >
+                            {RETAIL_AGENT_NAME_LABEL}
+                          </button>
+                          <Button
+                            size="sm"
+                            variant="secondary"
+                            onClick={() => handleLlmFollowupClick(RETAIL_CUSTOM_AGENT_NAME_LABEL)}
+                          >
+                            <Icon name="edit" weight="bold" size="sm" />
+                            {RETAIL_CUSTOM_AGENT_NAME_LABEL}
+                          </Button>
+                        </>
+                      ) : (
+                        <>
+                          <Input
+                            value={retailAgentNameInput}
+                            onChange={event => setRetailAgentNameInput(event.target.value)}
+                            aria-label="Custom agent name"
+                          />
+                          <Button
+                            size="sm"
+                            variant="secondary"
+                            onClick={() => handleLlmFollowupClick(RETAIL_AGENT_NAME_CUSTOM_LABEL)}
+                            disabled={!retailAgentNameInput.trim()}
+                          >
+                            Use typed name
+                          </Button>
+                        </>
+                      )}
+                    </div>
+                  )}
+                  {isRetailWelcomePrompt && (
+                    <div className="eva-retail-welcome-options" role="group" aria-label="Welcome message options">
+                      {RETAIL_RECOMMENDED_WELCOME_MESSAGES.map((option, optionIndex) => (
+                        <button
+                          key={option.text}
+                          type="button"
+                          className="eva-retail-welcome-option"
+                          onClick={() => handleLlmFollowupClick(option.text)}
+                        >
+                          <span className="eva-retail-welcome-option__meta">
+                            <span className="eva-retail-welcome-option__label">Option {optionIndex + 1}</span>
+                            {option.shortReason ? (
+                              <span className="eva-retail-welcome-option__label">{option.shortReason}</span>
+                            ) : null}
+                            {option.recommended ? (
+                              <span className="eva-retail-welcome-option__tone">Recommended</span>
+                            ) : null}
+                          </span>
+                          <span className="eva-retail-welcome-option__text">{option.text}</span>
+                          <span className="eva-retail-welcome-option__tone-line">{option.tone}</span>
+                          <span className="eva-retail-welcome-option__reason">{option.reason}</span>
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                  {isRetailFinalActions && (
+                    <div className="eva-retail-final-actions">
+                      <Button onClick={() => handleLlmFollowupClick(COMPLETE_RETAIL_AGENT_LABEL)}>
+                        <Icon name="sparkle" weight="bold" size="sm" />
+                        {COMPLETE_RETAIL_AGENT_LABEL}
+                      </Button>
+                      <Button variant="secondary" onClick={() => handleLlmFollowupClick(PREVIEW_RETAIL_AGENT_LABEL)}>
+                        <Icon name="phone" weight="bold" size="sm" />
+                        {PREVIEW_RETAIL_AGENT_LABEL}
+                      </Button>
+                      <Button variant="secondary" onClick={() => handleLlmFollowupClick(ENTER_AGENT_STUDIO_LABEL)}>
+                        {ENTER_AGENT_STUDIO_LABEL}
+                      </Button>
+                    </div>
+                  )}
+                  {isRetailInlinePreview && (
+                    <div className="eva-retail-inline-preview">
+                      {renderPreviewSession()}
+                      <div className="eva-retail-inline-preview__actions">
+                        <Button onClick={() => handleLlmFollowupClick(COMPLETE_RETAIL_AGENT_LABEL)}>
+                          <Icon name="sparkle" weight="bold" size="sm" />
+                          {COMPLETE_RETAIL_AGENT_LABEL}
+                        </Button>
+                        <Button variant="secondary" onClick={() => handleLlmFollowupClick(ENTER_AGENT_STUDIO_LABEL)}>
+                          {ENTER_AGENT_STUDIO_LABEL}
+                        </Button>
+                      </div>
+                    </div>
+                  )}
+                </AiResponseMessage>
               );
             })}
+            {retailPrototypeStep === 'discovering' && renderRetailDiscoveryProcess()}
             {evaThinking && (
               <AiResponseMessage
                 className="eva-ai-response"
@@ -1757,7 +3953,7 @@ export default function EvaChatExperience() {
 
               {guidanceVisible && !evaThinking && (
                 <section className="eva-dialogue" aria-label="Eva conversation flow">
-            {visibleSteps.includes('profile') && (
+            {visibleSteps.includes('profile') && !hideConversationalOnboardingForms && (
               <>
                 <div className="eva-step-anchor" data-eva-step="profile" tabIndex={-1} />
                 <AiResponseMessage
@@ -1853,7 +4049,7 @@ export default function EvaChatExperience() {
               </>
             )}
 
-            {visibleSteps.includes('channels') && (
+            {visibleSteps.includes('channels') && !hideConversationalOnboardingForms && (
               <>
                 <div className="eva-step-anchor" data-eva-step="channels" tabIndex={-1} />
                 <AiResponseMessage
@@ -1866,18 +4062,6 @@ export default function EvaChatExperience() {
                     <div className="eva-security-tier-selector eva-channel-type-selector" role="radiogroup" aria-label="Channel type">
                       <button
                         type="button"
-                        className={`eva-security-tier-card${channelType === 'digital' ? ' eva-security-tier-card--selected' : ''}`}
-                        onClick={() => setChannelType('digital')}
-                        aria-pressed={channelType === 'digital'}
-                      >
-                        <Icon name="chat" weight="bold" size={24} />
-                        <span>
-                          <strong>Digital</strong>
-                          <small>Use messaging and digital entry points for customer conversations.</small>
-                        </span>
-                      </button>
-                      <button
-                        type="button"
                         className={`eva-security-tier-card${channelType === 'voice' ? ' eva-security-tier-card--selected' : ''}`}
                         onClick={() => setChannelType('voice')}
                         aria-pressed={channelType === 'voice'}
@@ -1886,6 +4070,18 @@ export default function EvaChatExperience() {
                         <span>
                           <strong>Voice</strong>
                           <small>Use voice calling flows for phone-based customer conversations.</small>
+                        </span>
+                      </button>
+                      <button
+                        type="button"
+                        className={`eva-security-tier-card${channelType === 'digital' ? ' eva-security-tier-card--selected' : ''}`}
+                        onClick={() => setChannelType('digital')}
+                        aria-pressed={channelType === 'digital'}
+                      >
+                        <Icon name="chat" weight="bold" size={24} />
+                        <span>
+                          <strong>Digital</strong>
+                          <small>Use messaging and digital entry points for customer conversations.</small>
                         </span>
                       </button>
                     </div>
@@ -2109,6 +4305,10 @@ export default function EvaChatExperience() {
                     </Table>
                     {evaStep === 'knowledge' && (
                       <div className="eva-dialogue__actions">
+                        <Button variant="secondary" onClick={() => navigate('/knowledge')}>
+                          <Icon name="plus" weight="bold" size={16} />
+                          Add new
+                        </Button>
                         <Button onClick={() => setEvaStep('actions')}>Continue to actions</Button>
                       </div>
                     )}
@@ -2178,6 +4378,10 @@ export default function EvaChatExperience() {
                     </Table>
                     {evaStep === 'actions' && (
                       <div className="eva-dialogue__actions">
+                        <Button variant="secondary" onClick={() => navigate('/assistant-skills')}>
+                          <Icon name="plus" weight="bold" size={16} />
+                          Add new
+                        </Button>
                         <Button onClick={() => setEvaStep('security')}>Continue to security</Button>
                       </div>
                     )}
@@ -2232,14 +4436,6 @@ export default function EvaChatExperience() {
                         </button>
                       </div>
 
-                      <div className="eva-security-observability">
-                        <Icon name="info-circle" weight="bold" size={18} />
-                        <span>
-                          <strong>Observability and logging</strong>
-                          Triggered rails are logged in Sessions. Monitor allows the interaction to continue with a log entry; Block rejects the individual prompt while keeping the conversation active.
-                        </span>
-                      </div>
-
                       {securityTier === 'standard' && (
                         <div className="eva-security-standard-list">
                           {standardGuardrails.map(guardrail => (
@@ -2265,7 +4461,7 @@ export default function EvaChatExperience() {
                                       onChange={value => updateStandardGuardrail(guardrail.id, 'sensitivity', valueToSensitivity(value as number))}
                                       min={0}
                                       max={100}
-                                      step={50}
+                                      step={33}
                                       showTicks
                                       aria-label={`${guardrail.name} sensitivity`}
                                     />
@@ -2273,26 +4469,29 @@ export default function EvaChatExperience() {
                                       <span>Low</span>
                                       <span>Medium</span>
                                       <span>High</span>
+                                      <span>Critical</span>
                                     </div>
                                   </div>
-                                  <Dropdown
+                                  <RadioGroup
+                                    name={`eva-standard-enforcement-${guardrail.id}`}
                                     label="Enforcement"
-                                    options={[
-                                      { value: 'monitor', label: 'Monitor' },
-                                      { value: 'block', label: 'Block' },
-                                    ]}
                                     value={guardrail.enforcement}
                                     onChange={value => updateStandardGuardrail(guardrail.id, 'enforcement', value as EvaEnforcement)}
-                                  />
-                                  <Dropdown
+                                    className="eva-security-radio-control security-enforcement-control"
+                                  >
+                                    <Radio value="monitor" label="Monitor" />
+                                    <Radio value="block" label="Block" />
+                                  </RadioGroup>
+                                  <RadioGroup
+                                    name={`eva-standard-direction-${guardrail.id}`}
                                     label="Direction"
-                                    options={[
-                                      { value: 'prompt', label: 'Prompt' },
-                                      { value: 'response', label: 'Response' },
-                                    ]}
                                     value={guardrail.direction}
                                     onChange={value => updateStandardGuardrail(guardrail.id, 'direction', value as EvaDirection)}
-                                  />
+                                    className="eva-security-radio-control security-enforcement-control"
+                                  >
+                                    <Radio value="prompt" label="Prompt" />
+                                    <Radio value="response" label="Response" />
+                                  </RadioGroup>
                                 </div>
                               )}
                             </section>
@@ -2340,7 +4539,7 @@ export default function EvaChatExperience() {
                                               onChange={value => updateAdvancedGuardrail(group.id, item.id, 'sensitivity', valueToSensitivity(value as number))}
                                               min={0}
                                               max={100}
-                                              step={50}
+                                              step={33}
                                               showTicks
                                               aria-label={`${item.name} sensitivity`}
                                             />
@@ -2348,26 +4547,29 @@ export default function EvaChatExperience() {
                                               <span>Low</span>
                                               <span>Medium</span>
                                               <span>High</span>
+                                              <span>Critical</span>
                                             </div>
                                           </div>
-                                          <Dropdown
+                                          <RadioGroup
+                                            name={`eva-advanced-enforcement-${group.id}-${item.id}`}
                                             label="Enforcement"
-                                            options={[
-                                              { value: 'monitor', label: 'Monitor' },
-                                              { value: 'block', label: 'Block' },
-                                            ]}
                                             value={item.enforcement}
                                             onChange={value => updateAdvancedGuardrail(group.id, item.id, 'enforcement', value as EvaEnforcement)}
-                                          />
-                                          <Dropdown
+                                            className="eva-security-radio-control security-enforcement-control"
+                                          >
+                                            <Radio value="monitor" label="Monitor" />
+                                            <Radio value="block" label="Block" />
+                                          </RadioGroup>
+                                          <RadioGroup
+                                            name={`eva-advanced-direction-${group.id}-${item.id}`}
                                             label="Direction"
-                                            options={[
-                                              { value: 'prompt', label: 'Prompt' },
-                                              { value: 'response', label: 'Response' },
-                                            ]}
                                             value={item.direction}
                                             onChange={value => updateAdvancedGuardrail(group.id, item.id, 'direction', value as EvaDirection)}
-                                          />
+                                            className="eva-security-radio-control security-enforcement-control"
+                                          >
+                                            <Radio value="prompt" label="Prompt" />
+                                            <Radio value="response" label="Response" />
+                                          </RadioGroup>
                                         </div>
                                       )}
                                     </section>
@@ -2441,14 +4643,642 @@ export default function EvaChatExperience() {
                       </div>
                     </div>
                   </div>
+                  {!visibleSteps.includes('preview') && (
+                    <div className="eva-dialogue__actions">
+                      <Button onClick={handleReviewPreviewAction}>
+                        Preview
+                      </Button>
+                    </div>
+                  )}
+                </AiResponseMessage>
+                {renderUserPromptForStep('review')}
+              </>
+            )}
+
+            {visibleSteps.includes('preview') && (
+              <>
+                <div className="eva-step-anchor" data-eva-step="preview" tabIndex={-1} />
+                <AiResponseMessage
+                  className="eva-ai-response"
+                  showActions={false}
+                  assistantName="Eva"
+                  content="Now you’ve previewed your agent. The next step is to evaluate it against realistic scenarios so you can catch gaps in instructions, guardrails, knowledge coverage, and channel behavior before customers interact with it."
+                >
                   <div className="eva-dialogue__actions">
+                    <Button onClick={() => setEvaStep('testing')}>
+                      Evaluate my agent
+                    </Button>
+                  </div>
+                </AiResponseMessage>
+              </>
+            )}
+
+            {visibleSteps.includes('testing') && (
+              <>
+                <div className="eva-step-anchor" data-eva-step="testing" tabIndex={-1} />
+                <AiResponseMessage
+                  className="eva-ai-response"
+                  showActions={false}
+                  assistantName="Eva"
+                  assistantState={readinessTesting ? 'processing' : 'static'}
+                  content={
+                    readinessReport
+                      ? 'Testing and observability report is ready. Review the score and checks before creating the agent.'
+                      : activeTestingScenarioCopy.question
+                  }
+                >
+                  <div className="eva-config-block">
+                    <div className="eva-readiness-panel" aria-label="Testing and observability report">
+                      <div className="eva-testing-scenario-panel" aria-label="Guided test scenario setup">
+                        <div className="eva-testing-scenario-question eva-testing-scenario-question--header">
+                          <strong>
+                            {testingScenarioStep === 'ready'
+                              ? activeTestingScenarioCopy.label
+                              : `Step ${testingScenarioStepNumber}: ${activeTestingScenarioCopy.label}`}
+                          </strong>
+                          <p>{activeTestingScenarioCopy.helper}</p>
+                        </div>
+                        {testingScenarioStep === 'choose-method' && (
+                          <div className="eva-testing-method-cards" role="group" aria-label="Scenario creation method">
+                            <button type="button" onClick={() => selectTestingScenarioMethod('manual')}>
+                              <strong>
+                                <Icon name="edit" weight="bold" size="sm" />
+                                Create manually
+                              </strong>
+                              <span>Uses natural language processing to follow your set logic and responses.</span>
+                            </button>
+                            <button type="button" onClick={() => selectTestingScenarioMethod('generate')}>
+                              <strong>
+                                <Icon name="bot" weight="bold" size="sm" />
+                                Generate a scenario with AI
+                              </strong>
+                              <span>Uses generative AI to create dynamic responses.</span>
+                            </button>
+                          </div>
+                        )}
+                        {testingScenarioStep !== 'ready' && testingScenarioStep !== 'choose-method' && (
+                          <form
+                            className="eva-testing-scenario-form"
+                            onSubmit={(event) => {
+                              event.preventDefault();
+                              submitTestingScenarioFormStep();
+                            }}
+                          >
+                            {testingScenarioStep === 'manual-basic' && (
+                              <>
+                                <Input
+                                  label="Scenario name"
+                                  required
+                                  value={testingScenarioDraft.name}
+                                  placeholder="Knowledge retrieval grounding"
+                                  onChange={(event) => updateTestingScenarioDraft({ name: event.currentTarget.value })}
+                                />
+                                <Textarea
+                                  label="Description"
+                                  required
+                                  rows={3}
+                                  value={testingScenarioDraft.description}
+                                  placeholder="A customer asks about claim status and needs a grounded answer."
+                                  onChange={(event) => updateTestingScenarioDraft({ description: event.currentTarget.value })}
+                                />
+                              </>
+                            )}
+                            {testingScenarioStep === 'manual-instructions' && (
+                              <>
+                                <Textarea
+                                  label="Instructions"
+                                  required
+                                  rows={4}
+                                  value={testingScenarioDraft.instructions}
+                                  placeholder="Ask for claim status, then ask what documents are required next."
+                                  onChange={(event) => updateTestingScenarioDraft({ instructions: event.currentTarget.value })}
+                                />
+                                <Textarea
+                                  label="Expected outcome"
+                                  required
+                                  rows={3}
+                                  value={testingScenarioDraft.expectedOutcome}
+                                  placeholder="The agent gives a grounded answer, avoids unsupported promises, and offers escalation."
+                                  onChange={(event) => updateTestingScenarioDraft({ expectedOutcome: event.currentTarget.value })}
+                                />
+                              </>
+                            )}
+                            {testingScenarioStep === 'manual-variables' && (
+                              <Textarea
+                                label="Test variables"
+                                rows={3}
+                                value={testingScenarioDraft.variables}
+                                placeholder="customer_type=premium, policy_status=active"
+                                hint="Optional. Leave blank if this scenario does not need variables."
+                                onChange={(event) => updateTestingScenarioDraft({ variables: event.currentTarget.value })}
+                              />
+                            )}
+                            {testingScenarioStep === 'generate-count' && (
+                              <Input
+                                className="eva-testing-scenario-form__count-field"
+                                label="Number of test cases"
+                                required
+                                type="number"
+                                min={1}
+                                max={10}
+                                value={testingScenarioDraft.generateTestCaseCount}
+                                onChange={(event) => updateTestingScenarioDraft({ generateTestCaseCount: event.currentTarget.value })}
+                              />
+                            )}
+                            {testingScenarioStep === 'generate-creativity' && (
+                              <div className="eva-testing-creativity-slider">
+                                <label>Creativity level</label>
+                                <Slider
+                                  value={
+                                    testingScenarioDraft.creativityLevel === 'Low'
+                                      ? 0
+                                      : testingScenarioDraft.creativityLevel === 'High'
+                                        ? 100
+                                        : 50
+                                  }
+                                  min={0}
+                                  max={100}
+                                  step={50}
+                                  showTicks
+                                  aria-label="Creativity level"
+                                  onChange={(value) => {
+                                    const numeric = Number(value);
+                                    updateTestingScenarioDraft({
+                                      creativityLevel: numeric <= 0 ? 'Low' : numeric >= 100 ? 'High' : 'Mid',
+                                    });
+                                  }}
+                                />
+                                <div className="eva-testing-creativity-labels">
+                                  <span>Low</span>
+                                  <span>Mid</span>
+                                  <span>High</span>
+                                </div>
+                              </div>
+                            )}
+                            {testingScenarioStep === 'generate-instructions' && (
+                              <Textarea
+                                label="Custom instructions"
+                                required
+                                rows={4}
+                                value={testingScenarioDraft.generateCustomInstructions}
+                                placeholder="Focus on knowledge grounding, handoff behavior, and policy-question accuracy."
+                                onChange={(event) => updateTestingScenarioDraft({ generateCustomInstructions: event.currentTarget.value })}
+                              />
+                            )}
+                            {testingScenarioStep === 'evaluation-description' && (
+                              <Textarea
+                                label="Evaluation description"
+                                required
+                                rows={3}
+                                value={testingScenarioDraft.evaluationDescription}
+                                placeholder="Comprehensive agent test covering scenario behavior, guardrails, observability, and knowledge/action coverage."
+                                onChange={(event) => updateTestingScenarioDraft({ evaluationDescription: event.currentTarget.value })}
+                              />
+                            )}
+                            <div className="eva-testing-scenario-form__actions">
+                              <Button
+                                type="button"
+                                variant="secondary"
+                                size="sm"
+                                disabled={testingScenarioStepNumber <= 1}
+                                onClick={goBackTestingScenarioStep}
+                              >
+                                Back
+                              </Button>
+                              <Button
+                                type="submit"
+                                size="sm"
+                                disabled={!testingScenarioCanSubmitCurrentStep}
+                              >
+                                Continue
+                              </Button>
+                            </div>
+                          </form>
+                        )}
+                      </div>
+                      {!readinessReport && !readinessTesting && testingScenarioStep === 'ready' && (
+                        <Banner
+                          type="success"
+                          title="Overview ready"
+                          subtitle="The test will use this scenario, the current configuration, and preview transcript to generate the Passing report with aggregated performance metrics."
+                          dismissable={false}
+                        />
+                      )}
+                      {readinessTesting && (
+                        <div className="eva-readiness-empty" role="status">
+                          <Banner
+                            type="info"
+                            title="Running"
+                            subtitle={`Running the test against ${agentName || 'the agent'}...`}
+                            dismissable={false}
+                          />
+                          <div className="eva-testing-run-progress" aria-hidden>
+                            <span />
+                          </div>
+                          <small>Evaluating scenario behavior, guardrails, observability, knowledge coverage, and action coverage.</small>
+                        </div>
+                      )}
+                      {readinessReport && !readinessTesting && (
+                        <>
+                          <div className="eva-testing-results-panel" aria-label="Passing test results">
+                            <div className="eva-testing-results-panel__header">
+                              <div>
+                                <strong>{agentName ? `${agentName} readiness test` : 'Agent readiness test'}</strong>
+                                <p>
+                                  Aggregated metrics across all {testingScenarioDraft.method === 'generate' ? testingScenarioDraft.generateTestCaseCount || '2' : '1'} scenario{testingScenarioDraft.method === 'generate' && testingScenarioDraft.generateTestCaseCount !== '1' ? 's' : ''} in this evaluation
+                                </p>
+                              </div>
+                              <Badge variant="success">Passing</Badge>
+                            </div>
+                            <div className="eva-testing-results-stats">
+                              <section>
+                                <span>Total scenarios</span>
+                                <strong>{testingScenarioDraft.method === 'generate' ? testingScenarioDraft.generateTestCaseCount || '2' : '1'}</strong>
+                              </section>
+                              <section>
+                                <span>Total duration</span>
+                                <strong>12m 34s</strong>
+                              </section>
+                              <section>
+                                <span>Status</span>
+                                <strong className="positive">Success</strong>
+                              </section>
+                            </div>
+                            <div className="eva-testing-metric-list">
+                              <strong>Aggregated performance metrics</strong>
+                              <p>
+                                Workflow completion, answer correctness, and RAG sufficiency from the observability catalog.
+                              </p>
+                              {[
+                                ['Workflow completion rate', '97.1%'],
+                                ['Answer correctness', '93.2%'],
+                                ['RAG context sufficiency', '88.1%'],
+                              ].map(([label, value]) => (
+                                <div key={label} className="eva-testing-metric-row">
+                                  <Icon name="check-circle" weight="bold" size="sm" />
+                                  <span>{label}</span>
+                                  <strong>{value}</strong>
+                                </div>
+                              ))}
+                            </div>
+                            <div className="eva-testing-metric-list">
+                              <strong>Scenario breakdown</strong>
+                              {(
+                                testingScenarioDraft.method === 'generate'
+                                  ? [
+                                      ['Generated scenario #1', '95.0%', '91.2%', '86.2%'],
+                                      ['Generated scenario #2', '95.9%', '92.1%', '87.1%'],
+                                    ].slice(0, Number.parseInt(testingScenarioDraft.generateTestCaseCount || '2', 10))
+                                  : [[testingScenarioDraft.name || 'Manual scenario', '95.0%', '91.2%', '86.2%']]
+                              ).map(([name, workflow, correctness, rag], index) => (
+                                <section key={`${name}-${index}`} className="eva-testing-scenario-result-card">
+                                  <h4>
+                                    {name}
+                                    <Badge variant="default">Scenario #{index + 1}</Badge>
+                                  </h4>
+                                  {[
+                                    ['Workflow completion rate', workflow],
+                                    ['Answer correctness', correctness],
+                                    ['RAG context sufficiency', rag],
+                                  ].map(([label, value]) => (
+                                    <div key={label} className="eva-testing-metric-row">
+                                      <Icon name="check-circle" weight="bold" size="sm" />
+                                      <span>{label}</span>
+                                      <strong>{value}</strong>
+                                    </div>
+                                  ))}
+                                </section>
+                              ))}
+                            </div>
+                          </div>
+                          <div className="eva-readiness-score">
+                            <strong>{readinessReport.score}</strong>
+                            <span>/100 readiness score</span>
+                          </div>
+                          <p className="eva-readiness-summary">{readinessReport.summary}</p>
+                          <div className="eva-readiness-checks">
+                            {readinessReport.checks.map(check => (
+                              <section key={check.label} className="eva-readiness-check">
+                                <Badge
+                                  variant={
+                                    check.status === 'pass'
+                                      ? 'success'
+                                      : check.status === 'warning'
+                                      ? 'warning'
+                                      : 'error'
+                                  }
+                                >
+                                  {check.status}
+                                </Badge>
+                                <span>
+                                  <strong>{check.label}</strong>
+                                  <small>{check.detail}</small>
+                                </span>
+                              </section>
+                            ))}
+                          </div>
+                          {readinessReport.recommendations.length > 0 && (
+                            <div className="eva-readiness-recommendations">
+                              <strong>Recommended fixes</strong>
+                              <ul className="eva-readiness-recommendation-list">
+                                {readinessReport.recommendations.filter(recommendation => {
+                                  const meta = getReadinessRecommendationFixMeta(recommendation);
+                                  return meta.category !== 'preview';
+                                }).map(recommendation => {
+                                  const fixed = fixedReadinessRecommendations.has(recommendation);
+                                  const fixMeta = getReadinessRecommendationFixMeta(recommendation);
+                                  const isExpandedGuardrailFix =
+                                    activeRecommendationFix === recommendation && fixMeta.category === 'guardrails';
+                                  const isExpandedActionFix =
+                                    activeRecommendationFix === recommendation && fixMeta.category === 'actions';
+                                  const isExpandedKnowledgeFix =
+                                    activeRecommendationFix === recommendation && fixMeta.category === 'knowledge';
+                                  const firstEnabledStandardGuardrail =
+                                    standardGuardrails.find(item => item.enabled) ?? standardGuardrails[0];
+                                  return (
+                                    <li
+                                      key={recommendation}
+                                      className={`eva-readiness-recommendation-item${fixed ? ' eva-readiness-recommendation-item--fixed' : ''}${isExpandedGuardrailFix || isExpandedActionFix || isExpandedKnowledgeFix ? ' eva-readiness-recommendation-item--expanded' : ''}`}
+                                    >
+                                      <span className="eva-readiness-recommendation-copy">
+                                        {fixed ? (
+                                          <Icon name="check-circle" weight="bold" size="sm" />
+                                        ) : null}
+                                        <span>{recommendation}</span>
+                                      </span>
+                                      {fixed ? (
+                                        <Badge variant="success">Fixed</Badge>
+                                      ) : isExpandedGuardrailFix || isExpandedActionFix || isExpandedKnowledgeFix ? null : (
+                                        <Button
+                                          type="button"
+                                          variant="secondary"
+                                          size="sm"
+                                          onClick={() => handleAddressReadinessRecommendation(recommendation)}
+                                        >
+                                          {fixMeta.actionLabel}
+                                        </Button>
+                                      )}
+                                      {isExpandedGuardrailFix ? (
+                                        <div className="eva-readiness-recommendation-fix-panel">
+                                          <div className="eva-readiness-guardrail-tier-row" role="group" aria-label="Guardrail tier">
+                                            <Button
+                                              type="button"
+                                              variant={securityTier === 'standard' ? 'primary' : 'secondary'}
+                                              size="sm"
+                                              onClick={() => setSecurityTier('standard')}
+                                            >
+                                              Standard
+                                            </Button>
+                                            <Button
+                                              type="button"
+                                              variant={securityTier === 'advanced' ? 'primary' : 'secondary'}
+                                              size="sm"
+                                              onClick={() => setSecurityTier('advanced')}
+                                            >
+                                              Advanced
+                                            </Button>
+                                          </div>
+                                          <Textarea
+                                            label="Guardrail rules"
+                                            required
+                                            rows={3}
+                                            value={recommendationFixNote}
+                                            placeholder={fixMeta.placeholder}
+                                            onChange={(event) => setRecommendationFixNote(event.currentTarget.value)}
+                                          />
+                                          <div className="eva-readiness-guardrail-settings">
+                                            <RadioGroup
+                                              name={`fix-enforcement-${recommendation}`}
+                                              label="Enforcement"
+                                              value={firstEnabledStandardGuardrail.enforcement}
+                                              onChange={(value) => updateEnabledStandardGuardrails('enforcement', value as EvaEnforcement)}
+                                              className="security-enforcement-control"
+                                            >
+                                              <Radio value="monitor" label="Monitor" />
+                                              <Radio value="block" label="Block" />
+                                            </RadioGroup>
+                                            <RadioGroup
+                                              name={`fix-direction-${recommendation}`}
+                                              label="Direction"
+                                              value={firstEnabledStandardGuardrail.direction}
+                                              onChange={(value) => updateEnabledStandardGuardrails('direction', value as EvaDirection)}
+                                              className="security-enforcement-control"
+                                            >
+                                              <Radio value="prompt" label="Prompt" />
+                                              <Radio value="response" label="Response" />
+                                            </RadioGroup>
+                                          </div>
+                                          <div className="eva-readiness-recommendation-fix-actions">
+                                            <Button
+                                              type="button"
+                                              variant="secondary"
+                                              size="sm"
+                                              onClick={closeRecommendationFixModal}
+                                            >
+                                              Cancel
+                                            </Button>
+                                            <Button
+                                              type="button"
+                                              size="sm"
+                                              disabled={!recommendationFixNote.trim()}
+                                              onClick={saveRecommendationFix}
+                                            >
+                                              Update guardrail
+                                            </Button>
+                                          </div>
+                                        </div>
+                                      ) : null}
+                                      {isExpandedActionFix ? (
+                                        <div className="eva-readiness-recommendation-fix-panel">
+                                          <div className="eva-readiness-action-table">
+                                            <Table>
+                                              <TableHead>
+                                                <TableRow>
+                                                  <TableHeader>Action name</TableHeader>
+                                                  <TableHeader>Created by</TableHeader>
+                                                  <TableHeader>Description</TableHeader>
+                                                  <TableHeader>Action type</TableHeader>
+                                                </TableRow>
+                                              </TableHead>
+                                              <TableBody empty={EVA_ACTION_ROWS.length === 0} emptyTitle="No recommended actions">
+                                                {EVA_ACTION_ROWS.map(action => {
+                                                  const selected = selectedActions.includes(action.name);
+                                                  return (
+                                                    <TableRow key={action.id} selected={selected}>
+                                                      <TableCell>
+                                                        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
+                                                          <Toggle
+                                                            size="compact"
+                                                            checked={selected}
+                                                            onChange={() => toggleAction(action.name)}
+                                                            aria-label={`${selected ? 'Disable' : 'Enable'} ${action.name}`}
+                                                          />
+                                                          <strong>{action.name}</strong>
+                                                        </span>
+                                                      </TableCell>
+                                                      <TableCell>{action.createdBy}</TableCell>
+                                                      <TableCell style={{ maxWidth: 320, whiteSpace: 'normal' }}>
+                                                        {action.description}
+                                                      </TableCell>
+                                                      <TableCell>{action.actionType}</TableCell>
+                                                    </TableRow>
+                                                  );
+                                                })}
+                                              </TableBody>
+                                            </Table>
+                                          </div>
+                                          <div className="eva-readiness-recommendation-fix-actions">
+                                            <Button
+                                              type="button"
+                                              variant="secondary"
+                                              size="sm"
+                                              onClick={closeRecommendationFixModal}
+                                            >
+                                              Cancel
+                                            </Button>
+                                            <Button
+                                              type="button"
+                                              size="sm"
+                                              onClick={saveRecommendationFix}
+                                            >
+                                              Update
+                                            </Button>
+                                          </div>
+                                        </div>
+                                      ) : null}
+                                      {isExpandedKnowledgeFix ? (
+                                        <div className="eva-readiness-recommendation-fix-panel">
+                                          <div className="eva-readiness-action-table">
+                                            <Table>
+                                              <TableHead>
+                                                <TableRow>
+                                                  <TableHeader>Name</TableHeader>
+                                                  <TableHeader>Description</TableHeader>
+                                                  <TableHeader>Sources</TableHeader>
+                                                  <TableHeader>Last updated</TableHeader>
+                                                </TableRow>
+                                              </TableHead>
+                                              <TableBody empty={draft.knowledgeBases.length === 0} emptyTitle="No recommended knowledge sources">
+                                                {draft.knowledgeBases.map(source => {
+                                                  const selected = selectedKnowledgeBases.includes(source.name);
+                                                  return (
+                                                    <TableRow key={source.name} selected={selected}>
+                                                      <TableCell>
+                                                        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
+                                                          <Toggle
+                                                            size="compact"
+                                                            checked={selected}
+                                                            onChange={() => toggleKnowledgeBase(source.name)}
+                                                            aria-label={`${selected ? 'Deselect' : 'Select'} ${source.name}`}
+                                                          />
+                                                          <strong>{source.name}</strong>
+                                                        </span>
+                                                      </TableCell>
+                                                      <TableCell style={{ maxWidth: 320, whiteSpace: 'normal' }}>
+                                                        {source.description}
+                                                      </TableCell>
+                                                      <TableCell>{source.sources}</TableCell>
+                                                      <TableCell>{formatRelative(source.lastUpdatedAt)}</TableCell>
+                                                    </TableRow>
+                                                  );
+                                                })}
+                                              </TableBody>
+                                            </Table>
+                                          </div>
+                                          <div className="eva-readiness-recommendation-fix-actions">
+                                            <Button
+                                              type="button"
+                                              variant="secondary"
+                                              size="sm"
+                                              onClick={closeRecommendationFixModal}
+                                            >
+                                              Cancel
+                                            </Button>
+                                            <Button
+                                              type="button"
+                                              size="sm"
+                                              onClick={saveRecommendationFix}
+                                            >
+                                              Update
+                                            </Button>
+                                          </div>
+                                        </div>
+                                      ) : null}
+                                    </li>
+                                  );
+                                })}
+                              </ul>
+                            </div>
+                          )}
+                        </>
+                      )}
+                    </div>
+                  </div>
+                  <div className="eva-dialogue__actions">
+                    {testingScenarioStep !== 'choose-method' && !readinessTesting && (
+                      <Button
+                        variant="secondary"
+                        onClick={startTestingScenarioWizard}
+                      >
+                        Create new test scenario
+                      </Button>
+                    )}
+                    {testingScenarioStep === 'ready' && (
+                      <Button variant={readinessReport ? 'secondary' : 'primary'} onClick={handleRunReadinessTest} disabled={readinessTesting}>
+                        {readinessReport ? 'Run again' : 'Run this test'}
+                      </Button>
+                    )}
+                  </div>
+                </AiResponseMessage>
+                {readinessReport && (
+                  <div className="eva-dialogue__external-actions">
                     <Button onClick={createDraftAgent}>
                       <Icon name="sparkle" weight="bold" size="sm" />
                       Complete create agent
                     </Button>
                   </div>
-                </AiResponseMessage>
-                {renderUserPromptForStep('review')}
+                )}
+                {activeRecommendationFix && !['guardrails', 'actions', 'knowledge'].includes(getReadinessRecommendationFixMeta(activeRecommendationFix).category) ? (
+                  <Modal size="md" onClose={closeRecommendationFixModal} preventBackdropClose>
+                    <ModalHeader
+                      title={getReadinessRecommendationFixMeta(activeRecommendationFix).title}
+                      description="Make the adjustment, then save to mark this recommendation as fixed."
+                      onClose={closeRecommendationFixModal}
+                    />
+                    <ModalBody>
+                      <div className="eva-recommendation-fix-modal">
+                        <Banner
+                          type="info"
+                          title="Recommendation"
+                          subtitle={activeRecommendationFix}
+                          dismissable={false}
+                        />
+                        <Textarea
+                          label={getReadinessRecommendationFixMeta(activeRecommendationFix).fieldLabel}
+                          required
+                          rows={4}
+                          value={recommendationFixNote}
+                          placeholder={getReadinessRecommendationFixMeta(activeRecommendationFix).placeholder}
+                          onChange={(event) => setRecommendationFixNote(event.currentTarget.value)}
+                        />
+                      </div>
+                    </ModalBody>
+                    <ModalFooter>
+                      <Button type="button" variant="secondary" size="sm" onClick={closeRecommendationFixModal}>
+                        Cancel
+                      </Button>
+                      <Button
+                        type="button"
+                        size="sm"
+                        disabled={!recommendationFixNote.trim()}
+                        onClick={saveRecommendationFix}
+                      >
+                        Save fix
+                      </Button>
+                    </ModalFooter>
+                  </Modal>
+                ) : null}
+                {renderUserPromptForStep('testing')}
               </>
             )}
                 </section>
@@ -2460,8 +5290,12 @@ export default function EvaChatExperience() {
                     fillContainer
                     onSend={guidanceVisible ? handleWaterfallFollowup : handleSend}
                     processing={false}
-                    disabled={evaThinking || waterfallThinking}
-                    placeholder={guidanceVisible || orchestrationSuggested ? 'Tell Eva what to adjust or add...' : 'Type with Eva. Try: Create an AI agent for customer onboarding...'}
+                    disabled={evaThinking || waterfallThinking || evaStep === 'preview'}
+                    placeholder={
+                      guidanceVisible || orchestrationSuggested
+                        ? 'Ask any question during your configuration.'
+                        : 'Type with Eva. Try: Create an AI agent for customer onboarding...'
+                    }
                     suggestions={[]}
                     voiceActive={voiceActive}
                     onVoiceToggle={() => setVoiceActive(prev => !prev)}
@@ -2483,26 +5317,33 @@ export default function EvaChatExperience() {
                   <Icon name="list-menu" weight="bold" size="sm" />
                   <h2>Progress</h2>
                 </div>
-                <ol className="eva-generation-progress">
-                  {generationProgressSteps.map(step => (
-                    <li
-                      key={step.label}
-                      className={`eva-generation-progress__item eva-generation-progress__item--${step.status}`}
-                    >
-                      <span className="eva-generation-progress__icon" aria-hidden="true">
-                        <Icon
-                          name={step.status === 'done' ? 'check-circle-filled' : 'shape-circle'}
-                          weight="bold"
-                          size="sm"
-                        />
-                      </span>
-                      <span>
-                        <strong>{step.label}</strong>
-                        <small>{step.detail}</small>
-                      </span>
-                    </li>
+                <div className="eva-generation-progress-groups">
+                  {groupedProgressSections.map(section => (
+                    <section key={section.title} className="eva-generation-progress-group">
+                      <h3>{section.title}</h3>
+                      <ol className="eva-generation-progress">
+                        {section.items.map(step => (
+                          <li
+                            key={step.label}
+                            className={`eva-generation-progress__item eva-generation-progress__item--${step.status}`}
+                          >
+                            <span className="eva-generation-progress__icon" aria-hidden="true">
+                              <Icon
+                                name={step.status === 'done' ? 'check-circle-filled' : 'shape-circle'}
+                                weight="bold"
+                                size="sm"
+                              />
+                            </span>
+                            <span>
+                              <strong>{step.label}</strong>
+                              <small>{step.detail}</small>
+                            </span>
+                          </li>
+                        ))}
+                      </ol>
+                    </section>
                   ))}
-                </ol>
+                </div>
               </section>
 
               <section className="eva-side-card">
@@ -2531,11 +5372,22 @@ export default function EvaChatExperience() {
               </section>
 
               <section className="eva-side-card">
-                <div className="eva-side-card__header">
-                  <Icon name="apps" weight="bold" size="sm" />
-                  <h2>Context</h2>
+                <div className="eva-side-card__header eva-side-card__header--action">
+                  <span className="eva-side-card__title">
+                    <Icon name="apps" weight="bold" size="sm" />
+                    <h2>Context</h2>
+                  </span>
+                  <button
+                    type="button"
+                    className="eva-side-edit-btn"
+                    aria-label={sideContextExpanded ? 'Collapse context' : 'Expand context'}
+                    aria-expanded={sideContextExpanded}
+                    onClick={() => setSideContextExpanded(prev => !prev)}
+                  >
+                    <Icon name={sideContextExpanded ? 'arrow-up' : 'arrow-down'} weight="bold" size="sm" />
+                  </button>
                 </div>
-                {evaThinking ? (
+                {sideContextExpanded && evaThinking ? (
                   <div
                     className="eva-side-card-skeleton"
                     role="status"
@@ -2558,7 +5410,7 @@ export default function EvaChatExperience() {
                       <div className="eva-side-card-skeleton__bar eva-side-card-skeleton__bar--short" />
                     </div>
                   </div>
-                ) : (
+                ) : sideContextExpanded ? (
                   <div className="eva-side-context">
                   <section className="eva-side-context__section" aria-label="Action">
                     <h3>Action</h3>
@@ -2613,8 +5465,18 @@ export default function EvaChatExperience() {
                     <p>{languageSummary}</p>
                   </section>
                   </div>
-                )}
+                ) : null}
               </section>
+              {visibleSteps.includes('preview') && (
+                <section ref={sidePanelPreviewCardRef} className="eva-side-card eva-side-preview-card">
+                  <div className="eva-side-card__header">
+                    <Icon name="play" weight="bold" size="sm" />
+                    <h2>Preview experience</h2>
+                  </div>
+                  <p className="eva-side-card__description">{previewLaunchInstruction}</p>
+                  {renderPreviewSession()}
+                </section>
+              )}
                 </>
               )}
             </aside>
@@ -2634,7 +5496,7 @@ export default function EvaChatExperience() {
               onSend={guidanceVisible ? handleWaterfallFollowup : handleSend}
               processing={false}
               disabled={evaThinking || waterfallThinking}
-              placeholder={guidanceVisible || orchestrationSuggested ? 'Tell Eva what to adjust or add...' : 'Type with Eva. Try: Create an AI agent for customer onboarding...'}
+              placeholder={guidanceVisible || orchestrationSuggested ? 'Ask any question during your configuration.' : 'Type with Eva. Try: Create an AI agent for customer onboarding...'}
               suggestions={[]}
               voiceActive={voiceActive}
               onVoiceToggle={() => setVoiceActive(prev => !prev)}

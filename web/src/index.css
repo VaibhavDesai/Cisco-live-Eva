@@ -27,6 +27,8 @@
 
 /* Rules: resets, layout, .btn, .card, .wizard-step, etc. */
 @import './components.css';
+@import './builder-app-layout-utilities.css';
+@import './builder-testing.css';
 
 /* AI Agent Studio (design-system product layer) */
 @import './products/ai-agent-studio/components.css';

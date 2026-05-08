@@ -33,7 +33,12 @@ import {
   EVA_CANVAS_ORIGIN_PATH_KEY,
   EVA_CANVAS_PATHS,
 } from './EvaCanvasOverlay';
-import type { EvaAgentDraft, EvaTemplateId } from './types';
+import type { EvaAgentDraft, EvaFieldSuggestion, EvaTemplateId } from './types';
+import {
+  FIELD_SUGGESTION_RESPONSE_RULES,
+  extractFieldSuggestionAndProse,
+  getFieldSuggestionLabel,
+} from './evaSuggestion';
 import {
   CHANNEL_PHONE_NUMBER_OPTIONS,
   DIGITAL_CHANNEL_DETAILS,
@@ -140,11 +145,12 @@ Current draft state:
 
 Guidelines:
 - Keep replies concise (2–4 sentences) and ground them in the draft state above.
-- When the user asks you to draft a field value (welcome message, instruction prompt, description, custom guardrail), return the suggested text in plain prose so they can copy it directly into the form. No JSON wrapping.
 - Recommend specific changes ("make the welcome message warmer by mentioning their name and the channel") rather than abstract advice.
 - Don't pretend you can change fields for the user — point them to the right form section (Profile / Channels / Instructions / Knowledge / Actions / Security / Review).
 - If the user asks about a different starter template or wants to start over, suggest they click "Create new agent" in the header rather than typing it as a free-form question.
-- Stay in scope: this agent's design only.`;
+- Stay in scope: this agent's design only.
+
+${FIELD_SUGGESTION_RESPONSE_RULES}`;
 }
 
 interface FormBuilderChatMessage {
@@ -155,6 +161,8 @@ interface FormBuilderChatMessage {
      chip under the reply; clicking calls handlePromptSubmit so the
      deterministic template router can pick it up. */
   followups?: string[];
+  suggestion?: EvaFieldSuggestion;
+  suggestionAccepted?: boolean;
 }
 
 /* Pulls a fenced JSON `options` array out of an LLM reply and returns
@@ -751,6 +759,37 @@ export default function EvaFormBuilder() {
     startPlanningWaterfall();
   };
 
+  const applyFieldSuggestion = (suggestion: EvaFieldSuggestion, messageIndex: number) => {
+    switch (suggestion.field) {
+      case 'welcomeMessage':
+        setWelcomeMessage(suggestion.value);
+        break;
+      case 'agentDescription':
+        setAgentDescription(suggestion.value);
+        break;
+      case 'instructionPrompt':
+        setInstructionPrompt(suggestion.value);
+        break;
+      case 'customRule':
+        setCustomRules(prev => (
+          prev.includes(suggestion.value) ? prev : [...prev, suggestion.value]
+        ));
+        break;
+    }
+
+    setChatMessages(prev => prev.map((message, index) => (
+      index === messageIndex ? { ...message, suggestionAccepted: true } : message
+    )));
+    showToast(`Updated the ${getFieldSuggestionLabel(suggestion.field)}.`, 'success');
+  };
+
+  const requestAnotherFieldSuggestion = (suggestion: EvaFieldSuggestion) => {
+    const label = getFieldSuggestionLabel(suggestion.field);
+    handleAssistantSend(
+      `Try another option for the ${label}. Original request: ${suggestion.originalRequest}`,
+    );
+  };
+
   /* Send handler for the docked side-panel mini Eva that's visible
      during waterfall + complete phases. Unlike `handlePromptSubmit`
      (the landing composer), this one does NOT try to match template
@@ -787,13 +826,15 @@ export default function EvaFormBuilder() {
           ...historySnapshot.map(message => ({ role: message.role, content: message.text })),
           { role: 'user', content: trimmed },
         ]);
+        const { prose, suggestion } = extractFieldSuggestionAndProse(reply, trimmed);
         setChatMessages(prev => [
           ...prev,
           {
             role: 'assistant',
             text:
-              reply.trim() ||
+              prose ||
               'I don\u2019t have a suggestion for that yet \u2014 could you give me a bit more context about what you want to change?',
+            suggestion,
           },
         ]);
       } catch (err) {
@@ -1908,7 +1949,7 @@ export default function EvaFormBuilder() {
                                 }
                                 min={0}
                                 max={100}
-                                step={50}
+                                step={33}
                                 showTicks
                                 aria-label={`${guardrail.name} sensitivity`}
                               />
@@ -1916,6 +1957,7 @@ export default function EvaFormBuilder() {
                                 <span>Low</span>
                                 <span>Medium</span>
                                 <span>High</span>
+                                <span>Critical</span>
                               </div>
                             </div>
                             <Dropdown
@@ -2013,7 +2055,7 @@ export default function EvaFormBuilder() {
                                         }
                                         min={0}
                                         max={100}
-                                        step={50}
+                                        step={33}
                                         showTicks
                                         aria-label={`${item.name} sensitivity`}
                                       />
@@ -2021,6 +2063,7 @@ export default function EvaFormBuilder() {
                                         <span>Low</span>
                                         <span>Medium</span>
                                         <span>High</span>
+                                        <span>Critical</span>
                                       </div>
                                     </div>
                                     <Dropdown
@@ -2412,7 +2455,34 @@ export default function EvaFormBuilder() {
                       className="eva-mini-assistant__response"
                       assistantName="Eva"
                       content={message.text}
-                    />
+                    >
+                      {message.suggestion && (
+                        <div className="eva-field-suggestion">
+                          <div className="eva-field-suggestion__label">
+                            Suggested {getFieldSuggestionLabel(message.suggestion.field)}
+                          </div>
+                          <blockquote className="eva-field-suggestion__value">
+                            {message.suggestion.value}
+                          </blockquote>
+                          <div className="eva-field-suggestion__actions">
+                            <Button
+                              size="sm"
+                              onClick={() => applyFieldSuggestion(message.suggestion!, index)}
+                              disabled={message.suggestionAccepted}
+                            >
+                              {message.suggestionAccepted ? 'Accepted' : 'Accept'}
+                            </Button>
+                            <Button
+                              variant="secondary"
+                              size="sm"
+                              onClick={() => requestAnotherFieldSuggestion(message.suggestion!)}
+                            >
+                              Try another option
+                            </Button>
+                          </div>
+                        </div>
+                      )}
+                    </AiResponseMessage>
                   )
                 ))}
                 {chatThinking && (

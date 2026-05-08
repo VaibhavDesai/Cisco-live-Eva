@@ -8,7 +8,7 @@
     "build": "vite build && cp dist/index.html dist/404.html && touch dist/.nojekyll",
     "lint": "eslint .",
     "preview": "vite preview",
-    "predeploy:ghpages": "VITE_BASE_PATH=/pages/CBABU/Cisco-live-Eva/ vite build && cp dist/index.html dist/404.html && touch dist/.nojekyll",
+    "predeploy:ghpages": "VITE_BASE_PATH=/pages/CBABU/Cisco-live-Eva/ VITE_CHAT_API_URL=https://ai-agent-studio-proxy.sisun-ai.workers.dev vite build && cp dist/index.html dist/404.html && touch dist/.nojekyll",
     "deploy": "npm run predeploy:ghpages && gh-pages -d dist --repo git@sqbu-github-cisco:CBABU/Cisco-live-Eva.git -b gh-pages --dotfiles --no-history"
   },
   "dependencies": {
@@ -18,8 +18,14 @@
     "@momentum-design/illustrations": "^0.3.0",
     "@momentum-design/tokens": "^0.9.0",
     "@supabase/supabase-js": "^2.104.0",
+    "date-fns": "^4.1.0",
     "dotenv": "^17.4.1",
+    "echarts": "^6.0.0",
+    "echarts-for-react": "^3.0.6",
     "react": "^19.2.0",
+    "react-day-picker": "^9.14.0",
+    "react-dnd": "^16.0.1",
+    "react-dnd-html5-backend": "^16.0.1",
     "react-dom": "^19.2.0",
     "react-router-dom": "^7.13.0"
   },

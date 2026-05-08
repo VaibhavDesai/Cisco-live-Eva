@@ -14,6 +14,17 @@ export interface ChatMessage {
   content: string;
 }
 
+function getCompanionApiUrl(path: string): string {
+  const chatApiUrl = import.meta.env.VITE_CHAT_API_URL;
+  if (!chatApiUrl) return `/api${path}`;
+
+  const baseUrl = chatApiUrl
+    .replace(/\/chat\/?$/, '')
+    .replace(/\/$/, '');
+
+  return `${baseUrl}${path}`;
+}
+
 const SYSTEM_PROMPT = `You are a guardrail policy assistant for an AI Agent Studio. Your job is to help users create and refine custom guardrail profiles that govern how an AI agent behaves.
 
 When the user describes a policy they want to create, respond with:
@@ -180,6 +191,27 @@ export async function sendEvaChat(messages: ChatMessage[]): Promise<string> {
   const data = await res.json();
   const content: string = typeof data.content === 'string' ? data.content : '';
   return content.trim();
+}
+
+export async function getElevenLabsConversationSignedUrl(): Promise<string> {
+  const apiUrl = import.meta.env.VITE_CONVAI_SIGNED_URL_API_URL || getCompanionApiUrl('/convai/signed-url');
+  const res = await fetch(apiUrl, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({}),
+  });
+
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({ error: 'Request failed' }));
+    throw new Error(err.error || `API error (${res.status})`);
+  }
+
+  const data = await res.json();
+  if (typeof data.signedUrl !== 'string' || !data.signedUrl.startsWith('wss://')) {
+    throw new Error('Signed conversation URL was not returned');
+  }
+
+  return data.signedUrl;
 }
 
 function parseAiResponse(content: string): PolicyAiResponse {

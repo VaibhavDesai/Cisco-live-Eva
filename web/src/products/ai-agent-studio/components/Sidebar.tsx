@@ -16,6 +16,7 @@ interface NavItem {
 const navItems: NavItem[] = [
   { path: '/', label: 'Dashboard', icon: 'home-bold' },
   { path: '/agents', label: 'AI Agents', icon: 'bot-bold' },
+  { path: '/observability', label: 'Observability', icon: 'multiline-chart-regular' },
   { path: '/assistant-skills', label: 'AI Assistant Skills', icon: 'setup-assistant-bold' },
   { path: '/knowledge', label: 'Knowledge', icon: 'apps-bold' },
   { path: '/connections', label: 'Integrations', icon: 'extension-mobility-bold' },
@@ -68,6 +69,10 @@ export default function Sidebar({ collapsed = false }: SidebarProps) {
                 const itemActive =
                   item.path === '/settings'
                     ? location.pathname === '/settings'
+                    : item.path === '/observability'
+                      ? location.pathname === '/observability' ||
+                        location.pathname === '/kpi-dashboard' ||
+                        location.pathname.endsWith('/kpi-dashboard')
                     : item.path === '/'
                       ? isDashboardActive
                       : isActive(item.path, item.path === '/');

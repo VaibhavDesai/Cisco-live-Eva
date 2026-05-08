@@ -10,13 +10,24 @@ export type EvaConversationStep =
   | 'knowledge'
   | 'actions'
   | 'security'
-  | 'review';
+  | 'review'
+  | 'preview'
+  | 'testing';
 
 export type EvaLandingMode = 'build' | 'existing';
 export type EvaSecurityTier = 'standard' | 'advanced';
 export type EvaChannelType = 'digital' | 'voice';
 export type EvaDigitalChannel = 'chat' | 'email' | 'sms';
-export type EvaSensitivity = 'low' | 'medium' | 'high';
+export type EvaConversationalOnboardingStep =
+  | 'idle'
+  | 'profile-name'
+  | 'profile-purpose'
+  | 'channel-type'
+  | 'digital-channel'
+  | 'digital-address'
+  | 'voice-phone'
+  | 'ready-for-studio';
+export type EvaSensitivity = 'low' | 'medium' | 'high' | 'critical';
 export type EvaEnforcement = 'monitor' | 'block';
 export type EvaDirection = 'prompt' | 'response';
 export type EvaThread = { id: string; title: string; group?: string };
@@ -29,25 +40,37 @@ export const EVA_STEP_ORDER: EvaConversationStep[] = [
   'actions',
   'security',
   'review',
+  'preview',
+  'testing',
 ];
 
 export const EVA_SESSION_STORAGE_KEY = 'eva-agents-session-state';
+export const EVA_AUTO_START_VOICE_PREVIEW_KEY = 'eva-auto-start-voice-preview';
 
 export const sensitivityToValue: Record<EvaSensitivity, number> = {
   low: 0,
-  medium: 50,
-  high: 100,
+  medium: 33,
+  high: 66,
+  critical: 100,
 };
 
 export const valueToSensitivity = (value: number): EvaSensitivity => {
   if (value <= 0) return 'low';
-  if (value >= 100) return 'high';
+  if (value >= 100) return 'critical';
+  if (value >= 66) return 'high';
   return 'medium';
 };
 
 export const isOrchestrationIntent = (normalized: string) =>
+  normalized.includes('collaboration') ||
+  normalized.includes('collaborative agent') ||
+  normalized.includes('collaborative agents') ||
+  normalized.includes('agents collaborate') ||
+  normalized.includes('agent collaborate') ||
+  normalized.includes('two agents') ||
   ((normalized.includes('connect') ||
     normalized.includes('orchestrat') ||
+    normalized.includes('collaborat') ||
     normalized.includes('handoff') ||
     normalized.includes('coordinate') ||
     normalized.includes('link')) &&
@@ -391,6 +414,7 @@ export interface EvaSessionState {
      the deterministic build flow. Optional so older persisted snapshots
      keep deserializing cleanly. */
   freeChatActive?: boolean;
+  conversationalOnboardingStep?: EvaConversationalOnboardingStep;
   evaStep: EvaConversationStep;
   agentName: string;
   agentDescription: string;

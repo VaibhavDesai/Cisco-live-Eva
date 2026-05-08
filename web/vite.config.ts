@@ -94,6 +94,75 @@ export default defineConfig({
       },
     },
     {
+      // Dev-only signed URL proxy for ElevenLabs Conversational AI. The
+      // browser never receives ELEVENLABS_API_KEY; it only receives the
+      // short-lived WebSocket URL returned by ElevenLabs.
+      name: 'elevenlabs-convai-signed-url-proxy',
+      configureServer(server) {
+        server.middlewares.use('/api/convai/signed-url', async (req, res) => {
+          if (req.method !== 'POST') {
+            res.statusCode = 405
+            res.setHeader('Content-Type', 'application/json')
+            res.end(JSON.stringify({ error: 'Method not allowed' }))
+            return
+          }
+
+          const apiKey = process.env.ELEVENLABS_API_KEY
+          if (!apiKey) {
+            res.statusCode = 500
+            res.setHeader('Content-Type', 'application/json')
+            res.end(JSON.stringify({ error: 'ELEVENLABS_API_KEY not configured in .env' }))
+            return
+          }
+
+          const agentId = process.env.ELEVENLABS_AGENT_ID
+          if (!agentId) {
+            res.statusCode = 500
+            res.setHeader('Content-Type', 'application/json')
+            res.end(JSON.stringify({ error: 'ELEVENLABS_AGENT_ID not configured in .env' }))
+            return
+          }
+
+          try {
+            const signedUrlRes = await fetch(
+              `https://api.elevenlabs.io/v1/convai/conversation/get-signed-url?agent_id=${encodeURIComponent(agentId)}`,
+              {
+                method: 'GET',
+                headers: {
+                  'xi-api-key': apiKey,
+                  Accept: 'application/json',
+                },
+              },
+            )
+
+            if (!signedUrlRes.ok) {
+              const errText = await signedUrlRes.text()
+              res.statusCode = signedUrlRes.status
+              res.setHeader('Content-Type', 'application/json')
+              res.end(JSON.stringify({ error: `ElevenLabs signed URL error (${signedUrlRes.status})`, details: errText }))
+              return
+            }
+
+            const data = (await signedUrlRes.json()) as { signed_url?: string }
+            if (!data.signed_url) {
+              res.statusCode = 502
+              res.setHeader('Content-Type', 'application/json')
+              res.end(JSON.stringify({ error: 'ElevenLabs did not return a signed URL' }))
+              return
+            }
+
+            res.setHeader('Content-Type', 'application/json')
+            res.end(JSON.stringify({ signedUrl: data.signed_url }))
+          } catch (err: unknown) {
+            const message = err instanceof Error ? err.message : 'Unknown error'
+            res.statusCode = 502
+            res.setHeader('Content-Type', 'application/json')
+            res.end(JSON.stringify({ error: message }))
+          }
+        })
+      },
+    },
+    {
       // Proxy for ElevenLabs Speech-to-Text (Scribe). Keeps the API key on
       // the dev server side so it never ships in the client bundle. The
       // browser POSTs the recorded audio as a raw binary blob with its

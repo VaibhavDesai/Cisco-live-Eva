@@ -230,7 +230,7 @@ export function AppProvider({ children }: AppProviderProps) {
       gradient: newAgent.gradient,
       status: newAgent.status,
       initials: newAgent.name.split(' ').map(w => w[0]).join('').toUpperCase().slice(0, 2),
-      statusClass: 'badge-warning',
+      statusClass: newAgent.statusClass ?? 'badge-warning',
       sessions: '—',
       successRate: '—',
       messages: '—',

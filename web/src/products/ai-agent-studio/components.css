@@ -549,7 +549,7 @@ html[data-product='ai-agent-studio'] .app-header {
 .eva-generated-layout {
   position: relative;
   display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(calc(var(--spacing-big) * 4), calc(var(--spacing-big) * 5));
+  grid-template-columns: minmax(0, 1fr) minmax(calc(var(--spacing-big) * 4.5), calc(var(--spacing-big) * 5.5));
   grid-template-rows: minmax(0, 1fr);
   gap: var(--spacing-small);
   align-items: stretch;
@@ -578,6 +578,9 @@ html[data-product='ai-agent-studio'] .app-header {
   align-self: start;
   max-height: calc(100vh - 160px);
   overflow: auto;
+  box-sizing: border-box;
+  padding-bottom: calc(var(--spacing-big) + var(--spacing-large));
+  scroll-padding-bottom: calc(var(--spacing-big) + var(--spacing-large));
 }
 
 .eva-generated-side-panel--collapsed {
@@ -667,6 +670,10 @@ html[data-product='ai-agent-studio'] .app-header {
   border: var(--border-width-small) solid var(--border-color);
   border-radius: 100px;
   background: var(--bg-glass);
+}
+
+.eva-landing-hero-symbol {
+  margin-bottom: var(--spacing-small);
 }
 
 .eva-first-interface__hero h1 {
@@ -1139,6 +1146,10 @@ html[data-product='ai-agent-studio'] .app-header {
   margin-top: var(--spacing-small);
 }
 
+.v2-profile-textarea-group + .eva-dialogue__actions {
+  margin-top: 0;
+}
+
 .eva-ai-response.ai-response {
   padding-top: var(--spacing-x-small);
   padding-left: var(--spacing-small);
@@ -1385,7 +1396,8 @@ html[data-product='ai-agent-studio'] .app-header {
 
 .eva-security-tier-selector {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-columns: repeat(2, minmax(220px, 320px));
+  justify-content: start;
   gap: var(--spacing-small);
 }
 
@@ -1493,6 +1505,7 @@ html[data-product='ai-agent-studio'] .app-header {
   border: var(--border-width-small) solid var(--border-color);
   border-radius: var(--border-radius-large);
   background: var(--bg-glass);
+  width: 100%;
 }
 
 .eva-security-advanced-group {
@@ -1547,6 +1560,10 @@ html[data-product='ai-agent-studio'] .app-header {
   display: flex;
   flex-direction: column;
   gap: var(--spacing-small);
+  width: 100%;
+  padding-top: var(--spacing-small);
+  border-top: var(--border-width-small) solid transparent;
+  border-image: var(--gradient-divider) 1;
 }
 
 .eva-security-controls .form-group {
@@ -1554,11 +1571,17 @@ html[data-product='ai-agent-studio'] .app-header {
   width: 100%;
 }
 
+.eva-security-radio-control .radio-group-list {
+  flex-direction: row;
+  flex-wrap: wrap;
+  gap: var(--spacing-large);
+}
+
 .eva-security-sensitivity-control {
   display: flex;
   flex-direction: column;
   gap: var(--spacing-xx-small);
-  width: 100%;
+  width: min(100%, 320px);
 }
 
 .eva-security-sensitivity-control label {
@@ -2186,6 +2209,7 @@ html[data-product='ai-agent-studio'] .app-header {
    free-chat modifier so the build-flow dialogue (which has its own
    `--generated`-scoped sizing) is unaffected. */
 .eva-first-interface--free-chat .eva-first-interface__free-chat {
+  position: relative;
   flex: 1 1 0;
   justify-content: flex-start;
   width: min(100%, 960px);
@@ -2193,6 +2217,7 @@ html[data-product='ai-agent-studio'] .app-header {
   margin-left: auto;
   margin-right: auto;
   min-height: 0;
+  padding-bottom: clamp(180px, 32vh, 320px);
   overflow-y: auto;
 }
 
@@ -2202,13 +2227,40 @@ html[data-product='ai-agent-studio'] .app-header {
    widths across states. Keep the free-chat transcript locked to the same
    centered conversation column in every state. */
 .eva-first-interface--generated.eva-first-interface--free-chat .eva-first-interface__free-chat {
+  position: relative;
   flex: 1 1 0;
   width: min(100%, 960px);
   max-width: none;
   margin-left: auto;
   margin-right: auto;
   min-height: 0;
+  padding-bottom: clamp(180px, 32vh, 320px);
   overflow-y: auto;
+}
+
+.eva-free-chat-new-thread.btn {
+  position: absolute;
+  top: var(--spacing-large);
+  right: var(--spacing-large);
+  z-index: 4;
+  width: 32px;
+  min-width: 32px;
+  height: 32px;
+  padding: 0;
+  border-color: transparent;
+  background: transparent;
+  color: var(--text-secondary);
+}
+
+.eva-free-chat-new-thread.btn:hover {
+  border-color: color-mix(in srgb, var(--border-color) 58%, transparent);
+  background: color-mix(in srgb, var(--bg-glass) 56%, transparent);
+  color: var(--text-primary);
+}
+
+.eva-first-interface--free-chat .eva-first-interface__free-chat--dense-bottom,
+.eva-first-interface--generated.eva-first-interface--free-chat .eva-first-interface__free-chat--dense-bottom {
+  padding-bottom: clamp(72px, 14vh, 140px);
 }
 
 /* Free-chat composer width — when the chat-based variation is in
@@ -5458,11 +5510,63 @@ html[data-product='ai-agent-studio']:has(.eva-form-builder.primary-content) .app
 .eva-side-card {
   display: flex;
   flex-direction: column;
+  flex: 0 0 auto;
   gap: var(--spacing-x-small);
   padding: var(--spacing-small);
   border: var(--border-width-small) solid var(--border-color);
   border-radius: 16px;
   background: var(--bg-glass);
+}
+
+.eva-side-preview-card {
+  position: relative;
+  border-color: transparent;
+  box-shadow:
+    0 0 0 1px color-mix(in srgb, var(--accent-color) 32%, transparent),
+    0 18px 44px color-mix(in srgb, var(--accent-color) 16%, transparent);
+}
+
+.eva-side-preview-card::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  padding: 2px;
+  border-radius: inherit;
+  background: linear-gradient(
+    115deg,
+    color-mix(in srgb, var(--accent-color) 20%, transparent) 0%,
+    color-mix(in srgb, var(--accent-color) 95%, white 5%) 24%,
+    color-mix(in srgb, white 88%, var(--accent-color) 12%) 36%,
+    color-mix(in srgb, var(--accent-color) 95%, white 5%) 48%,
+    color-mix(in srgb, var(--accent-color) 20%, transparent) 72%
+  );
+  background-size: 260% 260%;
+  pointer-events: none;
+  -webkit-mask:
+    linear-gradient(#fff 0 0) content-box,
+    linear-gradient(#fff 0 0);
+  -webkit-mask-composite: xor;
+  mask:
+    linear-gradient(#fff 0 0) content-box,
+    linear-gradient(#fff 0 0);
+  mask-composite: exclude;
+  animation: eva-side-preview-card-shine 2.8s linear infinite;
+}
+
+@keyframes eva-side-preview-card-shine {
+  0% {
+    background-position: 200% 0;
+  }
+  100% {
+    background-position: -80% 100%;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .eva-side-preview-card::before {
+    animation: none;
+    background-position: 50% 50%;
+  }
 }
 
 .eva-side-card__header {
@@ -5472,12 +5576,32 @@ html[data-product='ai-agent-studio']:has(.eva-form-builder.primary-content) .app
   color: var(--text-primary);
 }
 
+.eva-side-card__header--action {
+  display: flex;
+  justify-content: space-between;
+  width: 100%;
+}
+
+.eva-side-card__title {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--spacing-xx-small);
+  min-width: 0;
+}
+
 .eva-side-card__header h2 {
   margin: 0;
   color: inherit;
   font-size: var(--font-size-body-midsize);
   font-weight: var(--font-weight-medium);
   line-height: var(--font-lineheight-body-midsize);
+}
+
+.eva-side-card__description {
+  margin: 0;
+  color: var(--text-secondary);
+  font-size: var(--font-size-body-small);
+  line-height: var(--font-lineheight-body-small);
 }
 
 .eva-generation-progress {
@@ -5715,6 +5839,36 @@ html[data-product='ai-agent-studio']:has(.eva-form-builder.primary-content) .app
   overflow-wrap: anywhere;
 }
 
+.eva-side-preview-card .eva-preview-session__thread {
+  max-height: 280px;
+  overflow-x: hidden;
+}
+
+.eva-side-preview-card .eva-preview-session__thread .eva-ai-response.ai-response {
+  width: 100%;
+  min-width: 0;
+  max-width: 100%;
+  padding: var(--spacing-x-small);
+}
+
+.eva-side-preview-card .eva-preview-session__thread .ai-response__header,
+.eva-side-preview-card .eva-preview-session__thread .ai-response__body {
+  min-width: 0;
+}
+
+.eva-side-preview-card .eva-preview-session__thread .ai-response__label,
+.eva-side-preview-card .eva-preview-session__thread .ai-response__content {
+  font-size: var(--font-size-body-small);
+  line-height: var(--font-lineheight-body-small);
+}
+
+.eva-side-preview-card .eva-preview-session__actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: var(--spacing-xx-small);
+}
+
 .eva-form-builder__sections {
   display: flex;
   flex-direction: column;
@@ -5903,6 +6057,16 @@ html[data-product='ai-agent-studio']:has(.eva-form-builder.primary-content) .app
   padding-bottom: 0;
 }
 
+.eva-landing-shell:not(.eva-first-interface--generated) .eva-first-interface__hero {
+  animation: evaLandingHeroSettle 2.55s cubic-bezier(0.22, 0.72, 0.18, 1) both;
+  will-change: transform;
+}
+
+.eva-landing-shell:not(.eva-first-interface--generated) .eva-first-interface__hero h1 {
+  font-size: var(--font-size-heading-midsize);
+  line-height: var(--font-lineheight-heading-midsize);
+}
+
 .eva-landing-composer,
 .eva-form-builder__landing-composer {
   position: relative;
@@ -5911,9 +6075,73 @@ html[data-product='ai-agent-studio']:has(.eva-form-builder.primary-content) .app
   margin: var(--spacing-small) auto 0;
 }
 
+.eva-landing-shell:not(.eva-first-interface--generated) .eva-landing-composer {
+  opacity: 0;
+  transform: translateY(var(--spacing-small));
+  animation: evaLandingContentReveal 0.85s ease-out 2.25s forwards;
+}
+
 .eva-landing-shell .eva-prompt-examples,
 .eva-form-builder__landing-shell .eva-prompt-examples {
   margin-top: var(--spacing-small);
+}
+
+.eva-landing-shell:not(.eva-first-interface--generated) .eva-prompt-card {
+  opacity: 0;
+  transform: translateY(var(--spacing-medium));
+  animation: evaLandingContentReveal 0.65s ease-out forwards;
+}
+
+.eva-landing-shell:not(.eva-first-interface--generated) .eva-prompt-card:nth-child(1) {
+  animation-delay: 2.75s;
+}
+
+.eva-landing-shell:not(.eva-first-interface--generated) .eva-prompt-card:nth-child(2) {
+  animation-delay: 2.88s;
+}
+
+.eva-landing-shell:not(.eva-first-interface--generated) .eva-prompt-card:nth-child(3) {
+  animation-delay: 3.01s;
+}
+
+.eva-landing-shell:not(.eva-first-interface--generated) .eva-prompt-card:nth-child(4) {
+  animation-delay: 3.14s;
+}
+
+.eva-landing-shell:not(.eva-first-interface--generated) .eva-landing-divider,
+.eva-landing-shell:not(.eva-first-interface--generated) .eva-landing-secondary-actions {
+  opacity: 0;
+  transform: translateY(var(--spacing-small));
+  animation: evaLandingContentReveal 0.75s ease-out 3.35s forwards;
+}
+
+@keyframes evaLandingHeroSettle {
+  0%,
+  50% {
+    transform: translateY(clamp(calc(var(--spacing-big) * 2), 28vh, calc(var(--spacing-big) * 5)));
+  }
+  100% {
+    transform: translateY(0);
+  }
+}
+
+@keyframes evaLandingContentReveal {
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .eva-landing-shell:not(.eva-first-interface--generated) .eva-first-interface__hero,
+  .eva-landing-shell:not(.eva-first-interface--generated) .eva-landing-composer,
+  .eva-landing-shell:not(.eva-first-interface--generated) .eva-prompt-card,
+  .eva-landing-shell:not(.eva-first-interface--generated) .eva-landing-divider,
+  .eva-landing-shell:not(.eva-first-interface--generated) .eva-landing-secondary-actions {
+    opacity: 1;
+    transform: none;
+    animation: none;
+  }
 }
 
 /* Nudge that appears above the starter cards once the user has had a
@@ -5926,6 +6154,253 @@ html[data-product='ai-agent-studio']:has(.eva-form-builder.primary-content) .app
   color: var(--text-secondary);
   font-size: var(--font-size-body-large);
   line-height: var(--line-height-body-large);
+}
+
+.eva-retail-channel-options {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--spacing-small);
+}
+
+.eva-retail-channel-option {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: var(--spacing-x-small);
+  align-items: flex-start;
+  padding: var(--spacing-small);
+  border: var(--border-width-small) solid var(--border-color);
+  border-radius: 16px;
+  background: var(--bg-glass);
+  color: var(--text-primary);
+  text-align: left;
+  cursor: pointer;
+  transition: border-color 0.15s ease, background 0.15s ease, transform 0.15s ease;
+}
+
+.eva-retail-channel-option:hover {
+  border-color: var(--accent-color);
+  background: var(--button-secondary-active);
+  transform: translateY(-2px);
+}
+
+.eva-retail-channel-option__icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: var(--spacing-xx-large);
+  height: var(--spacing-xx-large);
+  border-radius: var(--border-radius-half-height);
+  background: var(--bg-glass-light);
+  color: var(--accent-color);
+}
+
+.eva-retail-channel-option strong,
+.eva-retail-channel-option small {
+  display: block;
+}
+
+.eva-retail-channel-option small {
+  margin-top: var(--spacing-xxx-small);
+  color: var(--text-secondary);
+  font-size: var(--font-size-body-small);
+  line-height: var(--font-lineheight-body-small);
+}
+
+.eva-retail-discovery-placeholder {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-xx-small);
+  width: 100%;
+  min-width: 220px;
+}
+
+.eva-waterfall-status__row--placeholder {
+  color: color-mix(in srgb, var(--text-secondary) 42%, transparent);
+}
+
+.eva-waterfall-status__row--placeholder > svg,
+.eva-waterfall-status__row--placeholder > span:first-child {
+  animation: evaPlanningPulse 1s ease-in-out infinite;
+}
+
+.eva-retail-discovery-placeholder span {
+  display: block;
+  height: 10px;
+  border-radius: var(--border-radius-small);
+  background:
+    linear-gradient(
+      90deg,
+      color-mix(in srgb, var(--text-secondary) 12%, transparent) 0%,
+      color-mix(in srgb, var(--text-primary) 24%, transparent) 50%,
+      color-mix(in srgb, var(--text-secondary) 12%, transparent) 100%
+    );
+  background-size: 220% 100%;
+  animation: eva-side-card-skeleton-shimmer 1.4s ease-in-out infinite;
+}
+
+.eva-retail-discovery-placeholder span:first-child {
+  width: min(42%, 220px);
+}
+
+.eva-retail-discovery-placeholder span:last-child {
+  width: min(82%, 520px);
+  opacity: 0.72;
+}
+
+.eva-retail-discovery-trace {
+  margin: 0 0 var(--spacing-xx-small);
+  color: var(--text-secondary);
+}
+
+.eva-retail-discovery-trace.accordion {
+  border: 0;
+  background: transparent;
+}
+
+.eva-retail-discovery-trace .accordion__header {
+  min-height: auto;
+  padding: var(--spacing-xx-small) 0 0;
+  color: var(--text-secondary);
+  font-size: var(--font-size-body-small);
+  line-height: var(--font-lineheight-body-small);
+}
+
+.eva-retail-discovery-trace__title {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--spacing-xxx-small);
+  color: var(--text-secondary);
+}
+
+.eva-retail-discovery-trace .accordion__chevron {
+  color: var(--text-muted);
+}
+
+.eva-retail-discovery-trace .accordion__panel {
+  border-top: 0;
+}
+
+.eva-retail-discovery-trace .accordion__panel-content {
+  padding: var(--spacing-xx-small) 0 0;
+}
+
+.eva-retail-agent-name-options {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--spacing-xx-small);
+}
+
+.eva-retail-agent-name-options .form-group {
+  flex: 1 1 260px;
+  margin-bottom: 0;
+}
+
+.eva-retail-welcome-options {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-xx-small);
+  width: 100%;
+  min-width: 0;
+}
+
+.eva-retail-welcome-option {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--spacing-xxx-small);
+  width: 100%;
+  min-width: 0;
+  padding: var(--spacing-x-small);
+  border: var(--border-width-small) solid var(--border-color);
+  border-radius: var(--border-radius-large);
+  background: var(--bg-glass);
+  color: var(--text-primary);
+  text-align: left;
+  cursor: pointer;
+  transition: border-color 0.15s ease, background 0.15s ease, transform 0.15s ease;
+}
+
+.eva-retail-welcome-option:hover {
+  border-color: var(--accent-color);
+  background: var(--button-secondary-active);
+  transform: translateY(-1px);
+}
+
+.eva-retail-welcome-option__meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--spacing-xx-small);
+}
+
+.eva-retail-welcome-option__label {
+  color: var(--accent-color);
+  font-size: var(--font-size-body-small);
+  font-weight: var(--font-weight-medium);
+  line-height: var(--font-lineheight-body-small);
+}
+
+.eva-retail-welcome-option__tone {
+  display: inline-flex;
+  align-items: center;
+  padding: var(--spacing-micro) var(--spacing-xx-small);
+  border-radius: 100px;
+  background: var(--bg-glass-light);
+  color: var(--accent-color);
+  font-size: var(--font-size-body-small);
+  font-weight: var(--font-weight-medium);
+  line-height: var(--font-lineheight-body-small);
+}
+
+.eva-retail-welcome-option__text {
+  max-width: 100%;
+  color: var(--text-primary);
+  font-size: var(--font-size-body-midsize);
+  line-height: var(--font-lineheight-body-midsize);
+  overflow-wrap: anywhere;
+}
+
+.eva-retail-welcome-option__tone-line {
+  max-width: 100%;
+  color: var(--text-primary);
+  font-size: var(--font-size-body-small);
+  font-weight: var(--font-weight-medium);
+  line-height: var(--font-lineheight-body-small);
+  overflow-wrap: anywhere;
+}
+
+.eva-retail-welcome-option__reason {
+  max-width: 100%;
+  color: var(--text-secondary);
+  font-size: var(--font-size-body-small);
+  line-height: var(--font-lineheight-body-small);
+  overflow-wrap: anywhere;
+}
+
+.eva-retail-final-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--spacing-xx-small);
+}
+
+.eva-retail-inline-preview {
+  margin-top: var(--spacing-small);
+}
+
+.eva-retail-inline-preview .eva-preview-session {
+  width: 100%;
+}
+
+.eva-retail-inline-preview .eva-voice-preview {
+  background: color-mix(in srgb, var(--bg-glass-light) 82%, transparent);
+}
+
+.eva-retail-inline-preview__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--spacing-xx-small);
+  margin-top: var(--spacing-small);
 }
 
 /* "Or" divider between the templated starter cards and the secondary
