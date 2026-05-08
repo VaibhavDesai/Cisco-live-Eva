@@ -6386,6 +6386,28 @@ html[data-product='ai-agent-studio']:has(.eva-form-builder.primary-content) .app
   transform: none;
 }
 
+.eva-retail-channel-option:disabled {
+  cursor: default;
+  opacity: 1;
+  pointer-events: none;
+}
+
+.eva-retail-channel-option:disabled:not(.eva-security-tier-card--selected) {
+  border-color: var(--border-color);
+  background: var(--bg-glass);
+}
+
+.eva-retail-phone-options .ai-footer__suggestion:disabled {
+  cursor: default;
+  opacity: 1;
+  pointer-events: none;
+}
+
+.eva-retail-phone-options .ai-footer__suggestion:disabled:hover {
+  border-color: var(--mds-color-theme-outline-secondary-normal, var(--border-color));
+  background: transparent;
+}
+
 .eva-retail-discovery-placeholder {
   display: flex;
   flex-direction: column;

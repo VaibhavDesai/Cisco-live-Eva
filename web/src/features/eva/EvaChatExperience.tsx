@@ -346,19 +346,19 @@ const RETAIL_CHANNEL_OPTIONS = [
     label: RETAIL_VOICE_LABEL,
     icon: 'phone',
     title: 'Voice',
-    description: 'Answer incoming store calls, check inventory, answer FAQs, and escalate to Matt when needed.',
+    description: 'Answer incoming store calls, check inventory, and answer FAQs.',
   },
   {
     label: RETAIL_DIGITAL_LABEL,
     icon: 'chat',
     title: 'Digital',
-    description: 'Start with chat messaging for store questions, product availability, and guided handoff.',
+    description: 'Start with chat messaging for store questions and product availability.',
   },
   {
     label: RETAIL_VIDEO_LABEL,
     icon: 'video',
     title: 'Video',
-    description: 'Support video conversations with product guidance, store answers, and escalation to Matt.',
+    description: 'Support video conversations with product guidance and store answers.',
   },
 ];
 
@@ -681,6 +681,8 @@ export default function EvaChatExperience() {
     restoredEvaSession?.conversationalOnboardingStep ?? 'idle',
   );
   const [retailPrototypeStep, setRetailPrototypeStep] = useState<RetailPrototypeStep>('idle');
+  const [retailSelectedChannel, setRetailSelectedChannel] = useState<string | null>(null);
+  const [retailSelectedPhoneNumber, setRetailSelectedPhoneNumber] = useState<string | null>(null);
   const [retailDiscoveryProgress, setRetailDiscoveryProgress] = useState(0);
   const [retailAgentNameInput, setRetailAgentNameInput] = useState(RETAIL_RECEPTIONIST_AGENT_NAME);
   const [retailAgentNameInputVisible, setRetailAgentNameInputVisible] = useState(false);
@@ -1121,6 +1123,8 @@ export default function EvaChatExperience() {
     setFreeChatActive(true);
     setShowOtherTemplates(false);
     setRetailPrototypeStep('discovering');
+    setRetailSelectedChannel(null);
+    setRetailSelectedPhoneNumber(null);
     setRetailDiscoveryProgress(0);
     setConversationalOnboardingStep('idle');
     if (retailDiscoveryTimerRef.current) {
@@ -1179,16 +1183,19 @@ export default function EvaChatExperience() {
 
     if (retailPrototypeStep === 'channel') {
       if (normalized.includes('voice') || normalized.includes('phone') || normalized.includes('call')) {
+        setRetailSelectedChannel(RETAIL_VOICE_LABEL);
         setChannelType('voice');
         setRetailPrototypeStep('phone');
         addOnboardingAssistantMessage(
           'Voice is a good fit for a receptionist. Which connected phone number should this agent answer?',
           CHANNEL_PHONE_NUMBER_OPTIONS.map(option => option.label),
+          'retail-phone-choice',
         );
         return true;
       }
 
       if (normalized.includes('video')) {
+        setRetailSelectedChannel(RETAIL_VIDEO_LABEL);
         setChannelType('digital');
         setDigitalChannel('chat');
         setDigitalChannelAddress('webex-electronics-video');
@@ -1198,6 +1205,7 @@ export default function EvaChatExperience() {
       }
 
       if (normalized.includes('digital') || normalized.includes('chat') || normalized.includes('email') || normalized.includes('sms')) {
+        setRetailSelectedChannel(RETAIL_DIGITAL_LABEL);
         setChannelType('digital');
         setDigitalChannel('chat');
         setDigitalChannelAddress('webex-electronics-san-jose');
@@ -1212,7 +1220,9 @@ export default function EvaChatExperience() {
 
     if (retailPrototypeStep === 'phone') {
       const connectedPhone = CHANNEL_PHONE_NUMBER_OPTIONS.find(option => option.label === answer.trim() || option.value === answer.trim());
-      setChannelPhoneNumber(connectedPhone?.value ?? answer.trim() ?? CHANNEL_PHONE_NUMBER_OPTIONS[0].value);
+      const nextPhoneNumber = connectedPhone?.value ?? answer.trim() ?? CHANNEL_PHONE_NUMBER_OPTIONS[0].value;
+      setRetailSelectedPhoneNumber(nextPhoneNumber);
+      setChannelPhoneNumber(nextPhoneNumber);
       setRetailPrototypeStep('agent-name');
       addOnboardingAssistantMessage('Perfect. What should we name this agent?', undefined, 'retail-agent-name');
       return true;
@@ -1509,6 +1519,8 @@ export default function EvaChatExperience() {
     setFreeChatActive(false);
     setConversationalOnboardingStep('idle');
     setRetailPrototypeStep('idle');
+    setRetailSelectedChannel(null);
+    setRetailSelectedPhoneNumber(null);
     setShowOtherTemplates(false);
     setLandingMode('build');
   };
@@ -3876,7 +3888,11 @@ ${previewTranscript}`,
                  the form-based variation. */
               const baseFollowups = message.followups ?? [];
               const isRetailChannelChoice = message.originStep === 'retail-channel-choice';
+              const isRetailChannelLocked = isRetailChannelChoice && retailPrototypeStep !== 'channel';
+              const isRetailPhonePrompt = message.originStep === 'retail-phone-choice';
+              const isRetailPhoneLocked = isRetailPhonePrompt && retailPrototypeStep !== 'phone';
               const isRetailAgentNamePrompt = message.originStep === 'retail-agent-name';
+              const isRetailAgentNameLocked = isRetailAgentNamePrompt && retailPrototypeStep !== 'agent-name';
               const isRetailWelcomePrompt = message.originStep === 'retail-welcome-choice';
               const isRetailWelcomeLocked = isRetailWelcomePrompt && retailPrototypeStep !== 'welcome';
               const isRetailKnowledgePrompt = message.originStep === 'retail-knowledge-choice';
@@ -3889,6 +3905,7 @@ ${previewTranscript}`,
                 baseFollowups.includes(CONTINUE_TO_STUDIO_LABEL) ||
                 baseFollowups.includes(RETAIL_VOICE_LABEL) ||
                 baseFollowups.includes(RETAIL_VIDEO_LABEL) ||
+                baseFollowups.some(option => CHANNEL_PHONE_NUMBER_OPTIONS.some(phone => phone.label === option || phone.value === option)) ||
                 baseFollowups.includes(RETAIL_AGENT_NAME_LABEL) ||
                 baseFollowups.some(option => RETAIL_RECOMMENDED_WELCOME_MESSAGES.some(welcome => welcome.text === option)) ||
                 baseFollowups.includes(COMPLETE_RETAIL_AGENT_LABEL);
@@ -3907,31 +3924,50 @@ ${previewTranscript}`,
                       <p>{message.text}</p>
                     </>
                   ) : message.text}
-                  followups={isRetailChannelChoice || isRetailAgentNamePrompt || isRetailWelcomePrompt || isRetailKnowledgePrompt || isRetailActionsPrompt || isRetailFinalActions || isRetailInlinePreview ? [] : followups}
+                  followups={isRetailChannelChoice || isRetailPhonePrompt || isRetailAgentNamePrompt || isRetailWelcomePrompt || isRetailKnowledgePrompt || isRetailActionsPrompt || isRetailFinalActions || isRetailInlinePreview ? [] : followups}
                   onFollowup={handleLlmFollowupClick}
                 >
                   {isRetailChannelChoice && (
                     <>
                       <div className="eva-retail-channel-options" role="group" aria-label="Channel options">
-                        {RETAIL_CHANNEL_OPTIONS.map(option => (
-                          <button
-                            key={option.label}
-                            type="button"
-                            className={`eva-security-tier-card eva-retail-channel-option${option.label === RETAIL_VOICE_LABEL ? ' eva-security-tier-card--selected' : ''}`}
-                            aria-pressed={option.label === RETAIL_VOICE_LABEL}
-                            onClick={() => handleLlmFollowupClick(option.label)}
-                          >
-                            <Icon className="icon" name={option.icon} weight="regular" size={24} />
-                            <span>
-                              <strong>{option.title}</strong>
-                              <small>{option.description}</small>
-                            </span>
-                          </button>
-                        ))}
+                        {RETAIL_CHANNEL_OPTIONS.map(option => {
+                          const isSelected = option.label === retailSelectedChannel;
+                          return (
+                            <button
+                              key={option.label}
+                              type="button"
+                              className={`eva-security-tier-card eva-retail-channel-option${isSelected ? ' eva-security-tier-card--selected' : ''}`}
+                              aria-pressed={isSelected}
+                              disabled={isRetailChannelLocked}
+                              onClick={() => handleLlmFollowupClick(option.label)}
+                            >
+                              <Icon className="icon" name={option.icon} weight="regular" size={24} />
+                              <span>
+                                <strong>{option.title}</strong>
+                                <small>{option.description}</small>
+                              </span>
+                            </button>
+                          );
+                        })}
                       </div>
                     </>
                   )}
-                  {isRetailAgentNamePrompt && (
+                  {isRetailPhonePrompt && !isRetailPhoneLocked && (
+                    <div className="ai-response__followups eva-retail-phone-options" role="group" aria-label="Connected phone numbers">
+                      {[...CHANNEL_PHONE_NUMBER_OPTIONS.map(option => option.label), OTHER_TEMPLATES_LABEL].map(option => (
+                        <button
+                          key={option}
+                          type="button"
+                          className="ai-footer__suggestion"
+                          disabled={isRetailPhoneLocked}
+                          onClick={() => handleLlmFollowupClick(option)}
+                        >
+                          {option}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                  {isRetailAgentNamePrompt && !isRetailAgentNameLocked && (
                     <div className="eva-retail-agent-name-options">
                       {!retailAgentNameInputVisible ? (
                         <>
