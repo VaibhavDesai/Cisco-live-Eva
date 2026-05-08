@@ -18,7 +18,7 @@ function AiUserMessage({ text, avatarSrc, className = '' }) {
           variant={avatarSrc ? 'photo' : 'initials'}
           size="2x-small"
           src={avatarSrc}
-          initials="Y"
+          initials="M"
         />
         <span className="ai-user-msg__name">You</span>
       </div>

@@ -1216,12 +1216,52 @@ html[data-product='ai-agent-studio'] .app-header {
 }
 
 .eva-ai-response.ai-response {
+  display: grid;
+  grid-template-columns: 24px minmax(0, 1fr);
+  column-gap: var(--spacing-xx-small);
+  row-gap: var(--spacing-small);
   padding-top: var(--spacing-x-small);
   padding-left: var(--spacing-small);
 }
 
+.eva-ai-response .ai-response__header {
+  grid-column: 1;
+  grid-row: 1;
+  align-self: start;
+  min-width: 0;
+}
+
+.eva-ai-response .ai-response__identity {
+  flex-wrap: nowrap;
+  min-width: 0;
+}
+
+.eva-ai-response.ai-response--static .ai-response__label {
+  display: none;
+}
+
+.eva-ai-response.ai-response--processing .ai-response__header,
+.eva-ai-response.ai-response--responding .ai-response__header {
+  grid-column: 1 / -1;
+}
+
+.eva-ai-response.ai-response--processing .ai-response__label,
+.eva-ai-response.ai-response--responding .ai-response__label {
+  font-size: var(--font-size-body-large);
+  font-weight: var(--font-weight-bold);
+}
+
 .eva-ai-response .ai-response__body {
+  grid-column: 2;
+  grid-row: 1;
+  min-width: 0;
   gap: var(--spacing-small);
+}
+
+.eva-ai-response.ai-response--processing .ai-response__body,
+.eva-ai-response.ai-response--responding .ai-response__body {
+  grid-column: 2;
+  grid-row: 2;
 }
 
 .eva-ai-generating {

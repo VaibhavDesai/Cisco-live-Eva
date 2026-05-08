@@ -3426,7 +3426,7 @@ ${previewTranscript}`,
       title={(
         <span className="eva-retail-discovery-trace__title">
           <Icon name="sparkle" weight="bold" size="sm" />
-          AI Assistant checked store website, inventory manager, and organization profile
+          Checked store website, inventory manager, and organization profile
         </span>
       )}
       className="eva-retail-discovery-trace"
@@ -3934,8 +3934,8 @@ ${previewTranscript}`,
                   assistantName="AI Assistant"
                   content={isRetailChannelChoice ? (
                     <>
-                      {renderRetailDiscoveryTrace()}
                       <p>{message.text}</p>
+                      {renderRetailDiscoveryTrace()}
                     </>
                   ) : message.text}
                   followups={isRetailChannelChoice || isRetailPhonePrompt || isRetailAgentNamePrompt || isRetailWelcomePrompt || isRetailKnowledgePrompt || isRetailActionsPrompt || isRetailFinalActions || isRetailInlinePreview ? [] : followups}

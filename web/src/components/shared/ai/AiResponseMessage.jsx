@@ -6,6 +6,13 @@ import { AccordionItem as Accordion } from '../Accordion'
 const POSITIVE_OPTIONS = ['Great response', 'Clear', 'Helpful', 'Accurate']
 const NEGATIVE_OPTIONS = ['Incorrect', 'Unhelpful', 'Confusing', 'Incomplete']
 
+function getEvaAssistantLabel(name, state) {
+  if (state === 'static') return name
+  return String(name || 'AI Assistant')
+    .replace(/^AI Assistant\s+is\s+/i, '')
+    .replace(/^AI Assistant\s+/i, '')
+}
+
 /**
  * Renders an AI assistant reply with optional warning badge, sources accordion, action bar
  * (feedback, copy, regenerate), structured thumbs feedback, and follow-up suggestion chips.
@@ -63,14 +70,19 @@ function AiResponseMessage({
     setFeedbackSent(true)
   }, [feedback, selectedChips, feedbackText, onThumbsUp, onThumbsDown])
 
+  const isEvaResponse = className.split(/\s+/).includes('eva-ai-response')
+  const displayedAssistantName = isEvaResponse
+    ? getEvaAssistantLabel(assistantName, assistantState)
+    : assistantName
+
   return (
-    <div className={`ai-response ${className}`}>
+    <div className={`ai-response ai-response--${assistantState} ${className}`}>
       <div className="ai-response__accent" />
 
       <div className="ai-response__header">
         <div className="ai-response__identity">
           <AiSymbol state={assistantState} size={24} />
-          <span className="ai-response__label">{assistantName}</span>
+          <span className="ai-response__label">{displayedAssistantName}</span>
           {warning && (
             <span className="ai-response__badge">
               <Icon name="warning-badge-filled" size={16} />
