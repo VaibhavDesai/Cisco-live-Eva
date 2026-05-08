@@ -23,6 +23,7 @@ import AiSymbol from './AiSymbol'
  * @param {boolean} [props.voiceActive=false] - Optional parent-controlled "voice on" visual state (purely cosmetic when not recording).
  * @param {function(boolean): void} [props.onVoiceToggle] - When provided, enables the mic button. Called with `true` when recording starts and `false` when it stops, so the parent can mirror state if needed.
  * @param {boolean} [props.fillContainer=false] - Removes composer width caps so the footer fills its parent.
+ * @param {boolean} [props.showDisclaimer=true] - Shows the AI accuracy/privacy disclaimer below the composer.
  * @param {string} [props.className=''] - Extra classes merged onto the root `ai-footer` container.
  * @param {string} [props.initialText] - Optional value pushed into the textarea whenever `prefillKey` changes. Use together with a parent-controlled key bump (e.g. an incrementing counter) to drop a fresh prompt into the composer without hijacking the user's in-progress edits.
  * @param {string|number} [props.prefillKey] - Sentinel that tells the composer to replace its current text with `initialText`. Each unique value triggers exactly one prefill, so parents can re-trigger the same prompt by bumping the key.
@@ -38,6 +39,7 @@ function AiFooter({
   voiceActive = false,
   onVoiceToggle,
   fillContainer = false,
+  showDisclaimer = true,
   className = '',
   initialText = '',
   prefillKey,
@@ -476,10 +478,12 @@ function AiFooter({
             </div>
           </div>
         )}
-        <div className="ai-footer__disclaimer">
-          Assistant can make mistakes. Verify responses. Learn how the AI Assistant handles personal data at{' '}
-          <a href="#">AI Assistant Data Privacy</a>.
-        </div>
+        {showDisclaimer && (
+          <div className="ai-footer__disclaimer">
+            Assistant can make mistakes. Verify responses. Learn how the AI Assistant handles personal data at{' '}
+            <a href="#">AI Assistant Data Privacy</a>.
+          </div>
+        )}
       </div>
     </div>
   )

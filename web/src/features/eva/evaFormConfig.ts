@@ -170,7 +170,7 @@ export const STARTER_PROMPTS: Array<{
   },
   {
     templateId: 'knowledge-assistant',
-    title: 'Healthcare receptionist',
+    title: 'Healthcare specialist',
     description: 'Route appointments, insurance questions, medical FAQs, and billing.',
     prompt: 'Create a healthcare receptionist agent.',
     icon: 'headset',
@@ -440,10 +440,33 @@ export interface EvaSessionState {
   customRules: string[];
 }
 
+const replacePersistedEvaCopy = (value: string) => value.replace(/\bEva\b/g, 'AI Assistant');
+
+const migratePersistedEvaCopy = (state: EvaSessionState): EvaSessionState => ({
+  ...state,
+  draft: {
+    ...state.draft,
+    name: replacePersistedEvaCopy(state.draft.name),
+    description: replacePersistedEvaCopy(state.draft.description),
+  },
+  messages: state.messages.map(message => ({
+    ...message,
+    text: replacePersistedEvaCopy(message.text),
+  })),
+  agentName: replacePersistedEvaCopy(state.agentName),
+  agentDescription: replacePersistedEvaCopy(state.agentDescription),
+  welcomeMessage: replacePersistedEvaCopy(state.welcomeMessage),
+  instructionPrompt: replacePersistedEvaCopy(state.instructionPrompt),
+  optimizeSummary: {
+    changes: (state.optimizeSummary?.changes ?? []).map(replacePersistedEvaCopy),
+    reasoning: (state.optimizeSummary?.reasoning ?? []).map(replacePersistedEvaCopy),
+  },
+});
+
 export const readEvaSessionState = (): EvaSessionState | null => {
   try {
     const raw = window.sessionStorage.getItem(EVA_SESSION_STORAGE_KEY);
-    return raw ? (JSON.parse(raw) as EvaSessionState) : null;
+    return raw ? migratePersistedEvaCopy(JSON.parse(raw) as EvaSessionState) : null;
   } catch {
     return null;
   }
@@ -476,7 +499,7 @@ export const buildInstructionPrompt = (draft: EvaAgentDraft) =>
 
 export const buildWelcomeMessage = (draft: EvaAgentDraft) => {
   const firstGoal = draft.goals[0]?.toLowerCase() ?? 'help with your request';
-  return `Hi, I am ${draft.name.replace(/\s+Eva Agent$/, '')}. I can ${firstGoal} and guide you to the right next step.`;
+  return `Hi, I am ${draft.name.replace(/\s+AI Assistant Agent$/, '').replace(/\s+Eva Agent$/, '')}. I can ${firstGoal} and guide you to the right next step.`;
 };
 
 export const summarizeInstructionPrompt = (prompt: string) => {

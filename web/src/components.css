@@ -15643,11 +15643,19 @@ img.app-header__wordmark-logo {
   width: var(--spacing-xx-large);
   height: var(--spacing-xx-large);
   flex: 0 0 auto;
+  margin-right: 0;
+}
+
+.eva-voice-preview__agent > div:not(.eva-voice-preview__avatar) {
+  min-width: 0;
 }
 
 .eva-voice-preview__agent strong,
 .eva-voice-preview__agent span {
   display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .eva-voice-preview__agent strong {

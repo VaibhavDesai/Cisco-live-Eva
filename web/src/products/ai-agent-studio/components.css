@@ -334,6 +334,12 @@ html[data-product='ai-agent-studio'] .app-header {
   animation: evaLandingGradientDrift 42s ease-in-out infinite alternate;
 }
 
+.eva-landing-shell:not(.eva-first-interface--generated) {
+  animation:
+    evaLandingGradientDrift 42s ease-in-out infinite alternate,
+    evaLandingBlackVeil 1.4s ease-out both;
+}
+
 .eva-first-interface::before {
   content: '';
   position: absolute;
@@ -436,6 +442,10 @@ html[data-product='ai-agent-studio'] .app-header {
   animation: evaLandingGalaxyWarp 14s linear infinite;
 }
 
+.eva-landing-shell:not(.eva-first-interface--generated)::before {
+  animation: evaLandingGalaxyWarp 14s linear 0.7s infinite both;
+}
+
 .eva-first-interface--landing::after,
 .eva-first-interface--generated::after,
 .eva-first-interface--free-chat::after {
@@ -451,6 +461,13 @@ html[data-product='ai-agent-studio'] .app-header {
   filter: blur(var(--blur-200));
   opacity: 0.48;
   animation: evaLandingAura 56s ease-in-out infinite alternate;
+}
+
+.eva-landing-shell:not(.eva-first-interface--generated)::after {
+  opacity: 0;
+  animation:
+    evaLandingAuraReveal 1.1s cubic-bezier(0.16, 1, 0.3, 1) 0.45s both,
+    evaLandingAura 56s ease-in-out 1.55s infinite alternate;
 }
 
 .eva-first-interface--generated {
@@ -673,7 +690,27 @@ html[data-product='ai-agent-studio'] .app-header {
 }
 
 .eva-landing-hero-symbol {
-  margin-bottom: var(--spacing-small);
+  margin-bottom: var(--spacing-none);
+}
+
+.eva-landing-hero-brand {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0px;
+}
+
+.eva-landing-hero-animation {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 120px;
+  height: 100px;
+  flex: 0 0 120px;
+}
+
+.eva-landing-hero-animation svg {
+  display: block;
 }
 
 .eva-first-interface__hero h1 {
@@ -683,11 +720,27 @@ html[data-product='ai-agent-studio'] .app-header {
   line-height: var(--font-lineheight-heading-large);
 }
 
+.eva-landing-shell .eva-first-interface__hero h1,
+.eva-form-builder__landing-shell .eva-first-interface__hero h1 {
+  background: linear-gradient(
+    90deg,
+    var(--mds-color-theme-common-whiteboard-pen-blue) 0%,
+    var(--mds-color-theme-common-whiteboard-stickyNote-cyan) 100%
+  );
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  color: var(--mds-color-theme-common-whiteboard-pen-blue);
+  font-size: clamp(var(--font-size-headline-small), 5.8vw, 72px);
+  line-height: 1;
+}
+
 .eva-first-interface__hero h2 {
   max-width: 720px;
   margin: var(--spacing-xx-small) auto 0;
   color: var(--text-primary);
   font-size: var(--font-size-heading-xlarge);
+  font-weight: 400;
   line-height: var(--font-lineheight-heading-xlarge);
 }
 
@@ -745,9 +798,10 @@ html[data-product='ai-agent-studio'] .app-header {
 
 .eva-prompt-examples {
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-columns: repeat(4, minmax(0, 180px));
+  justify-content: center;
   gap: var(--spacing-small);
-  width: min(100%, 1080px);
+  width: min(100%, 840px);
   margin: var(--spacing-xxx-large) auto 0;
 }
 
@@ -806,12 +860,12 @@ html[data-product='ai-agent-studio'] .app-header {
 
 .eva-prompt-card {
   display: flex;
-  min-height: 120px;
+  min-height: 104px;
   flex-direction: column;
   align-items: flex-start;
   gap: var(--spacing-xx-small);
-  padding: var(--spacing-small);
-  border: var(--border-width-small) solid var(--border-color);
+  padding: var(--spacing-x-small);
+  border: 0;
   border-radius: 16px;
   background: var(--bg-glass);
   color: var(--text-primary);
@@ -822,7 +876,6 @@ html[data-product='ai-agent-studio'] .app-header {
 
 .eva-prompt-card:hover,
 .eva-prompt-card--selected {
-  border-color: var(--accent-color);
   background: var(--button-secondary-active);
   box-shadow: var(--elevation-3);
   transform: translateY(-2px);
@@ -832,20 +885,32 @@ html[data-product='ai-agent-studio'] .app-header {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: var(--spacing-xx-large);
-  height: var(--spacing-xx-large);
-  flex: 0 0 var(--spacing-xx-large);
-  border-radius: var(--border-radius-half-height);
-  background: var(--bg-glass-light);
-  color: var(--accent-color);
+  width: var(--spacing-x-large);
+  height: var(--spacing-x-large);
+  flex: 0 0 var(--spacing-x-large);
+  color: var(--text-primary);
 }
 
-.eva-prompt-card strong {
-  font-size: var(--font-size-body-large);
-  line-height: var(--font-lineheight-body-large);
+.eva-prompt-card__header {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--spacing-xxx-small);
+  width: 100%;
+  min-width: 0;
 }
 
-.eva-prompt-card > span:not(.eva-prompt-card__icon) {
+.eva-prompt-card__header strong {
+  min-width: 0;
+  color: var(--text-primary);
+  font-size: var(--font-size-body-midsize);
+  line-height: var(--font-lineheight-body-midsize);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.eva-prompt-card > span:not(.eva-prompt-card__header) {
   flex: 1;
   color: var(--text-secondary);
   font-size: var(--font-size-body-small);
@@ -1619,16 +1684,22 @@ html[data-product='ai-agent-studio'] .app-header {
 
 .eva-config-summary {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-columns: minmax(0, 1.1fr) minmax(280px, 0.9fr);
+  grid-template-areas:
+    "welcome channel"
+    "instructions profile"
+    "instructions knowledge"
+    "instructions actions"
+    "instructions guardrails";
   gap: var(--spacing-x-small);
 }
 
+.eva-config-summary__item,
 .eva-config-summary span {
   display: flex;
   flex-direction: column;
   gap: var(--spacing-xxx-small);
   padding: var(--spacing-x-small);
-  border: var(--border-width-small) solid var(--border-color);
   border-radius: var(--border-radius-large);
   background: var(--bg-glass-light);
   color: var(--text-secondary);
@@ -1636,10 +1707,72 @@ html[data-product='ai-agent-studio'] .app-header {
   line-height: var(--font-lineheight-body-small);
 }
 
+.eva-config-summary__item p {
+  margin: 0;
+  white-space: pre-wrap;
+}
+
 .eva-config-summary strong {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--spacing-xx-small);
   color: var(--text-primary);
   font-size: var(--font-size-body-midsize);
   line-height: var(--font-lineheight-body-midsize);
+}
+
+.eva-config-summary__icon {
+  width: var(--spacing-small);
+  height: var(--spacing-small);
+  padding: 0;
+  flex: 0 0 var(--spacing-small);
+  border-radius: 0;
+  background: #fff;
+  -webkit-mask: var(--eva-config-summary-icon) center / contain no-repeat;
+  mask: var(--eva-config-summary-icon) center / contain no-repeat;
+}
+
+.eva-config-summary strong > .eva-config-summary__icon {
+  display: inline-block;
+  padding: 0;
+  border-radius: 0;
+  background: #fff;
+}
+
+.eva-config-summary__icon--welcome { --eva-config-summary-icon: url('../../../node_modules/@momentum-design/icons/dist/svg/chat-bold.svg'); }
+.eva-config-summary__icon--channel { --eva-config-summary-icon: url('../../../node_modules/@momentum-design/icons/dist/svg/queue-contact-bold.svg'); }
+.eva-config-summary__icon--instructions { --eva-config-summary-icon: url('../../../node_modules/@momentum-design/icons/dist/svg/document-bold.svg'); }
+.eva-config-summary__icon--profile { --eva-config-summary-icon: url('../../../node_modules/@momentum-design/icons/dist/svg/language-bold.svg'); }
+.eva-config-summary__icon--knowledge { --eva-config-summary-icon: url('../../../node_modules/@momentum-design/icons/dist/svg/files-bold.svg'); }
+.eva-config-summary__icon--actions { --eva-config-summary-icon: url('../../../node_modules/@momentum-design/icons/dist/svg/workflow-deployments-bold.svg'); }
+.eva-config-summary__icon--guardrails { --eva-config-summary-icon: url('../../../node_modules/@momentum-design/icons/dist/svg/shield-bold.svg'); }
+
+.eva-config-summary__item--welcome {
+  grid-area: welcome;
+}
+
+.eva-config-summary__item--channel {
+  grid-area: channel;
+}
+
+.eva-config-summary__item--instructions {
+  grid-area: instructions;
+}
+
+.eva-config-summary__item--profile {
+  grid-area: profile;
+}
+
+.eva-config-summary__item--knowledge {
+  grid-area: knowledge;
+}
+
+.eva-config-summary__item--actions {
+  grid-area: actions;
+}
+
+.eva-config-summary__item--guardrails {
+  grid-area: guardrails;
 }
 
 .eva-ai-footer {
@@ -1655,6 +1788,11 @@ html[data-product='ai-agent-studio'] .app-header {
 .eva-first-interface:not(.eva-first-interface--generated) .eva-ai-footer.ai-footer {
   padding: var(--spacing-x-small) 0 var(--spacing-x-small);
   background: transparent;
+}
+
+.eva-first-interface:not(.eva-first-interface--generated) .eva-landing-composer .eva-ai-footer.ai-footer {
+  padding-top: 0;
+  padding-bottom: 0;
 }
 
 .eva-first-interface:not(.eva-first-interface--generated) .eva-ai-footer .ai-footer__group {
@@ -1985,7 +2123,7 @@ html[data-product='ai-agent-studio'] .app-header {
 
 @keyframes evaLandingGalaxyWarp {
   0% {
-    opacity: 0.08;
+    opacity: 0;
     transform: translate3d(-50%, -50%, 0) scale(0.28);
   }
   20% {
@@ -6058,16 +6196,31 @@ html[data-product='ai-agent-studio']:has(.eva-form-builder.primary-content) .app
 }
 
 .eva-landing-shell:not(.eva-first-interface--generated) .eva-first-interface__hero {
-  animation: evaLandingHeroSettle 2.55s cubic-bezier(0.22, 0.72, 0.18, 1) both;
-  will-change: transform;
+  animation: evaLandingHeroSettle 4.5s cubic-bezier(0.22, 0.72, 0.18, 1) 0.7s both;
+  will-change: opacity, transform;
 }
 
-.eva-landing-shell:not(.eva-first-interface--generated) .eva-first-interface__hero h1 {
-  font-size: var(--font-size-heading-midsize);
-  line-height: var(--font-lineheight-heading-midsize);
+.eva-landing-shell:not(.eva-first-interface--generated) .eva-first-interface__hero .eva-landing-hero-brand h1,
+.eva-form-builder__landing-shell .eva-first-interface__hero .eva-landing-hero-brand h1 {
+  display: inline-flex;
+  align-items: center;
+  height: 100px;
+  background-image: linear-gradient(90deg, rgba(61, 143, 245, 1) 0%, rgba(34, 199, 214, 1) 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  font-size: 42px;
+  line-height: 1;
+  vertical-align: middle;
 }
 
-.eva-landing-composer,
+.eva-landing-composer {
+  position: relative;
+  z-index: 1;
+  width: min(100%, calc(720px + (var(--spacing-small) * 3)));
+  margin: var(--spacing-small) auto 0;
+}
+
 .eva-form-builder__landing-composer {
   position: relative;
   z-index: 1;
@@ -6075,15 +6228,29 @@ html[data-product='ai-agent-studio']:has(.eva-form-builder.primary-content) .app
   margin: var(--spacing-small) auto 0;
 }
 
+.eva-form-builder__landing-composer--initial {
+  width: min(100%, calc(720px + (var(--spacing-small) * 3)));
+}
+
 .eva-landing-shell:not(.eva-first-interface--generated) .eva-landing-composer {
   opacity: 0;
   transform: translateY(var(--spacing-small));
-  animation: evaLandingContentReveal 0.85s ease-out 2.25s forwards;
+  animation: evaLandingContentReveal 0.85s ease-out 4.05s forwards;
 }
 
 .eva-landing-shell .eva-prompt-examples,
 .eva-form-builder__landing-shell .eva-prompt-examples {
   margin-top: var(--spacing-small);
+}
+
+.eva-landing-template-divider {
+  margin-top: var(--spacing-small);
+}
+
+.eva-landing-shell:not(.eva-first-interface--generated) .eva-landing-divider.eva-landing-template-divider {
+  opacity: 0;
+  transform: translateY(var(--spacing-small));
+  animation: evaLandingContentReveal 0.65s ease-out 4.35s forwards;
 }
 
 .eva-landing-shell:not(.eva-first-interface--generated) .eva-prompt-card {
@@ -6093,34 +6260,59 @@ html[data-product='ai-agent-studio']:has(.eva-form-builder.primary-content) .app
 }
 
 .eva-landing-shell:not(.eva-first-interface--generated) .eva-prompt-card:nth-child(1) {
-  animation-delay: 2.75s;
+  animation-delay: 4.55s;
 }
 
 .eva-landing-shell:not(.eva-first-interface--generated) .eva-prompt-card:nth-child(2) {
-  animation-delay: 2.88s;
+  animation-delay: 4.68s;
 }
 
 .eva-landing-shell:not(.eva-first-interface--generated) .eva-prompt-card:nth-child(3) {
-  animation-delay: 3.01s;
+  animation-delay: 4.81s;
 }
 
 .eva-landing-shell:not(.eva-first-interface--generated) .eva-prompt-card:nth-child(4) {
-  animation-delay: 3.14s;
+  animation-delay: 4.94s;
 }
 
 .eva-landing-shell:not(.eva-first-interface--generated) .eva-landing-divider,
 .eva-landing-shell:not(.eva-first-interface--generated) .eva-landing-secondary-actions {
   opacity: 0;
   transform: translateY(var(--spacing-small));
-  animation: evaLandingContentReveal 0.75s ease-out 3.35s forwards;
+  animation: evaLandingContentReveal 0.75s ease-out 5.15s forwards;
+}
+
+@keyframes evaLandingBlackVeil {
+  0%,
+  34% {
+    box-shadow: inset 0 0 0 100vmax var(--bg-primary);
+  }
+  100% {
+    box-shadow: inset 0 0 0 100vmax transparent;
+  }
+}
+
+@keyframes evaLandingAuraReveal {
+  0% {
+    opacity: 0;
+  }
+  100% {
+    opacity: 0.48;
+  }
 }
 
 @keyframes evaLandingHeroSettle {
   0%,
   50% {
+    opacity: 0;
+    transform: translateY(clamp(calc(var(--spacing-big) * 2), 28vh, calc(var(--spacing-big) * 5)));
+  }
+  73% {
+    opacity: 1;
     transform: translateY(clamp(calc(var(--spacing-big) * 2), 28vh, calc(var(--spacing-big) * 5)));
   }
   100% {
+    opacity: 1;
     transform: translateY(0);
   }
 }
@@ -6158,52 +6350,32 @@ html[data-product='ai-agent-studio']:has(.eva-form-builder.primary-content) .app
 
 .eva-retail-channel-options {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-columns: repeat(3, minmax(220px, 320px));
+  justify-content: start;
   gap: var(--spacing-small);
 }
 
 .eva-retail-channel-option {
-  display: grid;
-  grid-template-columns: auto minmax(0, 1fr);
-  gap: var(--spacing-x-small);
-  align-items: flex-start;
-  padding: var(--spacing-small);
-  border: var(--border-width-small) solid var(--border-color);
-  border-radius: 16px;
-  background: var(--bg-glass);
-  color: var(--text-primary);
-  text-align: left;
-  cursor: pointer;
-  transition: border-color 0.15s ease, background 0.15s ease, transform 0.15s ease;
+  min-height: 90px;
+}
+
+.eva-retail-channel-option > .icon {
+  display: inline-flex;
+  width: fit-content;
+  height: fit-content;
+  min-width: 0;
+  flex-direction: row;
+  align-items: center;
+  justify-content: center;
+}
+
+.eva-retail-channel-option > .icon .mds-icon-inline-svg {
+  width: fit-content;
+  height: fit-content;
 }
 
 .eva-retail-channel-option:hover {
-  border-color: var(--accent-color);
-  background: var(--button-secondary-active);
-  transform: translateY(-2px);
-}
-
-.eva-retail-channel-option__icon {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: var(--spacing-xx-large);
-  height: var(--spacing-xx-large);
-  border-radius: var(--border-radius-half-height);
-  background: var(--bg-glass-light);
-  color: var(--accent-color);
-}
-
-.eva-retail-channel-option strong,
-.eva-retail-channel-option small {
-  display: block;
-}
-
-.eva-retail-channel-option small {
-  margin-top: var(--spacing-xxx-small);
-  color: var(--text-secondary);
-  font-size: var(--font-size-body-small);
-  line-height: var(--font-lineheight-body-small);
+  transform: none;
 }
 
 .eva-retail-discovery-placeholder {
@@ -6317,14 +6489,6 @@ html[data-product='ai-agent-studio']:has(.eva-form-builder.primary-content) .app
   background: var(--bg-glass);
   color: var(--text-primary);
   text-align: left;
-  cursor: pointer;
-  transition: border-color 0.15s ease, background 0.15s ease, transform 0.15s ease;
-}
-
-.eva-retail-welcome-option:hover {
-  border-color: var(--accent-color);
-  background: var(--button-secondary-active);
-  transform: translateY(-1px);
 }
 
 .eva-retail-welcome-option__meta {
@@ -6371,11 +6535,209 @@ html[data-product='ai-agent-studio']:has(.eva-form-builder.primary-content) .app
 }
 
 .eva-retail-welcome-option__reason {
+  display: inline-flex;
+  align-items: flex-start;
+  gap: var(--spacing-xxx-small);
   max-width: 100%;
+  margin-top: var(--spacing-xx-small);
   color: var(--text-secondary);
   font-size: var(--font-size-body-small);
   line-height: var(--font-lineheight-body-small);
   overflow-wrap: anywhere;
+}
+
+.eva-retail-welcome-option__reason > .icon {
+  flex: 0 0 auto;
+  color: var(--accent-color);
+}
+
+.eva-retail-welcome-option__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--spacing-xx-small);
+  margin-top: var(--spacing-xx-small);
+}
+
+.eva-retail-recommendation-panel,
+.eva-retail-recommendation-section {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-xx-small);
+  width: 100%;
+}
+
+.eva-retail-recommendation-panel {
+  gap: var(--spacing-small);
+}
+
+.eva-retail-recommendation-eyebrow {
+  color: var(--accent-color);
+  font-size: var(--font-size-body-small);
+  font-weight: var(--font-weight-bold);
+  letter-spacing: 0.08em;
+  line-height: var(--font-lineheight-body-small);
+  text-transform: uppercase;
+}
+
+.eva-retail-connected-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--spacing-xx-small);
+}
+
+.eva-retail-connected-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--spacing-xx-small);
+  padding: var(--spacing-xxx-small) var(--spacing-x-small);
+  border: var(--border-width-small) solid color-mix(in srgb, var(--success-color) 55%, transparent);
+  border-radius: 100px;
+  background: color-mix(in srgb, var(--success-color) 14%, transparent);
+  color: var(--success-color);
+  font-size: var(--font-size-body-small);
+  font-weight: var(--font-weight-medium);
+  line-height: var(--font-lineheight-body-small);
+}
+
+.eva-retail-connected-chip__status {
+  width: 5px;
+  height: 5px;
+  flex: 0 0 5px;
+  border-radius: 50%;
+  background: var(--success-color);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--success-color) 16%, transparent);
+}
+
+.eva-retail-connected-chip__close {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  margin-left: var(--spacing-micro);
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: currentColor;
+  cursor: pointer;
+  opacity: 0.75;
+}
+
+.eva-retail-connected-chip__close:hover {
+  opacity: 1;
+}
+
+.eva-retail-connected-chip__close:disabled {
+  cursor: default;
+  opacity: 0.35;
+}
+
+.eva-retail-recommendation-list {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: var(--spacing-xx-small);
+}
+
+.eva-retail-recommendation-card {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--spacing-x-small);
+  width: auto;
+  min-height: 96px;
+  padding: var(--spacing-x-small);
+  border: var(--border-width-small) solid var(--border-color);
+  border-radius: 12px;
+  background: var(--bg-glass);
+  color: var(--text-primary);
+  text-align: left;
+  cursor: pointer;
+  transition: border-color 0.15s ease, background 0.15s ease;
+}
+
+.eva-retail-recommendation-card:hover {
+  border-color: var(--accent-color);
+  background: color-mix(in srgb, var(--accent-color) 10%, transparent);
+}
+
+.eva-retail-recommendation-card--selected {
+  border-color: var(--accent-color);
+  background: color-mix(in srgb, var(--accent-color) 15%, transparent);
+}
+
+.eva-retail-recommendation-card:disabled {
+  cursor: default;
+  opacity: 0.62;
+}
+
+.eva-retail-recommendation-card:disabled:hover {
+  border-color: var(--border-color);
+  background: var(--bg-glass);
+}
+
+.eva-retail-recommendation-card--selected:disabled,
+.eva-retail-recommendation-card--selected:disabled:hover {
+  border-color: var(--accent-color);
+  background: color-mix(in srgb, var(--accent-color) 15%, transparent);
+}
+
+.eva-retail-recommendation-card > .icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px !important;
+  height: 18px !important;
+  flex: 0 0 18px;
+  color: var(--accent-color);
+  line-height: 0;
+}
+
+.eva-retail-recommendation-card > .icon .mds-icon-inline-svg {
+  display: inline-flex !important;
+  width: 18px !important;
+  height: 18px !important;
+  flex: 0 0 18px;
+  align-items: center;
+  justify-content: center;
+  overflow: visible;
+}
+
+.eva-retail-recommendation-card > .icon .mds-icon-inline-svg svg {
+  display: block;
+  width: 18px !important;
+  height: 18px !important;
+  overflow: visible;
+  transform: scale(1.18);
+  transform-origin: center;
+}
+
+.eva-retail-recommendation-card > span:not(.icon) {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-xxx-small);
+  min-width: 0;
+}
+
+.eva-retail-recommendation-card strong {
+  color: var(--text-primary);
+  font-size: var(--font-size-body-midsize);
+  line-height: var(--font-lineheight-body-midsize);
+}
+
+.eva-retail-recommendation-card em {
+  color: var(--accent-color);
+  font-size: var(--font-size-body-small);
+  font-style: normal;
+  font-weight: var(--font-weight-medium);
+  line-height: var(--font-lineheight-body-small);
+}
+
+.eva-retail-recommendation-card small {
+  color: var(--text-secondary);
+  font-size: var(--font-size-body-small);
+  line-height: var(--font-lineheight-body-small);
+}
+
+.eva-retail-recommendation-actions {
+  display: flex;
+  justify-content: flex-start;
 }
 
 .eva-retail-final-actions {

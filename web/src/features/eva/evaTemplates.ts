@@ -116,7 +116,7 @@ export const EVA_GUIDED_STEPS: Array<{
   {
     id: 'knowledge',
     label: 'Available knowledge',
-    description: 'Choose the knowledge sources Eva should ground the agent in.',
+    description: 'Choose the knowledge sources AI Assistant should ground the agent in.',
   },
   {
     id: 'actions',
@@ -138,7 +138,7 @@ export const EVA_TEMPLATES: EvaTemplate[] = [
     description: 'Best for help centers, contact center deflection, and guided support flows.',
     recommendedFor: ['Support teams', 'FAQ automation', 'Case triage'],
     draft: {
-      name: 'Customer Support Eva Agent',
+      name: 'Customer Support AI Assistant Agent',
       description: 'Answers customer questions, summarizes context, and escalates complex cases.',
       goals: ['Resolve common requests', 'Ground answers in approved support content', 'Escalate high-risk issues'],
       knowledgeBases: [kb('FAQ database'), kb('Support articles'), kb('Product documentation')],
@@ -155,7 +155,7 @@ export const EVA_TEMPLATES: EvaTemplate[] = [
     description: 'Best for internal search, policy lookup, and documentation guidance.',
     recommendedFor: ['Internal helpdesk', 'Policy lookup', 'Documentation search'],
     draft: {
-      name: 'Knowledge Assistant Eva Agent',
+      name: 'Knowledge Assistant AI Assistant Agent',
       description: 'Finds and explains trusted answers from connected enterprise knowledge.',
       goals: ['Search approved sources', 'Summarize with citations', 'Recommend next steps'],
       knowledgeBases: [kb('Engineering wiki'), kb('HR policies'), kb('Product documentation')],
@@ -172,7 +172,7 @@ export const EVA_TEMPLATES: EvaTemplate[] = [
     description: 'Best for repeatable operational tasks with clear approval checkpoints.',
     recommendedFor: ['Operations teams', 'Task routing', 'Approvals'],
     draft: {
-      name: 'Workflow Automation Eva Agent',
+      name: 'Workflow Automation AI Assistant Agent',
       description: 'Guides users through requests and executes approved workflow actions.',
       goals: ['Collect required fields', 'Validate request completeness', 'Run approved actions'],
       knowledgeBases: [kb('Process playbooks'), kb('SOP library')],
@@ -189,7 +189,7 @@ export const EVA_TEMPLATES: EvaTemplate[] = [
     description: 'Best for regulated workflows, policy interpretation, and risk review.',
     recommendedFor: ['Compliance teams', 'Risk review', 'Governed workflows'],
     draft: {
-      name: 'Policy Compliance Eva Agent',
+      name: 'Policy Compliance AI Assistant Agent',
       description: 'Helps users understand policy requirements and flags risky requests.',
       goals: ['Explain policy requirements', 'Identify missing evidence', 'Route exceptions'],
       knowledgeBases: [kb('Compliance policy library'), kb('Security standards'), kb('Audit guidance')],
@@ -206,7 +206,7 @@ export const EVA_TEMPLATES: EvaTemplate[] = [
     description: 'Best for account planning, prospect research, and guided follow-up.',
     recommendedFor: ['Sales teams', 'Discovery support', 'Account planning'],
     draft: {
-      name: 'Sales Enablement Eva Agent',
+      name: 'Sales Enablement AI Assistant Agent',
       description: 'Prepares sales teams with approved messaging and recommended next steps.',
       goals: ['Summarize account context', 'Suggest discovery questions', 'Recommend follow-up actions'],
       knowledgeBases: [kb('Sales playbooks'), kb('Product briefs'), kb('Competitive guidance')],
@@ -219,11 +219,11 @@ export const EVA_TEMPLATES: EvaTemplate[] = [
   {
     id: 'custom',
     name: 'Custom',
-    summary: 'Start with a blank conversational guide and let Eva structure the agent.',
+    summary: 'Start with a blank conversational guide and let AI Assistant structure the agent.',
     description: 'Best when your use case does not match a standard template.',
     recommendedFor: ['Custom workflows', 'Exploration', 'Advanced users'],
     draft: {
-      name: 'Custom Eva Agent',
+      name: 'Custom AI Assistant Agent',
       description: 'A guided custom agent draft ready for configuration.',
       goals: ['Clarify the target user', 'Define success criteria', 'Identify required systems'],
       knowledgeBases: [],

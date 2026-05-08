@@ -27,6 +27,7 @@ import { Icon } from '../../icons';
 import { optimizeInstructions, sendEvaChat } from '../../api/ciscoAi';
 import { formatRelative } from '../../pages/knowledge/utils';
 import { EVA_TEMPLATES } from './evaTemplates';
+import EvaHeroAnimation from './EvaHeroAnimation';
 import {
   EVA_CANVAS_AGENTS_PATH,
   EVA_CANVAS_DASHBOARD_PATH,
@@ -82,7 +83,7 @@ const initialTemplateDraft: EvaAgentDraft = EVA_TEMPLATES[0].draft;
    include the template's domain keyword so a click trips the
    deterministic template-router in `handlePromptSubmit` and launches
    the form waterfall. */
-const FORM_BUILDER_EVA_SYSTEM_PROMPT = `You are Eva, a conversational AI assistant inside Webex AI Agent Studio's form-based agent builder. You help product designers and admins design AI agents — defining purpose, knowledge sources, available actions, security policies, voice, and language settings.
+const FORM_BUILDER_EVA_SYSTEM_PROMPT = `You are AI Assistant, a conversational AI assistant inside Webex AI Agent Studio's form-based agent builder. You help product designers and admins design AI agents — defining purpose, knowledge sources, available actions, security policies, voice, and language settings.
 
 Available starter templates (and the trigger keywords that launch the form waterfall): Customer support (keyword: "support"), Knowledge assistant (keywords: "healthcare", "reception"), Workflow automation (keywords: "IT", "ticket", "helpdesk"), Policy compliance (keyword: "compliance"), Sales enablement (keyword: "sales").
 
@@ -126,9 +127,9 @@ function buildFormBuilderAssistantSystemPrompt(args: {
   customRules: string[];
 }): string {
   const phaseHint = args.isGenerating
-    ? 'Eva is currently still drafting the form. The user can preview but most fields are filling in.'
+    ? 'AI Assistant is currently still drafting the form. The user can preview but most fields are filling in.'
     : 'The form is fully drafted and the user is reviewing/adjusting it.';
-  return `You are Eva, a conversational AI assistant inside Webex AI Agent Studio's form-based agent builder. The user has already chosen a starter template and the form is being drafted on the left side of the page. The user is now refining the agent and asking you for help.
+  return `You are AI Assistant, a conversational AI assistant inside Webex AI Agent Studio's form-based agent builder. The user has already chosen a starter template and the form is being drafted on the left side of the page. The user is now refining the agent and asking you for help.
 
 ${phaseHint}
 
@@ -237,7 +238,7 @@ export default function EvaFormBuilder() {
   const [aiEngine, setAiEngine] = useState(restored?.aiEngine ?? 'Webex AI Pro 1.0');
   const [welcomeMessage, setWelcomeMessage] = useState(
     restored?.welcomeMessage ??
-      'Hi, I am Eva. I can help answer questions, guide next steps, and connect you with the right support path.',
+      'Hi, I am AI Assistant. I can help answer questions, guide next steps, and connect you with the right support path.',
   );
   const [instructionPrompt, setInstructionPrompt] = useState(
     restored?.instructionPrompt ?? buildInstructionPrompt(initialTemplateDraft),
@@ -1086,19 +1087,18 @@ export default function EvaFormBuilder() {
               className="eva-first-interface__hero"
               aria-labelledby="eva-form-builder-hero"
             >
-              <h1 id="eva-form-builder-hero">Hi I&rsquo;m Eva!</h1>
-              <h2>Build smart agent anytime, anywhere.</h2>
-              <p>
-                Describe the business need, persona, tools, data, routing, or guardrails. I&rsquo;ll
-                plan the setup and lay out every section as a form for you to review.
-              </p>
+              <div className="eva-landing-hero-brand">
+                <EvaHeroAnimation />
+                <h1 id="eva-form-builder-hero">AI Agent Studio</h1>
+              </div>
+              <h2>Build, deploy, and manage AI agents across every collaboration moment.</h2>
             </section>
           )}
 
           {(chatMessages.length > 0 || chatThinking) && (
             <section
               className="eva-dialogue eva-form-builder__landing-chat"
-              aria-label="Eva conversation"
+              aria-label="AI Assistant conversation"
               aria-live="polite"
             >
               {/* Free-chat transcript: rendered when the user asks a
@@ -1123,7 +1123,7 @@ export default function EvaFormBuilder() {
                     key={`form-chat-${index}`}
                     className="eva-ai-response"
                     showActions={false}
-                    assistantName="Eva"
+                    assistantName="AI Assistant"
                     content={message.text}
                     followups={followups}
                     onFollowup={handleFollowupClick}
@@ -1134,7 +1134,7 @@ export default function EvaFormBuilder() {
                 <AiResponseMessage
                   className="eva-ai-response"
                   showActions={false}
-                  assistantName="Eva is thinking..."
+                  assistantName="AI Assistant is thinking..."
                   assistantState="processing"
                   content={null}
                 />
@@ -1148,8 +1148,8 @@ export default function EvaFormBuilder() {
               at the bottom of the landing state below. */}
           {chatMessages.length === 0 && !chatThinking && (
           <div
-            className="eva-form-builder__landing-composer eva-form-builder__landing-composer--initial"
-            aria-label="Talk to Eva"
+            className="eva-landing-composer eva-form-builder__landing-composer eva-form-builder__landing-composer--initial"
+            aria-label="Talk to AI Assistant"
           >
             <AiFooter
               className="eva-ai-footer"
@@ -1158,11 +1158,20 @@ export default function EvaFormBuilder() {
               onVoiceToggle={() => setVoiceActive(active => !active)}
               processing={false}
               disabled={chatThinking}
-              placeholder="Type with Eva. Try: Create an AI agent for customer onboarding..."
+              placeholder="Describe what you need, start from a template, or manage existing agents."
               suggestions={[]}
               voiceActive={voiceActive}
+              showDisclaimer={false}
             />
           </div>
+          )}
+
+          {chatMessages.length === 0 && !chatThinking && (
+            <div className="eva-landing-divider eva-landing-template-divider" role="separator" aria-label="or pick a template">
+              <span className="eva-landing-divider-line" aria-hidden="true" />
+              <span className="eva-landing-divider-text">Or pick a template</span>
+              <span className="eva-landing-divider-line" aria-hidden="true" />
+            </div>
           )}
 
           {/* Starter cards: shown on the initial landing screen, hidden
@@ -1177,7 +1186,7 @@ export default function EvaFormBuilder() {
                   className="eva-form-builder__landing-prompt-encouragement"
                   aria-live="polite"
                 >
-                  Pick one of the starter templates below, or keep chatting with Eva.
+                  Pick one of the starter templates below, or keep chatting with AI Assistant.
                 </p>
               )}
               <section className="eva-prompt-examples" aria-label="Quick templates">
@@ -1188,12 +1197,14 @@ export default function EvaFormBuilder() {
                     className="eva-prompt-card"
                     onClick={() => handleTemplateClick(prompt.templateId, prompt.prompt)}
                   >
-                    <span className="eva-prompt-card__icon" aria-hidden="true">
-                      <Icon name={prompt.icon} weight="bold" size="md" />
+                    <span className="eva-prompt-card__header">
+                      <span className="eva-prompt-card__icon" aria-hidden="true">
+                        <Icon name={prompt.icon} weight="bold" size="md" />
+                      </span>
+                      <strong>{prompt.title}</strong>
                     </span>
-                    <strong>{prompt.title}</strong>
                     <span>{prompt.description}</span>
-                    <small>Use this example</small>
+                    <small>Start with it</small>
                   </button>
                 ))}
               </section>
@@ -1228,7 +1239,7 @@ export default function EvaFormBuilder() {
           {(chatMessages.length > 0 || chatThinking) && (
           <div
             className="eva-form-builder__landing-composer eva-form-builder__landing-composer--bottom"
-            aria-label="Talk to Eva"
+            aria-label="Talk to AI Assistant"
           >
             <AiFooter
               className="eva-ai-footer"
@@ -1237,7 +1248,7 @@ export default function EvaFormBuilder() {
               onVoiceToggle={() => setVoiceActive(active => !active)}
               processing={false}
               disabled={chatThinking}
-              placeholder="Type with Eva. Try: Create an AI agent for customer onboarding..."
+              placeholder="Type with AI Assistant. Try: Create an AI agent for customer onboarding..."
               suggestions={[]}
               voiceActive={voiceActive}
             />
@@ -1253,7 +1264,7 @@ export default function EvaFormBuilder() {
             </span>
             <h1 className="page-title">Create AI Agent</h1>
             <p className="page-subtitle">
-              Eva drafted the configuration based on your request. Review and adjust each section
+              AI Assistant drafted the configuration based on your request. Review and adjust each section
               as needed.
             </p>
           </div>
@@ -1277,7 +1288,7 @@ export default function EvaFormBuilder() {
         <section className="eva-form-builder__waterfall" aria-live="polite">
           {phase === 'planning' && (
             <AiResponseMessage
-              assistantName="Eva"
+              assistantName="AI Assistant"
               assistantState="processing"
               content="Planning the agent setup based on your request..."
             >
@@ -1306,7 +1317,7 @@ export default function EvaFormBuilder() {
 
           {(phase === 'waterfall' || phase === 'complete') && (
             <AiResponseMessage
-              assistantName="Eva"
+              assistantName="AI Assistant"
               content={
                 phase === 'complete'
                   ? 'All recommended sections are ready. Adjust any details and create the agent when you are happy with the setup.'
@@ -1318,7 +1329,7 @@ export default function EvaFormBuilder() {
                   title={
                     <span className="eva-planning-trace__title">
                       <Icon name="sparkle" weight="bold" size="sm" />
-                      View Eva&rsquo;s thinking trace
+                      View AI Assistant&rsquo;s thinking trace
                     </span>
                   }
                   size="small"
@@ -2129,42 +2140,36 @@ export default function EvaFormBuilder() {
           >
             <div className="eva-config-block">
               <div className="eva-config-summary">
-                <span>
-                  <strong>Welcome</strong>
-                  {welcomeMessage}
-                </span>
-                <span>
-                  <strong>Language</strong>
-                  {languageSummary}
-                </span>
-                <span>
-                  <strong>Time zone</strong>
-                  {timezone}
-                </span>
-                <span>
-                  <strong>Agent character</strong>
-                  {agentCharacterSummary}
-                </span>
-                <span>
-                  <strong>Instructions</strong>
-                  {instructionSummary}
-                </span>
-                <span>
-                  <strong>Knowledge</strong>
-                  {selectedKnowledgeBases.join(', ') || 'No sources selected'}
-                </span>
-                <span>
-                  <strong>Actions</strong>
-                  {selectedActions.join(', ') || 'No actions selected'}
-                </span>
-                <span>
-                  <strong>Channel</strong>
-                  {channelSummary}
-                </span>
-                <span>
-                  <strong>Guardrails</strong>
-                  {[...draft.security, ...customRules].join(', ')}
-                </span>
+                <article className="eva-config-summary__item eva-config-summary__item--welcome">
+                  <strong><span className="eva-config-summary__icon eva-config-summary__icon--welcome" aria-hidden="true" />Welcome</strong>
+                  <p>{welcomeMessage}</p>
+                </article>
+                <article className="eva-config-summary__item eva-config-summary__item--channel">
+                  <strong><span className="eva-config-summary__icon eva-config-summary__icon--channel" aria-hidden="true" />Channel</strong>
+                  <p>{channelSummary}</p>
+                </article>
+                <article className="eva-config-summary__item eva-config-summary__item--instructions">
+                  <strong><span className="eva-config-summary__icon eva-config-summary__icon--instructions" aria-hidden="true" />Instructions</strong>
+                  <p>{instructionPrompt}</p>
+                </article>
+                <article className="eva-config-summary__item eva-config-summary__item--profile">
+                  <strong><span className="eva-config-summary__icon eva-config-summary__icon--profile" aria-hidden="true" />Language &amp; time zone</strong>
+                  <p>{languageSummary}</p>
+                  <p>{timezone}</p>
+                  <p>{agentCharacterSummary}</p>
+                </article>
+                <article className="eva-config-summary__item eva-config-summary__item--knowledge">
+                  <strong><span className="eva-config-summary__icon eva-config-summary__icon--knowledge" aria-hidden="true" />Knowledge</strong>
+                  <p>{selectedKnowledgeBases.join(', ') || 'No sources selected'}</p>
+                </article>
+                <article className="eva-config-summary__item eva-config-summary__item--actions">
+                  <strong><span className="eva-config-summary__icon eva-config-summary__icon--actions" aria-hidden="true" />Actions</strong>
+                  <p>{selectedActions.join(', ') || 'No actions selected'}</p>
+                </article>
+                <article className="eva-config-summary__item eva-config-summary__item--guardrails">
+                  <strong><span className="eva-config-summary__icon eva-config-summary__icon--guardrails" aria-hidden="true" />Guardrails</strong>
+                  <p>{[...draft.security, ...customRules].join(', ')}</p>
+                </article>
               </div>
               <div className="eva-form-builder__custom-rules">
                 <Input
@@ -2388,12 +2393,12 @@ export default function EvaFormBuilder() {
           className={`eva-mini-assistant eva-mini-assistant--docked eva-form-builder__review-assistant${
             reviewAssistantCollapsed ? ' eva-mini-assistant--collapsed' : ''
           }`}
-          aria-label="Eva agent review assistant"
+          aria-label="AI Assistant agent review assistant"
         >
           <div className="eva-mini-assistant__header">
             <span>
               <Icon name="sparkle" weight="bold" size="sm" />
-              Eva
+              AI Assistant
             </span>
             <div className="eva-mini-assistant__controls">
               <button
@@ -2401,8 +2406,8 @@ export default function EvaFormBuilder() {
                 className="eva-mini-assistant__control"
                 aria-label={
                   reviewAssistantCollapsed
-                    ? 'Expand Eva assistant'
-                    : 'Collapse Eva assistant'
+                    ? 'Expand AI Assistant'
+                    : 'Collapse AI Assistant'
                 }
                 onClick={() => setReviewAssistantCollapsed(prev => !prev)}
               >
@@ -2429,7 +2434,7 @@ export default function EvaFormBuilder() {
                 {chatMessages.length === 0 && !chatThinking && (
                   <AiResponseMessage
                     className="eva-mini-assistant__response"
-                    assistantName="Eva"
+                    assistantName="AI Assistant"
                     assistantState={isGenerating ? 'processing' : 'static'}
                     content={
                       isGenerating
@@ -2453,7 +2458,7 @@ export default function EvaFormBuilder() {
                     <AiResponseMessage
                       key={`mini-chat-${index}`}
                       className="eva-mini-assistant__response"
-                      assistantName="Eva"
+                      assistantName="AI Assistant"
                       content={message.text}
                     >
                       {message.suggestion && (
@@ -2488,7 +2493,7 @@ export default function EvaFormBuilder() {
                 {chatThinking && (
                   <AiResponseMessage
                     className="eva-mini-assistant__response"
-                    assistantName="Eva is thinking..."
+                    assistantName="AI Assistant is thinking..."
                     assistantState="processing"
                     content={null}
                   />
@@ -2512,8 +2517,8 @@ export default function EvaFormBuilder() {
                 disabled={chatThinking}
                 placeholder={
                   isGenerating
-                    ? 'Ask Eva for help while the form is drafting...'
-                    : 'Ask Eva to adjust the setup...'
+                    ? 'Ask AI Assistant for help while the form is drafting...'
+                    : 'Ask AI Assistant to adjust the setup...'
                 }
                 suggestions={[]}
                 voiceActive={voiceActive}

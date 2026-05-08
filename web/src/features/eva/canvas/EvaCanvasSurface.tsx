@@ -65,7 +65,7 @@ const MAIN_TAB_ID = 'main';
    in `handleCanvasEvaSend`). The current canvas state is appended at
    request time by `buildCanvasEvaSystemPrompt` so Eva can reference
    real node IDs when emitting `add_node`/`connect` actions. */
-const CANVAS_EVA_SYSTEM_PROMPT_BASE = `You are Eva, embedded inside the Webex AI Agent Studio canvas — a visual multi-agent orchestration map. The user is editing a canvas of nodes connected by labeled edges.
+const CANVAS_EVA_SYSTEM_PROMPT_BASE = `You are AI Assistant, embedded inside the Webex AI Agent Studio canvas — a visual multi-agent orchestration map. The user is editing a canvas of nodes connected by labeled edges.
 
 Node types and what they mean:
 - agent: a conversational specialist (lead or secondary).
@@ -394,7 +394,7 @@ export default function EvaCanvasSurface({
     () => ({
       version: '1.0',
       metadata: {
-        name: 'Eva multi-agent canvas',
+        name: 'AI Assistant multi-agent canvas',
         generatedAt: new Date().toISOString(),
         operationModel: 'local-typed-graph',
       },
@@ -895,7 +895,7 @@ export default function EvaCanvasSurface({
         <div>
           <span className="eva-shell__eyebrow">
             <Icon name="sparkle" weight="bold" size="sm" />
-            Eva canvas
+            AI Assistant canvas
           </span>
           <h1>Multi-agent collaboration map</h1>
           <p>Pan, zoom, connect nodes, switch compact mode, and inspect the operation JSON.</p>
@@ -912,9 +912,9 @@ export default function EvaCanvasSurface({
             size="sm"
             className="eva-view-actions__icon-btn"
             onClick={() => setEvaWindowCollapsed(prev => !prev)}
-            aria-label={evaWindowCollapsed ? 'Expand Eva assistant' : 'Collapse Eva assistant'}
+            aria-label={evaWindowCollapsed ? 'Expand AI Assistant' : 'Collapse AI Assistant'}
             aria-pressed={!evaWindowCollapsed}
-            title={evaWindowCollapsed ? 'Expand Eva assistant' : 'Collapse Eva assistant'}
+            title={evaWindowCollapsed ? 'Expand AI Assistant' : 'Collapse AI Assistant'}
           >
             <Icon name="side-panel" weight="bold" size="sm" />
           </Button>
@@ -962,7 +962,7 @@ export default function EvaCanvasSurface({
         <section
           ref={surfaceRef}
           className="eva-canvas-stage"
-          aria-label="Eva multi-agent visual canvas"
+          aria-label="AI Assistant multi-agent visual canvas"
           onWheel={handleWheel}
           onMouseDown={handleMouseDown}
           onMouseMove={handleMouseMove}
@@ -1019,18 +1019,18 @@ export default function EvaCanvasSurface({
             className={`eva-mini-assistant eva-mini-assistant--floating${
               evaWindowCollapsed ? ' eva-mini-assistant--collapsed' : ''
             }`}
-            aria-label="Eva canvas assistant"
+            aria-label="AI Assistant canvas assistant"
           >
             <div className="eva-mini-assistant__header">
               <span>
                 <Icon name="sparkle" weight="bold" size="sm" />
-                Eva
+                AI Assistant
               </span>
               <div className="eva-mini-assistant__controls">
                 <button
                   type="button"
                   className="eva-mini-assistant__control"
-                  aria-label={evaWindowCollapsed ? 'Expand Eva assistant' : 'Collapse Eva assistant'}
+                  aria-label={evaWindowCollapsed ? 'Expand AI Assistant' : 'Collapse AI Assistant'}
                   onClick={() => setEvaWindowCollapsed(prev => !prev)}
                 >
                   <Icon name={evaWindowCollapsed ? 'maximize' : 'minimize'} weight="bold" size="sm" />
@@ -1038,7 +1038,7 @@ export default function EvaCanvasSurface({
                 <button
                   type="button"
                   className="eva-mini-assistant__control"
-                  aria-label="Back to full Eva page"
+                  aria-label="Back to full AI Assistant page"
                   onClick={onBack}
                 >
                   <Icon name="pop-out" weight="bold" size="sm" />
@@ -1055,7 +1055,7 @@ export default function EvaCanvasSurface({
                           <AiResponseMessage
                             key={`${message.role}-${index}`}
                             className="eva-mini-assistant__response"
-                            assistantName="Eva"
+                            assistantName="AI Assistant"
                             content={message.text}
                           />
                         )
@@ -1075,7 +1075,7 @@ export default function EvaCanvasSurface({
                 <AiFooter
                   className="eva-mini-assistant__footer"
                   onSend={handleCanvasEvaSend}
-                  placeholder="Ask Eva about this canvas..."
+                  placeholder="Ask AI Assistant about this canvas..."
                   suggestions={[]}
                   initialText={prefillText}
                   prefillKey={prefillKey}

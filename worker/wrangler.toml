@@ -4,3 +4,4 @@ compatibility_date = "2024-12-01"
 
 [vars]
 ALLOWED_ORIGIN = "https://animated-invention-o31wjk4.pages.github.io,https://webexdesign.github.io,https://sqbu-github.cisco.com,https://pages.sqbu-github.cisco.com,https://*.amplifyapp.com"
+ELEVENLABS_AGENT_ID = "agent_6201kr2e7rqjftt9eby0833th1y5"

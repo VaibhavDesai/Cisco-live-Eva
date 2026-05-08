@@ -11,6 +11,7 @@ import {
   Input,
 } from '../../components/shared';
 import { Icon } from '../../icons';
+import EvaHeroAnimation from './EvaHeroAnimation';
 import {
   buildInstructionPrompt,
   buildWelcomeMessage,
@@ -125,7 +126,7 @@ function buildPreviewSession(agent: Agent): EvaSessionState {
     preOptimizeText: '',
     optimizeSummary: {
       changes: ['Preview session loaded from the published agent card.'],
-      reasoning: ['This reuses the same generated preview panel and voice runtime used in Eva Studio.'],
+      reasoning: ['This reuses the same generated preview panel and voice runtime used in AI Assistant Studio.'],
     },
     securityTier: 'standard',
     channelType: 'voice',
@@ -265,26 +266,31 @@ export default function EvaAgentsTable() {
             className="eva-first-interface__hero"
             aria-labelledby="eva-agents-landing-hero"
           >
-            <h1 id="eva-agents-landing-hero">Hi I&rsquo;m Eva!</h1>
-            <h2>Build smart agent anytime, anywhere.</h2>
-            <p>
-              Describe the business need, persona, tools, data, routing, or guardrails. Pick a
-              template to jump straight into the agents table, or open the create flow with
-              your own brief.
-            </p>
+            <div className="eva-landing-hero-brand">
+              <EvaHeroAnimation />
+              <h1 id="eva-agents-landing-hero">AI Agent Studio</h1>
+            </div>
+            <h2>Build, deploy, and manage AI agents across every collaboration moment.</h2>
           </section>
 
-          <div className="eva-landing-composer" aria-label="Talk to Eva">
+          <div className="eva-landing-composer" aria-label="Talk to AI Assistant">
             <AiFooter
               className="eva-ai-footer"
               fillContainer
               onSend={handleLandingSubmit}
               onVoiceToggle={() => setVoiceActive(active => !active)}
               processing={false}
-              placeholder="Type with Eva. Try: Create an AI agent for customer onboarding..."
+              placeholder="Describe what you need, start from a template, or manage existing agents."
               suggestions={[]}
               voiceActive={voiceActive}
+              showDisclaimer={false}
             />
+          </div>
+
+          <div className="eva-landing-divider eva-landing-template-divider" role="separator" aria-label="or pick a template">
+            <span className="eva-landing-divider-line" aria-hidden="true" />
+            <span className="eva-landing-divider-text">Or pick a template</span>
+            <span className="eva-landing-divider-line" aria-hidden="true" />
           </div>
 
           <section className="eva-prompt-examples" aria-label="Quick templates">
@@ -295,12 +301,14 @@ export default function EvaAgentsTable() {
                 className="eva-prompt-card"
                 onClick={handleLandingTemplateClick}
               >
-                <span className="eva-prompt-card__icon" aria-hidden="true">
-                  <Icon name={prompt.icon} weight="bold" size="md" />
+                <span className="eva-prompt-card__header">
+                  <span className="eva-prompt-card__icon" aria-hidden="true">
+                    <Icon name={prompt.icon} weight="bold" size="md" />
+                  </span>
+                  <strong>{prompt.title}</strong>
                 </span>
-                <strong>{prompt.title}</strong>
                 <span>{prompt.description}</span>
-                <small>Use this example</small>
+                <small>Start with it</small>
               </button>
             ))}
           </section>
@@ -341,7 +349,7 @@ export default function EvaAgentsTable() {
         <div className="eva-form-builder__compact-header-actions ai-agents-header-actions">
           <Button variant="secondary" onClick={handleStartWithEva}>
             <Icon name="sparkle" weight="bold" size="sm" />
-            Start with Eva
+            Start with AI Assistant
           </Button>
           <Button onClick={() => setIsCreateModalOpen(true)}>+ Create Agent</Button>
         </div>
