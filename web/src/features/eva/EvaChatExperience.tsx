@@ -257,7 +257,7 @@ const RETAIL_WELCOME_CUSTOM_LABEL = 'Use edited message';
 const RETAIL_CONTINUE_TO_ACTIONS_LABEL = 'Confirm';
 const RETAIL_CONTINUE_TO_FINAL_LABEL = 'Confirm';
 const COMPLETE_RETAIL_AGENT_LABEL = 'Complete creating agent';
-const ENTER_AGENT_STUDIO_LABEL = 'Enter Agent Studio';
+const ENTER_AGENT_STUDIO_LABEL = 'Advanced configuration';
 const PREVIEW_RETAIL_AGENT_LABEL = 'Preview agent';
 type RetailPrototypeStep =
   | 'idle'
