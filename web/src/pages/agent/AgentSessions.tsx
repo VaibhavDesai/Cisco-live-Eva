@@ -1,8 +1,9 @@
 import { useState } from 'react';
-import { useParams, Navigate } from 'react-router-dom';
+import { useParams, Navigate, useSearchParams } from 'react-router-dom';
 import { useApp } from '../../contexts/AppContext';
 import { AgentHeader } from '../../components/agents';
 import { Card } from '../../components/shared/Card';
+import Badge from '../../components/shared/Badge';
 import { Table, TableHead, TableBody, TableRow, TableHeader, TableCell } from '../../components/shared/Table';
 import Dropdown from '../../components/shared/Dropdown';
 
@@ -16,7 +17,11 @@ const RECENT_SESSIONS = [
 
 export default function AgentSessions() {
   const { agentId } = useParams();
+  const [searchParams] = useSearchParams();
   const { agents, currentAgent, selectAgent } = useApp();
+  const sessionIdQuery = searchParams.get('sessionId')?.trim() ?? '';
+  const sourceQuery = searchParams.get('source')?.trim() ?? '';
+  const [searchTerm, setSearchTerm] = useState(sessionIdQuery);
   const [outcomeFilter, setOutcomeFilter] = useState('all');
 
   if (!currentAgent || currentAgent.id !== agentId) {
@@ -31,14 +36,39 @@ export default function AgentSessions() {
   const agent = currentAgent || agents[agentId];
   if (!agent) return <Navigate to="/agents" replace />;
 
+  const normalizedSearch = searchTerm.trim().toLowerCase();
+  const filteredSessions = RECENT_SESSIONS.filter(session => {
+    const matchesSearch = !normalizedSearch || session.id.toLowerCase().includes(normalizedSearch);
+    const matchesOutcome = outcomeFilter === 'all' || session.outcome.toLowerCase() === outcomeFilter;
+    return matchesSearch && matchesOutcome;
+  });
+
   return (
     <div className="primary-content">
       <AgentHeader agent={agent} activeTab="sessions" showPublishButton={false} />
 
       <div className="secondary-content">
         <Card>
-          <div className="filter-bar" style={{ marginBottom: '16px' }}>
-            <input type="text" placeholder="Search sessions..." />
+          {sourceQuery === 'preview' && (
+            <div className="agent-sessions-preview-callout">
+              <div>
+                <strong>Preview interaction</strong>
+                <p>
+                  {sessionIdQuery
+                    ? `Showing the session lookup for ${sessionIdQuery}. Metadata appears here once the preview is ingested.`
+                    : 'Showing sessions after your preview. Metadata appears here once the preview is ingested.'}
+                </p>
+              </div>
+              {sessionIdQuery && <Badge variant="info">{sessionIdQuery}</Badge>}
+            </div>
+          )}
+          <div className="filter-bar agent-sessions-filter-bar">
+            <input
+              type="text"
+              placeholder="Search sessions..."
+              value={searchTerm}
+              onChange={event => setSearchTerm(event.target.value)}
+            />
             <Dropdown
               options={[
                 { value: 'all', label: 'All Outcomes' },
@@ -60,8 +90,8 @@ export default function AgentSessions() {
                 <TableHeader>Outcome</TableHeader>
               </TableRow>
             </TableHead>
-            <TableBody>
-              {RECENT_SESSIONS.map(session => (
+            <TableBody empty={filteredSessions.length === 0} colSpan={5}>
+              {filteredSessions.map(session => (
                 <TableRow key={session.id}>
                   <TableCell><strong>{session.id}</strong></TableCell>
                   <TableCell>{session.time}</TableCell>

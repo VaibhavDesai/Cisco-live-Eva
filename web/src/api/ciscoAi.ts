@@ -195,15 +195,22 @@ export async function sendEvaChat(messages: ChatMessage[]): Promise<string> {
 
 export async function getElevenLabsConversationSignedUrl(): Promise<string> {
   const apiUrl = import.meta.env.VITE_CONVAI_SIGNED_URL_API_URL || getCompanionApiUrl('/convai/signed-url');
-  const res = await fetch(apiUrl, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({}),
-  });
+  let res: Response;
+  try {
+    res = await fetch(apiUrl, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({}),
+    });
+  } catch {
+    throw new Error(
+      'Voice preview service is unreachable. Configure VITE_CONVAI_SIGNED_URL_API_URL or VITE_CHAT_API_URL, or run the Vite dev proxy with ELEVENLABS_API_KEY and ELEVENLABS_AGENT_ID.',
+    );
+  }
 
   if (!res.ok) {
     const err = await res.json().catch(() => ({ error: 'Request failed' }));
-    throw new Error(err.error || `API error (${res.status})`);
+    throw new Error(err.error || `Voice preview signed URL request failed (${res.status})`);
   }
 
   const data = await res.json();
@@ -212,6 +219,15 @@ export async function getElevenLabsConversationSignedUrl(): Promise<string> {
   }
 
   return data.signedUrl;
+}
+
+export function getVoicePreviewErrorMessage(err: unknown): string {
+  const message = err instanceof Error ? err.message : '';
+  if (!message || message === 'Failed to fetch') {
+    return 'Voice preview service is unreachable. Configure VITE_CONVAI_SIGNED_URL_API_URL or VITE_CHAT_API_URL, or run the Vite dev proxy with ELEVENLABS_API_KEY and ELEVENLABS_AGENT_ID.';
+  }
+
+  return message;
 }
 
 function parseAiResponse(content: string): PolicyAiResponse {

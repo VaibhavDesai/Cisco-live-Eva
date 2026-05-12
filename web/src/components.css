@@ -2068,7 +2068,7 @@ body {
   display: flex;
   flex-direction: column;
   gap: var(--spacing-x-small);
-  padding: var(--spacing-large);
+  padding: var(--spacing-small);
 }
 
 .card.card-vertical {
@@ -2085,25 +2085,20 @@ body {
   display: flex;
   flex-direction: column;
   gap: var(--spacing-x-small);
-  padding: var(--spacing-large);
+  padding: var(--spacing-small);
   width: 100%;
 }
 
-/* Simple card (no image / no layout class) gets inner padding */
-.card:not(.card-vertical):not(.card-horizontal) > .card-body,
-.card:not(.card-vertical):not(.card-horizontal) > .card-footer {
-  padding-left: var(--spacing-large);
-  padding-right: var(--spacing-large);
-}
-.card:not(.card-vertical):not(.card-horizontal) > .card-header {
-  padding-right: 0;
-}
-.card:not(.card-vertical):not(.card-horizontal) > .card-header { padding-top: var(--spacing-large); }
-.card:not(.card-vertical):not(.card-horizontal) > .card-body { padding-bottom: 0; }
-.card:not(.card-vertical):not(.card-horizontal) > .card-footer { padding-bottom: var(--spacing-large); }
-.card:not(.card-vertical):not(.card-horizontal) > :last-child { padding-bottom: var(--spacing-large); }
+/* Simple card (no image / no layout class) uses Momentum's 16px inset. */
 .card:not(.card-vertical):not(.card-horizontal) {
   gap: var(--spacing-x-small);
+  padding: var(--spacing-small);
+}
+
+.card:not(.card-vertical):not(.card-horizontal) > .card-header,
+.card:not(.card-vertical):not(.card-horizontal) > .card-body,
+.card:not(.card-vertical):not(.card-horizontal) > .card-footer {
+  padding: 0;
 }
 
 .card-image {
@@ -3701,7 +3696,7 @@ tbody tr:focus-visible {
   top: calc(-1 * var(--spacing-large));
   z-index: 10;
   margin: calc(-1 * var(--spacing-large)) calc(-1 * var(--spacing-large)) 0;
-  padding: var(--spacing-large) var(--spacing-large) var(--spacing-small);
+  padding: 0 var(--spacing-large) 0;
   border-radius: 16px 0 0 0;
   transition: background 0.2s ease;
 }
@@ -15724,6 +15719,124 @@ img.app-header__wordmark-logo {
   width: 100%;
 }
 
+.eva-voice-preview__body {
+  display: grid;
+  grid-template-columns: minmax(260px, 1fr);
+  align-items: stretch;
+  gap: var(--spacing-small);
+  width: 100%;
+}
+
+.eva-voice-preview__body--transcript-open {
+  grid-template-columns: minmax(260px, 0.9fr) minmax(280px, 1.1fr);
+}
+
+.eva-voice-preview__controls {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.eva-voice-preview__controls {
+  grid-column: 1;
+  grid-row: 1 / span 3;
+  align-items: center;
+  justify-content: center;
+  gap: var(--spacing-small);
+}
+
+.eva-voice-preview__transcript-header {
+  grid-column: 2;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--spacing-xx-small);
+  width: 100%;
+  color: var(--text-primary);
+  font-size: var(--font-size-body-small);
+  line-height: var(--font-lineheight-body-small);
+  font-weight: var(--font-weight-medium);
+}
+
+.eva-voice-preview__transcript-toggle-btn.btn[aria-pressed="true"] {
+  background: var(--button-secondary-active);
+  border-color: var(--outline-button);
+}
+
+.eva-voice-preview__transcript {
+  grid-column: 2;
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-xx-small);
+  width: 100%;
+  max-height: 260px;
+  overflow-y: auto;
+  padding-right: var(--spacing-xxx-small);
+}
+
+.eva-voice-preview__transcript-message {
+  display: flex;
+  flex-direction: column;
+  align-self: flex-start;
+  gap: var(--spacing-xxx-small);
+  width: fit-content;
+  max-width: 100%;
+  padding: var(--spacing-xx-small);
+  border: var(--border-width-small) solid color-mix(in srgb, var(--border-color) 78%, transparent);
+  border-radius: var(--border-radius-medium);
+  background: color-mix(in srgb, var(--bg-secondary) 78%, transparent);
+}
+
+.eva-voice-preview__transcript-message--assistant {
+  border-color: color-mix(in srgb, var(--accent-color) 28%, transparent);
+}
+
+.eva-voice-preview__transcript-meta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: var(--spacing-xx-small);
+  color: var(--text-secondary);
+  font-size: var(--font-size-body-small);
+  line-height: var(--font-lineheight-body-small);
+  font-weight: var(--font-weight-medium);
+}
+
+.eva-voice-preview__transcript-speaker {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--spacing-xxx-small);
+  min-width: 0;
+}
+
+.eva-voice-preview__transcript-message p,
+.eva-voice-preview__transcript-empty {
+  margin: 0;
+  color: var(--text-primary);
+  font-size: var(--font-size-body-small);
+  line-height: var(--font-lineheight-body-small);
+  text-align: left;
+}
+
+.eva-voice-preview__transcript-empty {
+  color: var(--text-secondary);
+}
+
+.eva-voice-preview__session-link {
+  grid-column: 2;
+  display: flex;
+  align-items: flex-start;
+  gap: var(--spacing-xx-small);
+  width: 100%;
+  padding: var(--spacing-xx-small) var(--spacing-x-small);
+  border-radius: var(--border-radius-medium);
+  background: var(--info-bg);
+  color: var(--text-primary);
+  font-size: var(--font-size-body-small);
+  line-height: var(--font-lineheight-body-small);
+}
+
 @keyframes eva-voice-bar {
   0%, 100% {
     transform: scaleY(0.45);
@@ -15736,6 +15849,24 @@ img.app-header__wordmark-logo {
 @media (prefers-reduced-motion: reduce) {
   .eva-voice-preview__visualizer span {
     animation: none !important;
+  }
+}
+
+@media (max-width: 760px) {
+  .eva-voice-preview__body,
+  .eva-voice-preview__body--transcript-open {
+    grid-template-columns: 1fr;
+  }
+
+  .eva-voice-preview__controls,
+  .eva-voice-preview__transcript-header,
+  .eva-voice-preview__transcript,
+  .eva-voice-preview__session-link {
+    grid-column: 1;
+  }
+
+  .eva-voice-preview__controls {
+    grid-row: auto;
   }
 }
 

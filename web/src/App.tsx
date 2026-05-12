@@ -16,7 +16,7 @@ import {
   Settings,
   OrganizationSettings,
 } from './pages';
-import { ActionConfigureV2, AgentSessions, AgentHistory, AgentAnalytics } from './pages/agent';
+import { ActionConfigureV2, AgentStudioLanding, AgentSessions, AgentHistory, AgentAnalytics } from './pages/agent';
 import PolicyStudioV2 from './pages/agent/PolicyStudioV2';
 import '@momentum-design/fonts/dist/css/fonts.css';
 import '@momentum-design/tokens/dist/css/theme/webex/dark-stable.css';
@@ -54,6 +54,7 @@ function App() {
                       <Route path="agents/eva-canvas" element={<Agents />} />
                       <Route path="assistant-skills" element={<AssistantSkills />} />
                       <Route path="agents/:agentId" element={<ActionConfigureV2 />} />
+                      <Route path="agents/:agentId/studio" element={<AgentStudioLanding />} />
                       <Route path="agents/:agentId/configure" element={<ActionConfigureV2 />} />
                       <Route path="agents/:agentId/sessions" element={<AgentSessions />} />
                       <Route path="agents/:agentId/history" element={<AgentHistory />} />

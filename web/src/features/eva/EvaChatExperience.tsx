@@ -1,9 +1,10 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, type KeyboardEvent, type PointerEvent } from 'react';
+import { createPortal } from 'react-dom';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useApp } from '../../contexts/AppContext';
 import { useDesignVariation } from '../../contexts/DesignVariationContext';
 import Button from '../../components/shared/Button';
-import { AccordionItem, AiFooter, AiResponseMessage, AiThreadPanel, AiUserMessage, Badge, Banner, Dropdown, Input, MenuItem, MenuOverlay, Modal, ModalBody, ModalFooter, ModalHeader, Radio, RadioGroup, Slider, Table, TableBody, TableCell, TableHead, TableHeader, TableRow, Textarea, Toggle, useMenu } from '../../components/shared';
+import { AccordionItem, AiFooter, AiResponseMessage, AiThreadPanel, AiUserMessage, Badge, Banner, Dropdown, Input, MenuItem, MenuOverlay, Modal, ModalBody, ModalFooter, ModalHeader, Radio, RadioGroup, Slider, Table, TableBody, TableCell, TableHead, TableHeader, TableRow, Textarea, TextLink, Toggle, useMenu } from '../../components/shared';
 import { AgentCard } from '../../components/agents';
 import { Icon } from '../../icons';
 import EvaHeroAnimation from './EvaHeroAnimation';
@@ -17,7 +18,7 @@ import {
 import { EVA_TEMPLATES } from './evaTemplates';
 import type { EvaAgentDraft, EvaFieldSuggestion, EvaMessage, EvaTemplateId } from './types';
 import { formatRelative } from '../../pages/knowledge/utils';
-import { getElevenLabsConversationSignedUrl, optimizeInstructions, sendEvaChat } from '../../api/ciscoAi';
+import { getElevenLabsConversationSignedUrl, getVoicePreviewErrorMessage, optimizeInstructions, sendEvaChat } from '../../api/ciscoAi';
 import {
   FIELD_SUGGESTION_RESPONSE_RULES,
   extractFieldSuggestionAndProse,
@@ -27,6 +28,7 @@ import {
   CHANNEL_PHONE_NUMBER_OPTIONS,
   DIGITAL_CHANNEL_DETAILS,
   DIGITAL_CHANNEL_OPTIONS,
+  EVA_CHANNEL_SELECTION_OPTIONS,
   EVA_ACTION_ROWS,
   EVA_ADVANCED_GUARDRAIL_GROUPS,
   EVA_AUTO_START_VOICE_PREVIEW_KEY,
@@ -35,6 +37,7 @@ import {
   EVA_STANDARD_GUARDRAILS,
   EVA_STEP_ORDER,
   INSTRUCTION_EXAMPLES,
+  INSTRUCTION_TIPS,
   PROFILE_LANGUAGE_OPTIONS,
   PROFILE_TIMEZONE_OPTIONS,
   PROFILE_VOICE_OPTIONS,
@@ -43,10 +46,13 @@ import {
   buildInstructionPrompt,
   buildWelcomeMessage,
   isOrchestrationIntent,
+  normalizeEvaChannelSelections,
+  normalizeEvaDigitalChannelSelections,
   readEvaSessionState,
   sensitivityToValue,
   summarizeInstructionPrompt,
   valueToSensitivity,
+  type EvaChannelSelection,
   type EvaChannelType,
   type EvaConversationalOnboardingStep,
   type EvaConversationStep,
@@ -64,6 +70,26 @@ const gradient = 'linear-gradient(135deg, var(--accent-bg), var(--bg-glass-light
 
 type EvaVoiceCallStatus = 'idle' | 'connecting' | 'listening' | 'speaking' | 'ended' | 'error';
 
+type EvaVoicePreviewSocketMessage = {
+  type?: string;
+  audio_event?: { audio_base_64?: string };
+  ping_event?: { event_id?: number };
+  conversation_initiation_metadata_event?: {
+    agent_output_audio_format?: string;
+    conversation_id?: string;
+  };
+  agent_response_event?: {
+    agent_response?: string;
+  };
+  agent_response_correction_event?: {
+    corrected_agent_response?: string;
+    agent_response?: string;
+  };
+  user_transcription_event?: {
+    user_transcript?: string;
+  };
+};
+
 function arrayBufferToBase64(buffer: ArrayBuffer): string {
   const bytes = new Uint8Array(buffer);
   let binary = '';
@@ -80,6 +106,17 @@ function base64ToArrayBuffer(base64: string): ArrayBuffer {
     bytes[i] = binary.charCodeAt(i);
   }
   return bytes.buffer;
+}
+
+function formatPreviewTranscriptTime(timestamp?: string) {
+  if (!timestamp) return '';
+  const date = new Date(timestamp);
+  if (Number.isNaN(date.getTime())) return '';
+
+  return new Intl.DateTimeFormat(undefined, {
+    hour: 'numeric',
+    minute: '2-digit',
+  }).format(date);
 }
 
 function downsampleTo16Khz(input: Float32Array, inputSampleRate: number): Float32Array {
@@ -249,6 +286,7 @@ const CONTINUE_TO_STUDIO_LABEL = 'Continue in AI Agent Studio';
 const RETAIL_VOICE_LABEL = 'Voice';
 const RETAIL_DIGITAL_LABEL = 'Digital';
 const RETAIL_VIDEO_LABEL = 'Video';
+const RETAIL_CONFIRM_CHANNELS_LABEL = 'Continue with selected channels';
 const RETAIL_AGENT_NAME_LABEL = 'Webex Electronics Receptionist';
 const RETAIL_CUSTOM_AGENT_NAME_LABEL = 'Type a different name';
 const RETAIL_AGENT_NAME_CUSTOM_LABEL = 'Use typed name';
@@ -259,6 +297,11 @@ const RETAIL_CONTINUE_TO_FINAL_LABEL = 'Confirm';
 const COMPLETE_RETAIL_AGENT_LABEL = 'Complete creating agent';
 const ENTER_AGENT_STUDIO_LABEL = 'Advanced configuration';
 const PREVIEW_RETAIL_AGENT_LABEL = 'Preview agent';
+const SKIP_RETAIL_PREVIEW_LABEL = 'Skip';
+const CONNECT_RETAIL_PHONE_LABEL = 'Connect phone number';
+const CONNECT_RETAIL_PHONE_LATER_LABEL = 'Connect phone number later';
+const RETAIL_TRANSITION_PROMPT = 'transition';
+const STUDIO_TRANSITION_MS = 420;
 type RetailPrototypeStep =
   | 'idle'
   | 'discovering'
@@ -268,6 +311,8 @@ type RetailPrototypeStep =
   | 'welcome'
   | 'knowledge'
   | 'actions'
+  | 'ready-to-preview'
+  | 'previewing'
   | 'ready-to-create';
 
 const RETAIL_RECEPTIONIST_AGENT_NAME = 'Webex Electronics Receptionist';
@@ -696,7 +741,9 @@ export default function EvaChatExperience({
   );
   const [retailPrototypeStep, setRetailPrototypeStep] = useState<RetailPrototypeStep>('idle');
   const [retailSelectedChannel, setRetailSelectedChannel] = useState<string | null>(null);
+  const [retailSelectedChannels, setRetailSelectedChannels] = useState<string[]>([RETAIL_VOICE_LABEL]);
   const [retailSelectedPhoneNumber, setRetailSelectedPhoneNumber] = useState<string | null>(null);
+  const [phoneNumberDeferred, setPhoneNumberDeferred] = useState(restoredEvaSession?.phoneNumberDeferred ?? false);
   const [retailDiscoveryProgress, setRetailDiscoveryProgress] = useState(0);
   const [retailAgentNameInput, setRetailAgentNameInput] = useState(RETAIL_RECEPTIONIST_AGENT_NAME);
   const [retailAgentNameInputVisible, setRetailAgentNameInputVisible] = useState(false);
@@ -722,12 +769,19 @@ export default function EvaChatExperience({
   const [selectedKnowledgeBases, setSelectedKnowledgeBases] = useState<string[]>(restoredEvaSession?.selectedKnowledgeBases ?? EVA_TEMPLATES[0].draft.knowledgeBases.slice(0, 2).map(kb => kb.name));
   const [selectedActions, setSelectedActions] = useState<string[]>(restoredEvaSession?.selectedActions ?? EVA_TEMPLATES[0].draft.actions.slice(0, 2));
   const [showInstructionExamples, setShowInstructionExamples] = useState(false);
+  const [instructionExampleTab, setInstructionExampleTab] = useState<'examples' | 'tips'>('examples');
   const [optimizingInstructions, setOptimizingInstructions] = useState(false);
   const [optimizeAccepted, setOptimizeAccepted] = useState(restoredEvaSession?.optimizeAccepted ?? false);
   const [preOptimizeText, setPreOptimizeText] = useState(restoredEvaSession?.preOptimizeText ?? '');
   const [optimizeSummary, setOptimizeSummary] = useState<{ changes: string[]; reasoning: string[] }>(restoredEvaSession?.optimizeSummary ?? { changes: [], reasoning: [] });
   const [securityTier, setSecurityTier] = useState<EvaSecurityTier>(restoredEvaSession?.securityTier ?? 'standard');
-  const [channelType, setChannelType] = useState<EvaChannelType>(restoredEvaSession?.channelType ?? 'digital');
+  const [selectedChannels, setSelectedChannels] = useState<EvaChannelSelection[]>(
+    () => normalizeEvaChannelSelections(restoredEvaSession?.selectedChannels, restoredEvaSession?.channelType),
+  );
+  const [channelType, setChannelType] = useState<EvaChannelType>(restoredEvaSession?.channelType ?? 'voice');
+  const [selectedDigitalChannels, setSelectedDigitalChannels] = useState<EvaDigitalChannel[]>(
+    () => normalizeEvaDigitalChannelSelections(restoredEvaSession?.selectedDigitalChannels, restoredEvaSession?.digitalChannel),
+  );
   const [digitalChannel, setDigitalChannel] = useState<EvaDigitalChannel>(restoredEvaSession?.digitalChannel ?? 'chat');
   const [digitalChannelAddress, setDigitalChannelAddress] = useState(restoredEvaSession?.digitalChannelAddress ?? '');
   const [channelPhoneNumber, setChannelPhoneNumber] = useState(restoredEvaSession?.channelPhoneNumber ?? CHANNEL_PHONE_NUMBER_OPTIONS[0].value);
@@ -747,6 +801,8 @@ export default function EvaChatExperience({
   const [previewThinking, setPreviewThinking] = useState(false);
   const [voiceCallStatus, setVoiceCallStatus] = useState<EvaVoiceCallStatus>('idle');
   const [voiceCallError, setVoiceCallError] = useState('');
+  const [voiceTranscriptExpanded, setVoiceTranscriptExpanded] = useState(false);
+  const [voicePreviewSessionId, setVoicePreviewSessionId] = useState('');
   const [readinessReport, setReadinessReport] = useState<EvaReadinessReport | null>(null);
   const [readinessTesting, setReadinessTesting] = useState(false);
   const [fixedReadinessRecommendations, setFixedReadinessRecommendations] = useState<Set<string>>(() => new Set());
@@ -763,6 +819,7 @@ export default function EvaChatExperience({
     { id: 'eva-thread-canvas', title: 'Canvas orchestration', group: 'Today' },
   ]);
   const [evaPlanningProgress, setEvaPlanningProgress] = useState(0);
+  const [studioTransitioning, setStudioTransitioning] = useState(false);
   /* Drives the right-rail Progress card's step-by-step reveal during the
      planning/thinking phase. Starts low and ticks up to the full step count
      over the thinking duration so the side panel feels generated alongside
@@ -777,8 +834,10 @@ export default function EvaChatExperience({
   const pendingPreviewScrollRef = useRef(false);
   const retailDiscoveryTimerRef = useRef<number | null>(null);
   const onboardingResponseTimerRef = useRef<number | null>(null);
+  const studioTransitionTimerRef = useRef<number | null>(null);
   const voiceWsRef = useRef<WebSocket | null>(null);
   const voiceMicStreamRef = useRef<MediaStream | null>(null);
+  const voiceTranscriptRef = useRef<HTMLDivElement | null>(null);
   const voiceAudioContextRef = useRef<AudioContext | null>(null);
   const voicePlaybackContextRef = useRef<AudioContext | null>(null);
   const voiceInputSourceRef = useRef<MediaStreamAudioSourceNode | null>(null);
@@ -787,10 +846,12 @@ export default function EvaChatExperience({
   const voicePlaybackTimeRef = useRef(0);
   const voiceSpeakingTimerRef = useRef<number | null>(null);
   const voiceGreetingFallbackTimerRef = useRef<number | null>(null);
+  const voiceConnectionTimerRef = useRef<number | null>(null);
   const voiceCallStatusRef = useRef<EvaVoiceCallStatus>('idle');
   const voiceConversationReadyRef = useRef(false);
   const voiceInitialGreetingPendingRef = useRef(false);
   const voiceMicStreamingEnabledRef = useRef(false);
+  const voicePreviewStartedRef = useRef(false);
   const panelMenu = useMenu();
 
   const persistEvaSession = (overrides: Partial<EvaSessionState> = {}) => {
@@ -818,9 +879,12 @@ export default function EvaChatExperience({
       optimizeSummary,
       securityTier,
       channelType,
+      selectedChannels,
       digitalChannel,
+      selectedDigitalChannels,
       digitalChannelAddress,
       channelPhoneNumber,
+      phoneNumberDeferred,
       standardGuardrails,
       advancedGuardrailGroups,
       expandedAdvancedGroups: Array.from(expandedAdvancedGroups),
@@ -857,6 +921,41 @@ export default function EvaChatExperience({
     navigate(canvasPath);
   };
 
+  const toggleSelectedChannel = (channel: EvaChannelSelection) => {
+    setSelectedChannels(prev => {
+      const hasChannel = prev.includes(channel);
+      if (hasChannel && prev.length === 1) return prev;
+      const next = hasChannel ? prev.filter(item => item !== channel) : [...prev, channel];
+
+      if (!hasChannel && (channel === 'voice' || channel === 'digital')) {
+        setChannelType(channel);
+      } else if (hasChannel && channel === channelType) {
+        setChannelType(next.includes('voice') ? 'voice' : 'digital');
+      }
+
+      if (!hasChannel && channel === 'digital' && selectedDigitalChannels.length === 0) {
+        setSelectedDigitalChannels(['chat']);
+        setDigitalChannel('chat');
+      }
+
+      return next;
+    });
+  };
+
+  const toggleSelectedDigitalChannel = (channel: EvaDigitalChannel) => {
+    setSelectedDigitalChannels(prev => {
+      const hasChannel = prev.includes(channel);
+      if (hasChannel && prev.length === 1) return prev;
+      const next = hasChannel ? prev.filter(item => item !== channel) : [...prev, channel];
+      if (!hasChannel) {
+        setDigitalChannel(channel);
+      } else if (channel === digitalChannel) {
+        setDigitalChannel(next[0] ?? 'chat');
+      }
+      return next;
+    });
+  };
+
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
       if (event.key.toLowerCase() !== 's' || !event.ctrlKey) return;
@@ -872,6 +971,13 @@ export default function EvaChatExperience({
     document.addEventListener('keydown', handleKeyDown);
     return () => document.removeEventListener('keydown', handleKeyDown);
   }, []);
+
+  useEffect(() => {
+    if (!voiceTranscriptExpanded) return;
+    const transcriptNode = voiceTranscriptRef.current;
+    if (!transcriptNode) return;
+    transcriptNode.scrollTop = transcriptNode.scrollHeight;
+  }, [previewMessages.length, voiceTranscriptExpanded]);
 
   useEffect(() => () => {
     if (thinkingTimerRef.current) {
@@ -889,6 +995,9 @@ export default function EvaChatExperience({
     if (onboardingResponseTimerRef.current) {
       window.clearTimeout(onboardingResponseTimerRef.current);
     }
+    if (studioTransitionTimerRef.current) {
+      window.clearTimeout(studioTransitionTimerRef.current);
+    }
     stopVoiceCall(null);
   }, []);
 
@@ -897,10 +1006,10 @@ export default function EvaChatExperience({
   }, [voiceCallStatus]);
 
   useEffect(() => {
-    if (channelType !== 'voice' && voiceCallStatusRef.current !== 'idle') {
+    if (!selectedChannels.includes('voice') && voiceCallStatusRef.current !== 'idle') {
       stopVoiceCall('ended');
     }
-  }, [channelType]);
+  }, [selectedChannels]);
 
   /* Track the latest user message text outside JSX so React deps are stable. */
   const latestUserMessageText = [...messages].reverse().find(m => m.role === 'user')?.text ?? null;
@@ -918,7 +1027,7 @@ export default function EvaChatExperience({
       const scrollContainer = stepAnchor.closest<HTMLElement>('.eva-dialogue') ?? stepAnchor.parentElement;
       if (scrollContainer) {
         const offset = stepAnchor.offsetTop - scrollContainer.offsetTop;
-        scrollContainer.scrollTo({ top: offset, behavior: 'smooth' });
+        scrollContainer.scrollTo({ top: Math.max(0, offset), behavior: 'auto' });
       }
     });
 
@@ -952,6 +1061,10 @@ export default function EvaChatExperience({
         scrollContainer.scrollTo({ top: Math.max(0, offset), behavior: 'smooth' });
         return;
       }
+      const hasActiveStepPrompt = messages.some(
+        message => message.role === 'user' && message.originStep === evaStep,
+      );
+      if (guidanceVisible && !waterfallThinking && !hasActiveStepPrompt) return;
       scrollContainer.scrollTo({ top: scrollContainer.scrollHeight, behavior: 'smooth' });
     });
     return () => window.cancelAnimationFrame(frameId);
@@ -1020,38 +1133,33 @@ export default function EvaChatExperience({
     setLandingMode('build');
     setShowOtherTemplates(false);
     const template = EVA_TEMPLATES.find(item => item.id === templateId) ?? EVA_TEMPLATES[0];
-    setMessages(prev => [
+    setSelectedTemplateId(template.id);
+    setDraft(template.draft);
+    setEvaStep('profile');
+    setAgentName(template.draft.name);
+    setAgentDescription(template.draft.description);
+    setTimezone('Europe/London');
+    setAiEngine('Webex AI Pro 1.0');
+    setWelcomeMessage(buildWelcomeMessage(template.draft));
+    setInstructionPrompt(buildInstructionPrompt(template.draft));
+    setPersonality(prev => ({
       ...prev,
-      { role: 'user', text: starterPrompts.find(prompt => prompt.templateId === templateId)?.prompt ?? `Use the ${template.name} template.` },
-    ]);
-    completeEvaThinking(() => {
-      setSelectedTemplateId(template.id);
-      setDraft(template.draft);
-      setEvaStep('profile');
-      setAgentName(template.draft.name);
-      setAgentDescription(template.draft.description);
-      setTimezone('Europe/London');
-      setAiEngine('Webex AI Pro 1.0');
-      setWelcomeMessage(buildWelcomeMessage(template.draft));
-      setInstructionPrompt(buildInstructionPrompt(template.draft));
-      setPersonality(prev => ({
-        ...prev,
-        llm: 'Webex AI Pro 1.0',
-        voice: 'ava',
-        language: 'en-US',
-      }));
-      setSelectedKnowledgeBases(template.draft.knowledgeBases.slice(0, 2).map(kb => kb.name));
-      setSelectedActions(template.draft.actions.slice(0, 2));
-      setCustomRules([]);
-      setMessages(prev => [
-        ...prev,
-        {
-          role: 'assistant',
-          text: buildGuidanceMessage(template.draft),
-          followups: ['Create this agent', 'Open Knowledge setup', 'Open Actions setup', 'Open Security setup'],
-        },
-      ]);
+      llm: 'Webex AI Pro 1.0',
+      voice: 'ava',
+      language: 'en-US',
+    }));
+    setSelectedKnowledgeBases(template.draft.knowledgeBases.slice(0, 2).map(kb => kb.name));
+    setSelectedActions(template.draft.actions.slice(0, 2));
+    setCustomRules([]);
+    const agent = createOrSelectDraftAgent({
+      name: template.draft.name,
+      description: template.draft.description,
+      gradient,
+      status: 'Ready to Publish',
+      statusClass: 'badge-warning',
+      knowledgeBases: template.draft.knowledgeBases.slice(0, 2).map(kb => kb.name),
     });
+    navigate(`/agents/${agent.id}/studio`);
   };
 
   const handleBuildFromScratch = () => {
@@ -1120,7 +1228,10 @@ export default function EvaChatExperience({
       language: 'en-US',
     }));
     setChannelType('voice');
+    setSelectedChannels(['voice']);
+    setSelectedDigitalChannels(['chat']);
     setChannelPhoneNumber(CHANNEL_PHONE_NUMBER_OPTIONS[0].value);
+    setPhoneNumberDeferred(false);
     setSelectedKnowledgeBases(['Webex Electronics Store FAQ', 'San Jose Store Policies']);
     setSelectedActions(['Inventory lookup', 'Create support case']);
     setCustomRules(['Escalate urgent customer, warranty, and store-manager requests to Matt.']);
@@ -1128,6 +1239,7 @@ export default function EvaChatExperience({
     setRetailAgentNameInputVisible(false);
     setRetailWelcomeInput(RETAIL_RECOMMENDED_WELCOME_MESSAGES[0].text);
     setRetailWelcomeInputVisible(false);
+    setRetailSelectedChannels([RETAIL_VOICE_LABEL]);
   };
 
   const beginRetailReceptionistStory = () => {
@@ -1137,8 +1249,10 @@ export default function EvaChatExperience({
     setFreeChatActive(true);
     setShowOtherTemplates(false);
     setRetailPrototypeStep('discovering');
-    setRetailSelectedChannel(null);
+    setRetailSelectedChannel(RETAIL_VOICE_LABEL);
+    setRetailSelectedChannels([RETAIL_VOICE_LABEL]);
     setRetailSelectedPhoneNumber(null);
+    setPhoneNumberDeferred(false);
     setRetailDiscoveryProgress(0);
     setConversationalOnboardingStep('idle');
     if (retailDiscoveryTimerRef.current) {
@@ -1153,7 +1267,7 @@ export default function EvaChatExperience({
           window.setTimeout(() => {
             setRetailPrototypeStep('channel');
             addOnboardingAssistantMessage(
-              'Great, I would like to help you with that. I found Webex Electronics in San Jose from Matt’s organization profile and connected store systems. What channel do you want to connect first?',
+              'Great, I would like to help you with that. I found Webex Electronics in San Jose from Matt’s organization profile and connected store systems. Voice is selected by default. Add any other channels this agent should support.',
               undefined,
               'retail-channel-choice',
             );
@@ -1162,6 +1276,47 @@ export default function EvaChatExperience({
         return next;
       });
     }, 700);
+  };
+
+  const jumpToRetailActionReview = () => {
+    if (retailDiscoveryTimerRef.current) {
+      window.clearInterval(retailDiscoveryTimerRef.current);
+      retailDiscoveryTimerRef.current = null;
+    }
+    if (onboardingResponseTimerRef.current) {
+      window.clearTimeout(onboardingResponseTimerRef.current);
+      onboardingResponseTimerRef.current = null;
+    }
+
+    seedRetailReceptionistDraft();
+    setGuidanceVisible(false);
+    setEvaThinking(false);
+    setFreeChatActive(true);
+    setShowOtherTemplates(false);
+    setOrchestrationSuggested(false);
+    setConversationalOnboardingStep('idle');
+    setRetailPrototypeStep('ready-to-preview');
+    setRetailSelectedChannel(RETAIL_VOICE_LABEL);
+    setRetailSelectedChannels([RETAIL_VOICE_LABEL]);
+    setRetailSelectedPhoneNumber(null);
+    setPhoneNumberDeferred(false);
+    setRetailDiscoveryProgress(RETAIL_DISCOVERY_ROWS.length);
+    setMessages([
+      {
+        role: 'assistant',
+        text: 'Now let’s review connected and recommended actions for this agent.',
+        originStep: 'retail-actions-choice',
+      },
+      {
+        role: 'user',
+        text: RETAIL_CONTINUE_TO_FINAL_LABEL,
+      },
+      {
+        role: 'assistant',
+        text: `Great. ${RETAIL_RECEPTIONIST_AGENT_NAME} is ready with the connected knowledge bases, recommended actions, voice channel, escalation to Matt, and your selected greeting. Preview the agent next, then choose the connected phone number as the last step before creation.`,
+        originStep: 'retail-final-actions',
+      },
+    ]);
   };
 
   const completeRetailReceptionistAgent = () => {
@@ -1179,8 +1334,19 @@ export default function EvaChatExperience({
     navigate('/agents');
   };
 
+  const askRetailPhoneNumber = () => {
+    setChannelType('voice');
+    setRetailPrototypeStep('phone');
+    addOnboardingAssistantMessage(
+      'Which connected phone number should this agent answer?',
+      CHANNEL_PHONE_NUMBER_OPTIONS.map(option => option.label),
+      'retail-phone-choice',
+    );
+  };
+
   const previewRetailReceptionistAgent = () => {
     setChannelType('voice');
+    setRetailPrototypeStep('previewing');
     addOnboardingAssistantMessage(
       'Here is a live preview of the receptionist agent. Start the call to simulate how callers will talk with the agent you are building.',
       undefined,
@@ -1192,53 +1358,91 @@ export default function EvaChatExperience({
     }, 650);
   };
 
+  const toggleRetailChannel = (channelLabel: string) => {
+    if (retailPrototypeStep !== 'channel') return;
+    setRetailSelectedChannels(prev => {
+      const hasChannel = prev.includes(channelLabel);
+      if (hasChannel && prev.length === 1) return prev;
+      return hasChannel ? prev.filter(label => label !== channelLabel) : [...prev, channelLabel];
+    });
+  };
+
+  const continueRetailChannelSelection = (channelsOverride?: string[], appendUserMessage = true) => {
+    const channels = (channelsOverride?.length ? channelsOverride : retailSelectedChannels).length > 0
+      ? (channelsOverride?.length ? channelsOverride : retailSelectedChannels)
+      : [RETAIL_VOICE_LABEL];
+    const channelCopy = channels.join(' + ');
+    setRetailSelectedChannel(channelCopy);
+    setSelectedChannels([
+      ...(channels.includes(RETAIL_VOICE_LABEL) ? ['voice' as const] : []),
+      ...(channels.includes(RETAIL_DIGITAL_LABEL) ? ['digital' as const] : []),
+      ...(channels.includes(RETAIL_VIDEO_LABEL) ? ['video' as const] : []),
+    ]);
+    setChannelType(channels.includes(RETAIL_VOICE_LABEL) ? 'voice' : 'digital');
+    if (channels.includes(RETAIL_DIGITAL_LABEL)) {
+      setSelectedDigitalChannels(['chat']);
+      setDigitalChannel('chat');
+      setDigitalChannelAddress('webex-electronics-san-jose');
+    }
+    if (channels.includes(RETAIL_VIDEO_LABEL) && !channels.includes(RETAIL_DIGITAL_LABEL)) {
+      setDigitalChannelAddress('webex-electronics-video');
+    }
+    setRetailPrototypeStep('agent-name');
+    if (appendUserMessage) {
+      setMessages(prev => [...prev, { role: 'user', text: channelCopy }]);
+    }
+    addOnboardingAssistantMessage(
+      `${channelCopy} ${channels.length === 1 ? 'is' : 'are'} added for this receptionist. What should we name this agent?`,
+      [RETAIL_AGENT_NAME_LABEL],
+      'retail-agent-name',
+    );
+  };
+
   const handleRetailReceptionistStoryAnswer = (answer: string) => {
     const normalized = answer.trim().toLowerCase();
 
     if (retailPrototypeStep === 'channel') {
-      if (normalized.includes('voice') || normalized.includes('phone') || normalized.includes('call')) {
-        setRetailSelectedChannel(RETAIL_VOICE_LABEL);
-        setChannelType('voice');
-        setRetailPrototypeStep('phone');
-        addOnboardingAssistantMessage(
-          'Voice is a good fit for a receptionist. Which connected phone number should this agent answer?',
-          CHANNEL_PHONE_NUMBER_OPTIONS.map(option => option.label),
-          'retail-phone-choice',
-        );
+      const requestedChannels = [
+        ...(normalized.includes('voice') || normalized.includes('phone') || normalized.includes('call') ? [RETAIL_VOICE_LABEL] : []),
+        ...(normalized.includes('digital') || normalized.includes('chat') || normalized.includes('email') || normalized.includes('sms') ? [RETAIL_DIGITAL_LABEL] : []),
+        ...(normalized.includes('video') ? [RETAIL_VIDEO_LABEL] : []),
+      ];
+
+      if (requestedChannels.length > 0) {
+        const channels = Array.from(new Set(requestedChannels.length === 1 ? [RETAIL_VOICE_LABEL, ...requestedChannels] : requestedChannels));
+        setRetailSelectedChannels(channels);
+        continueRetailChannelSelection(channels, false);
         return true;
       }
 
-      if (normalized.includes('video')) {
-        setRetailSelectedChannel(RETAIL_VIDEO_LABEL);
-        setChannelType('digital');
-        setDigitalChannel('chat');
-        setDigitalChannelAddress('webex-electronics-video');
-        setRetailPrototypeStep('agent-name');
-        addOnboardingAssistantMessage('Got it. I’ll start with the Webex Electronics video experience. What should we name this agent?', [RETAIL_AGENT_NAME_LABEL]);
-        return true;
-      }
-
-      if (normalized.includes('digital') || normalized.includes('chat') || normalized.includes('email') || normalized.includes('sms')) {
-        setRetailSelectedChannel(RETAIL_DIGITAL_LABEL);
-        setChannelType('digital');
-        setDigitalChannel('chat');
-        setDigitalChannelAddress('webex-electronics-san-jose');
-        setRetailPrototypeStep('agent-name');
-        addOnboardingAssistantMessage('Got it. I’ll start with the Webex Electronics digital entry point. What should we name this agent?', [RETAIL_AGENT_NAME_LABEL]);
-        return true;
-      }
-
-      addOnboardingAssistantMessage('Should this receptionist start with voice, digital, or video?', undefined, 'retail-channel-choice');
+      addOnboardingAssistantMessage('Voice is selected by default. Add Digital or Video too, then continue with the selected channels.', undefined, 'retail-channel-choice');
       return true;
     }
 
     if (retailPrototypeStep === 'phone') {
+      if (answer.trim() === CONNECT_RETAIL_PHONE_LATER_LABEL) {
+        setRetailSelectedPhoneNumber(null);
+        setPhoneNumberDeferred(true);
+        setRetailPrototypeStep('ready-to-create');
+        addOnboardingAssistantMessage(
+          `No problem. ${agentName} is ready with the connected knowledge bases, recommended actions, voice channel, escalation to Matt, and your selected greeting. I will flag the phone number connection as a go-live step before customers can call the agent.`,
+          undefined,
+          'retail-complete-actions',
+        );
+        return true;
+      }
+
       const connectedPhone = CHANNEL_PHONE_NUMBER_OPTIONS.find(option => option.label === answer.trim() || option.value === answer.trim());
       const nextPhoneNumber = connectedPhone?.value ?? answer.trim() ?? CHANNEL_PHONE_NUMBER_OPTIONS[0].value;
       setRetailSelectedPhoneNumber(nextPhoneNumber);
       setChannelPhoneNumber(nextPhoneNumber);
-      setRetailPrototypeStep('agent-name');
-      addOnboardingAssistantMessage('Perfect. What should we name this agent?', undefined, 'retail-agent-name');
+      setPhoneNumberDeferred(false);
+      setRetailPrototypeStep('ready-to-create');
+      addOnboardingAssistantMessage(
+        `Perfect. ${agentName} is ready with the connected knowledge bases, recommended actions, voice channel, ${nextPhoneNumber}, escalation to Matt, and your selected greeting. You can complete creation now or continue into AI Agent Studio for advanced configuration.`,
+        undefined,
+        'retail-complete-actions',
+      );
       return true;
     }
 
@@ -1313,12 +1517,30 @@ export default function EvaChatExperience({
       }
 
       if (answer.trim() === RETAIL_CONTINUE_TO_FINAL_LABEL || normalized.includes('continue') || normalized.includes('done')) {
-        setRetailPrototypeStep('ready-to-create');
+        setRetailPrototypeStep('ready-to-preview');
         addOnboardingAssistantMessage(
-          `Great. ${agentName} is ready with the connected knowledge bases, recommended actions, voice channel, escalation to Matt, and your selected greeting. You can complete creation now, then continue into AI Agent Studio for advanced configuration.`,
+          `Great. ${agentName} is ready with the connected knowledge bases, recommended actions, voice channel, escalation to Matt, and your selected greeting. Preview the agent next, then choose the connected phone number as the last step before creation.`,
           undefined,
           'retail-final-actions',
         );
+        return true;
+      }
+    }
+
+    if (retailPrototypeStep === 'ready-to-preview') {
+      if (normalized.includes('preview') || normalized.includes('test')) {
+        previewRetailReceptionistAgent();
+        return true;
+      }
+      if (normalized.includes('skip')) {
+        askRetailPhoneNumber();
+        return true;
+      }
+    }
+
+    if (retailPrototypeStep === 'previewing') {
+      if (normalized.includes('connect') || normalized.includes('phone') || normalized.includes('number')) {
+        askRetailPhoneNumber();
         return true;
       }
     }
@@ -1398,22 +1620,63 @@ export default function EvaChatExperience({
     });
   };
 
+  const createOrSelectDraftAgent = (agentDetails: {
+    name: string;
+    description: string;
+    gradient: string;
+    status: string;
+    statusClass?: string;
+    knowledgeBases?: string[];
+  }) => {
+    const existingAgent = Object.values(agents).find(agent => agent.name === agentDetails.name);
+    const agent = existingAgent ?? addAgent(agentDetails);
+    selectAgent(agent.id);
+    return agent;
+  };
+
+  const navigateToAgentStudio = (agentId: string) => {
+    setStudioTransitioning(true);
+    if (studioTransitionTimerRef.current) {
+      window.clearTimeout(studioTransitionTimerRef.current);
+    }
+    studioTransitionTimerRef.current = window.setTimeout(() => {
+      navigate(`/agents/${agentId}/studio`);
+      studioTransitionTimerRef.current = null;
+    }, STUDIO_TRANSITION_MS);
+  };
+
+  const handleViewSummary = () => {
+    const agent = createOrSelectDraftAgent({
+      name: agentName,
+      description: agentDescription,
+      gradient,
+      status: 'Ready to Publish',
+      statusClass: 'badge-warning',
+      knowledgeBases: selectedKnowledgeBases,
+    });
+    panelMenu.close();
+    navigateToAgentStudio(agent.id);
+  };
+
   const enterRetailAgentStudio = () => {
-    const nextEvaStep: EvaConversationStep = 'instructions';
+    const agent = createOrSelectDraftAgent({
+      name: RETAIL_RECEPTIONIST_AGENT_NAME,
+      description: RETAIL_RECEPTIONIST_DESCRIPTION,
+      gradient,
+      status: 'Ready to Publish',
+      statusClass: 'badge-warning',
+      knowledgeBases: selectedKnowledgeBases,
+    });
     setConversationalOnboardingStep('idle');
-    setEvaStep(nextEvaStep);
-    setFreeChatActive(false);
-    setGuidanceVisible(true);
     setEvaThinking(false);
     setOrchestrationSuggested(false);
-    setShowEvaGeneratedSidePanel(true);
     persistEvaSession({
       conversationalOnboardingStep: 'idle',
-      freeChatActive: false,
+      freeChatActive: true,
       guidanceVisible: true,
       orchestrationSuggested: false,
-      evaStep: nextEvaStep,
     });
+    navigateToAgentStudio(agent.id);
   };
 
   const handleConversationalOnboardingAnswer = (answer: string) => {
@@ -1504,6 +1767,7 @@ export default function EvaChatExperience({
     if (conversationalOnboardingStep === 'voice-phone') {
       const nextPhoneNumber = normalized.includes('default') ? CHANNEL_PHONE_NUMBER_OPTIONS[0].value : answer.trim();
       setChannelPhoneNumber(nextPhoneNumber || CHANNEL_PHONE_NUMBER_OPTIONS[0].value);
+      setPhoneNumberDeferred(false);
       setConversationalOnboardingStep('ready-for-studio');
       addOnboardingAssistantMessage(
         `Great. I have the basic profile and voice channel details for ${agentName}. You can continue in AI Agent Studio from Step 3, where we’ll configure instructions, knowledge, actions, guardrails, preview, and evaluation.`,
@@ -1535,6 +1799,7 @@ export default function EvaChatExperience({
     setRetailPrototypeStep('idle');
     setRetailSelectedChannel(null);
     setRetailSelectedPhoneNumber(null);
+    setPhoneNumberDeferred(false);
     setShowOtherTemplates(false);
     setLandingMode('build');
   };
@@ -1628,7 +1893,7 @@ export default function EvaChatExperience({
       knowledgeBases: selectedKnowledgeBases,
     });
     showToast(`AI Assistant created "${agentName}" as a draft agent.`, 'success');
-    navigate(`/agents/${agent.id}/configure?section=Profile`);
+    navigateToAgentStudio(agent.id);
   };
 
   const handleAgentClick = (agentId: string) => {
@@ -1638,7 +1903,7 @@ export default function EvaChatExperience({
 
   const handleConfigureClick = (agentId: string) => {
     selectAgent(agentId);
-    navigate(`/agents/${agentId}/configure`);
+    navigate(`/agents/${agentId}/studio`);
   };
 
   const getBadgeVariant = (statusClass: string) => {
@@ -1690,6 +1955,11 @@ export default function EvaChatExperience({
   const handleSend = (text: string) => {
     const normalized = text.trim().toLowerCase();
     if (!normalized) return;
+
+    if (normalized === RETAIL_TRANSITION_PROMPT) {
+      jumpToRetailActionReview();
+      return;
+    }
 
     setMessages(prev => [...prev, { role: 'user', text }]);
     setOrchestrationSuggested(false);
@@ -1871,8 +2141,12 @@ export default function EvaChatExperience({
       previewRetailReceptionistAgent();
       return;
     }
-    if (trimmed === ENTER_AGENT_STUDIO_LABEL) {
+    if (trimmed === SKIP_RETAIL_PREVIEW_LABEL || trimmed === CONNECT_RETAIL_PHONE_LABEL) {
       setMessages(prev => [...prev, { role: 'user', text: trimmed }]);
+      askRetailPhoneNumber();
+      return;
+    }
+    if (trimmed === ENTER_AGENT_STUDIO_LABEL) {
       if (retailPrototypeStep !== 'idle') {
         enterRetailAgentStudio();
         return;
@@ -2408,7 +2682,42 @@ Simulation rules:
     })();
   };
 
+  const appendVoicePreviewMessage = (role: EvaMessage['role'], text?: string) => {
+    const normalizedText = text?.trim();
+    if (!normalizedText) return;
+
+    setPreviewMessages(prev => {
+      const last = prev[prev.length - 1];
+      if (last?.role === role && last.text === normalizedText) {
+        return prev;
+      }
+
+      return [...prev, { role, text: normalizedText, timestamp: new Date().toISOString() }];
+    });
+  };
+
+  const toggleVoiceTranscript = () => {
+    setVoiceTranscriptExpanded(expanded => !expanded);
+  };
+
+  const handleVoiceTranscriptPointerDown = (event: PointerEvent<HTMLButtonElement>) => {
+    event?.preventDefault();
+    event?.stopPropagation();
+    toggleVoiceTranscript();
+  };
+
+  const handleVoiceTranscriptKeyDown = (event: KeyboardEvent<HTMLButtonElement>) => {
+    if (event.key !== 'Enter' && event.key !== ' ') return;
+    event.preventDefault();
+    event.stopPropagation();
+    toggleVoiceTranscript();
+  };
+
   function stopVoiceCall(nextStatus: EvaVoiceCallStatus | null = 'ended') {
+    if (voiceConnectionTimerRef.current) {
+      window.clearTimeout(voiceConnectionTimerRef.current);
+      voiceConnectionTimerRef.current = null;
+    }
     if (voiceSpeakingTimerRef.current) {
       window.clearTimeout(voiceSpeakingTimerRef.current);
       voiceSpeakingTimerRef.current = null;
@@ -2527,6 +2836,9 @@ Simulation rules:
     voiceCallStatusRef.current = 'connecting';
     voiceInitialGreetingPendingRef.current = true;
     voiceMicStreamingEnabledRef.current = false;
+    setVoiceTranscriptExpanded(false);
+    setVoicePreviewSessionId('');
+    voicePreviewStartedRef.current = false;
 
     try {
       const signedUrl = await getElevenLabsConversationSignedUrl();
@@ -2542,9 +2854,29 @@ Simulation rules:
       const ws = new WebSocket(signedUrl);
       voiceWsRef.current = ws;
       voiceMicStreamRef.current = micStream;
+      voiceConnectionTimerRef.current = window.setTimeout(() => {
+        if (voiceWsRef.current !== ws || voiceCallStatusRef.current !== 'connecting') return;
+        setVoiceCallError('Voice preview could not connect to the voice websocket. Check network access to ElevenLabs and try again.');
+        stopVoiceCall('error');
+      }, 10000);
 
       ws.onopen = () => {
         if (voiceWsRef.current !== ws) return;
+        if (voiceConnectionTimerRef.current) {
+          window.clearTimeout(voiceConnectionTimerRef.current);
+        }
+        voiceConnectionTimerRef.current = window.setTimeout(() => {
+          if (
+            voiceWsRef.current !== ws ||
+            voiceConversationReadyRef.current ||
+            voiceCallStatusRef.current === 'error'
+          ) {
+            return;
+          }
+          setVoiceCallError('Voice preview connected, but the voice agent did not become ready.');
+          stopVoiceCall('error');
+        }, 10000);
+        voicePreviewStartedRef.current = true;
 
         ws.send(JSON.stringify({
           type: 'conversation_initiation_client_data',
@@ -2578,12 +2910,7 @@ Simulation rules:
       ws.onmessage = event => {
         if (typeof event.data !== 'string') return;
 
-        let data: {
-          type?: string;
-          audio_event?: { audio_base_64?: string };
-          ping_event?: { event_id?: number };
-          conversation_initiation_metadata_event?: { agent_output_audio_format?: string };
-        };
+        let data: EvaVoicePreviewSocketMessage;
         try {
           data = JSON.parse(event.data);
         } catch {
@@ -2591,7 +2918,12 @@ Simulation rules:
         }
 
         if (data.type === 'conversation_initiation_metadata') {
+          if (voiceConnectionTimerRef.current) {
+            window.clearTimeout(voiceConnectionTimerRef.current);
+            voiceConnectionTimerRef.current = null;
+          }
           voiceOutputFormatRef.current = data.conversation_initiation_metadata_event?.agent_output_audio_format || 'pcm_16000';
+          setVoicePreviewSessionId(data.conversation_initiation_metadata_event?.conversation_id?.trim() ?? '');
           voiceConversationReadyRef.current = true;
           voiceGreetingFallbackTimerRef.current = window.setTimeout(() => {
             voiceGreetingFallbackTimerRef.current = null;
@@ -2623,6 +2955,25 @@ Simulation rules:
           return;
         }
 
+        if (data.type === 'agent_response') {
+          appendVoicePreviewMessage('assistant', data.agent_response_event?.agent_response);
+          return;
+        }
+
+        if (data.type === 'agent_response_correction') {
+          appendVoicePreviewMessage(
+            'assistant',
+            data.agent_response_correction_event?.corrected_agent_response
+              ?? data.agent_response_correction_event?.agent_response,
+          );
+          return;
+        }
+
+        if (data.type === 'user_transcript' || data.type === 'user_transcription') {
+          appendVoicePreviewMessage('user', data.user_transcription_event?.user_transcript);
+          return;
+        }
+
         if (data.type === 'interruption') {
           voicePlaybackTimeRef.current = voicePlaybackContextRef.current?.currentTime ?? 0;
           if (voiceCallStatusRef.current !== 'ended') {
@@ -2633,8 +2984,7 @@ Simulation rules:
       };
 
       ws.onerror = () => {
-        setVoiceCallError('Voice preview connection failed.');
-        stopVoiceCall('error');
+        setVoiceCallError('Voice preview connection failed. Waiting for connection details...');
       };
 
       ws.onclose = event => {
@@ -2645,8 +2995,11 @@ Simulation rules:
           }
 
           if (event.code !== 1000 || event.reason) {
-            const reason = event.reason ? ` ${event.reason}` : '';
-            setVoiceCallError(`Voice preview ended unexpectedly (${event.code}).${reason}`);
+            const reason = event.reason ? `: ${event.reason}` : '';
+            const guidance = event.code === 1002 || event.code === 1006
+              ? ' Check that the ElevenLabs agent ID matches the API key and that this network allows wss://api.elevenlabs.io.'
+              : '';
+            setVoiceCallError(`Voice preview websocket closed (${event.code}${reason}).${guidance}`);
             stopVoiceCall('error');
             return;
           }
@@ -2655,14 +3008,13 @@ Simulation rules:
         }
       };
     } catch (err) {
-      const message = err instanceof Error ? err.message : 'Voice preview could not start.';
-      setVoiceCallError(message);
+      setVoiceCallError(getVoicePreviewErrorMessage(err));
       stopVoiceCall('error');
     }
   }
 
   useEffect(() => {
-    if (evaStep !== 'preview' || channelType !== 'voice' || voiceCallStatus !== 'idle') return;
+    if (evaStep !== 'preview' || !selectedChannels.includes('voice') || voiceCallStatus !== 'idle') return;
 
     let shouldAutoStart = false;
     try {
@@ -2684,17 +3036,24 @@ Simulation rules:
 
     return () => window.clearTimeout(timer);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [evaStep, channelType, voiceCallStatus]);
+  }, [evaStep, selectedChannels, voiceCallStatus]);
 
   const renderVoicePreviewCall = () => {
     const callLive = voiceCallStatus === 'connecting' || voiceCallStatus === 'listening' || voiceCallStatus === 'speaking';
+    const previewAgent = Object.values(agents).find(agent => agent.name === agentName) ?? null;
+    const previewSessionsLink = previewAgent
+      ? `/agents/${previewAgent.id}/sessions${voicePreviewSessionId ? `?sessionId=${encodeURIComponent(voicePreviewSessionId)}&source=preview` : '?source=preview'}`
+      : '';
+    const showSessionLink = Boolean(previewSessionsLink)
+      && voicePreviewStartedRef.current
+      && (voiceCallStatus === 'ended' || voiceCallStatus === 'error');
     const statusCopy: Record<EvaVoiceCallStatus, string> = {
       idle: 'Ready to start a voice preview.',
       connecting: 'Connecting voice preview...',
       listening: 'Listening...',
       speaking: `${agentName || 'Agent'} is speaking...`,
       ended: 'Voice preview ended.',
-      error: voiceCallError || 'Voice preview failed.',
+      error: 'Voice preview failed.',
     };
 
     return (
@@ -2705,41 +3064,116 @@ Simulation rules:
           </div>
           <div>
             <strong>{agentName || 'Preview agent'}</strong>
-            <span>{channelPhoneNumber}</span>
+            <span>
+              {phoneNumberDeferred
+                ? 'Phone number can be connected later'
+                : retailPrototypeStep === 'phone' && !retailSelectedPhoneNumber
+                  ? 'Phone number selected after preview'
+                  : channelPhoneNumber}
+            </span>
           </div>
         </div>
-        <div className="eva-voice-preview__visualizer" aria-hidden="true">
-          {Array.from({ length: 18 }).map((_, index) => (
-            <span key={index} style={{ animationDelay: `${index * 55}ms` }} />
-          ))}
-        </div>
-        <p className="eva-voice-preview__status" role="status">{statusCopy[voiceCallStatus]}</p>
-        {voiceCallError && voiceCallStatus === 'error' && (
-          <p className="eva-voice-preview__error">{voiceCallError}</p>
-        )}
-        <div className="eva-voice-preview__actions">
-          <Button
-            size="sm"
-            onClick={startVoiceCall}
-            disabled={callLive}
-          >
-            <Icon name="phone" weight="bold" size="sm" />
-            {voiceCallStatus === 'ended' || voiceCallStatus === 'error' ? 'Start again' : 'Start call'}
-          </Button>
-          <Button
-            variant="secondary"
-            size="sm"
-            onClick={() => stopVoiceCall('ended')}
-            disabled={!callLive}
-          >
-            End call
-          </Button>
+        <div className={`eva-voice-preview__body${voiceTranscriptExpanded ? ' eva-voice-preview__body--transcript-open' : ''}`}>
+          <div className="eva-voice-preview__controls">
+            <div className="eva-voice-preview__visualizer" aria-hidden="true">
+              {Array.from({ length: 18 }).map((_, index) => (
+                <span key={index} style={{ animationDelay: `${index * 55}ms` }} />
+              ))}
+            </div>
+            <p className="eva-voice-preview__status" role="status">{statusCopy[voiceCallStatus]}</p>
+            {voiceCallError && voiceCallStatus === 'error' && (
+              <p className="eva-voice-preview__error">{voiceCallError}</p>
+            )}
+            <div className="eva-voice-preview__actions">
+              <Button
+                size="sm"
+                onClick={startVoiceCall}
+                disabled={callLive}
+              >
+                <Icon name="phone" weight="bold" size="sm" />
+                {voiceCallStatus === 'ended' || voiceCallStatus === 'error' ? 'Start again' : 'Start call'}
+              </Button>
+              <Button
+                variant="secondary"
+                size="sm"
+                onClick={() => stopVoiceCall('ended')}
+                disabled={!callLive}
+              >
+                End call
+              </Button>
+            </div>
+            <button
+              type="button"
+              className={`btn ${voiceTranscriptExpanded ? 'btn-secondary' : 'btn-tertiary'} btn-sm eva-voice-preview__transcript-toggle-btn`}
+              aria-pressed={voiceTranscriptExpanded}
+              aria-expanded={voiceTranscriptExpanded}
+              onPointerDown={handleVoiceTranscriptPointerDown}
+              onKeyDown={handleVoiceTranscriptKeyDown}
+            >
+              <Icon name="transcript" weight="bold" size="sm" />
+              Text transcript
+            </button>
+          </div>
+          {voiceTranscriptExpanded && (
+            <>
+              <div className="eva-voice-preview__transcript-header">
+                <span>Text transcript</span>
+              </div>
+              <div ref={voiceTranscriptRef} className="eva-voice-preview__transcript" aria-live="polite">
+                {previewMessages.length > 0 ? (
+                  previewMessages.map((message, index) => {
+                    const timeLabel = formatPreviewTranscriptTime(message.timestamp);
+                    return (
+                      <article
+                        key={`voice-transcript-${index}-${message.role}`}
+                        className={`eva-voice-preview__transcript-message eva-voice-preview__transcript-message--${message.role}`}
+                      >
+                        <div className="eva-voice-preview__transcript-meta">
+                          <span className="eva-voice-preview__transcript-speaker">
+                            {message.role === 'assistant' && (
+                              <Icon name="sparkle" weight="bold" size="xs" />
+                            )}
+                            {message.role === 'assistant' ? agentName || 'Agent' : 'Caller'}
+                          </span>
+                          {timeLabel && <time dateTime={message.timestamp}>{timeLabel}</time>}
+                        </div>
+                        <p>{message.text}</p>
+                      </article>
+                    );
+                  })
+                ) : (
+                  <p className="eva-voice-preview__transcript-empty">
+                    Transcript text appears here as the preview receives speech-to-text events.
+                  </p>
+                )}
+              </div>
+            </>
+          )}
+          {voiceTranscriptExpanded && showSessionLink && (
+            <div className="eva-voice-preview__session-link">
+              <Icon name="transcript" weight="regular" size="sm" />
+              <span>
+                Preview ended.{' '}
+                <TextLink
+                  variant="inline"
+                  size="sm"
+                  href={previewSessionsLink}
+                  onClick={event => {
+                    event.preventDefault();
+                    navigate(previewSessionsLink);
+                  }}
+                >
+                  Open in Sessions
+                </TextLink>
+              </span>
+            </div>
+          )}
         </div>
       </div>
     );
   };
 
-  const renderPreviewSession = () => channelType === 'voice' ? (
+  const renderPreviewSession = () => selectedChannels.includes('voice') ? (
     <div className="eva-preview-session" aria-label="Agent preview test session">
       <div className="eva-preview-session__meta">
         <Badge variant="info">Voice preview</Badge>
@@ -2793,7 +3227,7 @@ Simulation rules:
         processing={previewThinking}
         disabled={previewThinking}
         placeholder={
-          channelType === 'voice'
+          selectedChannels.includes('voice')
             ? 'Speak with the mic or type a caller message...'
             : 'Test the agent. Try: I need help with my request...'
         }
@@ -3130,12 +3564,26 @@ ${previewTranscript}`,
   const languageSummary = selectedLanguage?.label ?? personality.language;
   const agentCharacterSummary = `${selectedVoice?.label ?? personality.voice} voice · ${personality.gender === 'neutral' ? 'Neutral' : personality.gender} character`;
   const instructionSummary = summarizeInstructionPrompt(instructionPrompt);
-  const selectedDigitalChannel = DIGITAL_CHANNEL_OPTIONS.find(option => option.value === digitalChannel) ?? DIGITAL_CHANNEL_OPTIONS[0];
-  const selectedDigitalChannelDetails = DIGITAL_CHANNEL_DETAILS[digitalChannel];
-  const channelDestination = channelType === 'digital' ? digitalChannelAddress.trim() : channelPhoneNumber;
-  const channelSummary = channelType === 'digital'
-    ? `${selectedDigitalChannel.label} · ${channelDestination || 'Add address or number'}`
-    : `Voice · ${channelPhoneNumber}`;
+  const selectedGuardrailLabels = securityTier === 'advanced'
+    ? advancedGuardrailGroups.flatMap(group => group.items.filter(item => item.enabled).map(item => item.name))
+    : standardGuardrails.filter(item => item.enabled).map(item => item.name);
+  const hasVoiceChannel = selectedChannels.includes('voice');
+  const hasDigitalChannel = selectedChannels.includes('digital');
+  const hasVideoChannel = selectedChannels.includes('video');
+  const selectedDigitalChannelLabels = selectedDigitalChannels
+    .map(channel => DIGITAL_CHANNEL_OPTIONS.find(option => option.value === channel)?.label)
+    .filter(Boolean);
+  const digitalChannelSummary = hasDigitalChannel
+    ? `Digital (${selectedDigitalChannelLabels.join(', ') || 'Chat'})${digitalChannelAddress.trim() ? ` · ${digitalChannelAddress.trim()}` : ''}`
+    : null;
+  const voiceChannelSummary = hasVoiceChannel
+    ? phoneNumberDeferred ? 'Voice' : `Voice · ${channelPhoneNumber}`
+    : null;
+  const videoChannelSummary = hasVideoChannel ? 'Video' : null;
+  const channelSummary = [voiceChannelSummary, digitalChannelSummary, videoChannelSummary]
+    .filter(Boolean)
+    .join(' + ');
+  const channelsConfigured = selectedChannels.length > 0 && (!hasDigitalChannel || Boolean(digitalChannelAddress.trim()));
   const activeTestingScenarioCopy = TESTING_SCENARIO_STEP_COPY[testingScenarioStep];
   const activeTestingScenarioSteps = testingScenarioDraft.method
     ? getScenarioStepsForMethod(testingScenarioDraft.method)
@@ -3150,8 +3598,8 @@ ${previewTranscript}`,
       ? testingScenarioPageSteps.indexOf(testingScenarioStep) + 1
       : 1;
   const testingScenarioCanSubmitCurrentStep = isTestingScenarioStepSubmittable();
-  const previewLaunchInstruction = channelType === 'voice'
-    ? `Voice is selected as the channel for ${agentName}. Use the mic in this preview to speak as the caller and hear the connected voice agent respond.`
+  const previewLaunchInstruction = hasVoiceChannel
+    ? `Voice is selected for ${agentName}. Use the mic in this preview to speak as the caller and hear the connected voice agent respond.`
     : `Before creating ${agentName}, run a quick preview session. Type or speak as an end user, and I will simulate how the configured agent would respond.`;
   /* Right-rail Progress + Summary + Context panel ONLY appears once a
      starter template is selected (guidanceVisible / orchestration /
@@ -3200,7 +3648,7 @@ ${previewTranscript}`,
     {
       step: 'preview',
       label: '8. Preview',
-      detail: channelType === 'voice'
+      detail: hasVoiceChannel
         ? 'Voice test session'
         : previewMessages.length > 0
         ? `${previewMessages.filter(message => message.role === 'user').length} test message${previewMessages.filter(message => message.role === 'user').length === 1 ? '' : 's'}`
@@ -3678,7 +4126,7 @@ ${previewTranscript}`,
   }
 
   return (
-    <div className="primary-content eva-agents-landing eva-agents-landing--flush">
+    <div className={`primary-content eva-agents-landing eva-agents-landing--flush${studioTransitioning ? ' eva-agents-landing--studio-transitioning' : ''}`}>
       {shouldShowEvaThreadPanel && (
         <aside className="eva-thread-panel-shell" aria-label="AI Assistant threads">
           <AiThreadPanel
@@ -3706,16 +4154,16 @@ ${previewTranscript}`,
             variations that mount this experience. */}
         {guidanceVisible && !evaThinking && (
           <div className="eva-view-actions">
-            <div className="eva-view-header">
-              <div className="agent-avatar eva-view-header__avatar" style={{ background: gradient }}>
+            <div className="eva-view-header agent-header">
+              <div className="agent-avatar" style={{ background: gradient }}>
                 {profileInitials}
               </div>
-              <div className="eva-view-header__content">
-                <div className="eva-view-header__title-row">
-                  <h1 className="eva-view-title">{agentName}</h1>
+              <div className="agent-info">
+                <div className="agent-name-row">
+                  <span className="agent-name">{agentName}</span>
                   <Badge variant="warning">Draft</Badge>
                 </div>
-                <p className="eva-view-header__meta">{agentDescription} • Last updated just now</p>
+                <div className="agent-meta">{agentDescription} • Last updated just now</div>
               </div>
             </div>
             <div className="eva-view-actions__controls">
@@ -3744,6 +4192,11 @@ ${previewTranscript}`,
                 onClose={panelMenu.close}
                 align="left"
               >
+                <MenuItem
+                  label="View Summary"
+                  icon="meeting-summary"
+                  onClick={handleViewSummary}
+                />
                 <MenuItem
                   label={showEvaThreadPanel ? 'Close thread' : 'Open thread'}
                   icon="side-panel"
@@ -3914,12 +4367,14 @@ ${previewTranscript}`,
               const isRetailKnowledgeLocked = isRetailKnowledgePrompt && retailPrototypeStep !== 'knowledge';
               const isRetailActionsLocked = isRetailActionsPrompt && retailPrototypeStep !== 'actions';
               const isRetailFinalActions = message.originStep === 'retail-final-actions';
+              const isRetailCompleteActions = message.originStep === 'retail-complete-actions';
               const isRetailInlinePreview = message.originStep === 'retail-inline-preview';
               const isControlledPrototypePrompt =
                 baseFollowups.includes(CONTINUE_TO_STUDIO_LABEL) ||
                 baseFollowups.includes(RETAIL_VOICE_LABEL) ||
                 baseFollowups.includes(RETAIL_VIDEO_LABEL) ||
                 baseFollowups.some(option => CHANNEL_PHONE_NUMBER_OPTIONS.some(phone => phone.label === option || phone.value === option)) ||
+                baseFollowups.includes(CONNECT_RETAIL_PHONE_LATER_LABEL) ||
                 baseFollowups.includes(RETAIL_AGENT_NAME_LABEL) ||
                 baseFollowups.some(option => RETAIL_RECOMMENDED_WELCOME_MESSAGES.some(welcome => welcome.text === option)) ||
                 baseFollowups.includes(COMPLETE_RETAIL_AGENT_LABEL);
@@ -3938,14 +4393,14 @@ ${previewTranscript}`,
                       {renderRetailDiscoveryTrace()}
                     </>
                   ) : message.text}
-                  followups={isRetailChannelChoice || isRetailPhonePrompt || isRetailAgentNamePrompt || isRetailWelcomePrompt || isRetailKnowledgePrompt || isRetailActionsPrompt || isRetailFinalActions || isRetailInlinePreview ? [] : followups}
+                  followups={isRetailChannelChoice || isRetailPhonePrompt || isRetailAgentNamePrompt || isRetailWelcomePrompt || isRetailKnowledgePrompt || isRetailActionsPrompt || isRetailFinalActions || isRetailCompleteActions || isRetailInlinePreview ? [] : followups}
                   onFollowup={handleLlmFollowupClick}
                 >
                   {isRetailChannelChoice && (
                     <>
                       <div className="eva-retail-channel-options" role="group" aria-label="Channel options">
                         {RETAIL_CHANNEL_OPTIONS.map(option => {
-                          const isSelected = option.label === retailSelectedChannel;
+                          const isSelected = retailSelectedChannels.includes(option.label);
                           return (
                             <button
                               key={option.label}
@@ -3953,7 +4408,7 @@ ${previewTranscript}`,
                               className={`eva-security-tier-card eva-retail-channel-option${isSelected ? ' eva-security-tier-card--selected' : ''}`}
                               aria-pressed={isSelected}
                               disabled={isRetailChannelLocked}
-                              onClick={() => handleLlmFollowupClick(option.label)}
+                              onClick={() => toggleRetailChannel(option.label)}
                             >
                               <Icon className="icon" name={option.icon} weight="regular" size={24} />
                               <span>
@@ -3964,21 +4419,36 @@ ${previewTranscript}`,
                           );
                         })}
                       </div>
+                      {!isRetailChannelLocked && (
+                        <div className="eva-retail-recommendation-actions">
+                          <Button size="sm" onClick={() => continueRetailChannelSelection()}>
+                            {RETAIL_CONFIRM_CHANNELS_LABEL}
+                          </Button>
+                        </div>
+                      )}
                     </>
                   )}
                   {isRetailPhonePrompt && !isRetailPhoneLocked && (
                     <div className="ai-response__followups eva-retail-phone-options" role="group" aria-label="Connected phone numbers">
-                      {[...CHANNEL_PHONE_NUMBER_OPTIONS.map(option => option.label), OTHER_TEMPLATES_LABEL].map(option => (
+                      {CHANNEL_PHONE_NUMBER_OPTIONS.map(option => (
                         <button
-                          key={option}
+                          key={option.label}
                           type="button"
                           className="ai-footer__suggestion"
                           disabled={isRetailPhoneLocked}
-                          onClick={() => handleLlmFollowupClick(option)}
+                          onClick={() => handleLlmFollowupClick(option.label)}
                         >
-                          {option}
+                          {option.label}
                         </button>
                       ))}
+                      <button
+                        type="button"
+                        className="ai-footer__suggestion"
+                        disabled={isRetailPhoneLocked}
+                        onClick={() => handleLlmFollowupClick(CONNECT_RETAIL_PHONE_LATER_LABEL)}
+                      >
+                        {CONNECT_RETAIL_PHONE_LATER_LABEL}
+                      </button>
                     </div>
                   )}
                   {isRetailAgentNamePrompt && !isRetailAgentNameLocked && (
@@ -4178,17 +4648,25 @@ ${previewTranscript}`,
                       )}
                     </div>
                   )}
-                  {isRetailFinalActions && (
+                  {isRetailFinalActions && retailPrototypeStep === 'ready-to-preview' && (
+                    <div className="eva-retail-final-actions">
+                      <Button onClick={() => handleLlmFollowupClick(PREVIEW_RETAIL_AGENT_LABEL)}>
+                        <Icon name="phone" weight="bold" size="sm" />
+                        {PREVIEW_RETAIL_AGENT_LABEL}
+                      </Button>
+                      <Button variant="secondary" onClick={() => handleLlmFollowupClick(SKIP_RETAIL_PREVIEW_LABEL)}>
+                        {SKIP_RETAIL_PREVIEW_LABEL}
+                      </Button>
+                    </div>
+                  )}
+                  {isRetailCompleteActions && retailPrototypeStep === 'ready-to-create' && (
                     <div className="eva-retail-final-actions">
                       <Button onClick={() => handleLlmFollowupClick(COMPLETE_RETAIL_AGENT_LABEL)}>
                         <Icon name="sparkle" weight="bold" size="sm" />
                         {COMPLETE_RETAIL_AGENT_LABEL}
                       </Button>
-                      <Button variant="secondary" onClick={() => handleLlmFollowupClick(PREVIEW_RETAIL_AGENT_LABEL)}>
-                        <Icon name="phone" weight="bold" size="sm" />
-                        {PREVIEW_RETAIL_AGENT_LABEL}
-                      </Button>
                       <Button variant="secondary" onClick={() => handleLlmFollowupClick(ENTER_AGENT_STUDIO_LABEL)}>
+                        <Icon name="tools" weight="bold" size="sm" />
                         {ENTER_AGENT_STUDIO_LABEL}
                       </Button>
                     </div>
@@ -4196,15 +4674,14 @@ ${previewTranscript}`,
                   {isRetailInlinePreview && (
                     <div className="eva-retail-inline-preview">
                       {renderPreviewSession()}
-                      <div className="eva-retail-inline-preview__actions">
-                        <Button onClick={() => handleLlmFollowupClick(COMPLETE_RETAIL_AGENT_LABEL)}>
-                          <Icon name="sparkle" weight="bold" size="sm" />
-                          {COMPLETE_RETAIL_AGENT_LABEL}
-                        </Button>
-                        <Button variant="secondary" onClick={() => handleLlmFollowupClick(ENTER_AGENT_STUDIO_LABEL)}>
-                          {ENTER_AGENT_STUDIO_LABEL}
-                        </Button>
-                      </div>
+                      {retailPrototypeStep === 'previewing' && ['ended', 'error'].includes(voiceCallStatus) ? (
+                        <div className="eva-retail-inline-preview__actions">
+                          <Button onClick={() => handleLlmFollowupClick(CONNECT_RETAIL_PHONE_LABEL)}>
+                            <Icon name="phone" weight="bold" size="sm" />
+                            {CONNECT_RETAIL_PHONE_LABEL}
+                          </Button>
+                        </div>
+                      ) : null}
                     </div>
                   )}
                 </AiResponseMessage>
@@ -4408,66 +4885,88 @@ ${previewTranscript}`,
                   className="eva-ai-response"
                   showActions={false}
                   assistantName="AI Assistant"
-                  content="Next, choose where this agent should be available. Select a channel type, then choose the specific channel and address or number AI Assistant should use."
+                  content="Next, add the channels where this agent should be available. Voice is included by default, and you can add digital or video without removing voice."
                 >
                   <div className="eva-config-block">
-                    <div className="eva-security-tier-selector eva-channel-type-selector" role="radiogroup" aria-label="Channel type">
-                      <button
-                        type="button"
-                        className={`eva-security-tier-card${channelType === 'voice' ? ' eva-security-tier-card--selected' : ''}`}
-                        onClick={() => setChannelType('voice')}
-                        aria-pressed={channelType === 'voice'}
-                      >
-                        <Icon name="phone" weight="bold" size={24} />
-                        <span>
-                          <strong>Voice</strong>
-                          <small>Use voice calling flows for phone-based customer conversations.</small>
-                        </span>
-                      </button>
-                      <button
-                        type="button"
-                        className={`eva-security-tier-card${channelType === 'digital' ? ' eva-security-tier-card--selected' : ''}`}
-                        onClick={() => setChannelType('digital')}
-                        aria-pressed={channelType === 'digital'}
-                      >
-                        <Icon name="chat" weight="bold" size={24} />
-                        <span>
-                          <strong>Digital</strong>
-                          <small>Use messaging and digital entry points for customer conversations.</small>
-                        </span>
-                      </button>
+                    <div className="eva-security-tier-selector eva-channel-type-selector" role="group" aria-label="Channels to add">
+                      {EVA_CHANNEL_SELECTION_OPTIONS.map(option => {
+                        const selected = selectedChannels.includes(option.value);
+                        return (
+                          <button
+                            key={option.value}
+                            type="button"
+                            className={`eva-security-tier-card${selected ? ' eva-security-tier-card--selected' : ''}`}
+                            onClick={() => toggleSelectedChannel(option.value)}
+                            aria-pressed={selected}
+                          >
+                            <Icon name={option.icon} weight="bold" size={24} />
+                            <span>
+                              <strong>{option.title}</strong>
+                              <small>{option.description}</small>
+                            </span>
+                          </button>
+                        );
+                      })}
                     </div>
-                    {channelType === 'digital' ? (
+                    {hasDigitalChannel && (
                       <div className="eva-config-grid eva-config-grid--responsive-two">
-                        <Dropdown
-                          label="Digital channel"
-                          required
-                          options={DIGITAL_CHANNEL_OPTIONS}
-                          value={digitalChannel}
-                          onChange={value => setDigitalChannel(value as EvaDigitalChannel)}
-                        />
+                        <div className="eva-config-block">
+                          <label className="v2-profile-label">Digital channels</label>
+                          <div className="eva-security-tier-selector eva-channel-type-selector" role="group" aria-label="Digital channels to add">
+                            {DIGITAL_CHANNEL_OPTIONS.map(option => {
+                              const selected = selectedDigitalChannels.includes(option.value);
+                              return (
+                                <button
+                                  key={option.value}
+                                  type="button"
+                                  className={`eva-security-tier-card${selected ? ' eva-security-tier-card--selected' : ''}`}
+                                  onClick={() => toggleSelectedDigitalChannel(option.value)}
+                                  aria-pressed={selected}
+                                >
+                                  <Icon name="chat" weight="bold" size={24} />
+                                  <span>
+                                    <strong>{option.label}</strong>
+                                    <small>Add this digital entry point for the same agent.</small>
+                                  </span>
+                                </button>
+                              );
+                            })}
+                          </div>
+                        </div>
                         <Input
-                          label={selectedDigitalChannelDetails.label}
+                          label="Digital destination"
                           required
-                          type={selectedDigitalChannelDetails.inputType}
+                          type="text"
                           value={digitalChannelAddress}
                           onChange={event => setDigitalChannelAddress(event.target.value)}
-                          placeholder={selectedDigitalChannelDetails.placeholder}
-                          hint={selectedDigitalChannelDetails.hint}
+                          placeholder="support-chat, support@example.com, or +1 415 555 0198"
+                          hint="Use a queue, inbox, SMS-capable number, or Webex Connect asset for the selected digital channels."
                         />
                       </div>
-                    ) : (
+                    )}
+                    {hasVoiceChannel && (
                       <Dropdown
                         label="Voice phone number"
                         required
                         options={CHANNEL_PHONE_NUMBER_OPTIONS}
                         value={channelPhoneNumber}
-                        onChange={setChannelPhoneNumber}
+                        onChange={(value) => {
+                          setChannelPhoneNumber(value);
+                          setPhoneNumberDeferred(false);
+                        }}
+                      />
+                    )}
+                    {hasVideoChannel && (
+                      <Banner
+                        type="info"
+                        title="Video added"
+                        subtitle="Video will use the same agent instructions, knowledge, actions, and guardrails. Meeting routing can be connected after this setup."
+                        dismissable={false}
                       />
                     )}
                     {evaStep === 'channels' && (
                       <div className="eva-dialogue__actions">
-                        <Button onClick={() => setEvaStep('instructions')} disabled={!channelDestination}>Continue to instructions</Button>
+                        <Button onClick={() => setEvaStep('instructions')} disabled={!channelsConfigured}>Continue to instructions</Button>
                       </div>
                     )}
                   </div>
@@ -4496,7 +4995,7 @@ ${previewTranscript}`,
                             <button type="button" className="instructions-toolbar-btn" aria-label="Link"><Icon name="link" weight="bold" size={16} /></button>
                             <button type="button" className="instructions-toolbar-btn" aria-label="Table"><Icon name="table" weight="bold" size={16} /></button>
                             <span className="instructions-toolbar-divider" />
-                            <button type="button" className="instructions-toolbar-pill" onClick={() => setShowInstructionExamples(prev => !prev)}>
+                            <button type="button" className="instructions-toolbar-pill" onClick={() => setShowInstructionExamples(true)}>
                               <Icon name="guide" weight="bold" size={16} />
                               Example
                             </button>
@@ -4559,40 +5058,85 @@ ${previewTranscript}`,
                       </div>
                     )}
 
-                    {showInstructionExamples && (
-                      <div className="eva-instruction-examples" aria-label="Instruction examples and tips">
-                        <div className="eva-instruction-examples__section">
-                          <h4>Instruction examples</h4>
-                          <div className="eva-instruction-examples__cards">
-                            {INSTRUCTION_EXAMPLES.map(example => (
-                              <article key={example.title} className="eva-instruction-example-card">
-                                <strong>{example.title}</strong>
-                                <p>{example.content.split('\n\n')[0].replace('#### Role & Identity\n', '')}</p>
-                                <Button
-                                  variant="secondary"
-                                  size="sm"
-                                  onClick={() => {
-                                    setInstructionPrompt(`**${example.title}**\n\n${example.content}`);
-                                    setShowInstructionExamples(false);
-                                    setOptimizeAccepted(false);
-                                    showToast('Example inserted into instructions', 'success');
-                                  }}
-                                >
-                                  Insert
-                                </Button>
-                              </article>
-                            ))}
+                    {showInstructionExamples && createPortal(
+                      <div className="example-modal-overlay" onClick={() => setShowInstructionExamples(false)}>
+                        <div className="example-modal" onClick={(event) => event.stopPropagation()} role="dialog" aria-modal="true">
+                          <div className="example-modal-header">
+                            <div>
+                              <h2 className="example-modal-title">Instruction examples</h2>
+                              <p className="example-modal-subtitle">Explore examples for writing effective instructions.</p>
+                            </div>
+                            <button className="example-modal-close" onClick={() => setShowInstructionExamples(false)} aria-label="Close">
+                              <Icon name="cancel" weight="bold" size={20} />
+                            </button>
+                          </div>
+                          <div className="example-modal-tabs">
+                            <button type="button" className={`example-modal-tab${instructionExampleTab === 'examples' ? ' active' : ''}`} onClick={() => setInstructionExampleTab('examples')}>
+                              <Icon name="text-code-block" weight="bold" size={16} />
+                              Examples
+                            </button>
+                            <button type="button" className={`example-modal-tab${instructionExampleTab === 'tips' ? ' active' : ''}`} onClick={() => setInstructionExampleTab('tips')}>
+                              <Icon name="info-circle" weight="bold" size={16} />
+                              Best practice & Tips
+                            </button>
+                          </div>
+                          <div className="example-modal-body">
+                            {instructionExampleTab === 'examples' && (
+                              <div className="example-modal-examples-list">
+                                {INSTRUCTION_EXAMPLES.map((example, index) => (
+                                  <div key={index} className="example-modal-card">
+                                    <div className="example-modal-card-header">
+                                      <span className="example-modal-content-label">**{example.title}**</span>
+                                      <button
+                                        type="button"
+                                        className="example-modal-insert-btn"
+                                        onClick={() => {
+                                          setInstructionPrompt(`**${example.title}**\n\n${example.content}`);
+                                          setShowInstructionExamples(false);
+                                          setOptimizeAccepted(false);
+                                          showToast('Example inserted into instructions', 'success');
+                                        }}
+                                      >
+                                        <Icon name="plus" weight="bold" size={14} />
+                                        Insert
+                                      </button>
+                                    </div>
+                                    <div className="example-modal-markdown">
+                                      {example.content.split('\n').map((line, lineIndex) => {
+                                        if (line.startsWith('####')) return <h4 key={lineIndex}>{line.replace(/^####\s*/, '')}</h4>;
+                                        if (line.trim() === '') return <br key={lineIndex} />;
+                                        return <p key={lineIndex}>{line}</p>;
+                                      })}
+                                    </div>
+                                  </div>
+                                ))}
+                              </div>
+                            )}
+                            {instructionExampleTab === 'tips' && (
+                              <div className="example-modal-card">
+                                <div className="example-modal-card-header">
+                                  <span className="example-modal-content-label">Best practice & Tips</span>
+                                </div>
+                                <div className="example-modal-tips">
+                                  {INSTRUCTION_TIPS.map((tip, index) => (
+                                    <div key={index} className="example-modal-tip">
+                                      <span className="example-modal-tip-number">{index + 1}</span>
+                                      <div>
+                                        <h4 className="example-modal-tip-title">{tip.title}</h4>
+                                        <p className="example-modal-tip-desc">{tip.description}</p>
+                                      </div>
+                                    </div>
+                                  ))}
+                                </div>
+                              </div>
+                            )}
+                          </div>
+                          <div className="example-modal-footer">
+                            <Button variant="secondary" onClick={() => setShowInstructionExamples(false)}>Close</Button>
                           </div>
                         </div>
-                        <div className="eva-instruction-examples__section">
-                          <h4>Best practice tips</h4>
-                          <ul className="eva-instruction-tips">
-                            <li>Start with a clear role definition.</li>
-                            <li>Use markdown headers for role, goals, guardrails, and output rules.</li>
-                            <li>Define the agent's tone and escalation path.</li>
-                          </ul>
-                        </div>
-                      </div>
+                      </div>,
+                      document.body,
                     )}
                     {evaStep === 'instructions' && (
                       <div className="eva-dialogue__actions">
@@ -4986,34 +5530,67 @@ ${previewTranscript}`,
                       </article>
                       <article className="eva-config-summary__item eva-config-summary__item--knowledge">
                         <strong><span className="eva-config-summary__icon eva-config-summary__icon--knowledge" aria-hidden="true" />Knowledge</strong>
-                        <p>{selectedKnowledgeBases.join(', ') || 'No sources selected'}</p>
+                        <div className="eva-config-summary__chips" aria-label="Selected knowledge sources">
+                          {(selectedKnowledgeBases.length ? selectedKnowledgeBases : ['No sources selected']).map(item => (
+                            <Badge key={item} variant="default">{item}</Badge>
+                          ))}
+                        </div>
                       </article>
                       <article className="eva-config-summary__item eva-config-summary__item--actions">
                         <strong><span className="eva-config-summary__icon eva-config-summary__icon--actions" aria-hidden="true" />Actions</strong>
-                        <p>{selectedActions.join(', ') || 'No actions selected'}</p>
+                        <div className="eva-config-summary__chips" aria-label="Selected actions">
+                          {(selectedActions.length ? selectedActions : ['No actions selected']).map(item => (
+                            <Badge key={item} variant="default">{item}</Badge>
+                          ))}
+                        </div>
                       </article>
                       <article className="eva-config-summary__item eva-config-summary__item--guardrails">
                         <strong><span className="eva-config-summary__icon eva-config-summary__icon--guardrails" aria-hidden="true" />Guardrails</strong>
-                        <p>{[...draft.security, ...customRules].join(', ')}</p>
+                        <div className="eva-config-summary__chips" aria-label="Selected guardrails">
+                          {(selectedGuardrailLabels.length ? selectedGuardrailLabels : ['No guardrails selected']).map(item => (
+                            <Badge key={item} variant="default">{item}</Badge>
+                          ))}
+                        </div>
                       </article>
                     </div>
                     <div className="eva-next-step-block" aria-label="Suggested next steps">
                       <div className="eva-next-step-block__header">
-                        <span>What would you like to add next?</span>
+                        <span>{phoneNumberDeferred ? 'Make the agent live' : 'What would you like to add next?'}</span>
                       </div>
-                      <div className="eva-next-step-block__chips">
-                        {[
-                          'Include a guide on filing a claim',
-                          'Add tips for choosing the right insurance plan',
-                          'Explain deductible and co-pay concepts',
-                          'Provide updates on ongoing claims',
-                          'Create a FAQ on common policy terms',
-                        ].map(option => (
-                          <button key={option} type="button" onClick={() => handleNextStepSuggestion(option)}>
-                            {option}
-                          </button>
-                        ))}
-                      </div>
+                      {phoneNumberDeferred ? (
+                        <article className="eva-next-step-card">
+                          <div className="eva-next-step-card__content">
+                            <strong>
+                              <Icon name="phone" weight="bold" size="sm" />
+                              Connect a phone number
+                            </strong>
+                            <p>Choose an available voice number before publishing so customers can call this agent.</p>
+                          </div>
+                          <Button
+                            size="sm"
+                            onClick={() => {
+                              setChannelType('voice');
+                              setEvaStep('channels');
+                            }}
+                          >
+                            Connect phone number
+                          </Button>
+                        </article>
+                      ) : (
+                        <div className="eva-next-step-block__chips">
+                          {[
+                            'Include a guide on filing a claim',
+                            'Add tips for choosing the right insurance plan',
+                            'Explain deductible and co-pay concepts',
+                            'Provide updates on ongoing claims',
+                            'Create a FAQ on common policy terms',
+                          ].map(option => (
+                            <button key={option} type="button" onClick={() => handleNextStepSuggestion(option)}>
+                              {option}
+                            </button>
+                          ))}
+                        </div>
+                      )}
                     </div>
                   </div>
                   {!visibleSteps.includes('preview') && (
@@ -5700,17 +6277,24 @@ ${previewTranscript}`,
                             key={step.label}
                             className={`eva-generation-progress__item eva-generation-progress__item--${step.status}`}
                           >
-                            <span className="eva-generation-progress__icon" aria-hidden="true">
-                              <Icon
-                                name={step.status === 'done' ? 'check-circle-filled' : 'shape-circle'}
-                                weight="bold"
-                                size="sm"
-                              />
-                            </span>
-                            <span>
-                              <strong>{step.label}</strong>
-                              <small>{step.detail}</small>
-                            </span>
+                            <button
+                              type="button"
+                              className="eva-generation-progress__button"
+                              onClick={() => openSidePanelStep(step.step)}
+                              aria-label={`Open ${step.label.replace(/^\d+\.\s*/, '')} configuration`}
+                            >
+                              <span className="eva-generation-progress__icon" aria-hidden="true">
+                                <Icon
+                                  name={step.status === 'done' ? 'check-circle-filled' : 'shape-circle'}
+                                  weight="bold"
+                                  size="sm"
+                                />
+                              </span>
+                              <span>
+                                <strong>{step.label}</strong>
+                                <small>{step.detail}</small>
+                              </span>
+                            </button>
                           </li>
                         ))}
                       </ol>

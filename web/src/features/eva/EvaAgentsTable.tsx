@@ -169,7 +169,7 @@ export default function EvaAgentsTable() {
 
   const handleConfigureClick = (agentId: string) => {
     selectAgent(agentId);
-    navigate(`/agents/${agentId}/configure`);
+    navigate(`/agents/${agentId}/studio`);
   };
 
   const handlePreviewClick = (agent: Agent) => {

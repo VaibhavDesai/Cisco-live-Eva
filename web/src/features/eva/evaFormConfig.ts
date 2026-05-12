@@ -17,6 +17,7 @@ export type EvaConversationStep =
 export type EvaLandingMode = 'build' | 'existing';
 export type EvaSecurityTier = 'standard' | 'advanced';
 export type EvaChannelType = 'digital' | 'voice';
+export type EvaChannelSelection = EvaChannelType | 'video';
 export type EvaDigitalChannel = 'chat' | 'email' | 'sms';
 export type EvaConversationalOnboardingStep =
   | 'idle'
@@ -109,11 +110,69 @@ export const CHANNEL_PHONE_NUMBER_OPTIONS = [
   { value: '+44 20 7946 0958', label: '+44 20 7946 0958' },
 ];
 
+export const DEFAULT_EVA_CHANNEL_SELECTIONS: EvaChannelSelection[] = ['voice'];
+export const DEFAULT_EVA_DIGITAL_CHANNEL_SELECTIONS: EvaDigitalChannel[] = ['chat'];
+
+export const EVA_CHANNEL_SELECTION_OPTIONS: Array<{
+  value: EvaChannelSelection;
+  icon: IconName;
+  title: string;
+  description: string;
+}> = [
+  {
+    value: 'voice',
+    icon: 'phone',
+    title: 'Voice',
+    description: 'Use voice calling flows for phone-based customer conversations.',
+  },
+  {
+    value: 'digital',
+    icon: 'chat',
+    title: 'Digital',
+    description: 'Add messaging, email, and SMS entry points for customer conversations.',
+  },
+  {
+    value: 'video',
+    icon: 'video',
+    title: 'Video',
+    description: 'Support video conversations with product guidance and live assistance.',
+  },
+];
+
 export const DIGITAL_CHANNEL_OPTIONS: Array<{ value: EvaDigitalChannel; label: string }> = [
   { value: 'chat', label: 'Chat' },
   { value: 'email', label: 'Email' },
   { value: 'sms', label: 'SMS' },
 ];
+
+export const normalizeEvaChannelSelections = (
+  channels?: EvaChannelSelection[],
+  legacyChannelType?: EvaChannelType,
+): EvaChannelSelection[] => {
+  const allowed = new Set<EvaChannelSelection>(['voice', 'digital', 'video']);
+  const normalized = (channels ?? [])
+    .filter((channel): channel is EvaChannelSelection => allowed.has(channel as EvaChannelSelection));
+  const unique = Array.from(new Set(normalized));
+
+  if (unique.length > 0) return unique;
+  if (legacyChannelType === 'digital') return ['digital'];
+  if (legacyChannelType === 'voice') return ['voice'];
+  return DEFAULT_EVA_CHANNEL_SELECTIONS;
+};
+
+export const normalizeEvaDigitalChannelSelections = (
+  channels?: EvaDigitalChannel[],
+  legacyDigitalChannel?: EvaDigitalChannel,
+): EvaDigitalChannel[] => {
+  const allowed = new Set<EvaDigitalChannel>(['chat', 'email', 'sms']);
+  const normalized = (channels ?? [])
+    .filter((channel): channel is EvaDigitalChannel => allowed.has(channel as EvaDigitalChannel));
+  const unique = Array.from(new Set(normalized));
+
+  if (unique.length > 0) return unique;
+  if (legacyDigitalChannel && allowed.has(legacyDigitalChannel)) return [legacyDigitalChannel];
+  return DEFAULT_EVA_DIGITAL_CHANNEL_SELECTIONS;
+};
 
 export const DIGITAL_CHANNEL_DETAILS: Record<
   EvaDigitalChannel,
@@ -152,6 +211,14 @@ export const INSTRUCTION_EXAMPLES = [
     title: 'IT Help Desk Agent',
     content: `#### Role & Identity\nYou are an IT help desk agent assisting employees with common technical issues including password resets, VPN, software installations, and access requests.\n\n#### Primary Goals\nResolve technical issues quickly through structured troubleshooting. Escalate to specialized teams when remote resolution is not possible.\n\n#### Guardrails\nNever ask for or store full passwords. Do not provide workarounds that bypass security policies.\n\n#### Output Rules\nUse clear, step-by-step instructions. Provide ticket numbers for escalations.`,
   },
+];
+
+export const INSTRUCTION_TIPS = [
+  { title: 'Start with a clear role definition', description: 'Begin your instructions by defining who the agent is and what its primary function is. This anchors all subsequent behavior.' },
+  { title: 'Use markdown headers to organize', description: 'Structure your instructions with #### headers for each section (Role, Goals, Guardrails, Output Rules). This helps the AI parse priorities.' },
+  { title: 'Set explicit guardrails', description: 'Clearly state what the agent must NOT do. Negative constraints are as important as positive instructions.' },
+  { title: 'Define the tone and style', description: 'Specify the communication style - warm, professional, concise. Include examples of phrasing if possible.' },
+  { title: 'Include domain context', description: 'Give the agent knowledge about your products, policies, and processes so it can answer accurately without hallucinating.' },
 ];
 
 export const STARTER_PROMPTS: Array<{
@@ -430,9 +497,12 @@ export interface EvaSessionState {
   optimizeSummary: { changes: string[]; reasoning: string[] };
   securityTier: EvaSecurityTier;
   channelType: EvaChannelType;
+  selectedChannels?: EvaChannelSelection[];
   digitalChannel?: EvaDigitalChannel;
+  selectedDigitalChannels?: EvaDigitalChannel[];
   digitalChannelAddress?: string;
   channelPhoneNumber: string;
+  phoneNumberDeferred?: boolean;
   standardGuardrails: typeof EVA_STANDARD_GUARDRAILS;
   advancedGuardrailGroups: typeof EVA_ADVANCED_GUARDRAIL_GROUPS;
   expandedAdvancedGroups: string[];

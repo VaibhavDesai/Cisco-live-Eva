@@ -83,7 +83,12 @@ export default function Sidebar({ collapsed = false }: SidebarProps) {
                     icon={item.icon}
                     label={item.label}
                     active={itemActive}
-                    onClick={() => navigate(item.path)}
+                    onClick={() => {
+                      if (item.path === '/') {
+                        setVariation('dashboard');
+                      }
+                      navigate(item.path);
+                    }}
                   />
                 );
               })}

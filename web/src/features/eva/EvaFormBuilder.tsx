@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useApp } from '../../contexts/AppContext';
 import { useDesignVariation } from '../../contexts/DesignVariationContext';
@@ -10,6 +11,7 @@ import {
   AiResponseMessage,
   AiUserMessage,
   Badge,
+  Banner,
   Button,
   Dropdown,
   Input,
@@ -42,24 +44,28 @@ import {
 } from './evaSuggestion';
 import {
   CHANNEL_PHONE_NUMBER_OPTIONS,
-  DIGITAL_CHANNEL_DETAILS,
   DIGITAL_CHANNEL_OPTIONS,
+  EVA_CHANNEL_SELECTION_OPTIONS,
   EVA_ACTION_ROWS,
   EVA_ADVANCED_GUARDRAIL_GROUPS,
   EVA_PLANNING_ROWS,
   EVA_SESSION_STORAGE_KEY,
   EVA_STANDARD_GUARDRAILS,
   INSTRUCTION_EXAMPLES,
+  INSTRUCTION_TIPS,
   PROFILE_LANGUAGE_OPTIONS,
   PROFILE_TIMEZONE_OPTIONS,
   PROFILE_VOICE_OPTIONS,
   STARTER_PROMPTS,
   buildInstructionPrompt,
   buildWelcomeMessage,
+  normalizeEvaChannelSelections,
+  normalizeEvaDigitalChannelSelections,
   readEvaSessionState,
   sensitivityToValue,
   summarizeInstructionPrompt,
   valueToSensitivity,
+  type EvaChannelSelection,
   type EvaChannelType,
   type EvaDigitalChannel,
   type EvaDirection,
@@ -244,6 +250,7 @@ export default function EvaFormBuilder() {
     restored?.instructionPrompt ?? buildInstructionPrompt(initialTemplateDraft),
   );
   const [showInstructionExamples, setShowInstructionExamples] = useState(false);
+  const [instructionExampleTab, setInstructionExampleTab] = useState<'examples' | 'tips'>('examples');
   const [optimizingInstructions, setOptimizingInstructions] = useState(false);
   const [optimizeAccepted, setOptimizeAccepted] = useState(restored?.optimizeAccepted ?? false);
   const [preOptimizeText, setPreOptimizeText] = useState(restored?.preOptimizeText ?? '');
@@ -260,8 +267,14 @@ export default function EvaFormBuilder() {
   const [securityTier, setSecurityTier] = useState<EvaSecurityTier>(
     restored?.securityTier ?? 'standard',
   );
+  const [selectedChannels, setSelectedChannels] = useState<EvaChannelSelection[]>(
+    () => normalizeEvaChannelSelections(restored?.selectedChannels, restored?.channelType),
+  );
   const [channelType, setChannelType] = useState<EvaChannelType>(
-    restored?.channelType ?? 'digital',
+    restored?.channelType ?? 'voice',
+  );
+  const [selectedDigitalChannels, setSelectedDigitalChannels] = useState<EvaDigitalChannel[]>(
+    () => normalizeEvaDigitalChannelSelections(restored?.selectedDigitalChannels, restored?.digitalChannel),
   );
   const [digitalChannel, setDigitalChannel] = useState<EvaDigitalChannel>(
     restored?.digitalChannel ?? 'chat',
@@ -433,7 +446,9 @@ export default function EvaFormBuilder() {
       optimizeSummary,
       securityTier,
       channelType,
+      selectedChannels,
       digitalChannel,
+      selectedDigitalChannels,
       digitalChannelAddress,
       channelPhoneNumber,
       standardGuardrails,
@@ -478,7 +493,9 @@ export default function EvaFormBuilder() {
     optimizeSummary,
     securityTier,
     channelType,
+    selectedChannels,
     digitalChannel,
+    selectedDigitalChannels,
     digitalChannelAddress,
     channelPhoneNumber,
     standardGuardrails,
@@ -948,19 +965,58 @@ export default function EvaFormBuilder() {
       knowledgeBases: selectedKnowledgeBases,
     });
     showToast(`Created "${agentName}" as a draft agent.`, 'success');
-    navigate(`/agents/${agent.id}/configure?section=Profile`);
+    navigate(`/agents/${agent.id}/studio`);
   };
 
-  const selectedDigitalChannel =
-    DIGITAL_CHANNEL_OPTIONS.find(option => option.value === digitalChannel) ??
-    DIGITAL_CHANNEL_OPTIONS[0];
-  const selectedDigitalChannelDetails = DIGITAL_CHANNEL_DETAILS[digitalChannel];
-  const channelDestination =
-    channelType === 'digital' ? digitalChannelAddress.trim() : channelPhoneNumber;
-  const channelSummary =
-    channelType === 'digital'
-      ? `${selectedDigitalChannel.label} · ${channelDestination || 'Add address or number'}`
-      : `Voice · ${channelPhoneNumber}`;
+  const toggleSelectedChannel = (channel: EvaChannelSelection) => {
+    setSelectedChannels(prev => {
+      const hasChannel = prev.includes(channel);
+      if (hasChannel && prev.length === 1) return prev;
+      const next = hasChannel ? prev.filter(item => item !== channel) : [...prev, channel];
+
+      if (!hasChannel && (channel === 'voice' || channel === 'digital')) {
+        setChannelType(channel);
+      } else if (hasChannel && channel === channelType) {
+        setChannelType(next.includes('voice') ? 'voice' : 'digital');
+      }
+
+      if (!hasChannel && channel === 'digital' && selectedDigitalChannels.length === 0) {
+        setSelectedDigitalChannels(['chat']);
+        setDigitalChannel('chat');
+      }
+
+      return next;
+    });
+  };
+
+  const toggleSelectedDigitalChannel = (channel: EvaDigitalChannel) => {
+    setSelectedDigitalChannels(prev => {
+      const hasChannel = prev.includes(channel);
+      if (hasChannel && prev.length === 1) return prev;
+      const next = hasChannel ? prev.filter(item => item !== channel) : [...prev, channel];
+      if (!hasChannel) {
+        setDigitalChannel(channel);
+      } else if (channel === digitalChannel) {
+        setDigitalChannel(next[0] ?? 'chat');
+      }
+      return next;
+    });
+  };
+
+  const hasVoiceChannel = selectedChannels.includes('voice');
+  const hasDigitalChannel = selectedChannels.includes('digital');
+  const hasVideoChannel = selectedChannels.includes('video');
+  const selectedDigitalChannelLabels = selectedDigitalChannels
+    .map(channel => DIGITAL_CHANNEL_OPTIONS.find(option => option.value === channel)?.label)
+    .filter(Boolean);
+  const digitalChannelSummary = hasDigitalChannel
+    ? `Digital (${selectedDigitalChannelLabels.join(', ') || 'Chat'})${digitalChannelAddress.trim() ? ` · ${digitalChannelAddress.trim()}` : ''}`
+    : null;
+  const voiceChannelSummary = hasVoiceChannel ? `Voice · ${channelPhoneNumber}` : null;
+  const videoChannelSummary = hasVideoChannel ? 'Video' : null;
+  const channelSummary = [voiceChannelSummary, digitalChannelSummary, videoChannelSummary]
+    .filter(Boolean)
+    .join(' + ');
   const selectedLanguage = PROFILE_LANGUAGE_OPTIONS.find(o => o.value === personality.language);
   const selectedVoice = PROFILE_VOICE_OPTIONS.find(o => o.value === personality.voice);
   const languageSummary = selectedLanguage?.label ?? personality.language;
@@ -1478,66 +1534,79 @@ export default function EvaFormBuilder() {
             <div className="eva-config-block">
               <div
                 className="eva-security-tier-selector eva-channel-type-selector"
-                role="radiogroup"
-                aria-label="Channel type"
+                role="group"
+                aria-label="Channels to add"
               >
-                <button
-                  type="button"
-                  className={`eva-security-tier-card${
-                    channelType === 'digital' ? ' eva-security-tier-card--selected' : ''
-                  }`}
-                  onClick={() => setChannelType('digital')}
-                  aria-pressed={channelType === 'digital'}
-                >
-                  <Icon name="chat" weight="bold" size={24} />
-                  <span>
-                    <strong>Digital</strong>
-                    <small>
-                      Use messaging and digital entry points for customer conversations.
-                    </small>
-                  </span>
-                </button>
-                <button
-                  type="button"
-                  className={`eva-security-tier-card${
-                    channelType === 'voice' ? ' eva-security-tier-card--selected' : ''
-                  }`}
-                  onClick={() => setChannelType('voice')}
-                  aria-pressed={channelType === 'voice'}
-                >
-                  <Icon name="phone" weight="bold" size={24} />
-                  <span>
-                    <strong>Voice</strong>
-                    <small>Use voice calling flows for phone-based customer conversations.</small>
-                  </span>
-                </button>
+                {EVA_CHANNEL_SELECTION_OPTIONS.map(option => {
+                  const selected = selectedChannels.includes(option.value);
+                  return (
+                    <button
+                      key={option.value}
+                      type="button"
+                      className={`eva-security-tier-card${selected ? ' eva-security-tier-card--selected' : ''}`}
+                      onClick={() => toggleSelectedChannel(option.value)}
+                      aria-pressed={selected}
+                    >
+                      <Icon name={option.icon} weight="bold" size={24} />
+                      <span>
+                        <strong>{option.title}</strong>
+                        <small>{option.description}</small>
+                      </span>
+                    </button>
+                  );
+                })}
               </div>
-              {channelType === 'digital' ? (
+              {hasDigitalChannel && (
                 <div className="eva-config-grid eva-config-grid--responsive-two">
-                  <Dropdown
-                    label="Digital channel"
-                    required
-                    options={DIGITAL_CHANNEL_OPTIONS}
-                    value={digitalChannel}
-                    onChange={value => setDigitalChannel(value as EvaDigitalChannel)}
-                  />
+                  <div className="eva-config-block">
+                    <label className="v2-profile-label">Digital channels</label>
+                    <div className="eva-security-tier-selector eva-channel-type-selector" role="group" aria-label="Digital channels to add">
+                      {DIGITAL_CHANNEL_OPTIONS.map(option => {
+                        const selected = selectedDigitalChannels.includes(option.value);
+                        return (
+                          <button
+                            key={option.value}
+                            type="button"
+                            className={`eva-security-tier-card${selected ? ' eva-security-tier-card--selected' : ''}`}
+                            onClick={() => toggleSelectedDigitalChannel(option.value)}
+                            aria-pressed={selected}
+                          >
+                            <Icon name="chat" weight="bold" size={24} />
+                            <span>
+                              <strong>{option.label}</strong>
+                              <small>Add this digital entry point for the same agent.</small>
+                            </span>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
                   <Input
-                    label={selectedDigitalChannelDetails.label}
+                    label="Digital destination"
                     required
-                    type={selectedDigitalChannelDetails.inputType}
+                    type="text"
                     value={digitalChannelAddress}
                     onChange={event => setDigitalChannelAddress(event.target.value)}
-                    placeholder={selectedDigitalChannelDetails.placeholder}
-                    hint={selectedDigitalChannelDetails.hint}
+                    placeholder="support-chat, support@example.com, or +1 415 555 0198"
+                    hint="Use a queue, inbox, SMS-capable number, or Webex Connect asset for the selected digital channels."
                   />
                 </div>
-              ) : (
+              )}
+              {hasVoiceChannel && (
                 <Dropdown
                   label="Voice phone number"
                   required
                   options={CHANNEL_PHONE_NUMBER_OPTIONS}
                   value={channelPhoneNumber}
                   onChange={setChannelPhoneNumber}
+                />
+              )}
+              {hasVideoChannel && (
+                <Banner
+                  type="info"
+                  title="Video added"
+                  subtitle="Video will use the same agent instructions, knowledge, actions, and guardrails. Meeting routing can be connected after this setup."
+                  dismissable={false}
                 />
               )}
             </div>
@@ -1584,7 +1653,7 @@ export default function EvaFormBuilder() {
                       <button
                         type="button"
                         className="instructions-toolbar-pill"
-                        onClick={() => setShowInstructionExamples(prev => !prev)}
+                        onClick={() => setShowInstructionExamples(true)}
                       >
                         <Icon name="guide" weight="bold" size={16} />
                         Example
@@ -1669,50 +1738,85 @@ export default function EvaFormBuilder() {
                 </div>
               )}
 
-              {showInstructionExamples && (
-                <div
-                  className="eva-instruction-examples"
-                  aria-label="Instruction examples and tips"
-                >
-                  <div className="eva-instruction-examples__section">
-                    <h4>Instruction examples</h4>
-                    <div className="eva-instruction-examples__cards">
-                      {INSTRUCTION_EXAMPLES.map(example => (
-                        <article
-                          key={example.title}
-                          className="eva-instruction-example-card"
-                        >
-                          <strong>{example.title}</strong>
-                          <p>
-                            {example.content
-                              .split('\n\n')[0]
-                              .replace('#### Role & Identity\n', '')}
-                          </p>
-                          <Button
-                            variant="secondary"
-                            size="sm"
-                            onClick={() => {
-                              setInstructionPrompt(`**${example.title}**\n\n${example.content}`);
-                              setShowInstructionExamples(false);
-                              setOptimizeAccepted(false);
-                              showToast('Example inserted into instructions', 'success');
-                            }}
-                          >
-                            Insert
-                          </Button>
-                        </article>
-                      ))}
+              {showInstructionExamples && createPortal(
+                <div className="example-modal-overlay" onClick={() => setShowInstructionExamples(false)}>
+                  <div className="example-modal" onClick={(event) => event.stopPropagation()} role="dialog" aria-modal="true">
+                    <div className="example-modal-header">
+                      <div>
+                        <h2 className="example-modal-title">Instruction examples</h2>
+                        <p className="example-modal-subtitle">Explore examples for writing effective instructions.</p>
+                      </div>
+                      <button className="example-modal-close" onClick={() => setShowInstructionExamples(false)} aria-label="Close">
+                        <Icon name="cancel" weight="bold" size={20} />
+                      </button>
+                    </div>
+                    <div className="example-modal-tabs">
+                      <button type="button" className={`example-modal-tab${instructionExampleTab === 'examples' ? ' active' : ''}`} onClick={() => setInstructionExampleTab('examples')}>
+                        <Icon name="text-code-block" weight="bold" size={16} />
+                        Examples
+                      </button>
+                      <button type="button" className={`example-modal-tab${instructionExampleTab === 'tips' ? ' active' : ''}`} onClick={() => setInstructionExampleTab('tips')}>
+                        <Icon name="info-circle" weight="bold" size={16} />
+                        Best practice & Tips
+                      </button>
+                    </div>
+                    <div className="example-modal-body">
+                      {instructionExampleTab === 'examples' && (
+                        <div className="example-modal-examples-list">
+                          {INSTRUCTION_EXAMPLES.map((example, index) => (
+                            <div key={index} className="example-modal-card">
+                              <div className="example-modal-card-header">
+                                <span className="example-modal-content-label">**{example.title}**</span>
+                                <button
+                                  type="button"
+                                  className="example-modal-insert-btn"
+                                  onClick={() => {
+                                    setInstructionPrompt(`**${example.title}**\n\n${example.content}`);
+                                    setShowInstructionExamples(false);
+                                    setOptimizeAccepted(false);
+                                    showToast('Example inserted into instructions', 'success');
+                                  }}
+                                >
+                                  <Icon name="plus" weight="bold" size={14} />
+                                  Insert
+                                </button>
+                              </div>
+                              <div className="example-modal-markdown">
+                                {example.content.split('\n').map((line, lineIndex) => {
+                                  if (line.startsWith('####')) return <h4 key={lineIndex}>{line.replace(/^####\s*/, '')}</h4>;
+                                  if (line.trim() === '') return <br key={lineIndex} />;
+                                  return <p key={lineIndex}>{line}</p>;
+                                })}
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                      {instructionExampleTab === 'tips' && (
+                        <div className="example-modal-card">
+                          <div className="example-modal-card-header">
+                            <span className="example-modal-content-label">Best practice & Tips</span>
+                          </div>
+                          <div className="example-modal-tips">
+                            {INSTRUCTION_TIPS.map((tip, index) => (
+                              <div key={index} className="example-modal-tip">
+                                <span className="example-modal-tip-number">{index + 1}</span>
+                                <div>
+                                  <h4 className="example-modal-tip-title">{tip.title}</h4>
+                                  <p className="example-modal-tip-desc">{tip.description}</p>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                    <div className="example-modal-footer">
+                      <Button variant="secondary" onClick={() => setShowInstructionExamples(false)}>Close</Button>
                     </div>
                   </div>
-                  <div className="eva-instruction-examples__section">
-                    <h4>Best practice tips</h4>
-                    <ul className="eva-instruction-tips">
-                      <li>Start with a clear role definition.</li>
-                      <li>Use markdown headers for role, goals, guardrails, and output rules.</li>
-                      <li>Define the agent's tone and escalation path.</li>
-                    </ul>
-                  </div>
-                </div>
+                </div>,
+                document.body,
               )}
             </div>
           </AccordionItem>

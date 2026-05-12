@@ -5,7 +5,7 @@ import Button from '../shared/Button';
 import Tabs, { Tab } from '../shared/Tabs';
 import { useApp } from '../../contexts/AppContext';
 
-export default function AgentHeader({ agent, activeTab, showPublishButton = true, headerRight = null, children = null }) {
+export default function AgentHeader({ agent, activeTab, showPublishButton = true, showTabs = true, headerRight = null, children = null }) {
   const navigate = useNavigate();
   const { toggleAgentPublish, showToast } = useApp();
   const stickyRef = useRef(null);
@@ -80,17 +80,19 @@ export default function AgentHeader({ agent, activeTab, showPublishButton = true
         )}
       </div>
 
-      <Tabs variant="glass" aria-label="Agent navigation" style={{ marginBottom: children ? '16px' : '0' }}>
-        {tabs.map(tab => (
-          <Tab
-            key={tab.id}
-            active={activeTab === tab.id}
-            onClick={() => navigate(`/agents/${agent.id}${tab.path}`)}
-          >
-            {tab.label}
-          </Tab>
-        ))}
-      </Tabs>
+      {showTabs && (
+        <Tabs variant="glass" aria-label="Agent navigation" style={{ marginBottom: children ? '16px' : '0' }}>
+          {tabs.map(tab => (
+            <Tab
+              key={tab.id}
+              active={activeTab === tab.id}
+              onClick={() => navigate(`/agents/${agent.id}${tab.path}`)}
+            >
+              {tab.label}
+            </Tab>
+          ))}
+        </Tabs>
+      )}
 
       {children}
     </div>
