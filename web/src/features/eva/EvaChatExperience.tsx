@@ -5016,11 +5016,12 @@ ${previewTranscript}`,
                             {optimizingInstructions ? 'Optimizing...' : 'Optimize prompt'}
                           </button>
                         </div>
-                        <textarea
-                          className="instructions-textarea"
+                        <Textarea
+                          inputClassName="instructions-textarea"
                           placeholder="Set clear goals for your agent. Provide step-by-step instructions to help them succeed in reaching these targets."
                           value={instructionPrompt}
                           onChange={event => setInstructionPrompt(event.target.value)}
+                          rows={12}
                         />
                         {optimizeAccepted && (
                           <div className="instructions-ai-footer">

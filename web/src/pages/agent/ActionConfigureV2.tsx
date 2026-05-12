@@ -947,7 +947,13 @@ export default function ActionConfigureV2() {
                     Optimize instructions
                   </button>
                 </div>
-                <textarea className="instructions-textarea" placeholder="Set clear goals for your agent. Provide step-by-step instructions to help them succeed in reaching these targets." value={profileForm.instructions} onChange={(e) => updateProfileField('instructions', e.target.value)} />
+                <Textarea
+                  inputClassName="instructions-textarea"
+                  placeholder="Set clear goals for your agent. Provide step-by-step instructions to help them succeed in reaching these targets."
+                  value={profileForm.instructions}
+                  onChange={(e) => updateProfileField('instructions', e.target.value)}
+                  rows={12}
+                />
                 {optimizeAccepted && (
                   <div className="instructions-ai-footer">
                     <Icon name="check" weight="bold" size={14} color="var(--mds-color-theme-text-success-normal, var(--success-color))" /><span>AI Generated</span><span className="instructions-ai-divider">·</span><span>Is this helpful?</span>

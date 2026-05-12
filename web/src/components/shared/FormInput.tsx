@@ -1,4 +1,4 @@
-import React, { forwardRef, useId } from 'react';
+import React, { forwardRef, useCallback, useEffect, useId, useRef, useState } from 'react';
 import { Icon } from '../../icons/Icon';
 import type { IconName } from '../../icons/types';
 
@@ -9,6 +9,144 @@ const VALIDATION_ICON: Record<string, { name: IconName; color: string }> = {
   warning: { name: 'warning'      as IconName, color: 'var(--warning-color)' },
   success: { name: 'check-circle' as IconName, color: 'var(--success-color)' },
 };
+
+type DictationTarget = HTMLInputElement | HTMLTextAreaElement;
+
+type SpeechRecognitionConstructor = new () => {
+  continuous: boolean;
+  interimResults: boolean;
+  lang: string;
+  onresult: ((event: SpeechRecognitionEvent) => void) | null;
+  onerror: ((event: { error?: string }) => void) | null;
+  onend: (() => void) | null;
+  start: () => void;
+  stop: () => void;
+};
+
+type SpeechRecognitionEvent = {
+  results: ArrayLike<ArrayLike<{ transcript: string }>>;
+};
+
+function getSpeechRecognitionConstructor(): SpeechRecognitionConstructor | null {
+  if (typeof window === 'undefined') return null;
+  const speechWindow = window as Window & {
+    SpeechRecognition?: SpeechRecognitionConstructor;
+    webkitSpeechRecognition?: SpeechRecognitionConstructor;
+  };
+  return speechWindow.SpeechRecognition ?? speechWindow.webkitSpeechRecognition ?? null;
+}
+
+function appendDictationText(baseValue: string, transcript: string) {
+  const cleanTranscript = transcript.trim();
+  if (!cleanTranscript) return baseValue;
+  if (!baseValue.trim()) return cleanTranscript;
+  return `${baseValue.replace(/\s+$/, '')} ${cleanTranscript}`;
+}
+
+function createDictationChangeEvent<T extends DictationTarget>(
+  value: string,
+  name?: string,
+): React.ChangeEvent<T> {
+  const target = { value, name } as unknown as T;
+  return {
+    target,
+    currentTarget: target,
+  } as React.ChangeEvent<T>;
+}
+
+function useVoiceDictation<T extends DictationTarget>({
+  value,
+  name,
+  disabled,
+  readOnly,
+  onChange,
+}: {
+  value: React.InputHTMLAttributes<T>['value'];
+  name?: string;
+  disabled?: boolean;
+  readOnly?: boolean;
+  onChange?: React.ChangeEventHandler<T>;
+}) {
+  const [isListening, setIsListening] = useState(false);
+  const [voiceError, setVoiceError] = useState('');
+  const recognitionRef = useRef<InstanceType<SpeechRecognitionConstructor> | null>(null);
+  const baseValueRef = useRef('');
+
+  useEffect(() => () => {
+    try {
+      recognitionRef.current?.stop();
+    } catch {
+      /* SpeechRecognition can throw after it has already stopped. */
+    }
+    recognitionRef.current = null;
+  }, []);
+
+  const stopDictation = useCallback(() => {
+    try {
+      recognitionRef.current?.stop();
+    } catch {
+      /* already stopped */
+    }
+    recognitionRef.current = null;
+    setIsListening(false);
+  }, []);
+
+  const toggleDictation = useCallback(() => {
+    if (disabled || readOnly || !onChange) return;
+    if (recognitionRef.current) {
+      stopDictation();
+      return;
+    }
+
+    const SpeechRecognition = getSpeechRecognitionConstructor();
+    if (!SpeechRecognition) {
+      setVoiceError('Voice input is not available in this browser.');
+      return;
+    }
+
+    const recognition = new SpeechRecognition();
+    recognition.continuous = true;
+    recognition.interimResults = true;
+    recognition.lang = navigator.language || 'en-US';
+    baseValueRef.current = String(value ?? '');
+    setVoiceError('');
+
+    recognition.onresult = event => {
+      const transcript = Array.from(event.results)
+        .map(result => result?.[0]?.transcript ?? '')
+        .join(' ')
+        .trim();
+      onChange(createDictationChangeEvent<T>(appendDictationText(baseValueRef.current, transcript), name));
+    };
+
+    recognition.onerror = event => {
+      setVoiceError(event.error === 'not-allowed' ? 'Microphone permission denied.' : 'Voice input failed. Please try again.');
+    };
+
+    recognition.onend = () => {
+      recognitionRef.current = null;
+      setIsListening(false);
+    };
+
+    recognitionRef.current = recognition;
+    setIsListening(true);
+
+    try {
+      recognition.start();
+    } catch {
+      recognitionRef.current = null;
+      setIsListening(false);
+      setVoiceError('Voice input failed. Please try again.');
+    }
+  }, [disabled, name, onChange, readOnly, stopDictation, value]);
+
+  return {
+    isListening,
+    voiceError,
+    voiceSupported: Boolean(getSpeechRecognitionConstructor()),
+    toggleDictation,
+  };
+}
 
 /* ─── Input ───────────────────────────────────────────────────── */
 
@@ -36,6 +174,8 @@ export interface InputProps
   clearable?: boolean;
   /** Handler invoked when the clear control is pressed */
   onClear?: () => void;
+  /** Adds a microphone control that dictates spoken words into the text field */
+  voiceInput?: boolean;
   /** Classes applied to the outer form-group wrapper */
   className?: string;
   /** Classes merged onto the native input element */
@@ -61,20 +201,38 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(
       prefix,
       clearable = false,
       onClear,
+      voiceInput = true,
       className = '',
       inputClassName = '',
       value,
       disabled,
       readOnly,
       id: externalId,
+      onChange,
       ...inputProps
     },
     ref,
   ) => {
     const autoId = useId();
     const inputId = externalId ?? autoId;
-    const hasIcons = leadingIcon || trailingIcon || clearable || prefix;
+    const inputType = typeof inputProps.type === 'string' ? inputProps.type : 'text';
+    const semanticLabel = [
+      typeof label === 'string' ? label : '',
+      typeof inputProps.placeholder === 'string' ? inputProps.placeholder : '',
+      typeof inputProps['aria-label'] === 'string' ? inputProps['aria-label'] : '',
+    ].join(' ').toLowerCase();
+    const textLikeType = ['', 'text'].includes(inputType);
+    const semanticVoiceExcluded = /\b(search|url|link|email|phone|number|id|destination)\b/.test(semanticLabel);
+    const showVoiceInput = Boolean(voiceInput && onChange && !disabled && !readOnly && textLikeType && !semanticVoiceExcluded);
+    const hasIcons = leadingIcon || trailingIcon || clearable || prefix || showVoiceInput;
     const showClear = clearable && value && !disabled && !readOnly;
+    const { isListening, voiceError, voiceSupported, toggleDictation } = useVoiceDictation<HTMLInputElement>({
+      value,
+      name: inputProps.name,
+      disabled,
+      readOnly,
+      onChange,
+    });
 
     const wrapperCls = [
       'form-input-wrapper',
@@ -100,6 +258,7 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(
         disabled={disabled}
         readOnly={readOnly}
         maxLength={maxLength}
+        onChange={onChange}
         {...inputProps}
       />
     );
@@ -133,6 +292,18 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(
                 <Icon name={'cancel' as IconName} weight="bold" size={16} />
               </button>
             )}
+            {showVoiceInput && voiceSupported && (
+              <button
+                type="button"
+                className={`form-voice-input-button${isListening ? ' listening' : ''}`}
+                onMouseDown={event => event.preventDefault()}
+                onClick={toggleDictation}
+                aria-label={isListening ? 'Stop voice input' : 'Start voice input'}
+                aria-pressed={isListening}
+              >
+                <Icon name={(isListening ? 'stop-circle' : 'microphone') as IconName} weight="bold" size={16} />
+              </button>
+            )}
             {trailingIcon && (
               <span className="form-input-icon">
                 <Icon name={trailingIcon} weight="regular" size={16} />
@@ -143,7 +314,7 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(
           renderInput
         )}
 
-        {(hint || showCharCount) && (
+        {(hint || showCharCount || voiceError) && (
           <div className="form-helper-row">
             {hint && (
               <span className={hintCls}>
@@ -158,6 +329,7 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(
                 {hint}
               </span>
             )}
+            {voiceError && <span className="form-hint error">{voiceError}</span>}
             {showCharCount && maxLength != null && (
               <span className="form-char-count">
                 {String(value ?? '').length}/{maxLength}
@@ -194,6 +366,8 @@ export interface TextareaProps
   className?: string;
   /** Classes merged onto the native textarea element */
   inputClassName?: string;
+  /** Adds a microphone control that dictates spoken words into the text area */
+  voiceInput?: boolean;
 }
 
 /**
@@ -211,6 +385,7 @@ export const Textarea = forwardRef<HTMLTextAreaElement, TextareaProps>(
       maxLength,
       showCharCount = false,
       inlineCharCount = false,
+      voiceInput = true,
       className = '',
       inputClassName = '',
       value,
@@ -218,12 +393,21 @@ export const Textarea = forwardRef<HTMLTextAreaElement, TextareaProps>(
       readOnly,
       id: externalId,
       rows = 4,
+      onChange,
       ...textareaProps
     },
     ref,
   ) => {
     const autoId = useId();
     const inputId = externalId ?? autoId;
+    const showVoiceInput = Boolean(voiceInput && onChange && !disabled && !readOnly);
+    const { isListening, voiceError, voiceSupported, toggleDictation } = useVoiceDictation<HTMLTextAreaElement>({
+      value,
+      name: textareaProps.name,
+      disabled,
+      readOnly,
+      onChange,
+    });
 
     const wrapperCls = [
       'form-textarea-wrapper',
@@ -243,6 +427,7 @@ export const Textarea = forwardRef<HTMLTextAreaElement, TextareaProps>(
     const charLen = String(value ?? '').length;
     const showInlineCount = inlineCharCount && showCharCount && maxLength != null;
     const showExternalCount = !inlineCharCount && showCharCount && maxLength != null;
+    const showTextareaBottom = showInlineCount || (showVoiceInput && voiceSupported);
 
     return (
       <div className={`form-group ${className}`}>
@@ -263,17 +448,32 @@ export const Textarea = forwardRef<HTMLTextAreaElement, TextareaProps>(
             maxLength={maxLength}
             rows={rows}
             aria-invalid={validation === 'error' || undefined}
+            onChange={onChange}
             {...textareaProps}
           />
-          {showInlineCount && (
+          {showTextareaBottom && (
             <div className="form-textarea-bottom">
-              <span className="form-textarea-char-count">
-                {charLen}/{maxLength}
-              </span>
+              {showInlineCount && (
+                <span className="form-textarea-char-count">
+                  {charLen}/{maxLength}
+                </span>
+              )}
+              {showVoiceInput && voiceSupported && (
+                <button
+                  type="button"
+                  className={`form-voice-input-button${isListening ? ' listening' : ''}`}
+                  onMouseDown={event => event.preventDefault()}
+                  onClick={toggleDictation}
+                  aria-label={isListening ? 'Stop voice input' : 'Start voice input'}
+                  aria-pressed={isListening}
+                >
+                  <Icon name={(isListening ? 'stop-circle' : 'microphone') as IconName} weight="bold" size={16} />
+                </button>
+              )}
             </div>
           )}
         </div>
-        {(hint || showExternalCount) && (
+        {(hint || showExternalCount || voiceError) && (
           <div className="form-helper-row">
             {hint && (
               <span className={hintCls}>
@@ -288,6 +488,7 @@ export const Textarea = forwardRef<HTMLTextAreaElement, TextareaProps>(
                 {hint}
               </span>
             )}
+            {voiceError && <span className="form-hint error">{voiceError}</span>}
             {showExternalCount && (
               <span className="form-char-count">
                 {charLen}/{maxLength}

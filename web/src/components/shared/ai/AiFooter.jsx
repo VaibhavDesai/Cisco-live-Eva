@@ -5,14 +5,14 @@ import AiSymbol from './AiSymbol'
 /**
  * Chat composer strip with optional quick suggestions, send control, sources affordance, and privacy disclaimer.
  *
- * When `onVoiceToggle` is provided, the mic button records via MediaRecorder
- * and transcribes through the dev-time `/api/transcribe` proxy (which calls
- * ElevenLabs Scribe). Click the mic to start recording, click again to stop;
- * the resulting transcript is appended into the textarea so the user can
- * edit before sending. `voiceActive` / `onVoiceToggle` are kept on the public
- * API for backwards compatibility — the parent's voiceActive prop is honored
- * for visual state when the user is NOT actively recording, but the live
- * recording / transcribing states drive the icon during a session.
+ * When `onVoiceToggle` is provided, the mic button records short audio chunks
+ * and progressively dictates them into the textarea through `/api/transcribe`.
+ * Browser SpeechRecognition is only used as a fallback when MediaRecorder is
+ * unavailable. Click the mic to start recording, click again to stop; dictated
+ * text remains editable before sending. `voiceActive` / `onVoiceToggle` are kept
+ * on the public API for backwards compatibility — the parent's voiceActive prop
+ * is honored for visual state when the user is NOT actively recording, but the
+ * live recording / transcribing states drive the icon during a session.
  *
  * @param {Object} props - Composer configuration and callbacks for the AI footer region.
  * @param {function(string): void} [props.onSend] - Called with trimmed message text when sending from textarea, Enter, or a suggestion chip.
@@ -70,8 +70,12 @@ function AiFooter({
 
   const mediaRecorderRef = useRef(null)
   const speechRecognitionRef = useRef(null)
-  const audioChunksRef = useRef([])
+  const speechBaseTextRef = useRef('')
   const audioStreamRef = useRef(null)
+  const recorderChunksRef = useRef([])
+  const recorderRestartTimerRef = useRef(null)
+  const recordingSessionActiveRef = useRef(false)
+  const transcribeQueueRef = useRef(Promise.resolve())
 
   const autoResize = useCallback(() => {
     const ta = textareaRef.current
@@ -99,6 +103,11 @@ function AiFooter({
       } catch {
         /* MediaRecorder.stop can throw if state transitioned mid-call; ignore. */
       }
+      if (recorderRestartTimerRef.current) {
+        window.clearTimeout(recorderRestartTimerRef.current)
+        recorderRestartTimerRef.current = null
+      }
+      recordingSessionActiveRef.current = false
       audioStreamRef.current?.getTracks().forEach((t) => t.stop())
       audioStreamRef.current = null
     }
@@ -141,6 +150,21 @@ function AiFooter({
     audioStreamRef.current = null
   }, [])
 
+  const stopRecordingSession = useCallback(() => {
+    recordingSessionActiveRef.current = false
+    if (recorderRestartTimerRef.current) {
+      window.clearTimeout(recorderRestartTimerRef.current)
+      recorderRestartTimerRef.current = null
+    }
+    try {
+      if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') {
+        mediaRecorderRef.current.stop()
+      }
+    } catch {
+      /* already stopped */
+    }
+  }, [])
+
   const transcribeBlob = useCallback(async (blob) => {
     const chatApiUrl = import.meta.env.VITE_CHAT_API_URL
     const transcribeApiUrl =
@@ -168,6 +192,144 @@ function AiFooter({
     return typeof data.text === 'string' ? data.text.trim() : ''
   }, [])
 
+  const appendTranscript = useCallback((transcript) => {
+    const cleanTranscript = transcript.trim()
+    if (!cleanTranscript) return
+    setText((prev) => (prev ? `${prev.replace(/\s+$/, '')} ${cleanTranscript}` : cleanTranscript))
+  }, [])
+
+  const startChunkedRecording = useCallback(async () => {
+    if (typeof navigator === 'undefined' || !navigator.mediaDevices?.getUserMedia) {
+      return false
+    }
+
+    if (typeof MediaRecorder === 'undefined') {
+      return false
+    }
+
+    let stream
+    try {
+      stream = await navigator.mediaDevices.getUserMedia({ audio: true })
+    } catch (err) {
+      const reason =
+        err && typeof err === 'object' && 'name' in err && err.name === 'NotAllowedError'
+          ? 'Microphone permission denied.'
+          : 'Could not access the microphone.'
+      setVoiceError(reason)
+      return true
+    }
+
+    audioStreamRef.current = stream
+    recordingSessionActiveRef.current = true
+    recorderChunksRef.current = []
+
+    const mimeType = pickRecorderMimeType()
+
+    const transcribeSegment = (blob) => {
+      if (blob.size < 1024) return
+
+      transcribeQueueRef.current = transcribeQueueRef.current
+        .catch(() => undefined)
+        .then(async () => {
+          setIsTranscribing(true)
+          try {
+            const transcript = await transcribeBlob(blob)
+            appendTranscript(transcript)
+            if (transcript) setVoiceError('')
+          } catch (err) {
+            if (recordingSessionActiveRef.current) return
+            const message = err instanceof Error ? err.message : 'Transcription failed.'
+            setVoiceError(message)
+          } finally {
+            setIsTranscribing(false)
+          }
+        })
+    }
+
+    const startSegment = () => {
+      if (!recordingSessionActiveRef.current || !audioStreamRef.current) return false
+
+      let mr
+      try {
+        mr = mimeType ? new MediaRecorder(audioStreamRef.current, { mimeType }) : new MediaRecorder(audioStreamRef.current)
+      } catch {
+        recordingSessionActiveRef.current = false
+        stopMicTracks()
+        setIsRecording(false)
+        setVoiceError('Recording is not supported in this browser.')
+        onVoiceToggle?.(false)
+        return false
+      }
+
+      mediaRecorderRef.current = mr
+      recorderChunksRef.current = []
+
+      mr.ondataavailable = (event) => {
+        if (event.data && event.data.size > 0) {
+          recorderChunksRef.current.push(event.data)
+        }
+      }
+
+      mr.onerror = () => {
+        recordingSessionActiveRef.current = false
+        stopMicTracks()
+        setIsRecording(false)
+        setVoiceError('Recording error. Please try again.')
+        onVoiceToggle?.(false)
+      }
+
+      mr.onstop = () => {
+        const chunks = recorderChunksRef.current
+        recorderChunksRef.current = []
+        const blobType = mr.mimeType || mimeType || 'audio/webm'
+
+        if (chunks.length > 0) {
+          transcribeSegment(new Blob(chunks, { type: blobType }))
+        }
+
+        if (recordingSessionActiveRef.current) {
+          startSegment()
+          return
+        }
+
+        stopMicTracks()
+        setIsRecording(false)
+        onVoiceToggle?.(false)
+      }
+
+      try {
+        mr.start()
+      } catch {
+        recordingSessionActiveRef.current = false
+        stopMicTracks()
+        setIsRecording(false)
+        setVoiceError('Recording is not supported in this browser.')
+        onVoiceToggle?.(false)
+        return false
+      }
+
+      recorderRestartTimerRef.current = window.setTimeout(() => {
+        recorderRestartTimerRef.current = null
+        try {
+          if (mediaRecorderRef.current === mr && mr.state !== 'inactive') {
+            mr.stop()
+          }
+        } catch {
+          /* segment already stopped */
+        }
+      }, 3500)
+
+      return true
+    }
+
+    if (!startSegment()) {
+      return false
+    }
+    setIsRecording(true)
+    onVoiceToggle?.(true)
+    return true
+  }, [appendTranscript, onVoiceToggle, pickRecorderMimeType, stopMicTracks, transcribeBlob])
+
   const startBrowserSpeechRecognition = useCallback(() => {
     const SpeechRecognition =
       typeof window !== 'undefined' &&
@@ -182,9 +344,10 @@ function AiFooter({
       return false
     }
 
-    recognition.continuous = false
-    recognition.interimResults = false
+    recognition.continuous = true
+    recognition.interimResults = true
     recognition.lang = navigator.language || 'en-US'
+    speechBaseTextRef.current = text
 
     recognition.onresult = (event) => {
       const transcript = Array.from(event.results ?? [])
@@ -192,7 +355,8 @@ function AiFooter({
         .join(' ')
         .trim()
       if (transcript) {
-        setText((prev) => (prev ? `${prev.replace(/\s+$/, '')} ${transcript}` : transcript))
+        const baseText = speechBaseTextRef.current
+        setText(baseText ? `${baseText.replace(/\s+$/, '')} ${transcript}` : transcript)
       }
     }
 
@@ -224,10 +388,10 @@ function AiFooter({
     }
 
     return true
-  }, [onVoiceToggle])
+  }, [onVoiceToggle, text])
 
   const handleMicClick = useCallback(async () => {
-    if (disabled || processing || isTranscribing) return
+    if (disabled || processing || (isTranscribing && !isRecording)) return
 
     /* Click while recording: stop the recorder. The actual upload + text
        insertion happens in the `onstop` handler below — keeping it there
@@ -240,131 +404,30 @@ function AiFooter({
       } catch {
         /* already stopped */
       }
-      try {
-        mediaRecorderRef.current?.stop()
-      } catch {
-        /* already stopped */
-      }
+      stopRecordingSession()
       return
     }
 
     /* Click while idle: request mic permission and start a fresh session. */
     setVoiceError('')
 
-    if (typeof navigator === 'undefined' || !navigator.mediaDevices?.getUserMedia) {
-      if (!startBrowserSpeechRecognition()) {
-        setVoiceError('Microphone is not available in this browser.')
-      }
+    if (await startChunkedRecording()) {
       return
     }
 
-    if (typeof MediaRecorder === 'undefined') {
-      if (!startBrowserSpeechRecognition()) {
-        setVoiceError('Recording is not supported in this browser.')
-      }
+    if (startBrowserSpeechRecognition()) {
       return
     }
 
-    let stream
-    try {
-      stream = await navigator.mediaDevices.getUserMedia({ audio: true })
-    } catch (err) {
-      const reason =
-        err && typeof err === 'object' && 'name' in err && err.name === 'NotAllowedError'
-          ? 'Microphone permission denied.'
-          : 'Could not access the microphone.'
-      setVoiceError(reason)
-      return
-    }
-
-    audioStreamRef.current = stream
-    audioChunksRef.current = []
-
-    const mimeType = pickRecorderMimeType()
-    let mr
-    try {
-      mr = mimeType ? new MediaRecorder(stream, { mimeType }) : new MediaRecorder(stream)
-    } catch {
-      stopMicTracks()
-      if (!startBrowserSpeechRecognition()) {
-        setVoiceError('Recording is not supported in this browser.')
-      }
-      return
-    }
-    mediaRecorderRef.current = mr
-
-    mr.ondataavailable = (event) => {
-      if (event.data && event.data.size > 0) {
-        audioChunksRef.current.push(event.data)
-      }
-    }
-
-    mr.onerror = () => {
-      stopMicTracks()
-      setIsRecording(false)
-      setVoiceError('Recording error. Please try again.')
-      onVoiceToggle?.(false)
-    }
-
-    mr.onstop = async () => {
-      stopMicTracks()
-      const chunks = audioChunksRef.current
-      audioChunksRef.current = []
-
-      setIsRecording(false)
-      onVoiceToggle?.(false)
-
-      if (chunks.length === 0) return
-
-      const blobType = mr.mimeType || mimeType || 'audio/webm'
-      const blob = new Blob(chunks, { type: blobType })
-
-      /* Some platforms emit empty blobs on very short presses; skip the
-         network round-trip in that case so we don't spam ElevenLabs. */
-      if (blob.size < 1024) {
-        setVoiceError('Recording was too short to transcribe.')
-        return
-      }
-
-      setIsTranscribing(true)
-      try {
-        const transcript = await transcribeBlob(blob)
-        if (transcript) {
-          /* Append to existing text with a single space separator, so a
-             user can dictate multiple utterances back-to-back without
-             losing typed content in between. */
-          setText((prev) => (prev ? `${prev.replace(/\s+$/, '')} ${transcript}` : transcript))
-        }
-      } catch (err) {
-        const message = err instanceof Error ? err.message : 'Transcription failed.'
-        setVoiceError(message)
-      } finally {
-        setIsTranscribing(false)
-      }
-    }
-
-    try {
-      mr.start()
-    } catch {
-      stopMicTracks()
-      if (!startBrowserSpeechRecognition()) {
-        setVoiceError('Recording is not supported in this browser.')
-      }
-      return
-    }
-
-    setIsRecording(true)
-    onVoiceToggle?.(true)
+    setVoiceError('Voice input is not available in this browser.')
   }, [
     disabled,
     processing,
     isTranscribing,
     isRecording,
-    pickRecorderMimeType,
-    stopMicTracks,
-    transcribeBlob,
+    startChunkedRecording,
     startBrowserSpeechRecognition,
-    onVoiceToggle,
+    stopRecordingSession,
   ])
 
   const fillContainerStyle = fillContainer
@@ -436,7 +499,7 @@ function AiFooter({
                 onChange={(e) => setText(e.target.value)}
                 onKeyDown={handleKeyDown}
                 rows={1}
-                disabled={disabled || isTranscribing}
+                disabled={disabled}
               />
             </div>
             <div className="ai-footer__action-bar">
@@ -460,7 +523,7 @@ function AiFooter({
                   className={micClassName}
                   aria-label={micAria}
                   aria-pressed={showRecording || showActive}
-                  disabled={disabled || isTranscribing}
+                  disabled={disabled || (isTranscribing && !isRecording)}
                   onClick={handleMicClick}
                 >
                   <Icon name={micIcon} size={16} />
@@ -470,7 +533,7 @@ function AiFooter({
                 type="button"
                 className="ai-footer__send-btn"
                 aria-label="Send"
-                disabled={!text.trim() || disabled || isTranscribing}
+                disabled={!text.trim() || disabled || isRecording || isTranscribing}
                 onClick={handleSend}
               >
                 <Icon name="send-bold" size={16} />

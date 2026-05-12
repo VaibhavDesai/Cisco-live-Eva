@@ -5434,6 +5434,40 @@ button.view-btn.active {
   background: var(--button-secondary-hover);
 }
 
+.form-voice-input-button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: var(--spacing-large);
+  height: var(--spacing-large);
+  border-radius: var(--border-radius-pill);
+  background: transparent;
+  border: none;
+  padding: var(--spacing-xxx-small);
+  cursor: pointer;
+  color: var(--text-secondary);
+  flex-shrink: 0;
+  transition: background 0.15s, color 0.15s;
+}
+
+.form-voice-input-button:hover {
+  background: var(--button-secondary-hover);
+  color: var(--text-primary);
+}
+
+.form-voice-input-button:focus-visible {
+  outline: none;
+  box-shadow:
+    0 0 0 2px var(--focus-ring-0),
+    0 0 0 4px var(--focus-ring-1),
+    0 0 0 5px var(--focus-ring-2);
+}
+
+.form-voice-input-button.listening {
+  color: var(--accent-color);
+  background: var(--button-secondary-active);
+}
+
 .form-input {
   width: 100%;
   height: var(--spacing-x-large);
@@ -12801,6 +12835,18 @@ img.app-header__wordmark-logo {
 
 .instructions-textarea::placeholder {
   color: var(--text-secondary);
+}
+
+.instructions-editor .form-group {
+  flex: 1;
+  min-height: 0;
+}
+
+.instructions-editor .form-textarea-wrapper {
+  flex: 1;
+  min-height: 0;
+  border: none;
+  border-radius: 0 0 var(--border-radius-medium) var(--border-radius-medium);
 }
 
 .instructions-optimize-card {

@@ -18,7 +18,7 @@ import {
 import { EVA_TEMPLATES } from '../../features/eva/evaTemplates';
 import { Icon } from '../../icons';
 
-type PreviewCallStatus = 'idle' | 'connecting' | 'listening' | 'speaking' | 'ended' | 'error';
+type PreviewCallStatus = 'idle' | 'connecting' | 'listening' | 'speaking' | 'paused' | 'ended' | 'error';
 
 type PreviewTranscriptEntry = {
   id: string;
@@ -184,6 +184,7 @@ export default function AgentStudioLanding() {
   const [previewInteractionEnded, setPreviewInteractionEnded] = useState(false);
   const [previewSessionId, setPreviewSessionId] = useState('');
   const [previewTranscript, setPreviewTranscript] = useState<PreviewTranscriptEntry[]>([]);
+  const [previewPaused, setPreviewPaused] = useState(false);
   const previewCallStatusRef = useRef<PreviewCallStatus>('idle');
   const previewWsRef = useRef<WebSocket | null>(null);
   const previewAudioContextRef = useRef<AudioContext | null>(null);
@@ -200,6 +201,7 @@ export default function AgentStudioLanding() {
   const previewConversationReadyRef = useRef(false);
   const previewInitialGreetingPendingRef = useRef(false);
   const previewMicStreamingEnabledRef = useRef(false);
+  const previewPausedRef = useRef(false);
   const previewConnectionTimerRef = useRef<number | null>(null);
 
   if (!agentId || !agent) {
@@ -306,6 +308,8 @@ export default function AgentStudioLanding() {
     previewConversationReadyRef.current = false;
     previewInitialGreetingPendingRef.current = false;
     previewMicStreamingEnabledRef.current = false;
+    previewPausedRef.current = false;
+    setPreviewPaused(false);
     if (ws && (ws.readyState === WebSocket.OPEN || ws.readyState === WebSocket.CONNECTING)) {
       ws.close();
     }
@@ -354,6 +358,25 @@ export default function AgentStudioLanding() {
     });
   };
 
+  const togglePreviewPause = () => {
+    if (!previewWsRef.current || previewCallStatus === 'idle' || previewCallStatus === 'ended' || previewCallStatus === 'error') {
+      return;
+    }
+
+    const nextPaused = !previewPausedRef.current;
+    previewPausedRef.current = nextPaused;
+    setPreviewPaused(nextPaused);
+
+    if (nextPaused) {
+      previewCallStatusRef.current = 'paused';
+      setPreviewCallStatus('paused');
+      return;
+    }
+
+    previewCallStatusRef.current = 'listening';
+    setPreviewCallStatus('listening');
+  };
+
   const playPreviewAudioChunk = (audioBase64: string) => {
     if (!audioBase64) return;
 
@@ -385,8 +408,8 @@ export default function AgentStudioLanding() {
             previewInitialGreetingPendingRef.current = false;
             previewMicStreamingEnabledRef.current = true;
           }
-          previewCallStatusRef.current = 'listening';
-          setPreviewCallStatus('listening');
+          previewCallStatusRef.current = previewPausedRef.current ? 'paused' : 'listening';
+          setPreviewCallStatus(previewPausedRef.current ? 'paused' : 'listening');
         }
       }, remainingMs + 160);
     };
@@ -427,14 +450,14 @@ export default function AgentStudioLanding() {
     setPreviewInteractionEnded(false);
     setPreviewTranscript([]);
     setPreviewSessionId('');
-    setPreviewExpanded(true);
     previewInteractionStartedRef.current = false;
     previewConversationReadyRef.current = false;
     previewInitialGreetingPendingRef.current = true;
     previewMicStreamingEnabledRef.current = false;
+    previewPausedRef.current = false;
+    setPreviewPaused(false);
 
     try {
-      const signedUrl = await getElevenLabsConversationSignedUrl();
       const micStream = await navigator.mediaDevices.getUserMedia({
         audio: {
           channelCount: 1,
@@ -443,6 +466,7 @@ export default function AgentStudioLanding() {
           autoGainControl: true,
         },
       });
+      const signedUrl = await getElevenLabsConversationSignedUrl();
       const ws = new WebSocket(signedUrl);
       previewWsRef.current = ws;
       previewMicStreamRef.current = micStream;
@@ -483,7 +507,8 @@ export default function AgentStudioLanding() {
           if (
             ws.readyState !== WebSocket.OPEN ||
             !previewConversationReadyRef.current ||
-            !previewMicStreamingEnabledRef.current
+            !previewMicStreamingEnabledRef.current ||
+            previewPausedRef.current
           ) {
             return;
           }
@@ -527,8 +552,8 @@ export default function AgentStudioLanding() {
             ) {
               previewInitialGreetingPendingRef.current = false;
               previewMicStreamingEnabledRef.current = true;
-              previewCallStatusRef.current = 'listening';
-              setPreviewCallStatus('listening');
+              previewCallStatusRef.current = previewPausedRef.current ? 'paused' : 'listening';
+              setPreviewCallStatus(previewPausedRef.current ? 'paused' : 'listening');
             }
           }, 1800);
           return;
@@ -659,6 +684,7 @@ export default function AgentStudioLanding() {
                   </span>
                 )}
                 <span><strong>Ai Engine</strong>{summary.aiEngine}</span>
+                <span><strong>Language</strong>English (US)</span>
                 <span><strong>Timezone</strong>America/Los_Angeles</span>
               </div>
             </CardBody>
@@ -710,6 +736,19 @@ export default function AgentStudioLanding() {
                   <small>Try what is already configured</small>
                 </span>
               </div>
+              <Button
+                type="button"
+                variant={previewExpanded ? 'secondary' : 'tertiary'}
+                size="sm"
+                className="agent-studio-preview-expand-btn"
+                aria-expanded={previewExpanded}
+                aria-pressed={previewExpanded}
+                aria-haspopup="dialog"
+                onClick={() => setPreviewExpanded(true)}
+              >
+                <Icon name="transcript" weight="bold" size="sm" />
+                Text transcript
+              </Button>
             </CardHeader>
             <CardBody>
               <div
@@ -724,36 +763,36 @@ export default function AgentStudioLanding() {
                 {previewCallStatus === 'error' && (
                   <span>{previewCallError || 'Voice preview failed.'}</span>
                 )}
+                {previewCallStatus === 'connecting' && (
+                  <span>Connecting voice preview...</span>
+                )}
+                {previewCallStatus === 'listening' && (
+                  <span>Listening...</span>
+                )}
+                {previewCallStatus === 'speaking' && (
+                  <span>Agent is speaking...</span>
+                )}
+                {previewCallStatus === 'paused' && (
+                  <span>Call paused. Resume to continue sending caller audio.</span>
+                )}
                 <div className="agent-studio-preview-actions">
                   <Button
+                    type="button"
                     size="sm"
-                    disabled={previewCallStatus === 'connecting' || previewCallStatus === 'listening' || previewCallStatus === 'speaking'}
+                    disabled={previewCallStatus === 'connecting' || previewCallStatus === 'listening' || previewCallStatus === 'speaking' || previewCallStatus === 'paused'}
                     onClick={() => { void startPreviewCall(); }}
                   >
                     <Icon name="phone" weight="bold" size="sm" />
-                    Start Call
+                    {previewCallStatus === 'ended' ? 'Restart call' : 'Start Call'}
                   </Button>
                   <Button
+                    type="button"
                     variant="secondary"
                     size="sm"
-                    disabled={previewCallStatus !== 'connecting' && previewCallStatus !== 'listening' && previewCallStatus !== 'speaking'}
+                    disabled={previewCallStatus !== 'connecting' && previewCallStatus !== 'listening' && previewCallStatus !== 'speaking' && previewCallStatus !== 'paused'}
                     onClick={() => stopPreviewCall('ended')}
                   >
                     End Call
-                  </Button>
-                </div>
-                <div className="agent-studio-preview-transcript-toggle-row">
-                  <Button
-                    variant={previewExpanded ? 'secondary' : 'tertiary'}
-                    size="sm"
-                    className="agent-studio-preview-expand-btn"
-                    aria-expanded={previewExpanded}
-                    aria-pressed={previewExpanded}
-                    aria-haspopup="dialog"
-                    onClick={() => setPreviewExpanded(true)}
-                  >
-                    <Icon name="transcript" weight="bold" size="sm" />
-                    Text transcript
                   </Button>
                 </div>
                 {showPreviewSessionLink && (
@@ -790,6 +829,38 @@ export default function AgentStudioLanding() {
           />
           <ModalBody>
             <div className="agent-studio-preview-transcript" aria-live="polite">
+              <div className="agent-studio-preview-transcript__controls" aria-label="Preview call controls">
+                {previewCallStatus === 'ended' ? (
+                  <Button
+                    type="button"
+                    size="sm"
+                    onClick={() => { void startPreviewCall(); }}
+                  >
+                    <Icon name="phone" weight="bold" size="sm" />
+                    Restart call
+                  </Button>
+                ) : (
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    size="sm"
+                    disabled={previewCallStatus !== 'connecting' && previewCallStatus !== 'listening' && previewCallStatus !== 'speaking' && previewCallStatus !== 'paused'}
+                    onClick={togglePreviewPause}
+                  >
+                    <Icon name={previewPaused ? 'play' : 'pause'} weight="bold" size="sm" />
+                    {previewPaused ? 'Resume' : 'Pause'}
+                  </Button>
+                )}
+                <Button
+                  type="button"
+                  variant="secondary"
+                  size="sm"
+                  disabled={previewCallStatus !== 'connecting' && previewCallStatus !== 'listening' && previewCallStatus !== 'speaking' && previewCallStatus !== 'paused'}
+                  onClick={() => stopPreviewCall('ended')}
+                >
+                  End call
+                </Button>
+              </div>
               <div ref={previewTranscriptRef} className="agent-studio-preview-transcript__body">
                 {previewTranscript.length > 0 ? (
                   previewTranscript.map(message => (
