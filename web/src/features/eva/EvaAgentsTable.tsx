@@ -9,6 +9,9 @@ import {
   Card,
   Dropdown,
   Input,
+  MenuItem,
+  MenuOverlay,
+  useMenu,
 } from '../../components/shared';
 import { Icon } from '../../icons';
 import EvaHeroAnimation from './EvaHeroAnimation';
@@ -149,7 +152,7 @@ function getAgentTileMeta(agent: Agent, index: number) {
 
 export default function EvaAgentsTable() {
   const navigate = useNavigate();
-  const { agents, selectAgent, setIsCreateModalOpen } = useApp();
+  const { agents, selectAgent, setIsCreateModalOpen, showToast } = useApp();
   const { setVariation } = useDesignVariation();
   const [searchQuery, setSearchQuery] = useState('');
   const [typeFilter, setTypeFilter] = useState('all');
@@ -346,13 +349,6 @@ export default function EvaAgentsTable() {
           <h1 className="page-title">AI Agents</h1>
           <p className="page-subtitle">Manage and preview your AI agents</p>
         </div>
-        <div className="eva-form-builder__compact-header-actions ai-agents-header-actions">
-          <Button variant="secondary" onClick={handleStartWithEva}>
-            <Icon name="sparkle" weight="bold" size="sm" />
-            Start with AI Assistant
-          </Button>
-          <Button onClick={() => setIsCreateModalOpen(true)}>+ Create Agent</Button>
-        </div>
       </div>
 
       <div className="secondary-content ai-agents-dashboard">
@@ -376,6 +372,13 @@ export default function EvaAgentsTable() {
             value={creatorFilter}
             onChange={setCreatorFilter}
           />
+          <div className="eva-form-builder__compact-header-actions ai-agents-header-actions ai-agents-toolbar-actions">
+            <Button variant="secondary" onClick={handleStartWithEva}>
+              <Icon name="sparkle" weight="bold" size="sm" />
+              Start with AI Assistant
+            </Button>
+            <Button onClick={() => setIsCreateModalOpen(true)}>+ Create Agent</Button>
+          </div>
         </div>
 
         {filteredAgents.length > 0 ? (
@@ -410,15 +413,7 @@ export default function EvaAgentsTable() {
                         >
                           {agent.name}
                         </button>
-                        <Button
-                          type="button"
-                          variant="tertiary"
-                          size="sm"
-                          aria-label={`More actions for ${agent.name}`}
-                          onClick={(event) => event.stopPropagation()}
-                        >
-                          <Icon name="more" weight="bold" size={16} />
-                        </Button>
+                        <AgentCardActions agent={agent} onNotify={showToast} />
                       </div>
                       <Badge variant={type === 'Autonomous' ? 'success' : 'info'}>
                         {type}
@@ -457,5 +452,110 @@ export default function EvaAgentsTable() {
         )}
       </div>
     </div>
+  );
+}
+
+function AgentCardActions({
+  agent,
+  onNotify,
+}: {
+  agent: Agent;
+  onNotify: (message: string, type?: 'default' | 'info' | 'success' | 'warning' | 'error') => void;
+}) {
+  const { open, anchorRef, toggle, close } = useMenu();
+
+  const copyToClipboard = async (value: string, successMessage: string) => {
+    try {
+      await navigator.clipboard.writeText(value);
+      onNotify(successMessage, 'success');
+    } catch {
+      onNotify('Unable to copy to clipboard.', 'error');
+    }
+  };
+
+  const exportAgent = () => {
+    const blob = new Blob([JSON.stringify(agent, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `${agent.id}-agent.json`;
+    link.click();
+    URL.revokeObjectURL(url);
+    onNotify('Agent exported.', 'success');
+  };
+
+  return (
+    <span
+      ref={anchorRef}
+      className="ai-agents-agent-actions"
+      onClick={(event) => event.stopPropagation()}
+    >
+      <Button
+        type="button"
+        variant="tertiary"
+        size="sm"
+        className="ai-agents-agent-action-button"
+        aria-label={`More actions for ${agent.name}`}
+        aria-haspopup="menu"
+        aria-expanded={open}
+        onClick={(event) => {
+          event?.stopPropagation();
+          toggle();
+        }}
+      >
+        <span className="btn-icon" aria-hidden>
+          <Icon name="more" weight="bold" size={16} />
+        </span>
+      </Button>
+      <MenuOverlay
+        open={open}
+        anchorRef={anchorRef}
+        align="right"
+        onClose={close}
+        className="ai-agents-actions-menu"
+      >
+        <MenuItem
+          icon="copy"
+          label="Copy agent ID"
+          onClick={() => {
+            void copyToClipboard(agent.id, 'Agent ID copied.');
+            close();
+          }}
+        />
+        <MenuItem
+          icon="copy"
+          label="Copy access token"
+          onClick={() => {
+            onNotify('Access token is not available for this local agent record.', 'warning');
+            close();
+          }}
+        />
+        <MenuItem
+          icon="export"
+          label="Export agent"
+          onClick={() => {
+            exportAgent();
+            close();
+          }}
+        />
+        <MenuItem
+          icon="pin"
+          label="Pin"
+          onClick={() => {
+            onNotify('Pin action is not connected yet.', 'info');
+            close();
+          }}
+        />
+        <MenuItem
+          icon="delete"
+          label="Delete"
+          danger
+          onClick={() => {
+            onNotify('Delete action is not connected yet.', 'warning');
+            close();
+          }}
+        />
+      </MenuOverlay>
+    </span>
   );
 }

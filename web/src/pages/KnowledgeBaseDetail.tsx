@@ -172,12 +172,14 @@ export default function KnowledgeBaseDetail() {
   if (!loading && !collection) {
     return (
       <div className="primary-content">
-        <EmptyState
-          illustration="cliff-open"
-          title={cp.notFound.title}
-          description={cp.notFound.description}
-          actions={<Button onClick={() => navigate('/knowledge')}>{cp.notFound.action}</Button>}
-        />
+        <section className="sources-panel sources-panel--empty knowledge-detail-not-found">
+          <EmptyState
+            illustration="cliff-open"
+            title={cp.notFound.title}
+            description={cp.notFound.description}
+            actions={<Button onClick={() => navigate('/knowledge')}>{cp.notFound.action}</Button>}
+          />
+        </section>
       </div>
     );
   }
@@ -238,7 +240,14 @@ export default function KnowledgeBaseDetail() {
 
             {tab === 'usedBy' && <UsedByTable agents={agents} />}
 
-            {tab === 'history' && <HistoryTable runs={runs} sources={sources} onOpenIssues={(src) => setIssuesFor({ source: src, filter: 'processing_failure' })} />}
+            {tab === 'history' && (
+              <HistoryTable
+                collection={collection}
+                runs={runs}
+                sources={sources}
+                onOpenIssues={(src) => setIssuesFor({ source: src, filter: 'processing_failure' })}
+              />
+            )}
           </TabPanel>
         </>
       )}
@@ -705,11 +714,13 @@ function StatusCell({
 function UsedByTable({ agents }: { agents: Agent[] }) {
   if (agents.length === 0) {
     return (
-      <EmptyState
-        illustration="desert-open-results"
-        title={cp.usedByTable.emptyTitle}
-        description={cp.usedByTable.emptyDesc}
-      />
+      <section className="sources-panel sources-panel--empty knowledge-used-by-empty">
+        <EmptyState
+          illustration="desert-open-results"
+          title={cp.usedByTable.emptyTitle}
+          description={cp.usedByTable.emptyDesc}
+        />
+      </section>
     );
   }
   return (
@@ -737,85 +748,78 @@ function UsedByTable({ agents }: { agents: Agent[] }) {
 /* ── History tab ──────────────────────────────────────────────── */
 
 function HistoryTable({
+  collection,
   runs,
   sources,
   onOpenIssues,
 }: {
+  collection: Collection;
   runs: SyncRun[];
   sources: KnowledgeSource[];
   onOpenIssues: (src: KnowledgeSource) => void;
 }) {
   const sourceById = useMemo(() => new Map(sources.map((s) => [s.id, s])), [sources]);
 
-  if (runs.length === 0) {
-    return (
-      <EmptyState
-        illustration="message-activity"
-        title="No sync runs yet"
-        description="Once a source syncs, each run will appear here with its results."
-      />
-    );
-  }
-
   return (
-    <Table>
-      <TableHead>
-        <TableRow>
-          <TableHeader>Source</TableHeader>
-          <TableHeader>{cp.historyTable.started}</TableHeader>
-          <TableHeader>{cp.historyTable.finished}</TableHeader>
-          <TableHeader>{cp.historyTable.mode}</TableHeader>
-          <TableHeader>{cp.historyTable.actions}</TableHeader>
-          <TableHeader>{cp.historyTable.trigger}</TableHeader>
-          <TableHeader>{cp.historyTable.status}</TableHeader>
-        </TableRow>
-      </TableHead>
-      <TableBody>
-        {runs.map((r) => {
-          const src = sourceById.get(r.sourceId);
-          const hasFailures = r.failed > 0;
-          return (
-            <TableRow key={r.id}>
-              <TableCell>{src?.name ?? r.sourceId}</TableCell>
-              <TableCell>{formatDateTime(r.startedAt)}</TableCell>
-              <TableCell>{r.finishedAt ? formatDateTime(r.finishedAt) : '—'}</TableCell>
-              <TableCell style={{ textTransform: 'capitalize' }}>{r.mode}</TableCell>
-              <TableCell>
-                {(() => {
-                  const parts = [
-                    r.added > 0 && `${r.added} Added`,
-                    r.updated > 0 && `${r.updated} Updated`,
-                    r.deleted > 0 && `${r.deleted} Deleted`,
-                    r.skipped > 0 && `${r.skipped} Skipped`,
-                    r.failed > 0 && `${r.failed} Failed`,
-                  ].filter(Boolean) as string[];
-
-                  return parts.length > 0 ? parts.join(', ') : '—';
-                })()}
-              </TableCell>
-              <TableCell style={{ textTransform: 'capitalize' }}>{r.trigger}</TableCell>
-              <TableCell>
-                {hasFailures && src ? (
-                  <button
-                    type="button"
-                    className="source-status-cell__trigger"
-                    onClick={() => onOpenIssues(src)}
-                  >
-                    <Badge variant={r.status === 'succeeded' ? 'success' : r.status === 'partial' ? 'warning' : 'error'}>
-                      {r.status}
-                    </Badge>
-                  </button>
-                ) : (
-                  <Badge variant={r.status === 'succeeded' ? 'success' : r.status === 'partial' ? 'warning' : r.status === 'failed' ? 'error' : 'info'}>
-                    {r.status}
-                  </Badge>
-                )}
-              </TableCell>
-            </TableRow>
-          );
-        })}
-      </TableBody>
-    </Table>
+    <section className="sources-panel knowledge-history-panel">
+      <div className="knowledge-history-panel__header">
+        <h2>Knowledge base history</h2>
+        <Button type="button" variant="secondary" size="sm">
+          <Icon name="refresh" weight="bold" size="sm" />
+          Refresh
+        </Button>
+      </div>
+      <Table>
+        <TableHead>
+          <TableRow>
+            <TableHeader>Edits</TableHeader>
+            <TableHeader>Description</TableHeader>
+            <TableHeader>Last updated by</TableHeader>
+            <TableHeader>Last updated at</TableHeader>
+          </TableRow>
+        </TableHead>
+        <TableBody>
+          <TableRow key={`${collection.id}-created`}>
+            <TableCell>Created</TableCell>
+            <TableCell>KB created</TableCell>
+            <TableCell>{collection.createdBy}</TableCell>
+            <TableCell>{formatDateTime(collection.createdAt)}</TableCell>
+          </TableRow>
+          {runs.map((r) => {
+            const src = sourceById.get(r.sourceId);
+            const hasFailures = r.failed > 0;
+            const descriptionParts = [
+              src?.name ?? r.sourceId,
+              r.added > 0 && `${r.added} added`,
+              r.updated > 0 && `${r.updated} updated`,
+              r.deleted > 0 && `${r.deleted} deleted`,
+              r.skipped > 0 && `${r.skipped} skipped`,
+              r.failed > 0 && `${r.failed} failed`,
+            ].filter(Boolean) as string[];
+            return (
+              <TableRow key={r.id}>
+                <TableCell>{r.mode === 'manual' ? 'Manual sync' : 'Sync'}</TableCell>
+                <TableCell>
+                  {hasFailures && src ? (
+                    <button
+                      type="button"
+                      className="source-status-cell__trigger"
+                      onClick={() => onOpenIssues(src)}
+                    >
+                      {descriptionParts.join(' · ')}
+                    </button>
+                  ) : (
+                    descriptionParts.join(' · ')
+                  )}
+                </TableCell>
+                <TableCell>{r.trigger}</TableCell>
+                <TableCell>{formatDateTime(r.finishedAt ?? r.startedAt)}</TableCell>
+              </TableRow>
+            );
+          })}
+        </TableBody>
+      </Table>
+    </section>
   );
 }
 

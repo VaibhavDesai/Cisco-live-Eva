@@ -464,6 +464,30 @@ export async function getCollection(id: string): Promise<Collection | undefined>
   return COLLECTIONS.find((c) => c.id === id);
 }
 
+export async function createCollection(input: {
+  name: string;
+  description: string;
+}): Promise<Collection> {
+  await wait(250);
+  const stamp = now();
+  const created: Collection = {
+    id: `col-${Math.random().toString(36).slice(2, 9)}`,
+    name: input.name,
+    description: input.description,
+    sourceCount: 0,
+    usedBy: [],
+    totalItems: 0,
+    storageUsedBytes: 0,
+    storageQuotaBytes: 1024 * 1024 * 1024,
+    createdBy: 'You',
+    createdAt: stamp,
+    updatedBy: 'You',
+    updatedAt: stamp,
+  };
+  COLLECTIONS.unshift(created);
+  return { ...created };
+}
+
 /* ── Sources ──────────────────────────────────────────────────── */
 
 export async function listSources(collectionId: string): Promise<KnowledgeSource[]> {

@@ -4776,22 +4776,23 @@ html[data-product='ai-agent-studio'] .app-header {
 
 /* ── Knowledge — Source-type picker cards (empty state) ────────── */
 
-/* Source-type picker grid used in the empty state.
-   Fixed 4-up layout (one per source type) so the cards always divide the
-   container evenly. We use `repeat(4, 1fr)` instead of `auto-fit, minmax()`
-   because `auto-fit` was allowing cards to stabilize at their intrinsic
-   ~320px width on wide viewports, leaving trailing whitespace inside the
-   grid. Gap is 12px per design; no row-gap because cards stay single-row. */
 .source-type-grid {
   display: grid;
-  grid-template-columns: repeat(2, 1fr);
+  grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: var(--spacing-small);
-  margin-top: var(--spacing-large);
+  width: min(100%, 1120px);
+  margin-top: var(--spacing-medium);
 }
 
-@media (min-width: 1280px) {
+@media (max-width: 1180px) {
   .source-type-grid {
-    grid-template-columns: repeat(4, 1fr);
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 720px) {
+  .source-type-grid {
+    grid-template-columns: 1fr;
   }
 }
 
@@ -4801,7 +4802,7 @@ html[data-product='ai-agent-studio'] .app-header {
   gap: var(--spacing-xx-small);
   padding: var(--spacing-small);
   min-height: 120px;
-  width: 320px;
+  width: 100%;
   cursor: pointer;
 }
 
@@ -6183,8 +6184,9 @@ html[data-product='ai-agent-studio'] .app-header {
 .sources-panel--empty {
   align-items: center;
   justify-content: center;
-  gap: var(--spacing-large);
-  padding-block: var(--spacing-xx-large);
+  gap: var(--spacing-medium);
+  min-height: min(760px, calc(100vh - 300px));
+  padding: var(--spacing-xx-large);
 }
 
 .sources-panel--empty .empty-state {
@@ -6195,8 +6197,25 @@ html[data-product='ai-agent-studio'] .app-header {
 
 .sources-panel--empty .source-type-grid {
   margin-top: 0;
-  align-self: stretch;
-  width: 100%;
+}
+
+.knowledge-history-panel {
+  min-height: min(760px, calc(100vh - 300px));
+}
+
+.knowledge-history-panel__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--spacing-small);
+}
+
+.knowledge-history-panel__header h2 {
+  margin: 0;
+  color: var(--text-primary);
+  font-size: var(--font-size-body-large);
+  line-height: var(--font-lineheight-body-large);
+  font-weight: var(--font-weight-bold);
 }
 
 .sources-panel__toolbar {

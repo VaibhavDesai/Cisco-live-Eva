@@ -2326,7 +2326,7 @@ body {
 
 .secondary-content .stat-card {
   background: var(--bg-glass);
-  border: 1px solid var(--mds-color-theme-outline-glass-normal);
+  border: var(--border-width-small) solid var(--mds-color-theme-outline-glass-normal, var(--outline-color));
 }
 
 .stat-label {
@@ -4584,7 +4584,7 @@ button.view-btn.active {
 
 .ai-agents-toolbar {
   display: grid;
-  grid-template-columns: minmax(220px, 1fr) minmax(140px, 180px) minmax(140px, 180px);
+  grid-template-columns: 360px minmax(140px, 180px) minmax(140px, 180px) 1fr;
   gap: var(--spacing-xx-small);
   align-items: start;
 }
@@ -4594,7 +4594,27 @@ button.view-btn.active {
 }
 
 .ai-agents-search-wrap.form-group {
-  width: 100%;
+  width: 360px;
+}
+
+.ai-agents-toolbar-actions {
+  justify-self: end;
+  margin-left: var(--spacing-x-small);
+}
+
+.ai-agents-agent-actions {
+  display: inline-flex;
+  flex-shrink: 0;
+}
+
+.ai-agents-agent-action-button.btn {
+  width: 32px;
+  min-width: 32px;
+  padding: var(--spacing-xxx-small);
+}
+
+.ai-agents-actions-menu {
+  min-width: 240px;
 }
 
 .ai-agents-grid {
@@ -4752,6 +4772,15 @@ button.view-btn.active {
   .ai-agents-toolbar,
   .ai-agents-grid {
     grid-template-columns: 1fr;
+  }
+
+  .ai-agents-search-wrap.form-group {
+    width: 100%;
+  }
+
+  .ai-agents-toolbar-actions {
+    justify-self: stretch;
+    margin-left: 0;
   }
 }
 
@@ -7677,13 +7706,23 @@ select.form-input:disabled {
   padding: var(--spacing-xxx-small);
   border-radius: 8px;
   background: var(--bg-primary);
-  border: 1px solid var(--mds-color-theme-outline-glass-normal);
+  border: none;
   box-shadow:
     0 6px 24px rgba(0, 0, 0, 0.25),
     0 2px 8px rgba(0, 0, 0, 0.15);
   z-index: 9999;
   overflow-y: auto;
   max-height: 360px;
+}
+
+.menu-overlay::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border: var(--border-width-small) solid color-mix(in srgb, var(--text-primary) 28%, transparent);
+  border-radius: inherit;
+  pointer-events: none;
+  z-index: 1;
 }
 
 /* Menu Section — groups items under an optional header */

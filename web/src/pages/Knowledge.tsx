@@ -11,19 +11,19 @@ import {
   TableRow,
 } from '../components/shared/Table';
 import { Card } from '../components/shared/Card';
-import Tabs, { Tab, TabPanel } from '../components/shared/Tabs';
 import Spinner from '../components/shared/Spinner';
 import { EmptyState } from '../components/shared/EmptyState';
 import { ToggleTip } from '../components/shared/Tooltip';
 import { MenuItem, MenuOverlay, useMenu } from '../components/shared/Menu';
+import { Modal, ModalBody, ModalFooter, ModalHeader } from '../components/shared/Modal';
+import { Input, Textarea } from '../components/shared/FormInput';
 import SearchField from '../components/shared/SearchField';
 import Toolbar from '../components/shared/Toolbar';
 import Badge from '../components/shared/Badge';
 import { Icon } from '../icons';
 import {
   type Collection,
-  type KnowledgeSource,
-  listAllSources,
+  createCollection,
   listCollections,
 } from '../services/knowledgeService';
 import { knowledgeCopy } from './knowledge/copy';
@@ -33,12 +33,13 @@ const cp = knowledgeCopy.page;
 
 export default function Knowledge() {
   const navigate = useNavigate();
-  const [tab, setTab] = useState<'collection' | 'sources'>('collection');
   const [collections, setCollections] = useState<Collection[]>([]);
-  const [allSources, setAllSources] = useState<KnowledgeSource[]>([]);
   const [query, setQuery] = useState('');
   const [usedByFilter, setUsedByFilter] = useState('all');
   const [view, setView] = useState<'grid' | 'list'>('grid');
+  const [createModalOpen, setCreateModalOpen] = useState(false);
+  const [newCollectionName, setNewCollectionName] = useState('');
+  const [newCollectionDescription, setNewCollectionDescription] = useState('');
   /* Initial-fetch gate. Without this the collection tab briefly renders the
      empty-state illustration on every navigation in (because
      `collections.length === 0` is true by definition before the first
@@ -50,11 +51,10 @@ export default function Knowledge() {
 
   useEffect(() => {
     let cancelled = false;
-    Promise.all([listCollections(), listAllSources()])
-      .then(([cs, ss]) => {
+    listCollections()
+      .then((cs) => {
         if (cancelled) return;
         setCollections(cs);
-        setAllSources(ss);
       })
       .finally(() => {
         if (!cancelled) setLoading(false);
@@ -89,22 +89,30 @@ export default function Knowledge() {
     });
   }, [collections, query, usedByFilter]);
 
-  const filteredSources = useMemo(() => {
-    const needle = query.trim().toLowerCase();
-    return allSources.filter((s) => {
-      if (needle && !s.name.toLowerCase().includes(needle)) return false;
-      if (usedByFilter !== 'all') {
-        const col = collections.find((c) => c.id === s.collectionId);
-        if (!col?.usedBy.includes(usedByFilter)) return false;
-      }
-      return true;
-    });
-  }, [allSources, collections, query, usedByFilter]);
+  const handleCreateCollection = () => {
+    setNewCollectionName('');
+    setNewCollectionDescription('');
+    setCreateModalOpen(true);
+  };
 
-  // Placeholder for the future "create collection" modal. Wired up to the
-  // button as a no-op so reviewers don't accidentally navigate into the first
-  // collection when clicking the primary CTA on this page.
-  const handleCreateCollection = () => {};
+  const handleCloseCreateModal = () => {
+    setCreateModalOpen(false);
+  };
+
+  const handleSaveCollection = async () => {
+    const name = newCollectionName.trim();
+    if (!name) return;
+
+    const created = await createCollection({
+      name,
+      description: newCollectionDescription.trim(),
+    });
+
+    setCollections(prev => [created, ...prev]);
+    setCreateModalOpen(false);
+  };
+
+  const canCreateCollection = newCollectionName.trim().length > 0;
 
   return (
     <div className="primary-content">
@@ -130,15 +138,6 @@ export default function Knowledge() {
           </ToggleTip>
         </div>
       </div>
-
-      <Tabs aria-label={cp.title}>
-        <Tab active={tab === 'collection'} onClick={() => setTab('collection')}>
-          {cp.tabs.collection}
-        </Tab>
-        <Tab active={tab === 'sources'} onClick={() => setTab('sources')}>
-          {cp.tabs.sources}
-        </Tab>
-      </Tabs>
 
       <div className="knowledge-filter-bar">
         <div className="knowledge-filter-bar__search">
@@ -173,25 +172,22 @@ export default function Knowledge() {
         <Button size="sm" onClick={handleCreateCollection}>{cp.create}</Button>
       </div>
 
-      <TabPanel>
-        {loading ? (
-          <div
-            className="knowledge-loading"
-            role="status"
-            aria-live="polite"
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              padding: 'var(--spacing-xx-large) 0',
-            }}
-          >
-            <Spinner size="midsize" aria-label="Loading knowledge" />
-          </div>
-        ) : (
-          <>
-        {tab === 'collection' && (
-          collections.length === 0 ? (
+      {loading ? (
+        <div
+          className="knowledge-loading"
+          role="status"
+          aria-live="polite"
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            padding: 'var(--spacing-xx-large) 0',
+          }}
+        >
+          <Spinner size="midsize" aria-label="Loading knowledge" />
+        </div>
+      ) : (
+        collections.length === 0 ? (
             <EmptyState
               illustration="message-activity"
               title={knowledgeCopy.landing.emptyTitle}
@@ -245,53 +241,38 @@ export default function Knowledge() {
               </TableBody>
             </Table>
           )
-        )}
-
-        {tab === 'sources' && (
-          <Table>
-            <TableHead>
-              <TableRow>
-                <TableHeader>Source</TableHeader>
-                <TableHeader>Collection</TableHeader>
-                <TableHeader>Type</TableHeader>
-                <TableHeader>Status</TableHeader>
-                <TableHeader>Last sync</TableHeader>
-              </TableRow>
-            </TableHead>
-            <TableBody empty={filteredSources.length === 0}>
-              {filteredSources.map((s) => {
-                const col = collections.find((c) => c.id === s.collectionId);
-                return (
-                  <TableRow
-                    key={s.id}
-                    onClick={() => col && navigate(`/knowledge/${col.id}`)}
-                    style={{ cursor: 'pointer' }}
-                  >
-                    <TableCell>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                        <Icon name="folder" weight="bold" size="sm" />
-                        <strong>{s.name}</strong>
-                      </div>
-                    </TableCell>
-                    <TableCell>{col?.name ?? '—'}</TableCell>
-                    <TableCell style={{ textTransform: 'capitalize' }}>{s.type}</TableCell>
-                    <TableCell>
-                      <Badge variant={s.status === 'processed' ? 'success' : s.status === 'failed' ? 'error' : s.status === 'has_issues' ? 'warning' : 'info'}>
-                        {s.status === 'has_issues'
-                          ? `${s.issueCount} issue${s.issueCount === 1 ? '' : 's'}`
-                          : s.status.replace('_', ' ')}
-                      </Badge>
-                    </TableCell>
-                    <TableCell>{formatRelative(s.lastSyncAt)}</TableCell>
-                  </TableRow>
-                );
-              })}
-            </TableBody>
-          </Table>
-        )}
-          </>
-        )}
-      </TabPanel>
+      )}
+      {createModalOpen && (
+        <Modal size="md" className="knowledge-create-modal" onClose={handleCloseCreateModal}>
+          <ModalHeader title="Create knowledge base" onClose={handleCloseCreateModal} />
+          <ModalBody>
+            <Input
+              label="Knowledge base name"
+              required
+              voiceInput={false}
+              placeholder="Enter knowledge base name"
+              value={newCollectionName}
+              onChange={event => setNewCollectionName(event.currentTarget.value)}
+            />
+            <Textarea
+              label="Description"
+              voiceInput={false}
+              placeholder="Enter description"
+              value={newCollectionDescription}
+              onChange={event => setNewCollectionDescription(event.currentTarget.value)}
+              rows={4}
+            />
+          </ModalBody>
+          <ModalFooter>
+            <Button type="button" variant="secondary" size="sm" onClick={handleCloseCreateModal}>
+              Cancel
+            </Button>
+            <Button type="button" size="sm" disabled={!canCreateCollection} onClick={() => { void handleSaveCollection(); }}>
+              Create
+            </Button>
+          </ModalFooter>
+        </Modal>
+      )}
     </div>
   );
 }
