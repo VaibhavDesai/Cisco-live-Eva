@@ -7938,6 +7938,7 @@ html[data-product='ai-agent-studio']:has(.eva-form-builder.primary-content) .app
   border: var(--border-width-small) solid var(--border-color);
   border-radius: var(--border-radius-large);
   background: var(--bg-glass);
+  box-shadow: inset 0 0 24.95px 0 rgba(255, 255, 255, 0.07);
   color: var(--text-primary);
   text-align: left;
 }
@@ -8680,34 +8681,23 @@ html[data-product='ai-agent-studio']:has(.eva-form-builder.primary-content) .app
 .ai-chat-textarea {
   position: relative;
   isolation: isolate;
+  box-sizing: border-box;
   align-items: stretch !important;
-  gap: var(--spacing-xx-small);
+  gap: 10px;
   width: 100% !important;
   padding: var(--spacing-x-small) !important;
-  border: 0 !important;
+  border: var(--border-width-small) solid transparent !important;
   border-radius: calc(var(--border-radius-large) + var(--border-radius-small)) !important;
-  background: var(
-    --mds-color-theme-background-glass-light,
-    color-mix(in srgb, var(--mds-color-theme-background-solid-primary-normal, var(--bg-primary)) 56%, transparent)
-  ) !important;
+  background:
+    linear-gradient(
+      var(--mds-color-theme-background-glass-medium, rgba(0, 0, 0, 0.6)),
+      var(--mds-color-theme-background-glass-medium, rgba(0, 0, 0, 0.6))
+    ) padding-box,
+    linear-gradient(180deg, rgba(255, 255, 255, 0.11) 0%, rgba(255, 255, 255, 0.05) 100%) border-box !important;
+  box-shadow: inset 0 0 24.95px 0 rgba(255, 255, 255, 0.07);
   backdrop-filter: blur(20px);
   -webkit-backdrop-filter: blur(20px);
-  transition: background 0.2s ease-in-out;
-}
-
-.ai-footer__group::after,
-.ai-chat-textarea::after {
-  content: '';
-  position: absolute;
-  inset: 0;
-  border-radius: inherit;
-  padding: var(--border-width-small);
-  background: var(--mds-color-theme-outline-glass-normal, var(--border-color));
-  -webkit-mask: linear-gradient(var(--text-primary) 0 0) content-box, linear-gradient(var(--text-primary) 0 0);
-  -webkit-mask-composite: xor;
-  mask-composite: exclude;
-  pointer-events: none;
-  z-index: 0;
+  transition: box-shadow 0.2s ease-in-out;
 }
 
 .ai-footer__input-row,
@@ -8719,18 +8709,22 @@ html[data-product='ai-agent-studio']:has(.eva-form-builder.primary-content) .app
 
 .ai-footer__group:hover,
 .ai-chat-textarea:hover:not(.ai-chat-textarea--disabled) {
-  background: var(
-    --mds-color-theme-background-glass-medium,
-    color-mix(in srgb, var(--mds-color-theme-background-solid-primary-normal, var(--bg-primary)) 68%, transparent)
-  ) !important;
+  background:
+    linear-gradient(
+      var(--mds-color-theme-background-glass-medium, rgba(0, 0, 0, 0.6)),
+      var(--mds-color-theme-background-glass-medium, rgba(0, 0, 0, 0.6))
+    ) padding-box,
+    linear-gradient(180deg, rgba(255, 255, 255, 0.11) 0%, rgba(255, 255, 255, 0.05) 100%) border-box !important;
 }
 
 .ai-footer__group:active,
 .ai-chat-textarea:active:not(.ai-chat-textarea--disabled):not(.ai-chat-textarea--focused) {
-  background: var(
-    --mds-color-theme-background-glass-heavy,
-    color-mix(in srgb, var(--mds-color-theme-background-solid-primary-normal, var(--bg-primary)) 78%, transparent)
-  ) !important;
+  background:
+    linear-gradient(
+      var(--mds-color-theme-background-glass-medium, rgba(0, 0, 0, 0.6)),
+      var(--mds-color-theme-background-glass-medium, rgba(0, 0, 0, 0.6))
+    ) padding-box,
+    linear-gradient(180deg, rgba(255, 255, 255, 0.11) 0%, rgba(255, 255, 255, 0.05) 100%) border-box !important;
 }
 
 .ai-footer__input-row {

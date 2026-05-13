@@ -4295,9 +4295,15 @@ ${previewTranscript}`,
                   }}
                 />
               </MenuOverlay>
-              <Button variant="secondary" size="sm" onClick={() => openEvaCanvas()}>
+              <Button
+                variant="secondary"
+                size="sm"
+                className="eva-view-actions__icon-btn"
+                onClick={() => openEvaCanvas()}
+                aria-label="Open canvas view"
+                title="Canvas view"
+              >
                 <Icon name="workflow-deployments" weight="bold" size="sm" />
-                Canvas view
               </Button>
               <Button variant="secondary" size="sm" onClick={handleNewEvaThread}>
                 <Icon name="plus" weight="bold" size="sm" />
