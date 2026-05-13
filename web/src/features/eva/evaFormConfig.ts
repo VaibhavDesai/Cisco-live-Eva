@@ -230,9 +230,9 @@ export const STARTER_PROMPTS: Array<{
 }> = [
   {
     templateId: 'customer-support',
-    title: 'Customer onboarding',
-    description: 'Build an agent that guides new customers from signup to activation.',
-    prompt: 'Create an AI agent for customer onboarding.',
+    title: 'Retail store agent',
+    description: 'Build an agent for Acme Electronics in San Jose.',
+    prompt: 'Create an agent for Acme Electronics in San Jose',
     icon: 'bot-customer-assistant',
   },
   {

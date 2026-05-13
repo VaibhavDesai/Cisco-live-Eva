@@ -286,15 +286,15 @@ const CONTINUE_TO_STUDIO_LABEL = 'Continue in AI Agent Studio';
 const RETAIL_VOICE_LABEL = 'Voice';
 const RETAIL_DIGITAL_LABEL = 'Digital';
 const RETAIL_VIDEO_LABEL = 'Video';
-const RETAIL_CONFIRM_CHANNELS_LABEL = 'Continue with selected channels';
-const RETAIL_AGENT_NAME_LABEL = 'Webex Electronics Receptionist';
+const RETAIL_CONFIRM_CHANNELS_LABEL = 'Continue';
+const RETAIL_AGENT_NAME_LABEL = 'Acme electronics agent';
 const RETAIL_CUSTOM_AGENT_NAME_LABEL = 'Type a different name';
 const RETAIL_AGENT_NAME_CUSTOM_LABEL = 'Use typed name';
 const RETAIL_EDIT_WELCOME_LABEL = 'Edit welcome message';
 const RETAIL_WELCOME_CUSTOM_LABEL = 'Use edited message';
 const RETAIL_CONTINUE_TO_ACTIONS_LABEL = 'Confirm';
 const RETAIL_CONTINUE_TO_FINAL_LABEL = 'Confirm';
-const COMPLETE_RETAIL_AGENT_LABEL = 'Complete creating agent';
+const COMPLETE_RETAIL_AGENT_LABEL = 'Complete agent';
 const ENTER_AGENT_STUDIO_LABEL = 'Advanced configuration';
 const PREVIEW_RETAIL_AGENT_LABEL = 'Preview agent';
 const SKIP_RETAIL_PREVIEW_LABEL = 'Skip';
@@ -302,6 +302,33 @@ const CONNECT_RETAIL_PHONE_LABEL = 'Connect phone number';
 const CONNECT_RETAIL_PHONE_LATER_LABEL = 'Connect phone number later';
 const RETAIL_TRANSITION_PROMPT = 'transition';
 const STUDIO_TRANSITION_MS = 420;
+
+const RETAIL_PHONE_NUMBER_OPTIONS = [
+  {
+    value: '+1 415 555 0198',
+    countryCode: '+1',
+    flag: '🇺🇸',
+    localNumber: '415 555 0198',
+    label: '+1 415 555 0198',
+    meta: 'San Francisco store',
+  },
+  {
+    value: '+1 512 555 0142',
+    countryCode: '+1',
+    flag: '🇺🇸',
+    localNumber: '512 555 0142',
+    label: '+1 512 555 0142',
+    meta: 'Austin store',
+  },
+  {
+    value: '+1 408 555 0177',
+    countryCode: '+1',
+    flag: '🇺🇸',
+    localNumber: '408 555 0177',
+    label: '+1 408 555 0177',
+    meta: 'San Jose store',
+  },
+];
 type RetailPrototypeStep =
   | 'idle'
   | 'discovering'
@@ -315,27 +342,27 @@ type RetailPrototypeStep =
   | 'previewing'
   | 'ready-to-create';
 
-const RETAIL_RECEPTIONIST_AGENT_NAME = 'Webex Electronics Receptionist';
-const RETAIL_RECEPTIONIST_DESCRIPTION = 'Voice receptionist for Webex Electronics in San Jose';
+const RETAIL_RECEPTIONIST_AGENT_NAME = 'Acme electronics agent';
+const RETAIL_RECEPTIONIST_DESCRIPTION = 'Voice agent for Acme Electronics in San Jose';
 const RETAIL_RECOMMENDED_WELCOME_MESSAGES = [
   {
     recommended: true,
     shortReason: 'Warm and friendly',
     tone: 'Warm, helpful, concise, and professional.',
     reason: 'Best for a neighborhood store receptionist because it sounds friendly and covers all core tasks.',
-    text: 'Hi, thanks for calling Webex Electronics in San Jose. I can help with store hours, directions, product availability, common questions, how can I help you today?',
+    text: 'Hi, thanks for calling Acme Electronics in San Jose. I can help with store hours, directions, product availability, common questions, how can I help you today?',
   },
   {
     shortReason: 'Concise and professional',
     tone: 'Concise and professional.',
     reason: 'Good when Matt wants a shorter greeting that still mentions inventory and routing.',
-    text: 'Welcome to Webex Electronics San Jose. I can check product availability, answer common store questions, and route you to the right person.',
+    text: 'Welcome to Acme Electronics San Jose. I can check product availability, answer common store questions, and route you to the right person.',
   },
   {
     shortReason: 'Support-focused',
     tone: 'Operational and support-focused.',
     reason: 'Best when warranty questions and manager escalation are the main call drivers.',
-    text: 'Thanks for contacting Webex Electronics. I can help with today’s inventory, store hours, warranty questions, and escalation to Matt for manager support.',
+    text: 'Thanks for contacting Acme Electronics. I can help with today’s inventory, store hours, warranty questions, and escalation to Matt for manager support.',
   },
 ];
 const RETAIL_DISCOVERY_ROWS = [
@@ -356,33 +383,39 @@ const RETAIL_DISCOVERY_ROWS = [
 const RETAIL_RECOMMENDED_KNOWLEDGE_BASES = [
   {
     name: 'Product catalog',
-    description: 'Ground product availability answers in approved catalog descriptions and compatibility notes.',
+    description: 'Answer availability from approved catalog details.',
   },
   {
-    name: 'Warranty and returns policy',
-    description: 'Answer return windows, warranty coverage, refund rules, and proof-of-purchase questions.',
+    name: 'Returns policy',
+    description: 'Answer returns, warranties, refunds, and receipts.',
   },
   {
-    name: 'Store operations handbook',
-    description: 'Use parking, store pickup, holiday hours, and manager escalation guidance.',
+    name: 'Store handbook',
+    description: 'Use pickup, hours, parking, and escalation guidance.',
   },
 ];
 
 const RETAIL_RECOMMENDED_ACTIONS = [
   {
-    name: 'Process payments and refunds',
+    name: 'Payments',
     provider: 'Stripe',
-    description: 'To handle payments and process refunds securely and efficiently.',
+    providerLogo: 'stripe',
+    providerLogoLabel: 'S',
+    description: 'Handle payments and refunds.',
   },
   {
-    name: 'Sync product catalog',
+    name: 'Catalog sync',
     provider: 'Shopify',
-    description: 'To provide real-time product catalog updates and inventory management.',
+    providerLogo: 'shopify',
+    providerLogoLabel: 'S',
+    description: 'Sync catalog and inventory.',
   },
   {
-    name: 'Track shipments',
-    provider: 'FedEx/UPS',
-    description: 'To offer accurate shipment tracking and notifications to customers.',
+    name: 'Shipments',
+    provider: 'FedEx',
+    providerLogo: 'fedex',
+    providerLogoLabel: '',
+    description: 'Track orders and delivery updates.',
   },
 ];
 
@@ -749,6 +782,8 @@ export default function EvaChatExperience({
   const [retailAgentNameInputVisible, setRetailAgentNameInputVisible] = useState(false);
   const [retailWelcomeInput, setRetailWelcomeInput] = useState(RETAIL_RECOMMENDED_WELCOME_MESSAGES[0].text);
   const [retailWelcomeInputVisible, setRetailWelcomeInputVisible] = useState(false);
+  const [retailPhoneDropdownOpen, setRetailPhoneDropdownOpen] = useState(false);
+  const [retailPhoneSearch, setRetailPhoneSearch] = useState('');
   /* Local-only flag — when the user clicks the "View other options"
      follow-up chip on an LLM reply, we re-reveal the four starter
      template cards inline below the dialogue so they can pivot into
@@ -812,6 +847,7 @@ export default function EvaChatExperience({
   const [testingScenarioDraft, setTestingScenarioDraft] = useState<EvaTestingScenarioDraft>(emptyTestingScenarioDraft);
   const [showEvaGeneratedSidePanel, setShowEvaGeneratedSidePanel] = useState(true);
   const [sideContextExpanded, setSideContextExpanded] = useState(false);
+  const [generatedComposerCollapsed, setGeneratedComposerCollapsed] = useState(false);
   const [showEvaThreadPanel, setShowEvaThreadPanel] = useState(false);
   const [activeEvaThreadId, setActiveEvaThreadId] = useState('eva-thread-current');
   const [evaThreads, setEvaThreads] = useState<EvaThread[]>([
@@ -833,6 +869,7 @@ export default function EvaChatExperience({
   const sidePanelPreviewCardRef = useRef<HTMLElement | null>(null);
   const pendingPreviewScrollRef = useRef(false);
   const retailDiscoveryTimerRef = useRef<number | null>(null);
+  const retailPhoneSelectorRef = useRef<HTMLDivElement | null>(null);
   const onboardingResponseTimerRef = useRef<number | null>(null);
   const studioTransitionTimerRef = useRef<number | null>(null);
   const voiceWsRef = useRef<WebSocket | null>(null);
@@ -1006,6 +1043,19 @@ export default function EvaChatExperience({
   }, [voiceCallStatus]);
 
   useEffect(() => {
+    if (!retailPhoneDropdownOpen) return undefined;
+
+    const handlePointerDown = (event: MouseEvent) => {
+      const target = event.target as Node;
+      if (retailPhoneSelectorRef.current?.contains(target)) return;
+      setRetailPhoneDropdownOpen(false);
+    };
+
+    document.addEventListener('mousedown', handlePointerDown);
+    return () => document.removeEventListener('mousedown', handlePointerDown);
+  }, [retailPhoneDropdownOpen]);
+
+  useEffect(() => {
     if (!selectedChannels.includes('voice') && voiceCallStatusRef.current !== 'idle') {
       stopVoiceCall('ended');
     }
@@ -1055,6 +1105,12 @@ export default function EvaChatExperience({
       );
       if (!scrollContainer) return;
       if (freeChatActive && !guidanceVisible && !orchestrationSuggested) {
+        const latestAssistantMessage = [...messages].reverse().find(message => message.role === 'assistant');
+        if (latestAssistantMessage?.originStep === 'retail-phone-choice') {
+          scrollContainer.scrollTo({ top: scrollContainer.scrollHeight, behavior: 'smooth' });
+          return;
+        }
+
         const latestBlock = scrollContainer.lastElementChild as HTMLElement | null;
         if (!latestBlock) return;
         const offset = latestBlock.offsetTop - scrollContainer.offsetTop - 24;
@@ -1175,8 +1231,8 @@ export default function EvaChatExperience({
   };
 
   const isRetailReceptionistStoryIntent = (normalized: string) => (
-    normalized.includes('receptionist') &&
-    normalized.includes('webex electronics') &&
+    normalized.includes('agent') &&
+    normalized.includes('acme electronics') &&
     normalized.includes('san jose')
   );
 
@@ -1219,7 +1275,7 @@ export default function EvaChatExperience({
     setAgentDescription(RETAIL_RECEPTIONIST_DESCRIPTION);
     setTimezone('America/Los_Angeles');
     setAiEngine('Webex AI Pro 1.0');
-    setWelcomeMessage('Hi, thanks for calling Webex Electronics in San Jose. I can help with store hours, directions, product availability, common questions, how can I help you today?');
+    setWelcomeMessage('Hi, thanks for calling Acme Electronics in San Jose. I can help with store hours, directions, product availability, common questions, how can I help you today?');
     setInstructionPrompt(buildInstructionPrompt(nextDraft));
     setPersonality(prev => ({
       ...prev,
@@ -1232,7 +1288,7 @@ export default function EvaChatExperience({
     setSelectedDigitalChannels(['chat']);
     setChannelPhoneNumber(CHANNEL_PHONE_NUMBER_OPTIONS[0].value);
     setPhoneNumberDeferred(false);
-    setSelectedKnowledgeBases(['Webex Electronics Store FAQ', 'San Jose Store Policies']);
+    setSelectedKnowledgeBases(['Acme Electronics Store FAQ', 'San Jose Store Policies']);
     setSelectedActions(['Inventory lookup', 'Create support case']);
     setCustomRules(['Escalate urgent customer, warranty, and store-manager requests to Matt.']);
     setRetailAgentNameInput(RETAIL_RECEPTIONIST_AGENT_NAME);
@@ -1267,7 +1323,7 @@ export default function EvaChatExperience({
           window.setTimeout(() => {
             setRetailPrototypeStep('channel');
             addOnboardingAssistantMessage(
-              'Great, I would like to help you with that. I found Webex Electronics in San Jose from Matt’s organization profile and connected store systems. Voice is selected by default. Add any other channels this agent should support.',
+              'Great, I would like to help you with that. I found Acme Electronics in San Jose from Matt’s organization profile and connected store systems. Voice is selected by default. Add any other channels this agent should support.',
               undefined,
               'retail-channel-choice',
             );
@@ -1313,7 +1369,7 @@ export default function EvaChatExperience({
       },
       {
         role: 'assistant',
-        text: `Great. ${RETAIL_RECEPTIONIST_AGENT_NAME} is ready with the connected knowledge bases, recommended actions, voice channel, escalation to Matt, and your selected greeting. Preview the agent next, then choose the connected phone number as the last step before creation.`,
+        text: `Great. ${RETAIL_RECEPTIONIST_AGENT_NAME} is ready with the connected knowledge bases, recommended actions, voice channel, escalation to Matt, and your selected greeting. Choose the connected phone number next, then preview the agent before creation.`,
         originStep: 'retail-final-actions',
       },
     ]);
@@ -1326,7 +1382,7 @@ export default function EvaChatExperience({
       gradient: 'linear-gradient(135deg, #0051af, #00bceb)',
       status: 'Ready to Publish',
       statusClass: 'badge-warning',
-      knowledgeBases: ['Webex Electronics Store FAQ', 'San Jose Store Policies'],
+      knowledgeBases: ['Acme Electronics Store FAQ', 'San Jose Store Policies'],
     });
     selectAgent(agent.id);
     showToast(`Successfully created "${agent.name}".`, 'success');
@@ -1338,10 +1394,17 @@ export default function EvaChatExperience({
     setChannelType('voice');
     setRetailPrototypeStep('phone');
     addOnboardingAssistantMessage(
-      'Which connected phone number should this agent answer?',
+      'Which connected phone number should this agent answer before we preview it?',
       CHANNEL_PHONE_NUMBER_OPTIONS.map(option => option.label),
       'retail-phone-choice',
     );
+  };
+
+  const selectRetailPhoneNumber = (phoneValue: string) => {
+    setMessages(prev => [...prev, { role: 'user', text: phoneValue }]);
+    setRetailPhoneDropdownOpen(false);
+    setRetailPhoneSearch('');
+    void handleRetailReceptionistStoryAnswer(phoneValue);
   };
 
   const previewRetailReceptionistAgent = () => {
@@ -1356,6 +1419,13 @@ export default function EvaChatExperience({
     window.setTimeout(() => {
       void startVoiceCall();
     }, 650);
+  };
+
+  const startRetailPreviewInFinalCard = () => {
+    if (retailPrototypeStep === 'previewing') return;
+    setChannelType('voice');
+    setRetailPrototypeStep('previewing');
+    void startVoiceCall();
   };
 
   const toggleRetailChannel = (channelLabel: string) => {
@@ -1382,10 +1452,10 @@ export default function EvaChatExperience({
     if (channels.includes(RETAIL_DIGITAL_LABEL)) {
       setSelectedDigitalChannels(['chat']);
       setDigitalChannel('chat');
-      setDigitalChannelAddress('webex-electronics-san-jose');
+      setDigitalChannelAddress('acme-electronics-san-jose');
     }
     if (channels.includes(RETAIL_VIDEO_LABEL) && !channels.includes(RETAIL_DIGITAL_LABEL)) {
-      setDigitalChannelAddress('webex-electronics-video');
+      setDigitalChannelAddress('acme-electronics-video');
     }
     setRetailPrototypeStep('agent-name');
     if (appendUserMessage) {
@@ -1423,11 +1493,11 @@ export default function EvaChatExperience({
       if (answer.trim() === CONNECT_RETAIL_PHONE_LATER_LABEL) {
         setRetailSelectedPhoneNumber(null);
         setPhoneNumberDeferred(true);
-        setRetailPrototypeStep('ready-to-create');
+        setRetailPrototypeStep('ready-to-preview');
         addOnboardingAssistantMessage(
-          `No problem. ${agentName} is ready with the connected knowledge bases, recommended actions, voice channel, escalation to Matt, and your selected greeting. I will flag the phone number connection as a go-live step before customers can call the agent.`,
+          `No problem. ${agentName} is ready with the connected knowledge bases, recommended actions, voice channel, escalation to Matt, and your selected greeting. I will flag the phone number connection as a go-live step. Preview the agent next or skip to creation.`,
           undefined,
-          'retail-complete-actions',
+          'retail-final-actions',
         );
         return true;
       }
@@ -1437,11 +1507,11 @@ export default function EvaChatExperience({
       setRetailSelectedPhoneNumber(nextPhoneNumber);
       setChannelPhoneNumber(nextPhoneNumber);
       setPhoneNumberDeferred(false);
-      setRetailPrototypeStep('ready-to-create');
+      setRetailPrototypeStep('ready-to-preview');
       addOnboardingAssistantMessage(
-        `Perfect. ${agentName} is ready with the connected knowledge bases, recommended actions, voice channel, ${nextPhoneNumber}, escalation to Matt, and your selected greeting. You can complete creation now or continue into AI Agent Studio for advanced configuration.`,
+        `Perfect. ${agentName} is ready with the connected knowledge bases, recommended actions, voice channel, ${nextPhoneNumber}, escalation to Matt, and your selected greeting. Preview the agent next or skip to creation.`,
         undefined,
-        'retail-complete-actions',
+        'retail-final-actions',
       );
       return true;
     }
@@ -1481,7 +1551,9 @@ export default function EvaChatExperience({
       const matchedKnowledge = RETAIL_RECOMMENDED_KNOWLEDGE_BASES.find(option => option.name === answer.trim());
       if (matchedKnowledge) {
         setSelectedKnowledgeBases(prev => (
-          prev.includes(matchedKnowledge.name) ? prev : [...prev, matchedKnowledge.name]
+          prev.includes(matchedKnowledge.name)
+            ? prev.filter(item => item !== matchedKnowledge.name)
+            : [...prev, matchedKnowledge.name]
         ));
         addOnboardingAssistantMessage(
           `Added ${matchedKnowledge.name}. You can enable another recommended knowledge base or continue to actions.`,
@@ -1506,7 +1578,9 @@ export default function EvaChatExperience({
       const matchedAction = RETAIL_RECOMMENDED_ACTIONS.find(option => option.name === answer.trim());
       if (matchedAction) {
         setSelectedActions(prev => (
-          prev.includes(matchedAction.name) ? prev : [...prev, matchedAction.name]
+          prev.includes(matchedAction.name)
+            ? prev.filter(item => item !== matchedAction.name)
+            : [...prev, matchedAction.name]
         ));
         addOnboardingAssistantMessage(
           `Added ${matchedAction.name}. You can enable another integration or continue.`,
@@ -1517,12 +1591,7 @@ export default function EvaChatExperience({
       }
 
       if (answer.trim() === RETAIL_CONTINUE_TO_FINAL_LABEL || normalized.includes('continue') || normalized.includes('done')) {
-        setRetailPrototypeStep('ready-to-preview');
-        addOnboardingAssistantMessage(
-          `Great. ${agentName} is ready with the connected knowledge bases, recommended actions, voice channel, escalation to Matt, and your selected greeting. Preview the agent next, then choose the connected phone number as the last step before creation.`,
-          undefined,
-          'retail-final-actions',
-        );
+        askRetailPhoneNumber();
         return true;
       }
     }
@@ -1533,7 +1602,12 @@ export default function EvaChatExperience({
         return true;
       }
       if (normalized.includes('skip')) {
-        askRetailPhoneNumber();
+        setRetailPrototypeStep('ready-to-create');
+        addOnboardingAssistantMessage(
+          `No problem. ${agentName} is ready with the connected knowledge bases, recommended actions, voice channel, escalation to Matt, and your selected greeting. You can complete creation now or continue into AI Agent Studio for advanced configuration.`,
+          undefined,
+          'retail-complete-actions',
+        );
         return true;
       }
     }
@@ -2092,7 +2166,9 @@ export default function EvaChatExperience({
       const matchedKnowledge = RETAIL_RECOMMENDED_KNOWLEDGE_BASES.find(option => option.name === trimmed);
       if (matchedKnowledge) {
         setSelectedKnowledgeBases(prev => (
-          prev.includes(matchedKnowledge.name) ? prev : [...prev, matchedKnowledge.name]
+          prev.includes(matchedKnowledge.name)
+            ? prev.filter(item => item !== matchedKnowledge.name)
+            : [...prev, matchedKnowledge.name]
         ));
         return;
       }
@@ -2101,7 +2177,9 @@ export default function EvaChatExperience({
       const matchedAction = RETAIL_RECOMMENDED_ACTIONS.find(option => option.name === trimmed);
       if (matchedAction) {
         setSelectedActions(prev => (
-          prev.includes(matchedAction.name) ? prev : [...prev, matchedAction.name]
+          prev.includes(matchedAction.name)
+            ? prev.filter(item => item !== matchedAction.name)
+            : [...prev, matchedAction.name]
         ));
         return;
       }
@@ -2123,6 +2201,7 @@ export default function EvaChatExperience({
       trimmed === RETAIL_AGENT_NAME_LABEL ||
       trimmed === RETAIL_AGENT_NAME_CUSTOM_LABEL ||
       trimmed === RETAIL_WELCOME_CUSTOM_LABEL ||
+      trimmed === CONNECT_RETAIL_PHONE_LATER_LABEL ||
       CHANNEL_PHONE_NUMBER_OPTIONS.some(option => option.label === trimmed || option.value === trimmed) ||
       RETAIL_RECOMMENDED_WELCOME_MESSAGES.some(option => option.text === trimmed)
     ) {
@@ -2143,7 +2222,11 @@ export default function EvaChatExperience({
     }
     if (trimmed === SKIP_RETAIL_PREVIEW_LABEL || trimmed === CONNECT_RETAIL_PHONE_LABEL) {
       setMessages(prev => [...prev, { role: 'user', text: trimmed }]);
-      askRetailPhoneNumber();
+      if (trimmed === SKIP_RETAIL_PREVIEW_LABEL && (retailSelectedPhoneNumber || phoneNumberDeferred)) {
+        void handleRetailReceptionistStoryAnswer(trimmed);
+      } else {
+        askRetailPhoneNumber();
+      }
       return;
     }
     if (trimmed === ENTER_AGENT_STUDIO_LABEL) {
@@ -3064,13 +3147,6 @@ Simulation rules:
           </div>
           <div>
             <strong>{agentName || 'Preview agent'}</strong>
-            <span>
-              {phoneNumberDeferred
-                ? 'Phone number can be connected later'
-                : retailPrototypeStep === 'phone' && !retailSelectedPhoneNumber
-                  ? 'Phone number selected after preview'
-                  : channelPhoneNumber}
-            </span>
           </div>
         </div>
         <div className={`eva-voice-preview__body${voiceTranscriptExpanded ? ' eva-voice-preview__body--transcript-open' : ''}`}>
@@ -3527,6 +3603,11 @@ ${previewTranscript}`,
     .join('')
     .toUpperCase()
     .slice(0, 2) || 'EA';
+  const retailPreviewAgentName = agentName.trim() || PREVIEW_RETAIL_AGENT_LABEL;
+  const retailPreviewAgentIntro =
+    agentDescription.trim() ||
+    draft.goals[0]?.trim() ||
+    'Preview this agent’s caller experience.';
   const filteredAgents = existingAgentList.filter(agent => {
     const matchesSearch = agent.name.toLowerCase().includes(searchQuery.toLowerCase());
     const matchesStatus = statusFilter === 'all' ||
@@ -4142,7 +4223,7 @@ ${previewTranscript}`,
       )}
 
       <div
-        className={`eva-first-interface${showLandingOptions ? ' eva-first-interface--landing eva-landing-shell' : ''}${guidanceVisible || evaThinking || orchestrationSuggested ? ' eva-first-interface--generated' : ''}${freeChatActive && !guidanceVisible && !orchestrationSuggested ? ' eva-first-interface--free-chat' : ''}`}
+        className={`eva-first-interface${showLandingOptions ? ' eva-first-interface--landing eva-landing-shell' : ''}${!freeChatActive && (guidanceVisible || evaThinking || orchestrationSuggested) ? ' eva-first-interface--generated' : ''}${freeChatActive && !guidanceVisible && !orchestrationSuggested ? ' eva-first-interface--free-chat' : ''}`}
       >
         {/* Agent header (avatar + title + Draft badge + description) is
             tied to the build flow only. While the user is just chatting
@@ -4209,12 +4290,7 @@ ${previewTranscript}`,
                   label={showEvaGeneratedSidePanel ? 'Collapse side panel' : 'Open side panel'}
                   icon="arrow-right"
                   onClick={() => {
-                    if (showEvaGeneratedSidePanel) {
-                      setShowEvaGeneratedSidePanel(false);
-                    } else {
-                      setShowEvaThreadPanel(true);
-                      setShowEvaGeneratedSidePanel(true);
-                    }
+                    setShowEvaGeneratedSidePanel(prev => !prev);
                     panelMenu.close();
                   }}
                 />
@@ -4254,7 +4330,7 @@ ${previewTranscript}`,
               onSend={handleSend}
               processing={false}
               disabled={evaThinking}
-              placeholder="Describe what you need, start from a template, or manage existing agents."
+              placeholder={'Describe your agent.\ne.g. A friendly banking assistant that helps customers check their balance, dispute charges, and get account help — always calm and reassuring.'}
               suggestions={[]}
               voiceActive={voiceActive}
               onVoiceToggle={() => setVoiceActive(prev => !prev)}
@@ -4340,7 +4416,15 @@ ${previewTranscript}`,
 
         {freeChatActive && !guidanceVisible && !orchestrationSuggested && (
           <section
-            className={`eva-dialogue eva-first-interface__free-chat${messages.some(message => message.originStep === 'retail-welcome-choice') ? ' eva-first-interface__free-chat--dense-bottom' : ''}`}
+            className={`eva-dialogue eva-first-interface__free-chat${
+              messages.some(message => message.originStep === 'retail-welcome-choice')
+                ? ' eva-first-interface__free-chat--dense-bottom'
+                : ''
+            }${
+              messages.some(message => message.originStep === 'retail-phone-choice')
+                ? ' eva-first-interface__free-chat--phone-focus'
+                : ''
+            }`}
             aria-label="AI Assistant conversation"
             aria-live="polite"
           >
@@ -4369,6 +4453,19 @@ ${previewTranscript}`,
               const isRetailFinalActions = message.originStep === 'retail-final-actions';
               const isRetailCompleteActions = message.originStep === 'retail-complete-actions';
               const isRetailInlinePreview = message.originStep === 'retail-inline-preview';
+              const retailPhoneQuery = retailPhoneSearch.trim().toLowerCase();
+              const visibleRetailPhoneOptions = RETAIL_PHONE_NUMBER_OPTIONS.filter(option => {
+                if (!retailPhoneQuery) return true;
+                return [
+                  option.label,
+                  option.countryCode,
+                  option.localNumber,
+                  option.meta,
+                ].some(value => value.toLowerCase().includes(retailPhoneQuery));
+              });
+              const selectedRetailPhoneOption =
+                RETAIL_PHONE_NUMBER_OPTIONS.find(option => option.value === channelPhoneNumber) ??
+                RETAIL_PHONE_NUMBER_OPTIONS[0];
               const isControlledPrototypePrompt =
                 baseFollowups.includes(CONTINUE_TO_STUDIO_LABEL) ||
                 baseFollowups.includes(RETAIL_VOICE_LABEL) ||
@@ -4392,12 +4489,25 @@ ${previewTranscript}`,
                       <p>{message.text}</p>
                       {renderRetailDiscoveryTrace()}
                     </>
+                  ) : isRetailFinalActions ? (
+                    <div className="eva-retail-final-heading">
+                      <div className="eva-retail-final-heading__header">
+                        <strong>{`You're all set! ${agentName} is ready.`}</strong>
+                        <span>
+                          I captured the connected knowledge bases, recommended actions, voice channel, escalation to Matt, and your selected greeting.
+                        </span>
+                      </div>
+                      <div className="eva-retail-final-heading__body">
+                        <p>Preview the agent next, complete it now, or continue into advanced configuration.</p>
+                        <p>If you need to adjust anything or want me to consider more details, you can always ask here.</p>
+                      </div>
+                    </div>
                   ) : message.text}
                   followups={isRetailChannelChoice || isRetailPhonePrompt || isRetailAgentNamePrompt || isRetailWelcomePrompt || isRetailKnowledgePrompt || isRetailActionsPrompt || isRetailFinalActions || isRetailCompleteActions || isRetailInlinePreview ? [] : followups}
                   onFollowup={handleLlmFollowupClick}
                 >
                   {isRetailChannelChoice && (
-                    <>
+                    <div className="eva-retail-channel-panel">
                       <div className="eva-retail-channel-options" role="group" aria-label="Channel options">
                         {RETAIL_CHANNEL_OPTIONS.map(option => {
                           const isSelected = retailSelectedChannels.includes(option.label);
@@ -4405,16 +4515,20 @@ ${previewTranscript}`,
                             <button
                               key={option.label}
                               type="button"
-                              className={`eva-security-tier-card eva-retail-channel-option${isSelected ? ' eva-security-tier-card--selected' : ''}`}
+                              className={`eva-retail-channel-option${isSelected ? ' eva-retail-channel-option--selected' : ''}`}
+                              aria-label={`${option.title}. ${option.description}`}
                               aria-pressed={isSelected}
                               disabled={isRetailChannelLocked}
                               onClick={() => toggleRetailChannel(option.label)}
                             >
-                              <Icon className="icon" name={option.icon} weight="regular" size={24} />
-                              <span>
+                              <span className="eva-retail-channel-option__card">
+                                <span className="eva-retail-channel-option__icon" aria-hidden="true">
+                                  <Icon name={option.icon} weight="regular" size={24} />
+                                </span>
                                 <strong>{option.title}</strong>
-                                <small>{option.description}</small>
                               </span>
+                              <span className="eva-retail-channel-option__checkbox" aria-hidden="true" />
+                              <span className="eva-retail-channel-option__description">{option.description}</span>
                             </button>
                           );
                         })}
@@ -4426,25 +4540,71 @@ ${previewTranscript}`,
                           </Button>
                         </div>
                       )}
-                    </>
+                    </div>
                   )}
                   {isRetailPhonePrompt && !isRetailPhoneLocked && (
-                    <div className="ai-response__followups eva-retail-phone-options" role="group" aria-label="Connected phone numbers">
-                      {CHANNEL_PHONE_NUMBER_OPTIONS.map(option => (
-                        <button
-                          key={option.label}
-                          type="button"
-                          className="ai-footer__suggestion"
-                          disabled={isRetailPhoneLocked}
-                          onClick={() => handleLlmFollowupClick(option.label)}
-                        >
-                          {option.label}
-                        </button>
-                      ))}
+                    <div
+                      ref={retailPhoneSelectorRef}
+                      className="eva-retail-phone-selector"
+                      role="group"
+                      aria-label="Connected phone numbers"
+                    >
                       <button
                         type="button"
-                        className="ai-footer__suggestion"
-                        disabled={isRetailPhoneLocked}
+                        className="eva-retail-phone-selector__trigger"
+                        aria-haspopup="listbox"
+                        aria-expanded={retailPhoneDropdownOpen}
+                        onClick={() => setRetailPhoneDropdownOpen(open => !open)}
+                      >
+                        <span className="eva-phone-country-pill">
+                          <span aria-hidden="true">{selectedRetailPhoneOption.flag}</span>
+                          {selectedRetailPhoneOption.countryCode}
+                        </span>
+                        <span className="eva-retail-phone-selector__number">
+                          {selectedRetailPhoneOption.localNumber}
+                        </span>
+                        <Icon name="arrow-down" weight="bold" size="sm" />
+                      </button>
+                      {retailPhoneDropdownOpen && (
+                        <div className="eva-retail-phone-selector__menu">
+                          <label className="eva-retail-phone-selector__search-label" htmlFor="eva-retail-phone-search">
+                            Search connected numbers
+                          </label>
+                          <input
+                            id="eva-retail-phone-search"
+                            type="search"
+                            className="form-input eva-retail-phone-selector__search"
+                            value={retailPhoneSearch}
+                            placeholder="Search by country, city, or number"
+                            onChange={event => setRetailPhoneSearch(event.target.value)}
+                          />
+                          <div className="eva-retail-phone-selector__list" role="listbox" aria-label="Available phone numbers">
+                            {visibleRetailPhoneOptions.map(option => (
+                              <button
+                                key={option.value}
+                                type="button"
+                                className={`eva-retail-phone-selector__option${option.value === channelPhoneNumber ? ' eva-retail-phone-selector__option--selected' : ''}`}
+                                role="option"
+                                aria-selected={option.value === channelPhoneNumber}
+                                onClick={() => selectRetailPhoneNumber(option.value)}
+                              >
+                                <span className="eva-phone-country-pill">
+                                  <span aria-hidden="true">{option.flag}</span>
+                                  {option.countryCode}
+                                </span>
+                                <span className="eva-retail-phone-selector__number">{option.localNumber}</span>
+                                <span className="eva-retail-phone-selector__meta">{option.meta}</span>
+                              </button>
+                            ))}
+                            {visibleRetailPhoneOptions.length === 0 && (
+                              <span className="eva-retail-phone-selector__empty">No connected numbers found.</span>
+                            )}
+                          </div>
+                        </div>
+                      )}
+                      <button
+                        type="button"
+                        className="ai-footer__suggestion eva-retail-phone-selector__later"
                         onClick={() => handleLlmFollowupClick(CONNECT_RETAIL_PHONE_LATER_LABEL)}
                       >
                         {CONNECT_RETAIL_PHONE_LATER_LABEL}
@@ -4528,7 +4688,7 @@ ${previewTranscript}`,
                         <div className="eva-retail-connected-list">
                           {selectedKnowledgeBases.map(item => (
                             <span key={item} className="eva-retail-connected-chip">
-                              <span className="eva-retail-connected-chip__status" aria-hidden="true" />
+                              <Icon className="eva-retail-connected-chip__status" name="check-circle-filled" weight="bold" size="sm" />
                               {item}
                               <button
                                 type="button"
@@ -4537,7 +4697,7 @@ ${previewTranscript}`,
                                 disabled={isRetailKnowledgeLocked}
                                 onClick={() => setSelectedKnowledgeBases(prev => prev.filter(value => value !== item))}
                               >
-                                <Icon name="cancel" weight="regular" size="xs" />
+                                <Icon name="cancel" weight="regular" size="sm" />
                               </button>
                             </span>
                           ))}
@@ -4553,20 +4713,19 @@ ${previewTranscript}`,
                                 key={option.name}
                                 type="button"
                                 className={`eva-retail-recommendation-card${isSelected ? ' eva-retail-recommendation-card--selected' : ''}`}
+                                aria-label={`${option.name}. ${option.description}`}
+                                aria-pressed={isSelected}
                                 disabled={isRetailKnowledgeLocked}
                                 onClick={() => handleLlmFollowupClick(option.name)}
                               >
-                                <Icon
-                                  className="icon"
-                                  name={isSelected ? 'check-circle-filled' : 'files'}
-                                  weight={isSelected ? 'bold' : 'regular'}
-                                  size={24}
-                                  color={isSelected ? 'var(--mds-color-theme-common-text-success-normal, #3cc29a)' : undefined}
-                                />
-                                <span>
+                                <span className="eva-retail-recommendation-card__surface">
+                                  <span className="eva-retail-recommendation-card__icon" aria-hidden="true">
+                                    <Icon name="files" weight="regular" size={24} />
+                                  </span>
                                   <strong>{option.name}</strong>
-                                  <small>{option.description}</small>
                                 </span>
+                                <span className="eva-retail-recommendation-card__checkbox" aria-hidden="true" />
+                                <span className="eva-retail-recommendation-card__description">{option.description}</span>
                               </button>
                             );
                           })}
@@ -4591,7 +4750,7 @@ ${previewTranscript}`,
                         <div className="eva-retail-connected-list">
                           {selectedActions.map(item => (
                             <span key={item} className="eva-retail-connected-chip">
-                              <span className="eva-retail-connected-chip__status" aria-hidden="true" />
+                              <Icon className="eva-retail-connected-chip__status" name="check-circle-filled" weight="bold" size="sm" />
                               {item}
                               <button
                                 type="button"
@@ -4600,7 +4759,7 @@ ${previewTranscript}`,
                                 disabled={isRetailActionsLocked}
                                 onClick={() => setSelectedActions(prev => prev.filter(value => value !== item))}
                               >
-                                <Icon name="cancel" weight="regular" size="xs" />
+                                <Icon name="cancel" weight="regular" size="sm" />
                               </button>
                             </span>
                           ))}
@@ -4616,20 +4775,23 @@ ${previewTranscript}`,
                                 key={option.name}
                                 type="button"
                                 className={`eva-retail-recommendation-card${isSelected ? ' eva-retail-recommendation-card--selected' : ''}`}
+                                aria-label={`${option.name}. ${option.provider}. ${option.description}`}
+                                aria-pressed={isSelected}
                                 disabled={isRetailActionsLocked}
                                 onClick={() => handleLlmFollowupClick(option.name)}
                               >
-                                <Icon
-                                  className="icon"
-                                  name={isSelected ? 'check-circle-filled' : 'tools'}
-                                  weight={isSelected ? 'bold' : 'regular'}
-                                  size={24}
-                                  color={isSelected ? 'var(--mds-color-theme-common-text-success-normal, #3cc29a)' : undefined}
-                                />
-                                <span>
+                                <span className="eva-retail-recommendation-card__surface">
+                                  <span
+                                    className={`eva-retail-recommendation-card__icon eva-provider-chip__logo eva-provider-chip__logo--${option.providerLogo}`}
+                                    aria-hidden="true"
+                                  >
+                                    {option.providerLogoLabel}
+                                  </span>
                                   <strong>{option.name}</strong>
-                                  <em>{option.provider}</em>
-                                  <small>{option.description}</small>
+                                </span>
+                                <span className="eva-retail-recommendation-card__checkbox" aria-hidden="true" />
+                                <span className="eva-retail-recommendation-card__description">
+                                  {`${option.provider}. ${option.description}`}
                                 </span>
                               </button>
                             );
@@ -4648,15 +4810,54 @@ ${previewTranscript}`,
                       )}
                     </div>
                   )}
-                  {isRetailFinalActions && retailPrototypeStep === 'ready-to-preview' && (
-                    <div className="eva-retail-final-actions">
-                      <Button onClick={() => handleLlmFollowupClick(PREVIEW_RETAIL_AGENT_LABEL)}>
-                        <Icon name="phone" weight="bold" size="sm" />
-                        {PREVIEW_RETAIL_AGENT_LABEL}
+                  {isRetailFinalActions && (retailPrototypeStep === 'ready-to-preview' || retailPrototypeStep === 'previewing') && (
+                    <div className="eva-retail-final-group">
+                      <div className="eva-retail-final-block">
+                      {retailPrototypeStep === 'previewing' ? (
+                        <section className="eva-retail-preview-card eva-retail-preview-card--active" aria-label={`Preview ${retailPreviewAgentName}`}>
+                          <div className="eva-retail-preview-card__summary">
+                            <div className="agent-avatar eva-retail-preview-card__avatar" style={{ background: gradient }}>
+                              {profileInitials}
+                            </div>
+                            <div className="eva-retail-preview-card__copy">
+                              <strong>{retailPreviewAgentName}</strong>
+                              <span>{retailPreviewAgentIntro}</span>
+                            </div>
+                          </div>
+                          <div className="eva-retail-preview-card__control">
+                            {renderPreviewSession()}
+                          </div>
+                        </section>
+                      ) : (
+                        <button
+                          type="button"
+                          className="eva-retail-preview-card"
+                          onClick={startRetailPreviewInFinalCard}
+                        >
+                          <span className="agent-avatar eva-retail-preview-card__avatar" style={{ background: gradient }}>
+                            {profileInitials}
+                          </span>
+                          <span className="eva-retail-preview-card__copy">
+                            <strong>{retailPreviewAgentName}</strong>
+                            <span>{retailPreviewAgentIntro}</span>
+                          </span>
+                          <span className="eva-retail-preview-card__button">
+                            <Icon name="play" weight="regular" size="sm" />
+                            Preview
+                          </span>
+                        </button>
+                      )}
+                      <div className="eva-retail-final-actions">
+                      <Button onClick={() => handleLlmFollowupClick(COMPLETE_RETAIL_AGENT_LABEL)}>
+                        <Icon name="sparkle" weight="bold" size="sm" />
+                        {COMPLETE_RETAIL_AGENT_LABEL}
                       </Button>
-                      <Button variant="secondary" onClick={() => handleLlmFollowupClick(SKIP_RETAIL_PREVIEW_LABEL)}>
-                        {SKIP_RETAIL_PREVIEW_LABEL}
+                      <Button variant="secondary" onClick={() => handleLlmFollowupClick(ENTER_AGENT_STUDIO_LABEL)}>
+                        <Icon name="tools" weight="bold" size="sm" />
+                        {ENTER_AGENT_STUDIO_LABEL}
                       </Button>
+                      </div>
+                      </div>
                     </div>
                   )}
                   {isRetailCompleteActions && retailPrototypeStep === 'ready-to-create' && (
@@ -4676,9 +4877,21 @@ ${previewTranscript}`,
                       {renderPreviewSession()}
                       {retailPrototypeStep === 'previewing' && ['ended', 'error'].includes(voiceCallStatus) ? (
                         <div className="eva-retail-inline-preview__actions">
-                          <Button onClick={() => handleLlmFollowupClick(CONNECT_RETAIL_PHONE_LABEL)}>
-                            <Icon name="phone" weight="bold" size="sm" />
-                            {CONNECT_RETAIL_PHONE_LABEL}
+                          <Button
+                            onClick={() => handleLlmFollowupClick(
+                              retailSelectedPhoneNumber || phoneNumberDeferred
+                                ? COMPLETE_RETAIL_AGENT_LABEL
+                                : CONNECT_RETAIL_PHONE_LABEL,
+                            )}
+                          >
+                            <Icon
+                              name={retailSelectedPhoneNumber || phoneNumberDeferred ? 'sparkle' : 'phone'}
+                              weight="bold"
+                              size="sm"
+                            />
+                            {retailSelectedPhoneNumber || phoneNumberDeferred
+                              ? COMPLETE_RETAIL_AGENT_LABEL
+                              : CONNECT_RETAIL_PHONE_LABEL}
                           </Button>
                         </div>
                       ) : null}
@@ -6235,22 +6448,49 @@ ${previewTranscript}`,
                 </section>
               )}
               {showBuildFlow && (
-                <section className="eva-first-interface__chat eva-first-interface__chat--sticky" aria-label="Talk to AI Assistant">
-                  <AiFooter
-                    className="eva-ai-footer"
-                    fillContainer
-                    onSend={guidanceVisible ? handleWaterfallFollowup : handleSend}
-                    processing={false}
-                    disabled={evaThinking || waterfallThinking || evaStep === 'preview'}
-                    placeholder={
-                      guidanceVisible || orchestrationSuggested
-                        ? 'Ask any question during your configuration.'
-                        : 'Type with AI Assistant. Try: Create an AI agent for customer onboarding...'
-                    }
-                    suggestions={[]}
-                    voiceActive={voiceActive}
-                    onVoiceToggle={() => setVoiceActive(prev => !prev)}
-                  />
+                <section
+                  className={`eva-first-interface__chat eva-first-interface__chat--sticky eva-generated-composer${generatedComposerCollapsed ? ' eva-generated-composer--collapsed' : ''}`}
+                  aria-label="Talk to AI Assistant"
+                >
+                  <div className="eva-generated-composer__surface">
+                    <AiFooter
+                      className="eva-ai-footer"
+                      fillContainer
+                      onSend={guidanceVisible ? handleWaterfallFollowup : handleSend}
+                      processing={false}
+                      disabled={evaThinking || waterfallThinking || evaStep === 'preview'}
+                      placeholder={
+                        guidanceVisible || orchestrationSuggested
+                          ? 'Ask any question during your configuration.'
+                          : 'Type with AI Assistant. Try: Create an AI agent for customer onboarding...'
+                      }
+                      suggestions={[]}
+                      voiceActive={voiceActive}
+                      onVoiceToggle={() => setVoiceActive(prev => !prev)}
+                      cornerAction={!generatedComposerCollapsed ? (
+                        <button
+                          type="button"
+                          className="eva-generated-composer__toggle"
+                          aria-label="Collapse composer"
+                          aria-expanded="true"
+                          onClick={() => setGeneratedComposerCollapsed(true)}
+                        >
+                          <Icon name="arrow-down" weight="bold" size="sm" />
+                        </button>
+                      ) : null}
+                    />
+                    {generatedComposerCollapsed && (
+                      <button
+                        type="button"
+                        className="eva-generated-composer__toggle eva-generated-composer__toggle--collapsed"
+                        aria-label="Expand composer"
+                        aria-expanded="false"
+                        onClick={() => setGeneratedComposerCollapsed(false)}
+                      >
+                        <Icon name="arrow-up" weight="bold" size="sm" />
+                      </button>
+                    )}
+                  </div>
                 </section>
               )}
             </div>
@@ -6265,7 +6505,14 @@ ${previewTranscript}`,
                 <>
               <section className="eva-side-card">
                 <div className="eva-side-card__header">
-                  <Icon name="list-menu" weight="bold" size="sm" />
+                  <button
+                    type="button"
+                    className="eva-side-card__icon-btn"
+                    aria-label="Collapse side panel"
+                    onClick={() => setShowEvaGeneratedSidePanel(false)}
+                  >
+                    <Icon name="list-menu" weight="bold" size="sm" />
+                  </button>
                   <h2>Progress</h2>
                 </div>
                 <div className="eva-generation-progress-groups">

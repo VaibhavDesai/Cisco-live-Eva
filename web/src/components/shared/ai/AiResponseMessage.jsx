@@ -74,6 +74,11 @@ function AiResponseMessage({
   const displayedAssistantName = isEvaResponse
     ? getEvaAssistantLabel(assistantName, assistantState)
     : assistantName
+  const shouldShowGeneratingText =
+    isEvaResponse &&
+    (assistantState === 'processing' || assistantState === 'responding') &&
+    content == null
+  const responseContent = shouldShowGeneratingText ? 'Generating response...' : content
 
   return (
     <div className={`ai-response ai-response--${assistantState} ${className}`}>
@@ -95,9 +100,9 @@ function AiResponseMessage({
 
       <div className="ai-response__body">
         <div className="ai-response__content">
-          {typeof content === 'string'
-            ? content.split('\n').map((p, i) => <p key={i}>{p}</p>)
-            : content}
+          {typeof responseContent === 'string'
+            ? responseContent.split('\n').map((p, i) => <p key={i}>{p}</p>)
+            : responseContent}
         </div>
 
         {children}

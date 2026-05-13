@@ -47,11 +47,11 @@ const AGENT_TILE_META: Record<string, { type: AgentTileType; updatedOn: string; 
 };
 
 const RETAIL_AGENT_PREVIEW_DETAILS = {
-  description: 'Answers store calls for Webex Electronics in San Jose, checks product availability, handles FAQs, and escalates to Matt when needed.',
-  welcomeMessage: 'Hi, thanks for calling Webex Electronics in San Jose. I can help with store hours, directions, product availability, common questions, or connect you with Matt when needed.',
+  description: 'Answers store calls for Acme Electronics in San Jose, checks product availability, handles FAQs, and escalates to Matt when needed.',
+  welcomeMessage: 'Hi, thanks for calling Acme Electronics in San Jose. I can help with store hours, directions, product availability, common questions, or connect you with Matt when needed.',
   knowledgeBases: [
     {
-      name: 'Webex Electronics store profile',
+      name: 'Acme Electronics store profile',
       description: 'Store hours, address, parking, warranty policy, escalation rules, and local FAQs.',
       sources: 26,
       usedBy: 1,
@@ -134,7 +134,7 @@ function buildPreviewSession(agent: Agent): EvaSessionState {
     securityTier: 'standard',
     channelType: 'voice',
     digitalChannel: 'chat',
-    digitalChannelAddress: 'webex-electronics-chat',
+    digitalChannelAddress: 'acme-electronics-chat',
     channelPhoneNumber: '+1 415 555 0198',
     standardGuardrails: EVA_STANDARD_GUARDRAILS,
     advancedGuardrails: EVA_ADVANCED_GUARDRAIL_GROUPS,
@@ -283,7 +283,7 @@ export default function EvaAgentsTable() {
               onSend={handleLandingSubmit}
               onVoiceToggle={() => setVoiceActive(active => !active)}
               processing={false}
-              placeholder="Describe what you need, start from a template, or manage existing agents."
+              placeholder={'Describe your agent.\ne.g. A friendly banking assistant that helps customers check their balance, dispute charges, and get account help — always calm and reassuring.'}
               suggestions={[]}
               voiceActive={voiceActive}
               showDisclaimer={false}

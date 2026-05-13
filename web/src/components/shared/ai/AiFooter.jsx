@@ -25,6 +25,7 @@ import AiSymbol from './AiSymbol'
  * @param {boolean} [props.fillContainer=false] - Removes composer width caps so the footer fills its parent.
  * @param {boolean} [props.showDisclaimer=true] - Shows the AI accuracy/privacy disclaimer below the composer.
  * @param {string} [props.className=''] - Extra classes merged onto the root `ai-footer` container.
+ * @param {import('react').ReactNode} [props.cornerAction] - Optional control rendered inside the composer group's top-right corner.
  * @param {string} [props.initialText] - Optional value pushed into the textarea whenever `prefillKey` changes. Use together with a parent-controlled key bump (e.g. an incrementing counter) to drop a fresh prompt into the composer without hijacking the user's in-progress edits.
  * @param {string|number} [props.prefillKey] - Sentinel that tells the composer to replace its current text with `initialText`. Each unique value triggers exactly one prefill, so parents can re-trigger the same prompt by bumping the key.
  * @example
@@ -41,6 +42,7 @@ function AiFooter({
   fillContainer = false,
   showDisclaimer = true,
   className = '',
+  cornerAction,
   initialText = '',
   prefillKey,
 }) {
@@ -483,6 +485,11 @@ function AiFooter({
         </div>
       )}
       <div className="ai-footer__group" style={groupStyle}>
+        {cornerAction && (
+          <div className="ai-footer__corner-action">
+            {cornerAction}
+          </div>
+        )}
         {processing ? (
           <div className="ai-footer__input-row" style={{ ...inputRowStyle, alignItems: 'center', justifyContent: 'center' }}>
             <AiSymbol size={24} state="processing" />
@@ -503,21 +510,30 @@ function AiFooter({
               />
             </div>
             <div className="ai-footer__action-bar">
-              {voiceError && (
-                /* Inline error sits immediately to the left of the mic
-                   button so it's clearly tied to the mic action without
-                   pushing the textarea height around. Auto-clears the
-                   next time the user starts a recording (handleMicClick
-                   resets `voiceError`). */
-                <span
-                  className="ai-footer__voice-error"
-                  role="status"
-                  title={voiceError}
-                >
-                  {voiceError}
-                </span>
-              )}
-              {onVoiceToggle && (
+                <div className="ai-footer__footer-left">
+                  <button type="button" className="ai-footer__utility-btn" aria-label="Attach file">
+                    <Icon name="plus-bold" size={16} />
+                  </button>
+                  <button type="button" className="ai-footer__utility-btn" aria-label="Adjust prompt settings">
+                    <Icon name="adjust-horizontal-bold" size={16} />
+                  </button>
+                </div>
+                <div className="ai-footer__footer-right">
+                  {voiceError && (
+                    /* Inline error sits immediately to the left of the mic
+                       button so it's clearly tied to the mic action without
+                       pushing the textarea height around. Auto-clears the
+                       next time the user starts a recording (handleMicClick
+                       resets `voiceError`). */
+                    <span
+                      className="ai-footer__voice-error"
+                      role="status"
+                      title={voiceError}
+                    >
+                      {voiceError}
+                    </span>
+                  )}
+                  {onVoiceToggle && (
                 <button
                   type="button"
                   className={micClassName}
@@ -528,26 +544,27 @@ function AiFooter({
                 >
                   <Icon name={micIcon} size={16} />
                 </button>
-              )}
-              <button
-                type="button"
-                className="ai-footer__send-btn"
-                aria-label="Send"
-                disabled={!text.trim() || disabled || isRecording || isTranscribing}
-                onClick={handleSend}
-              >
-                <Icon name="send-bold" size={16} />
-              </button>
+                  )}
+                  <button
+                    type="button"
+                    className="ai-footer__send-btn"
+                    aria-label="Send"
+                    disabled={!text.trim() || disabled || isRecording || isTranscribing}
+                    onClick={handleSend}
+                  >
+                    <Icon name="arrow-tail-up-bold" size={16} />
+                  </button>
+                </div>
             </div>
           </div>
         )}
-        {showDisclaimer && (
-          <div className="ai-footer__disclaimer">
-            Assistant can make mistakes. Verify responses. Learn how the AI Assistant handles personal data at{' '}
-            <a href="#">AI Assistant Data Privacy</a>.
-          </div>
-        )}
       </div>
+      {showDisclaimer && (
+        <div className="ai-footer__disclaimer">
+          Assistant can make mistakes. Verify responses. Learn how the AI Assistant handles personal data at{' '}
+          <a href="#">AI Assistant Data Privacy</a>.
+        </div>
+      )}
     </div>
   )
 }

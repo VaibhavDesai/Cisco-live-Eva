@@ -104,7 +104,7 @@ function getConfiguredSummary(agent: Agent) {
   const knowledgeBases = agent.knowledgeBases?.length
     ? agent.knowledgeBases
     : ['Starter knowledge sources'];
-  const isRetailReceptionist = agent.name.toLowerCase().includes('webex electronics');
+  const isRetailReceptionist = agent.name.toLowerCase().includes('acme electronics');
 
   return {
     channel: isRetailReceptionist ? 'Voice channel connected' : 'Primary channel ready to review',

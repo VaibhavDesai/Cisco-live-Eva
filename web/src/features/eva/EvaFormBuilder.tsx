@@ -1213,7 +1213,7 @@ export default function EvaFormBuilder() {
               onVoiceToggle={() => setVoiceActive(active => !active)}
               processing={false}
               disabled={chatThinking}
-              placeholder="Describe what you need, start from a template, or manage existing agents."
+              placeholder={'Describe your agent.\ne.g. A friendly banking assistant that helps customers check their balance, dispute charges, and get account help — always calm and reassuring.'}
               suggestions={[]}
               voiceActive={voiceActive}
               showDisclaimer={false}
