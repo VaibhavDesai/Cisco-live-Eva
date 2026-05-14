@@ -1,7 +1,9 @@
-import { useState, useCallback } from 'react'
+import { useState, useCallback, useEffect, useRef } from 'react'
+import lottie from 'lottie-web'
 import Icon from '../Icon'
 import AiSymbol from './AiSymbol'
 import { AccordionItem as Accordion } from '../Accordion'
+import aiSimplifiedAnimationUrl from '../../../assets/ai simplified.json?url'
 
 const POSITIVE_OPTIONS = ['Great response', 'Clear', 'Helpful', 'Accurate']
 const NEGATIVE_OPTIONS = ['Incorrect', 'Unhelpful', 'Confusing', 'Incomplete']
@@ -11,6 +13,31 @@ function getEvaAssistantLabel(name, state) {
   return String(name || 'AI Assistant')
     .replace(/^AI Assistant\s+is\s+/i, '')
     .replace(/^AI Assistant\s+/i, '')
+}
+
+function AiGeneratingIcon() {
+  const containerRef = useRef(null)
+
+  useEffect(() => {
+    if (!containerRef.current) return undefined
+
+    const animation = lottie.loadAnimation({
+      container: containerRef.current,
+      renderer: 'svg',
+      loop: true,
+      autoplay: true,
+      path: aiSimplifiedAnimationUrl,
+      rendererSettings: {
+        preserveAspectRatio: 'xMidYMid meet',
+      },
+    })
+
+    return () => {
+      animation.destroy()
+    }
+  }, [])
+
+  return <span ref={containerRef} className="ai-response__generating-icon" aria-hidden="true" />
 }
 
 /**
@@ -78,6 +105,9 @@ function AiResponseMessage({
     isEvaResponse &&
     (assistantState === 'processing' || assistantState === 'responding') &&
     content == null
+  const shouldShowGeneratingIcon =
+    isEvaResponse &&
+    (assistantState === 'processing' || assistantState === 'responding')
   const responseContent = shouldShowGeneratingText ? 'Generating response...' : content
 
   return (
@@ -101,7 +131,12 @@ function AiResponseMessage({
       <div className="ai-response__body">
         <div className="ai-response__content">
           {typeof responseContent === 'string'
-            ? responseContent.split('\n').map((p, i) => <p key={i}>{p}</p>)
+            ? responseContent.split('\n').map((p, i) => (
+              <p key={i} className={shouldShowGeneratingIcon && i === 0 ? 'ai-response__generating-text' : undefined}>
+                {shouldShowGeneratingIcon && i === 0 && <AiGeneratingIcon />}
+                <span>{p}</span>
+              </p>
+            ))
             : responseContent}
         </div>
 

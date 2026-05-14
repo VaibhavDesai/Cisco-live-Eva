@@ -8975,6 +8975,19 @@ html[data-product='ai-agent-studio']:has(.eva-form-builder.primary-content) .app
   margin: 0;
 }
 
+.app--ai .ai-response__generating-text {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--spacing-xx-small);
+}
+
+.app--ai .ai-response__generating-icon {
+  display: inline-flex;
+  width: 24px;
+  height: 24px;
+  flex: 0 0 24px;
+}
+
 .app--ai .eva-dialogue {
   gap: var(--spacing-large);
 }
