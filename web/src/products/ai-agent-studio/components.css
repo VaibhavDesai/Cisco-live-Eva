@@ -1465,6 +1465,14 @@ html[data-product='ai-agent-studio'] .app-header {
   grid-template-columns: minmax(0, 1fr);
 }
 
+.eva-first-interface--generated:not(.eva-first-interface--free-chat) .eva-dialogue > .eva-dialogue__external-actions {
+  width: min(100%, 960px);
+  max-width: none;
+  margin-inline: auto;
+  padding-left: 0;
+  padding-right: 0;
+}
+
 .eva-first-interface--generated:not(.eva-first-interface--free-chat) .eva-dialogue > .eva-ai-response .ai-response__body {
   grid-column: 1;
 }
@@ -2311,6 +2319,446 @@ html[data-product='ai-agent-studio'] .app-header {
 
 .eva-choice-list .toggle-track {
   margin-top: var(--spacing-micro);
+}
+
+/* Latest guardrails layout, adapted from the AI Agent Studio security tab for
+   the guided configuration flow. */
+.guardrails-layout.eva-guided-guardrails {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-medium);
+  min-height: 0;
+}
+
+.eva-guided-guardrails .guardrails-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--spacing-large);
+}
+
+.eva-guided-guardrails .guardrails-header-left {
+  min-width: 0;
+  width: 100%;
+}
+
+.eva-guided-guardrails .guardrails-title {
+  margin: 0 0 var(--spacing-xx-small);
+  color: var(--text-primary);
+  font-size: var(--font-size-body-large);
+  font-weight: var(--font-weight-bold);
+  line-height: var(--font-lineheight-body-large);
+}
+
+.eva-guided-guardrails .guardrails-subtitle {
+  margin: 0;
+  width: 100%;
+  color: var(--text-secondary);
+  font-size: var(--font-size-body-midsize);
+  line-height: var(--font-lineheight-body-midsize);
+}
+
+.eva-guided-guardrails .security-custom-profiles-section {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-small);
+  padding: var(--spacing-small);
+  border: var(--border-width-small) solid var(--border-color);
+  border-radius: var(--border-radius-large);
+  background: var(--bg-glass);
+}
+
+.eva-guided-guardrails .security-custom-profiles-title-row,
+.eva-guided-guardrails .security-prebuilt-title-row,
+.eva-guided-guardrails .custom-profile-card__header {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-x-small);
+  min-width: 0;
+}
+
+.eva-guided-guardrails .security-custom-profiles-header--hero {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--spacing-xx-small);
+  text-align: left;
+}
+
+.eva-guided-guardrails .security-group-header {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-x-small);
+  color: var(--text-primary);
+  font-weight: var(--font-weight-bold);
+}
+
+.eva-guided-guardrails .security-group-header--hero {
+  font-size: var(--font-size-heading-small);
+  line-height: var(--font-lineheight-heading-small);
+}
+
+.eva-guided-guardrails .security-tier-badge {
+  background:
+    linear-gradient(var(--bg-primary), var(--bg-primary)) padding-box,
+    linear-gradient(120deg, var(--warning-color), var(--danger-color), var(--accent-color), var(--warning-color)) border-box;
+  background-size: 100% 100%, 240% 240%;
+  border: var(--border-width-small) solid transparent;
+  color: var(--text-primary);
+  animation: security-chip-gradient-border 9s linear infinite;
+}
+
+@keyframes security-chip-gradient-border {
+  0% {
+    background-position: 0 0, 0% 50%;
+  }
+  100% {
+    background-position: 0 0, 240% 50%;
+  }
+}
+
+.eva-guided-guardrails .security-custom-profiles-desc,
+.eva-guided-guardrails .security-prebuilt-desc,
+.eva-guided-guardrails .security-advanced-group-desc,
+.eva-guided-guardrails .security-advanced-rule-section-head p,
+.eva-guided-guardrails .custom-profile-card__desc,
+.eva-guided-guardrails .custom-profile-card__meta {
+  margin: 0;
+  color: var(--text-secondary);
+  font-size: var(--font-size-body-small);
+  line-height: var(--font-lineheight-body-small);
+}
+
+.eva-guided-guardrails .security-custom-profiles-desc,
+.eva-guided-guardrails .security-prebuilt-desc {
+  font-size: var(--font-size-body-midsize);
+  line-height: var(--font-lineheight-body-midsize);
+}
+
+.eva-guided-guardrails .custom-profile-empty-hero {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-x-small);
+  min-height: 72px;
+  padding: var(--spacing-small);
+  border: var(--border-width-small) dashed var(--border-color);
+  border-radius: var(--border-radius-large);
+  color: var(--text-secondary);
+  font-size: var(--font-size-body-midsize);
+}
+
+.eva-guided-guardrails .custom-profile-empty-hero > .icon {
+  color: var(--accent-color);
+}
+
+.eva-guided-guardrails .custom-profile-grid {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  gap: var(--spacing-small);
+  padding-top: var(--spacing-small);
+}
+
+.eva-guided-guardrails .custom-profile-card {
+  --custom-profile-card-default-width: min(100%, 520px);
+  display: flex;
+  flex-direction: column;
+  flex: 0 0 var(--custom-profile-card-default-width);
+  width: var(--custom-profile-card-default-width);
+  min-width: var(--custom-profile-card-default-width);
+  max-width: var(--custom-profile-card-default-width);
+  gap: var(--spacing-small);
+  padding: var(--spacing-medium);
+  border: var(--border-width-small) solid var(--border-color);
+  border-radius: var(--border-radius-large);
+  background:
+    radial-gradient(ellipse 130% 92% at 0% 0%, color-mix(in srgb, var(--accent-color) 22%, transparent), transparent 70%),
+    radial-gradient(ellipse 96% 82% at 100% 18%, color-mix(in srgb, var(--success-color) 13%, transparent), transparent 66%),
+    linear-gradient(145deg, color-mix(in srgb, var(--bg-secondary) 88%, transparent), color-mix(in srgb, var(--bg-primary) 94%, transparent) 78%),
+    var(--bg-primary);
+  box-shadow: 0 var(--spacing-x-small) var(--spacing-x-large) color-mix(in srgb, var(--bg-primary) 42%, transparent);
+  backdrop-filter: blur(var(--blur-20));
+  -webkit-backdrop-filter: blur(var(--blur-20));
+}
+
+.eva-guided-guardrails .custom-profile-card__name {
+  margin: 0;
+  flex: 1;
+  min-width: 0;
+  color: var(--text-primary);
+  font-size: var(--font-size-body-midsize);
+  font-weight: var(--font-weight-bold);
+  line-height: var(--font-lineheight-body-midsize);
+}
+
+.eva-guided-guardrails .custom-profile-card__actions {
+  display: flex;
+  gap: var(--spacing-micro);
+  flex-shrink: 0;
+  margin-left: auto;
+}
+
+.eva-guided-guardrails .custom-profile-card__actions .btn {
+  min-width: 0;
+  padding: var(--spacing-xxx-small);
+  color: var(--text-secondary);
+}
+
+.eva-guided-guardrails .custom-profile-card__actions .btn:hover {
+  color: var(--text-primary);
+}
+
+.eva-guided-guardrails .custom-profile-card__logic-wrap {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--spacing-xxx-small);
+}
+
+.eva-guided-guardrails .custom-profile-card__logic {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: var(--spacing-medium);
+  width: 100%;
+  padding: var(--spacing-xx-small) 0;
+}
+
+.eva-guided-guardrails .custom-profile-card__logic-column {
+  min-width: 0;
+}
+
+.eva-guided-guardrails .custom-profile-card__logic-label {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--spacing-xxx-small);
+  margin-bottom: var(--spacing-xxx-small);
+  color: var(--text-primary);
+  font-size: var(--font-size-body-small);
+  font-weight: var(--font-weight-bold);
+  line-height: var(--font-lineheight-body-small);
+}
+
+.eva-guided-guardrails .custom-profile-card__logic-column--detects .custom-profile-card__logic-label {
+  color: var(--danger-color);
+}
+
+.eva-guided-guardrails .custom-profile-card__logic-column--allows .custom-profile-card__logic-label {
+  color: var(--success-color);
+}
+
+.eva-guided-guardrails .custom-profile-card__logic-column--edge .custom-profile-card__logic-label {
+  color: var(--warning-color);
+}
+
+.eva-guided-guardrails .custom-profile-card__logic ul {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-micro);
+  margin: 0;
+  padding-left: var(--spacing-small);
+  color: var(--text-secondary);
+  font-size: var(--font-size-body-small);
+  line-height: var(--font-lineheight-body-small);
+}
+
+.eva-guided-guardrails .custom-profile-card__logic-empty {
+  color: var(--text-muted);
+  font-style: italic;
+}
+
+.eva-guided-guardrails .custom-profile-card__meta {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-xx-small);
+  padding-top: var(--spacing-x-small);
+  border-top: var(--border-width-small) solid var(--border-color);
+}
+
+.eva-guided-guardrails .custom-profile-card__meta-sep {
+  width: var(--spacing-xxx-small);
+  height: var(--spacing-xxx-small);
+  border-radius: var(--border-radius-half-height);
+  background: currentColor;
+}
+
+.eva-guided-guardrails .security-custom-profiles-create-button {
+  align-self: flex-start;
+}
+
+@media (max-width: 720px) {
+  .eva-guided-guardrails .custom-profile-card__logic {
+    grid-template-columns: repeat(auto-fit, minmax(128px, 1fr));
+  }
+}
+
+.eva-guided-guardrails .security-prebuilt-section {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-small);
+  margin-top: var(--spacing-small);
+  padding-top: var(--spacing-large);
+  background-image: var(--gradient-divider);
+  background-size: 100% var(--border-width-small);
+  background-repeat: no-repeat;
+  background-position: top;
+}
+
+.eva-guided-guardrails .security-prebuilt-eyebrow {
+  display: block;
+  margin-bottom: var(--spacing-xxx-small);
+  color: var(--accent-color);
+  font-size: var(--font-size-body-small);
+  font-weight: var(--font-weight-bold);
+  line-height: var(--font-lineheight-body-small);
+  text-transform: uppercase;
+}
+
+.eva-guided-guardrails .security-prebuilt-title {
+  margin: 0;
+  color: var(--text-primary);
+  font-size: var(--font-size-heading-small);
+  font-weight: var(--font-weight-bold);
+  line-height: var(--font-lineheight-heading-small);
+}
+
+.eva-guided-guardrails .security-prebuilt-category-heading,
+.eva-guided-guardrails .security-advanced-rule-section-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--spacing-medium);
+  width: 100%;
+}
+
+.eva-guided-guardrails .security-prebuilt-category-title {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--spacing-x-small);
+  color: var(--text-primary);
+  font-weight: var(--font-weight-bold);
+}
+
+.eva-guided-guardrails .security-prebuilt-category-meta {
+  flex-shrink: 0;
+  color: var(--text-secondary);
+  font-size: var(--font-size-body-small);
+  line-height: var(--font-lineheight-body-small);
+  white-space: nowrap;
+}
+
+.eva-guided-guardrails .security-prebuilt-group-body,
+.eva-guided-guardrails .security-advanced-rule-section,
+.eva-guided-guardrails .security-guardrail-controls {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-small);
+}
+
+.eva-guided-guardrails .security-advanced-rule-section + .security-advanced-rule-section {
+  padding-top: var(--spacing-small);
+  border-top: var(--border-width-small) solid var(--border-color);
+}
+
+.eva-guided-guardrails .security-advanced-rule-section-head h4 {
+  margin: 0 0 var(--spacing-xxx-small);
+  color: var(--text-primary);
+  font-size: var(--font-size-body-midsize);
+  font-weight: var(--font-weight-bold);
+  line-height: var(--font-lineheight-body-midsize);
+}
+
+.eva-guided-guardrails .security-prebuilt-rail-list.accordion-group--borderless {
+  gap: 0;
+}
+
+.eva-guided-guardrails .security-prebuilt-rail-list .accordion + .accordion {
+  border-top: var(--border-width-small) solid var(--border-color);
+}
+
+.eva-guided-guardrails .security-prebuilt-rail-list .accordion--borderless .accordion__panel {
+  border-top: 0;
+}
+
+.eva-guided-guardrails .security-guardrail-header {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--spacing-x-small);
+  width: 100%;
+}
+
+.eva-guided-guardrails .security-guardrail-header-text {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-micro);
+  min-width: 0;
+}
+
+.eva-guided-guardrails .security-guardrail-name {
+  color: var(--text-primary);
+  font-size: var(--font-size-body-midsize);
+  font-weight: var(--font-weight-bold);
+  line-height: var(--font-lineheight-body-midsize);
+}
+
+.eva-guided-guardrails .security-guardrail-desc {
+  color: var(--text-secondary);
+  font-size: var(--font-size-body-small);
+  line-height: var(--font-lineheight-body-small);
+}
+
+.eva-guided-guardrails .security-guardrail-controls {
+  padding: var(--spacing-x-small) 0 var(--spacing-x-small) var(--spacing-xxx-large);
+}
+
+.eva-guided-guardrails .security-control-row {
+  display: grid;
+  grid-template-columns: minmax(88px, 120px) minmax(0, 320px);
+  gap: var(--spacing-medium);
+  align-items: center;
+}
+
+.eva-guided-guardrails .security-control-label {
+  color: var(--text-secondary);
+  font-size: var(--font-size-body-midsize);
+  font-weight: var(--font-weight-medium);
+}
+
+.eva-guided-guardrails .security-slider-wrap {
+  width: 100%;
+}
+
+.eva-guided-guardrails .security-sensitivity-labels--four {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: var(--spacing-xx-small);
+  margin-top: var(--spacing-xxx-small);
+  color: var(--text-secondary);
+  font-size: var(--font-size-body-small);
+  line-height: var(--font-lineheight-body-small);
+  text-align: center;
+}
+
+.eva-guided-guardrails .security-enforcement-control .radio-group-list {
+  display: flex;
+  flex-direction: row;
+  gap: var(--spacing-large);
+}
+
+@media (max-width: 760px) {
+  .eva-guided-guardrails .security-control-row {
+    grid-template-columns: 1fr;
+    gap: var(--spacing-xx-small);
+  }
+
+  .eva-guided-guardrails .security-guardrail-controls {
+    padding-left: 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .eva-guided-guardrails .security-tier-badge {
+    animation: none;
+  }
 }
 
 .eva-security-panel {

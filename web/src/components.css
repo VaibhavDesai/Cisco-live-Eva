@@ -16022,42 +16022,11 @@ img.app-header__wordmark-logo {
 }
 
 .eva-testing-method-cards {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: var(--spacing-x-small);
+  max-width: 100%;
 }
 
-.eva-testing-method-cards button {
-  display: flex;
-  flex-direction: column;
-  gap: var(--spacing-xxx-small);
-  min-width: 0;
-  padding: var(--spacing-x-small);
-  border: var(--border-width-small) solid var(--border-color);
-  border-radius: var(--border-radius-medium);
-  background: var(--bg-card);
-  color: inherit;
-  text-align: left;
-  cursor: pointer;
-}
-
-.eva-testing-method-cards button:hover {
-  background: var(--bg-hover);
-  border-color: var(--outline-input);
-}
-
-.eva-testing-method-cards strong {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--spacing-xx-small);
-  color: var(--text-primary);
-  font-size: var(--font-size-body-midsize);
-}
-
-.eva-testing-method-cards span {
-  color: var(--text-secondary);
-  font-size: var(--font-size-body-small);
-  line-height: 1.4;
+.eva-testing-method-cards.eva-channel-type-selector {
+  grid-template-columns: repeat(2, minmax(180px, 1fr));
 }
 
 .eva-testing-scenario-steps {
@@ -16101,6 +16070,11 @@ img.app-header__wordmark-logo {
 
 .eva-testing-scenario-form__count-field {
   width: 160px;
+}
+
+.eva-testing-scenario-form--review {
+  gap: var(--spacing-small);
+  background: var(--bg-glass-light);
 }
 
 .eva-testing-scenario-form__actions {
@@ -16344,9 +16318,20 @@ img.app-header__wordmark-logo {
 
 .eva-dialogue__external-actions {
   display: flex;
-  justify-content: flex-end;
+  justify-content: flex-start;
   gap: var(--spacing-xx-small);
-  padding-inline: var(--spacing-small);
+  margin-top: var(--spacing-small);
+  padding-top: var(--spacing-small);
+  padding-inline: 0;
+  background-image: var(--gradient-divider);
+  background-size: 100% var(--border-width-small);
+  background-repeat: no-repeat;
+  background-position: top;
+}
+
+.eva-next-step-block__action.btn {
+  align-self: flex-start;
+  width: auto;
 }
 
 .eva-readiness-recommendation-list {
@@ -16359,11 +16344,9 @@ img.app-header__wordmark-logo {
 }
 
 .eva-readiness-recommendation-item {
-  display: grid;
-  grid-template-columns: minmax(0, calc(100% - 180px)) 160px;
+  display: flex;
   align-items: flex-start;
-  column-gap: var(--spacing-medium);
-  row-gap: var(--spacing-x-small);
+  gap: var(--spacing-large);
   padding: var(--spacing-x-small);
   border: var(--border-width-small) solid var(--border-color);
   border-radius: var(--border-radius-medium);
@@ -16372,7 +16355,8 @@ img.app-header__wordmark-logo {
 
 .eva-readiness-recommendation-item > .btn,
 .eva-readiness-recommendation-item > .alert-chip {
-  justify-self: end;
+  flex: 0 0 auto;
+  margin-left: auto;
 }
 
 .eva-readiness-recommendation-item--fixed {
@@ -16380,28 +16364,33 @@ img.app-header__wordmark-logo {
 }
 
 .eva-readiness-recommendation-item--expanded {
-  grid-template-columns: minmax(0, 1fr);
+  flex-direction: column;
 }
 
 .eva-readiness-recommendation-copy {
   display: inline-flex;
+  flex: 1 1 0;
   min-width: 0;
-  max-width: 100%;
+  max-width: none;
+  width: auto;
   align-items: flex-start;
   gap: var(--spacing-xx-small);
   padding-top: var(--spacing-xxx-small);
 }
 
 .eva-readiness-recommendation-copy > svg,
-.eva-readiness-recommendation-copy > span:first-child {
+.eva-readiness-recommendation-copy > .icon {
   color: var(--success-color);
   flex-shrink: 0;
 }
 
 .eva-readiness-recommendation-copy span:last-child {
+  display: block;
+  flex: 1 1 auto;
   min-width: 0;
   white-space: normal;
   overflow-wrap: anywhere;
+  word-break: normal;
   color: var(--text-secondary);
   font-size: var(--font-size-body-small);
   line-height: 1.5;
@@ -16409,7 +16398,7 @@ img.app-header__wordmark-logo {
 
 @media (max-width: 720px) {
   .eva-readiness-recommendation-item {
-    grid-template-columns: minmax(0, 1fr);
+    flex-direction: column;
   }
 
   .eva-readiness-recommendation-item > .btn,

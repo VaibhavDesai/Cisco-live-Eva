@@ -628,7 +628,7 @@ export default function AgentStudioLanding() {
       <Button variant="secondary" onClick={completeCreating}>
         Complete creating
       </Button>
-      <Button onClick={() => openGuidedSetup('security')}>
+      <Button onClick={() => openGuidedSetup('instructions')}>
         <Icon name="sparkle" weight="bold" size="sm" />
         Continue setup
       </Button>

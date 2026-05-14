@@ -4,7 +4,7 @@ import { useLocation, useNavigate } from 'react-router-dom';
 import { useApp } from '../../contexts/AppContext';
 import { useDesignVariation } from '../../contexts/DesignVariationContext';
 import Button from '../../components/shared/Button';
-import { AccordionItem, AiFooter, AiResponseMessage, AiThreadPanel, AiUserMessage, Badge, Banner, Dropdown, Input, MenuItem, MenuOverlay, Modal, ModalBody, ModalFooter, ModalHeader, Radio, RadioGroup, Slider, Table, TableBody, TableCell, TableHead, TableHeader, TableRow, Textarea, TextLink, Toggle, useMenu } from '../../components/shared';
+import { AccordionGroup, AccordionItem, AiFooter, AiResponseMessage, AiThreadPanel, AiUserMessage, Badge, Banner, Dropdown, Input, MenuItem, MenuOverlay, Modal, ModalBody, ModalFooter, ModalHeader, Radio, RadioGroup, Slider, Table, TableBody, TableCell, TableHead, TableHeader, TableRow, Textarea, TextLink, Toggle, useMenu } from '../../components/shared';
 import { AgentCard } from '../../components/agents';
 import { Icon } from '../../icons';
 import EvaHeroAnimation from './EvaHeroAnimation';
@@ -626,6 +626,23 @@ const emptyTestingScenarioDraft: EvaTestingScenarioDraft = {
   evaluationDescription: '',
 };
 
+const defaultGuidedCustomProfile = {
+  name: 'Identity Verification Bypass Detection Profile',
+  description: 'Detects attempts to bypass identity verification while allowing legitimate verification-related requests.',
+  blocked: ['Skip verification requests', 'Prior verification claims', 'Social engineering attempts'],
+  allowed: ['Verification questions', 'General service inquiries'],
+  edgeCases: [] as string[],
+  createdBy: 'System',
+  createdAt: 'Last edited 18 Mar, 26',
+};
+
+const summarizeGuardrailChipLabel = (label: string) => {
+  if (label === defaultGuidedCustomProfile.description) return defaultGuidedCustomProfile.name;
+  if (/escalate urgent customer/i.test(label)) return 'Escalation rules';
+  if (label.length <= 42) return label;
+  return `${label.slice(0, 39).trim()}...`;
+};
+
 type EvaRecommendationFixCategory =
   | 'testing'
   | 'guardrails'
@@ -825,6 +842,7 @@ export default function EvaChatExperience({
   const [expandedAdvancedGroups, setExpandedAdvancedGroups] = useState<Set<string>>(
     () => new Set(restoredEvaSession?.expandedAdvancedGroups ?? EVA_ADVANCED_GUARDRAIL_GROUPS.map(group => group.id)),
   );
+  const [expandedPrebuiltGuardrailGroups, setExpandedPrebuiltGuardrailGroups] = useState<Set<string>>(() => new Set());
   const [personality, setPersonality] = useState(restoredEvaSession?.personality ?? {
     llm: 'Webex AI Pro 1.0',
     voice: 'ava',
@@ -2428,6 +2446,25 @@ export default function EvaChatExperience({
     addTestingAssistantMessage(TESTING_SCENARIO_STEP_COPY[nextStep].question);
   };
 
+  const generateTestingScenarioDraft = () => {
+    const nextDraft: EvaTestingScenarioDraft = {
+      ...emptyTestingScenarioDraft,
+      method: 'generate',
+      generateTestCaseCount: '4',
+      creativityLevel: 'Mid',
+      generateCustomInstructions: `Generate realistic customer conversations for ${agentName || 'this agent'} that validate instruction following, knowledge grounding, action usage, and guardrail behavior. Include at least one happy path, one escalation or handoff path, one policy/knowledge question, and one edge case with ambiguous customer intent.`,
+      evaluationDescription: '',
+    };
+    const withDescription = {
+      ...nextDraft,
+      evaluationDescription: buildEvaluationDescription(nextDraft),
+    };
+    setReadinessReport(null);
+    setTestingScenarioDraft(withDescription);
+    setTestingScenarioStep('ready');
+    addTestingAssistantMessage('I generated a scenario setup draft. Review and edit the generated settings, then run the test when it looks right.');
+  };
+
   const updateTestingScenarioDraft = (patch: Partial<EvaTestingScenarioDraft>) => {
     setReadinessReport(null);
     setTestingScenarioDraft(prev => ({ ...prev, ...patch }));
@@ -3572,6 +3609,14 @@ ${previewTranscript}`,
     showToast('Added task to the agent instructions.', 'success');
   };
 
+  const addGuidedCustomProfile = () => {
+    setCustomRules(prev => {
+      if (prev.length >= 3) return prev;
+      if (prev.some(rule => rule === defaultGuidedCustomProfile.description)) return prev;
+      return [defaultGuidedCustomProfile.description, ...prev];
+    });
+  };
+
   const handleReviewPreviewAction = () => {
     if (visibleSteps.includes('preview')) {
       setEvaStep('testing');
@@ -3645,9 +3690,20 @@ ${previewTranscript}`,
   const languageSummary = selectedLanguage?.label ?? personality.language;
   const agentCharacterSummary = `${selectedVoice?.label ?? personality.voice} voice · ${personality.gender === 'neutral' ? 'Neutral' : personality.gender} character`;
   const instructionSummary = summarizeInstructionPrompt(instructionPrompt);
-  const selectedGuardrailLabels = securityTier === 'advanced'
-    ? advancedGuardrailGroups.flatMap(group => group.items.filter(item => item.enabled).map(item => item.name))
-    : standardGuardrails.filter(item => item.enabled).map(item => item.name);
+  const enabledStandardGuardrails = standardGuardrails.filter(item => item.enabled);
+  const enabledAdvancedGuardrails = advancedGuardrailGroups.flatMap(group => group.items.filter(item => item.enabled));
+  const selectedGuardrailLabels = [
+    ...enabledStandardGuardrails.map(item => item.name),
+    ...enabledAdvancedGuardrails.map(item => item.name),
+    ...customRules,
+  ];
+  const standardPrebuiltGroups = {
+    security: standardGuardrails.filter(item => item.id.includes('jailbreak')),
+    privacy: [] as typeof standardGuardrails,
+    safety: standardGuardrails.filter(item => !item.id.includes('jailbreak')),
+  };
+  const prebuiltEnabledCount = enabledStandardGuardrails.length + enabledAdvancedGuardrails.length;
+  const prebuiltTotalCount = standardGuardrails.length + advancedGuardrailGroups.reduce((sum, group) => sum + group.items.length, 0);
   const hasVoiceChannel = selectedChannels.includes('voice');
   const hasDigitalChannel = selectedChannels.includes('digital');
   const hasVideoChannel = selectedChannels.includes('video');
@@ -4089,6 +4145,150 @@ ${previewTranscript}`,
       return next;
     });
   };
+
+  const togglePrebuiltGuardrailGroup = (groupId: string, open: boolean) => {
+    setExpandedPrebuiltGuardrailGroups(prev => {
+      const next = new Set(prev);
+      if (open) {
+        next.add(groupId);
+      } else {
+        next.delete(groupId);
+      }
+      return next;
+    });
+  };
+
+  const renderSecurityGuardrailControls = (
+    id: string,
+    name: string,
+    sensitivity: EvaSensitivity,
+    enforcement: EvaEnforcement,
+    direction: EvaDirection,
+    onSensitivityChange: (value: EvaSensitivity) => void,
+    onEnforcementChange: (value: EvaEnforcement) => void,
+    onDirectionChange: (value: EvaDirection) => void,
+  ) => (
+    <div className="security-guardrail-controls">
+      <div className="security-control-row">
+        <label className="security-control-label">Sensitivity</label>
+        <div className="security-slider-wrap">
+          <Slider
+            value={sensitivityToValue[sensitivity]}
+            onChange={value => onSensitivityChange(valueToSensitivity(value as number))}
+            min={0}
+            max={100}
+            step={33}
+            showTicks
+            aria-label={`${name} sensitivity`}
+          />
+          <div className="security-sensitivity-labels security-sensitivity-labels--four">
+            <span>Low</span>
+            <span>Medium</span>
+            <span>High</span>
+            <span>Critical</span>
+          </div>
+        </div>
+      </div>
+      <div className="security-control-row">
+        <label className="security-control-label">Action</label>
+        <RadioGroup
+          name={`security-action-${id}`}
+          value={enforcement}
+          onChange={value => onEnforcementChange(value as EvaEnforcement)}
+          className="security-enforcement-control"
+        >
+          <Radio value="monitor" label="Monitor" />
+          <Radio value="block" label="Block" />
+        </RadioGroup>
+      </div>
+      <div className="security-control-row">
+        <label className="security-control-label">Direction</label>
+        <RadioGroup
+          name={`security-direction-${id}`}
+          value={direction}
+          onChange={value => onDirectionChange(value as EvaDirection)}
+          className="security-enforcement-control"
+        >
+          <Radio value="prompt" label="Prompt" />
+          <Radio value="response" label="Response" />
+        </RadioGroup>
+      </div>
+    </div>
+  );
+
+  const renderStandardPrebuiltGuardrail = (guardrail: typeof standardGuardrails[number]) => (
+    <AccordionItem
+      key={guardrail.id}
+      styleVariant="borderless"
+      className="security-prebuilt-rail-item"
+      defaultExpanded={guardrail.enabled}
+      title={
+        <div className="security-guardrail-header">
+          <Toggle
+            checked={guardrail.enabled}
+            onChange={() => toggleStandardGuardrail(guardrail.id)}
+            size="compact"
+            aria-label={`${guardrail.enabled ? 'Disable' : 'Enable'} ${guardrail.name}`}
+          />
+          <div className="security-guardrail-header-text">
+            <span className="security-guardrail-name">{guardrail.name}</span>
+            <span className="security-guardrail-desc">{guardrail.description}</span>
+          </div>
+        </div>
+      }
+    >
+      {renderSecurityGuardrailControls(
+        guardrail.id,
+        guardrail.name,
+        guardrail.sensitivity,
+        guardrail.enforcement,
+        guardrail.direction,
+        value => updateStandardGuardrail(guardrail.id, 'sensitivity', value),
+        value => updateStandardGuardrail(guardrail.id, 'enforcement', value),
+        value => updateStandardGuardrail(guardrail.id, 'direction', value),
+      )}
+    </AccordionItem>
+  );
+
+  const renderAdvancedPrebuiltGuardrail = (
+    group: typeof advancedGuardrailGroups[number],
+    item: typeof advancedGuardrailGroups[number]['items'][number],
+  ) => (
+    <AccordionItem
+      key={item.id}
+      styleVariant="borderless"
+      className="security-prebuilt-rail-item"
+      defaultExpanded={item.enabled}
+      title={
+        <div className="security-guardrail-header">
+          <Toggle
+            checked={item.enabled}
+            onChange={() => {
+              if (!item.enabled) setSecurityTier('advanced');
+              toggleAdvancedGuardrail(group.id, item.id);
+            }}
+            size="compact"
+            aria-label={`${item.enabled ? 'Disable' : 'Enable'} ${item.name}`}
+          />
+          <div className="security-guardrail-header-text">
+            <span className="security-guardrail-name">{item.name}</span>
+            <span className="security-guardrail-desc">{item.description}</span>
+          </div>
+        </div>
+      }
+    >
+      {renderSecurityGuardrailControls(
+        item.id,
+        item.name,
+        item.sensitivity,
+        item.enforcement,
+        item.direction,
+        value => updateAdvancedGuardrail(group.id, item.id, 'sensitivity', value),
+        value => updateAdvancedGuardrail(group.id, item.id, 'enforcement', value),
+        value => updateAdvancedGuardrail(group.id, item.id, 'direction', value),
+      )}
+    </AccordionItem>
+  );
 
   if (landingMode === 'existing') {
     return (
@@ -5128,29 +5328,26 @@ ${previewTranscript}`,
                       })}
                     </div>
                     {hasDigitalChannel && (
-                      <div className="eva-config-grid eva-config-grid--responsive-two">
-                        <div className="eva-config-block">
-                          <label className="v2-profile-label">Digital channels</label>
-                          <div className="eva-security-tier-selector eva-channel-type-selector" role="group" aria-label="Digital channels to add">
-                            {DIGITAL_CHANNEL_OPTIONS.map(option => {
-                              const selected = selectedDigitalChannels.includes(option.value);
-                              return (
-                                <button
-                                  key={option.value}
-                                  type="button"
-                                  className={`eva-security-tier-card${selected ? ' eva-security-tier-card--selected' : ''}`}
-                                  onClick={() => toggleSelectedDigitalChannel(option.value)}
-                                  aria-pressed={selected}
-                                >
-                                  <Icon name="chat" weight="bold" size={24} />
-                                  <span>
-                                    <strong>{option.label}</strong>
-                                    <small>Add this digital entry point for the same agent.</small>
-                                  </span>
-                                </button>
-                              );
-                            })}
-                          </div>
+                      <div className="eva-config-block">
+                        <label className="v2-profile-label">Digital channels</label>
+                        <div className="eva-security-tier-selector eva-channel-type-selector" role="group" aria-label="Digital channels to add">
+                          {DIGITAL_CHANNEL_OPTIONS.map(option => {
+                            const selected = selectedDigitalChannels.includes(option.value);
+                            return (
+                              <button
+                                key={option.value}
+                                type="button"
+                                className={`eva-security-tier-card${selected ? ' eva-security-tier-card--selected' : ''}`}
+                                onClick={() => toggleSelectedDigitalChannel(option.value)}
+                                aria-pressed={selected}
+                              >
+                                <span>
+                                  <strong>{option.label}</strong>
+                                  <small>Add this digital entry point for the same agent.</small>
+                                </span>
+                              </button>
+                            );
+                          })}
                         </div>
                         <Input
                           label="Digital destination"
@@ -5516,198 +5713,207 @@ ${previewTranscript}`,
                   assistantName="AI Assistant"
                   content="For security, I broke the configuration into the same sections as the Security page: choose a guardrail tier, review observability behavior, tune standard guardrails, and optionally enable advanced AI Defense categories or custom profiles."
                 >
-                  <div className="eva-config-block">
-                    <div className="eva-security-panel">
-                      <div className="eva-security-header">
-                        <div>
-                          <h3>Security</h3>
-                          <p>Configure protection rules to control agent behavior, enforce safety policies, and prevent misuse.</p>
+                  <div className="guardrails-layout eva-guided-guardrails">
+                    <div className="guardrails-header">
+                      <div className="guardrails-header-left">
+                        <h1 className="guardrails-title">Guardrails</h1>
+                        <p className="guardrails-subtitle">
+                          Start with custom profiles for this agent&apos;s business rules, then add baseline guardrails for common risks. Triggered guardrails are logged in Sessions. Monitor logs the interaction for review. Block rejects the prompt while keeping the conversation active.
+                        </p>
+                      </div>
+                    </div>
+
+                    <section className="security-custom-profiles-section security-custom-profiles-section--hero">
+                      <div className="security-custom-profiles-header security-custom-profiles-header--hero">
+                        <div className="security-custom-profiles-title-row">
+                          <div className="security-group-header security-group-header--hero">
+                            <span>Custom profiles</span>
+                            <Badge variant="success" className="security-tier-badge security-custom-profiles-chip">Business-specific</Badge>
+                            {customRules.length > 0 && (
+                              <Badge variant="default" className="security-custom-profiles-count">
+                                {customRules.length}/3 enabled
+                              </Badge>
+                            )}
+                          </div>
                         </div>
+                        <p className="security-custom-profiles-desc security-custom-profiles-desc--hero">
+                          Create profiles that understand this agent&apos;s real business rules, like identity verification bypasses, approved service flows, and policy exceptions.
+                        </p>
                       </div>
 
-                      <div className="eva-security-tier-selector" role="radiogroup" aria-label="Security tier">
-                        <button
-                          type="button"
-                          className={`eva-security-tier-card${securityTier === 'standard' ? ' eva-security-tier-card--selected' : ''}`}
-                          onClick={() => setSecurityTier('standard')}
-                        >
-                          <Icon name="shield" weight="bold" size={24} />
-                          <span>
-                            <strong>Standard guardrails</strong>
-                            <small>Basic protection with toxicity, harm detection, and jailbreak prevention.</small>
-                            <em>{standardGuardrails.filter(item => item.enabled).length}/{standardGuardrails.length} enabled</em>
-                          </span>
-                        </button>
-                        <button
-                          type="button"
-                          className={`eva-security-tier-card${securityTier === 'advanced' ? ' eva-security-tier-card--selected' : ''}`}
-                          onClick={() => setSecurityTier('advanced')}
-                        >
-                          <Icon name="secure-circle" weight="bold" size={24} />
-                          <span>
-                            <strong>Advanced guardrails <Badge variant="success" className="security-tier-badge">AI Defense</Badge></strong>
-                            <small>Comprehensive security, privacy, and safety guardrails with custom profiles.</small>
-                            <em>{advancedGuardrailGroups.reduce((sum, group) => sum + group.items.filter(item => item.enabled).length, 0)}/{advancedGuardrailGroups.reduce((sum, group) => sum + group.items.length, 0)} enabled</em>
-                          </span>
-                        </button>
-                      </div>
-
-                      {securityTier === 'standard' && (
-                        <div className="eva-security-standard-list">
-                          {standardGuardrails.map(guardrail => (
-                            <section key={guardrail.id} className="eva-security-guardrail-card">
-                              <div className="eva-security-guardrail-header">
+                      {customRules.length > 0 ? (
+                        <div className="custom-profile-grid custom-profile-grid--hero">
+                          {customRules.slice(0, 3).map((rule, index) => (
+                            <div key={`${rule}-${index}`} className="custom-profile-card custom-profile-card--hero">
+                              <div className="custom-profile-card__header">
                                 <Toggle
+                                  checked
                                   size="compact"
-                                  checked={guardrail.enabled}
-                                  onChange={() => toggleStandardGuardrail(guardrail.id)}
-                                  aria-label={`${guardrail.enabled ? 'Disable' : 'Enable'} ${guardrail.name}`}
+                                  onChange={() => setCustomRules(prev => prev.filter((_, itemIndex) => itemIndex !== index))}
+                                  aria-label={`Disable custom profile ${index + 1}`}
                                 />
-                                <span>
-                                  <strong>{guardrail.name}</strong>
-                                  <small>{guardrail.description}</small>
-                                </span>
+                                <h4 className="custom-profile-card__name">
+                                  {index === 0 ? defaultGuidedCustomProfile.name : `Custom profile ${index + 1}`}
+                                </h4>
+                                <div className="custom-profile-card__actions">
+                                  <Button
+                                    variant="tertiary"
+                                    size="sm"
+                                    aria-label={`Edit custom profile ${index + 1}`}
+                                  >
+                                    <Icon name="edit" size={16} />
+                                  </Button>
+                                  <Button
+                                    variant="tertiary"
+                                    size="sm"
+                                    aria-label={`Delete custom profile ${index + 1}`}
+                                    onClick={() => setCustomRules(prev => prev.filter((_, itemIndex) => itemIndex !== index))}
+                                  >
+                                    <Icon name="delete" size={16} />
+                                  </Button>
+                                </div>
                               </div>
-                              {guardrail.enabled && (
-                                <div className="eva-security-controls">
-                                  <div className="eva-security-sensitivity-control">
-                                    <label>Sensitivity</label>
-                                    <Slider
-                                      value={sensitivityToValue[guardrail.sensitivity]}
-                                      onChange={value => updateStandardGuardrail(guardrail.id, 'sensitivity', valueToSensitivity(value as number))}
-                                      min={0}
-                                      max={100}
-                                      step={33}
-                                      showTicks
-                                      aria-label={`${guardrail.name} sensitivity`}
-                                    />
-                                    <div className="security-sensitivity-labels">
-                                      <span>Low</span>
-                                      <span>Medium</span>
-                                      <span>High</span>
-                                      <span>Critical</span>
+                              <p className="custom-profile-card__desc custom-profile-card__desc--expanded">
+                                {index === 0 ? defaultGuidedCustomProfile.description : rule}
+                              </p>
+                              {index === 0 && (
+                                <div className="custom-profile-card__logic-wrap">
+                                  <div className="custom-profile-card__logic custom-profile-card__logic--expanded">
+                                    <div className="custom-profile-card__logic-column custom-profile-card__logic-column--detects">
+                                      <span className="custom-profile-card__logic-label">
+                                        <Icon name="blocked" size={14} />
+                                        <span>Blocked</span>
+                                      </span>
+                                      <ul>
+                                        {defaultGuidedCustomProfile.blocked.map(item => <li key={item}>{item}</li>)}
+                                      </ul>
+                                    </div>
+                                    <div className="custom-profile-card__logic-column custom-profile-card__logic-column--allows">
+                                      <span className="custom-profile-card__logic-label">
+                                        <Icon name="check-circle" size={14} />
+                                        <span>Allows</span>
+                                      </span>
+                                      <ul>
+                                        {defaultGuidedCustomProfile.allowed.map(item => <li key={item}>{item}</li>)}
+                                      </ul>
+                                    </div>
+                                    <div className="custom-profile-card__logic-column custom-profile-card__logic-column--edge">
+                                      <span className="custom-profile-card__logic-label">
+                                        <Icon name="search" size={14} />
+                                        <span>Edge cases</span>
+                                      </span>
+                                      <ul>
+                                        {defaultGuidedCustomProfile.edgeCases.length > 0
+                                          ? defaultGuidedCustomProfile.edgeCases.map(item => <li key={item}>{item}</li>)
+                                          : <li className="custom-profile-card__logic-empty">No edge cases defined</li>}
+                                      </ul>
                                     </div>
                                   </div>
-                                  <RadioGroup
-                                    name={`eva-standard-enforcement-${guardrail.id}`}
-                                    label="Enforcement"
-                                    value={guardrail.enforcement}
-                                    onChange={value => updateStandardGuardrail(guardrail.id, 'enforcement', value as EvaEnforcement)}
-                                    className="eva-security-radio-control security-enforcement-control"
-                                  >
-                                    <Radio value="monitor" label="Monitor" />
-                                    <Radio value="block" label="Block" />
-                                  </RadioGroup>
-                                  <RadioGroup
-                                    name={`eva-standard-direction-${guardrail.id}`}
-                                    label="Direction"
-                                    value={guardrail.direction}
-                                    onChange={value => updateStandardGuardrail(guardrail.id, 'direction', value as EvaDirection)}
-                                    className="eva-security-radio-control security-enforcement-control"
-                                  >
-                                    <Radio value="prompt" label="Prompt" />
-                                    <Radio value="response" label="Response" />
-                                  </RadioGroup>
                                 </div>
                               )}
-                            </section>
-                          ))}
-                        </div>
-                      )}
-
-                      {securityTier === 'advanced' && (
-                        <div className="eva-security-advanced-list">
-                          {advancedGuardrailGroups.map(group => (
-                            <section key={group.id} className="eva-security-advanced-group">
-                              <button
-                                type="button"
-                                className="eva-security-group-header eva-security-group-header--button"
-                                onClick={() => toggleAdvancedGroup(group.id)}
-                                aria-expanded={expandedAdvancedGroups.has(group.id)}
-                              >
-                                <Icon name={group.icon} weight="bold" size={18} />
-                                <strong>{group.label}</strong>
-                                <Badge>{group.items.filter(item => item.enabled).length}/{group.items.length}</Badge>
-                                <Icon name={expandedAdvancedGroups.has(group.id) ? 'arrow-up' : 'arrow-down'} weight="bold" size={16} />
-                              </button>
-                              {expandedAdvancedGroups.has(group.id) && (
-                                <div className="eva-security-advanced-items">
-                                  {group.items.map(item => (
-                                    <section key={item.id} className="eva-security-guardrail-card eva-security-advanced-rule-card">
-                                      <div className="eva-security-guardrail-header">
-                                        <Toggle
-                                          size="compact"
-                                          checked={item.enabled}
-                                          onChange={() => toggleAdvancedGuardrail(group.id, item.id)}
-                                          aria-label={`${item.enabled ? 'Disable' : 'Enable'} ${item.name}`}
-                                        />
-                                        <span>
-                                          <strong>{item.name}</strong>
-                                          <small>{item.description}</small>
-                                        </span>
-                                      </div>
-                                      {item.enabled && (
-                                        <div className="eva-security-controls">
-                                          <div className="eva-security-sensitivity-control">
-                                            <label>Sensitivity</label>
-                                            <Slider
-                                              value={sensitivityToValue[item.sensitivity]}
-                                              onChange={value => updateAdvancedGuardrail(group.id, item.id, 'sensitivity', valueToSensitivity(value as number))}
-                                              min={0}
-                                              max={100}
-                                              step={33}
-                                              showTicks
-                                              aria-label={`${item.name} sensitivity`}
-                                            />
-                                            <div className="security-sensitivity-labels">
-                                              <span>Low</span>
-                                              <span>Medium</span>
-                                              <span>High</span>
-                                              <span>Critical</span>
-                                            </div>
-                                          </div>
-                                          <RadioGroup
-                                            name={`eva-advanced-enforcement-${group.id}-${item.id}`}
-                                            label="Enforcement"
-                                            value={item.enforcement}
-                                            onChange={value => updateAdvancedGuardrail(group.id, item.id, 'enforcement', value as EvaEnforcement)}
-                                            className="eva-security-radio-control security-enforcement-control"
-                                          >
-                                            <Radio value="monitor" label="Monitor" />
-                                            <Radio value="block" label="Block" />
-                                          </RadioGroup>
-                                          <RadioGroup
-                                            name={`eva-advanced-direction-${group.id}-${item.id}`}
-                                            label="Direction"
-                                            value={item.direction}
-                                            onChange={value => updateAdvancedGuardrail(group.id, item.id, 'direction', value as EvaDirection)}
-                                            className="eva-security-radio-control security-enforcement-control"
-                                          >
-                                            <Radio value="prompt" label="Prompt" />
-                                            <Radio value="response" label="Response" />
-                                          </RadioGroup>
-                                        </div>
-                                      )}
-                                    </section>
-                                  ))}
-                                </div>
-                              )}
-                            </section>
-                          ))}
-                          <section className="eva-security-custom-profile">
-                            <div className="eva-security-group-header">
-                              <Icon name="document-create" weight="bold" size={18} />
-                              <strong>Custom profiles</strong>
+                              <div className="custom-profile-card__meta">
+                                <span>{index === 0 ? defaultGuidedCustomProfile.createdBy : 'Generated from Eva recommendations'}</span>
+                                {index === 0 && (
+                                  <>
+                                    <span className="custom-profile-card__meta-sep" aria-hidden="true" />
+                                    <span>{defaultGuidedCustomProfile.createdAt}</span>
+                                  </>
+                                )}
+                              </div>
                             </div>
-                            <p>Generate custom profiles tailored to this agent's configuration and requirements.</p>
-                            <Button variant="secondary" size="sm">
-                              <Icon name="plus" weight="bold" size={16} />
-                              Create custom profile
-                            </Button>
-                          </section>
+                          ))}
+                        </div>
+                      ) : (
+                        <div className="custom-profile-empty-hero">
+                          <Icon name="document-create" weight="bold" size={22} />
+                          <span>No custom profiles yet. Start with a policy that matches this agent&apos;s business process.</span>
                         </div>
                       )}
-                    </div>
+                      <Button
+                        variant="secondary"
+                        size="sm"
+                        className="security-custom-profiles-create-button"
+                        disabled={customRules.length >= 3}
+                        onClick={addGuidedCustomProfile}
+                      >
+                        <Icon name="plus" weight="bold" size={16} />
+                        Create custom profile
+                      </Button>
+                    </section>
+
+                    <section className="security-prebuilt-section">
+                      <div className="security-prebuilt-header">
+                        <div>
+                          <span className="security-prebuilt-eyebrow">Baseline coverage</span>
+                          <div className="security-prebuilt-title-row">
+                            <h4 className="security-prebuilt-title">Prebuilt guardrails</h4>
+                            <Badge variant="default">{prebuiltEnabledCount} of {prebuiltTotalCount} enabled</Badge>
+                          </div>
+                          <p className="security-prebuilt-desc">
+                            Add broad protections that complement custom profiles. Categories stay collapsed so custom profiles stay easy to scan.
+                          </p>
+                        </div>
+                      </div>
+
+                      <AccordionGroup type="contained" className="security-prebuilt-groups">
+                        {advancedGuardrailGroups.map(group => {
+                          const standardItems = standardPrebuiltGroups[group.id as keyof typeof standardPrebuiltGroups] ?? [];
+                          const groupEnabledCount = standardItems.filter(item => item.enabled).length + group.items.filter(item => item.enabled).length;
+                          const groupTotalCount = standardItems.length + group.items.length;
+
+                          return (
+                            <AccordionItem
+                              key={group.id}
+                              title={
+                                <div className="security-prebuilt-category-heading">
+                                  <div className="security-prebuilt-category-title">
+                                    <Icon name={group.icon} weight="bold" size={18} />
+                                    <span>{group.label.replace(' guardrails', '')}</span>
+                                  </div>
+                                  <span className="security-prebuilt-category-meta">{groupEnabledCount} of {groupTotalCount} enabled</span>
+                                </div>
+                              }
+                              expanded={expandedPrebuiltGuardrailGroups.has(group.id)}
+                              onExpandedChange={(open) => togglePrebuiltGuardrailGroup(group.id, open)}
+                            >
+                              <div className="security-prebuilt-group-body">
+                                <p className="security-advanced-group-desc">
+                                  {group.label} protect this agent against common production risks. <TextLink variant="inline" size="sm">Learn more about {group.label.toLowerCase()}.</TextLink>
+                                </p>
+
+                                {standardItems.length > 0 && (
+                                  <div className="security-advanced-rule-section">
+                                    <div className="security-advanced-rule-section-head">
+                                      <div>
+                                        <h4>Core coverage</h4>
+                                        <p>Always-available protections for common risks in this category.</p>
+                                      </div>
+                                      <Badge variant="default">{standardItems.filter(item => item.enabled).length} out of {standardItems.length} rules enabled</Badge>
+                                    </div>
+                                    <AccordionGroup type="borderless" className="security-prebuilt-rail-list">
+                                      {standardItems.map(renderStandardPrebuiltGuardrail)}
+                                    </AccordionGroup>
+                                  </div>
+                                )}
+
+                                <div className="security-advanced-rule-section">
+                                  <div className="security-advanced-rule-section-head">
+                                    <div>
+                                      <h4>AI Defense rules</h4>
+                                      <p>Advanced protections powered by Cisco AI Defense.</p>
+                                    </div>
+                                    <Badge variant="default">{group.items.filter(item => item.enabled).length} out of {group.items.length} rules enabled</Badge>
+                                  </div>
+                                  <AccordionGroup type="borderless" className="security-prebuilt-rail-list">
+                                    {group.items.map(item => renderAdvancedPrebuiltGuardrail(group, item))}
+                                  </AccordionGroup>
+                                </div>
+                              </div>
+                            </AccordionItem>
+                          );
+                        })}
+                      </AccordionGroup>
+                    </section>
                     {evaStep === 'security' && (
                       <div className="eva-dialogue__actions">
                         <Button onClick={() => setEvaStep('review')}>Review configuration</Button>
@@ -5768,7 +5974,7 @@ ${previewTranscript}`,
                         <strong><span className="eva-config-summary__icon eva-config-summary__icon--guardrails" aria-hidden="true" />Guardrails</strong>
                         <div className="eva-config-summary__chips" aria-label="Selected guardrails">
                           {(selectedGuardrailLabels.length ? selectedGuardrailLabels : ['No guardrails selected']).map(item => (
-                            <Badge key={item} variant="default">{item}</Badge>
+                            <Badge key={item} variant="default">{summarizeGuardrailChipLabel(item)}</Badge>
                           ))}
                         </div>
                       </article>
@@ -5778,7 +5984,7 @@ ${previewTranscript}`,
                         <span>{phoneNumberDeferred ? 'Make the agent live' : 'What would you like to add next?'}</span>
                       </div>
                       {phoneNumberDeferred ? (
-                        <article className="eva-next-step-card">
+                        <>
                           <div className="eva-next-step-card__content">
                             <strong>
                               <Icon name="phone" weight="bold" size="sm" />
@@ -5788,6 +5994,7 @@ ${previewTranscript}`,
                           </div>
                           <Button
                             size="sm"
+                            className="eva-next-step-block__action"
                             onClick={() => {
                               setChannelType('voice');
                               setEvaStep('channels');
@@ -5795,7 +6002,7 @@ ${previewTranscript}`,
                           >
                             Connect phone number
                           </Button>
-                        </article>
+                        </>
                       ) : (
                         <div className="eva-next-step-block__chips">
                           {[
@@ -5869,20 +6076,26 @@ ${previewTranscript}`,
                           <p>{activeTestingScenarioCopy.helper}</p>
                         </div>
                         {testingScenarioStep === 'choose-method' && (
-                          <div className="eva-testing-method-cards" role="group" aria-label="Scenario creation method">
-                            <button type="button" onClick={() => selectTestingScenarioMethod('manual')}>
-                              <strong>
-                                <Icon name="edit" weight="bold" size="sm" />
-                                Create manually
-                              </strong>
-                              <span>Uses natural language processing to follow your set logic and responses.</span>
+                          <div className="eva-security-tier-selector eva-channel-type-selector eva-testing-method-cards" role="group" aria-label="Scenario creation method">
+                            <button
+                              type="button"
+                              className="eva-security-tier-card eva-testing-method-card"
+                              onClick={() => selectTestingScenarioMethod('manual')}
+                            >
+                              <span>
+                                <strong>Create manually</strong>
+                                <small>Uses natural language processing to follow your set logic and responses.</small>
+                              </span>
                             </button>
-                            <button type="button" onClick={() => selectTestingScenarioMethod('generate')}>
-                              <strong>
-                                <Icon name="bot" weight="bold" size="sm" />
-                                Generate a scenario with AI
-                              </strong>
-                              <span>Uses generative AI to create dynamic responses.</span>
+                            <button
+                              type="button"
+                              className="eva-security-tier-card eva-testing-method-card"
+                              onClick={generateTestingScenarioDraft}
+                            >
+                              <span>
+                                <strong>Generate a scenario with AI</strong>
+                                <small>Uses generative AI to create dynamic responses.</small>
+                              </span>
                             </button>
                           </div>
                         )}
@@ -6027,12 +6240,79 @@ ${previewTranscript}`,
                         )}
                       </div>
                       {!readinessReport && !readinessTesting && testingScenarioStep === 'ready' && (
-                        <Banner
-                          type="success"
-                          title="Overview ready"
-                          subtitle="The test will use this scenario, the current configuration, and preview transcript to generate the Passing report with aggregated performance metrics."
-                          dismissable={false}
-                        />
+                        <>
+                          <Banner
+                            type="success"
+                            title="Overview ready"
+                            subtitle="The test will use this scenario, the current configuration, and preview transcript to generate the Passing report with aggregated performance metrics."
+                            dismissable={false}
+                          />
+                          {testingScenarioDraft.method === 'generate' && (
+                            <form
+                              className="eva-testing-scenario-form eva-testing-scenario-form--review"
+                              aria-label="Review generated scenario setup"
+                              onSubmit={(event) => {
+                                event.preventDefault();
+                                handleRunReadinessTest();
+                              }}
+                            >
+                              <Input
+                                className="eva-testing-scenario-form__count-field"
+                                label="Number of test cases"
+                                required
+                                type="number"
+                                min={1}
+                                max={10}
+                                value={testingScenarioDraft.generateTestCaseCount}
+                                onChange={(event) => updateTestingScenarioDraft({ generateTestCaseCount: event.currentTarget.value })}
+                              />
+                              <div className="eva-testing-creativity-slider">
+                                <label>Creativity level</label>
+                                <Slider
+                                  value={
+                                    testingScenarioDraft.creativityLevel === 'Low'
+                                      ? 0
+                                      : testingScenarioDraft.creativityLevel === 'High'
+                                        ? 100
+                                        : 50
+                                  }
+                                  min={0}
+                                  max={100}
+                                  step={50}
+                                  showTicks
+                                  aria-label="Creativity level"
+                                  onChange={(value) => {
+                                    const numeric = Number(value);
+                                    updateTestingScenarioDraft({
+                                      creativityLevel: numeric <= 0 ? 'Low' : numeric >= 100 ? 'High' : 'Mid',
+                                    });
+                                  }}
+                                />
+                                <div className="eva-testing-creativity-labels">
+                                  <span>Low</span>
+                                  <span>Mid</span>
+                                  <span>High</span>
+                                </div>
+                              </div>
+                              <Textarea
+                                label="Custom instructions"
+                                required
+                                rows={4}
+                                value={testingScenarioDraft.generateCustomInstructions}
+                                placeholder="Focus on knowledge grounding, handoff behavior, and policy-question accuracy."
+                                onChange={(event) => updateTestingScenarioDraft({ generateCustomInstructions: event.currentTarget.value })}
+                              />
+                              <Textarea
+                                label="Evaluation description"
+                                required
+                                rows={3}
+                                value={testingScenarioDraft.evaluationDescription}
+                                placeholder="Comprehensive agent test covering scenario behavior, guardrails, observability, and knowledge/action coverage."
+                                onChange={(event) => updateTestingScenarioDraft({ evaluationDescription: event.currentTarget.value })}
+                              />
+                            </form>
+                          )}
+                        </>
                       )}
                       {readinessTesting && (
                         <div className="eva-readiness-empty" role="status">
