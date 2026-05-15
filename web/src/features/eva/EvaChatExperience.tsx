@@ -626,15 +626,110 @@ const emptyTestingScenarioDraft: EvaTestingScenarioDraft = {
   evaluationDescription: '',
 };
 
-const defaultGuidedCustomProfile = {
-  name: 'Identity Verification Bypass Detection Profile',
-  description: 'Detects attempts to bypass identity verification while allowing legitimate verification-related requests.',
-  blocked: ['Skip verification requests', 'Prior verification claims', 'Social engineering attempts'],
-  allowed: ['Verification questions', 'General service inquiries'],
-  edgeCases: [] as string[],
-  createdBy: 'System',
-  createdAt: 'Last edited 18 Mar, 26',
+type GuidedPolicyOverview = {
+  blocked: { text: string }[];
+  allowed: { text: string }[];
+  edgeCases: { text: string }[];
 };
+
+type GuidedCustomProfile = {
+  id: string;
+  name: string;
+  description: string;
+  enabled: boolean;
+  createdBy: string;
+  createdAt: string;
+  overview: GuidedPolicyOverview;
+};
+
+function ClampedDesc({ text, expanded, onToggle }: { text: string; expanded: boolean; onToggle: () => void }) {
+  const ref = useRef<HTMLParagraphElement>(null);
+  const [overflows, setOverflows] = useState(false);
+
+  useEffect(() => {
+    const el = ref.current;
+    if (el) setOverflows(el.scrollHeight > el.clientHeight + 1);
+  }, [text, expanded]);
+
+  return (
+    <div className="custom-profile-card__body">
+      <p ref={ref} className={`custom-profile-card__desc${expanded ? ' custom-profile-card__desc--expanded' : ''}`}>{text}</p>
+      {(overflows || expanded) && (
+        <TextLink variant="inline" size="sm" onClick={(e) => { e.preventDefault(); onToggle(); }}>
+          {expanded ? 'Collapse' : 'View all'}
+        </TextLink>
+      )}
+    </div>
+  );
+}
+
+function ProfileLogicSummary({ overview }: { overview: GuidedPolicyOverview }) {
+  const hasOverview = overview.blocked.length > 0 || overview.allowed.length > 0 || overview.edgeCases.length > 0;
+
+  if (!hasOverview) return null;
+
+  const logicCounts = [
+    {
+      key: 'blocked',
+      icon: 'blocked',
+      iconColor: 'var(--danger-color)',
+      label: `${overview.blocked.length} blocked`,
+    },
+    {
+      key: 'allows',
+      icon: 'check-circle',
+      iconColor: 'var(--success-color, var(--accent-color))',
+      label: `${overview.allowed.length} allow${overview.allowed.length === 1 ? '' : 's'}`,
+    },
+    {
+      key: 'edge',
+      icon: 'search',
+      iconColor: 'var(--warning-color, var(--accent-color))',
+      label: `${overview.edgeCases.length} edge case${overview.edgeCases.length === 1 ? '' : 's'}`,
+    },
+  ] as const;
+
+  return (
+    <div className="custom-profile-card__logic-wrap">
+      <div className="custom-profile-card__logic" aria-label="Custom profile rule summary">
+        {logicCounts.map(item => (
+          <span key={item.key} className="custom-profile-card__logic-item">
+            <Icon name={item.icon} size={14} className="custom-profile-card__logic-icon" color={item.iconColor} />
+            <span>{item.label}</span>
+          </span>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+const defaultGuidedCustomProfile: GuidedCustomProfile = {
+  id: 'custom-identity-verification-bypass',
+  name: 'ID verification bypass detect',
+  description: 'Detects attempts to bypass identity verification while allowing legitimate verification-related requests.',
+  enabled: true,
+  createdBy: 'System',
+  createdAt: 'Last edited Mar 18, 2026',
+  overview: {
+    blocked: [
+      { text: 'Skip verification requests' },
+      { text: 'Prior verification claims' },
+      { text: 'Social engineering attempts' },
+    ],
+    allowed: [
+      { text: 'Verification questions' },
+      { text: 'General service inquiries' },
+    ],
+    edgeCases: [],
+  },
+};
+
+const guidedCustomProfileLimit = 3;
+const guidedCustomProfileDescriptions = [
+  defaultGuidedCustomProfile.description,
+  'Detects escalation-specific requests and ensures urgent customer issues follow approved handoff rules.',
+  'Detects policy exception requests and keeps agent responses aligned to approved business workflows.',
+] as const;
 
 const summarizeGuardrailChipLabel = (label: string) => {
   if (label === defaultGuidedCustomProfile.description) return defaultGuidedCustomProfile.name;
@@ -850,6 +945,8 @@ export default function EvaChatExperience({
     gender: 'neutral',
   });
   const [customRules, setCustomRules] = useState<string[]>(restoredEvaSession?.customRules ?? []);
+  const [disabledCustomRules, setDisabledCustomRules] = useState<Set<string>>(() => new Set());
+  const [expandedProfileDescs, setExpandedProfileDescs] = useState<Set<string>>(() => new Set());
   const [previewMessages, setPreviewMessages] = useState<EvaMessage[]>([]);
   const [previewThinking, setPreviewThinking] = useState(false);
   const [voiceCallStatus, setVoiceCallStatus] = useState<EvaVoiceCallStatus>('idle');
@@ -1269,8 +1366,7 @@ export default function EvaChatExperience({
 
   const isRetailReceptionistStoryIntent = (normalized: string) => (
     /\bagents?\b/.test(normalized) &&
-    /\bacme\b/.test(normalized) &&
-    /\belectronics\b/.test(normalized)
+    /\bacme\b/.test(normalized)
   );
 
   const addOnboardingAssistantMessage = (text: string, followups?: string[], originStep?: string) => {
@@ -2004,7 +2100,9 @@ export default function EvaChatExperience({
       knowledgeBases: selectedKnowledgeBases,
     });
     showToast(`AI Assistant created "${agentName}" as a draft agent.`, 'success');
-    navigateToAgentStudio(agent.id);
+    selectAgent(agent.id);
+    setVariation('dashboard');
+    navigate('/agents');
   };
 
   const handleAgentClick = (agentId: string) => {
@@ -2775,7 +2873,7 @@ Configured agent:
 - Knowledge sources available: ${selectedKnowledgeBases.length > 0 ? selectedKnowledgeBases.join(', ') : '(none selected)'}
 - Actions enabled: ${selectedActions.length > 0 ? selectedActions.join(', ') : '(none enabled)'}
 - Instructions: ${instructionPrompt || buildInstructionPrompt(draft)}
-- Guardrails: {[...draft.security, ...customRules].join('; ') || '(none configured)'}
+- Guardrails: {[...draft.security, ...enabledCustomRules].join('; ') || '(none configured)'}
 
 Simulation rules:
 - Answer as the configured agent would answer an end user.
@@ -3488,7 +3586,7 @@ Voice/personality: ${agentCharacterSummary}
 Instructions: ${instructionPrompt || buildInstructionPrompt(draft)}
 Knowledge sources: ${selectedKnowledgeBases.join(', ') || '(none selected)'}
 Actions enabled: ${selectedActions.join(', ') || '(none enabled)'}
-Guardrails: {[...draft.security, ...customRules].join('; ') || '(none configured)'}
+Guardrails: {[...draft.security, ...enabledCustomRules].join('; ') || '(none configured)'}
 Custom test scenario:
 ${testingScenarioSummary}
 Preview transcript:
@@ -3538,7 +3636,8 @@ ${previewTranscript}`,
   const saveRecommendationFix = () => {
     if (!activeRecommendationFix) return;
     const meta = getReadinessRecommendationFixMeta(activeRecommendationFix);
-    if (meta.category !== 'actions' && !recommendationFixNote.trim()) return;
+    const requiresFixNote = !['actions', 'knowledge'].includes(meta.category);
+    if (requiresFixNote && !recommendationFixNote.trim()) return;
 
     if (meta.category === 'guardrails') {
       setSecurityTier('advanced');
@@ -3587,7 +3686,7 @@ ${previewTranscript}`,
         selectedActions,
         channelSummary,
         languageSummary,
-        customRules,
+        customRules: enabledCustomRules,
       });
       const history: { role: 'system' | 'user' | 'assistant'; content: string }[] = [
         { role: 'system', content: systemPrompt },
@@ -3628,11 +3727,63 @@ ${previewTranscript}`,
     showToast('Added task to the agent instructions.', 'success');
   };
 
+  const getGuidedCustomProfile = (rule: string, index: number): GuidedCustomProfile => {
+    if (rule === defaultGuidedCustomProfile.description) {
+      return {
+        ...defaultGuidedCustomProfile,
+        enabled: !disabledCustomRules.has(rule),
+      };
+    }
+
+    return {
+      id: `custom-profile-${index + 1}`,
+      name: `Custom profile ${index + 1}`,
+      description: rule,
+      enabled: !disabledCustomRules.has(rule),
+      createdBy: 'System',
+      createdAt: 'Last edited Mar 18, 2026',
+      overview: defaultGuidedCustomProfile.overview,
+    };
+  };
+
+  const toggleGuidedCustomProfile = (rule: string, profileName: string) => {
+    const willEnable = disabledCustomRules.has(rule);
+    setDisabledCustomRules(prev => {
+      const next = new Set(prev);
+      if (willEnable) {
+        next.delete(rule);
+      } else {
+        next.add(rule);
+      }
+      return next;
+    });
+    showToast(`${profileName} profile ${willEnable ? 'enabled' : 'disabled'}`, 'success');
+  };
+
+  const deleteGuidedCustomProfile = (rule: string) => {
+    setCustomRules(prev => prev.filter(item => item !== rule));
+    setDisabledCustomRules(prev => {
+      const next = new Set(prev);
+      next.delete(rule);
+      return next;
+    });
+  };
+
   const addGuidedCustomProfile = () => {
+    const nextRule = customRules.length < guidedCustomProfileLimit
+      ? guidedCustomProfileDescriptions.find(rule => !customRules.includes(rule))
+      : undefined;
+    if (!nextRule) return;
+
     setCustomRules(prev => {
-      if (prev.length >= 3) return prev;
-      if (prev.some(rule => rule === defaultGuidedCustomProfile.description)) return prev;
-      return [defaultGuidedCustomProfile.description, ...prev];
+      if (prev.length >= guidedCustomProfileLimit) return prev;
+      if (prev.includes(nextRule)) return prev;
+      return [...prev, nextRule];
+    });
+    setDisabledCustomRules(prev => {
+      const next = new Set(prev);
+      next.delete(nextRule);
+      return next;
     });
   };
 
@@ -3711,11 +3862,14 @@ ${previewTranscript}`,
   const instructionSummary = summarizeInstructionPrompt(instructionPrompt);
   const enabledStandardGuardrails = standardGuardrails.filter(item => item.enabled);
   const enabledAdvancedGuardrails = advancedGuardrailGroups.flatMap(group => group.items.filter(item => item.enabled));
+  const enabledCustomRules = customRules.filter(rule => !disabledCustomRules.has(rule));
   const selectedGuardrailLabels = [
     ...enabledStandardGuardrails.map(item => item.name),
     ...enabledAdvancedGuardrails.map(item => item.name),
-    ...customRules,
+    ...enabledCustomRules,
   ];
+  const customProfileAppliedCount = enabledCustomRules.length;
+  const customProfileLimit = guidedCustomProfileLimit;
   const standardPrebuiltGroups = {
     security: standardGuardrails.filter(item => item.id.includes('jailbreak')),
     privacy: [] as typeof standardGuardrails,
@@ -5759,13 +5913,17 @@ ${previewTranscript}`,
                       <div className="security-custom-profiles-header security-custom-profiles-header--hero">
                         <div className="security-custom-profiles-title-row">
                           <div className="security-group-header security-group-header--hero">
-                            <span>Custom profiles</span>
-                            <Badge variant="success" className="security-tier-badge security-custom-profiles-chip">Business-specific</Badge>
-                            {customRules.length > 0 && (
-                              <Badge variant="default" className="security-custom-profiles-count">
-                                {customRules.length}/3 enabled
-                              </Badge>
-                            )}
+                            <div className="security-custom-profiles-title-stack">
+                              <div className="security-custom-profiles-heading-line">
+                                <span>Custom profiles</span>
+                                <Badge variant="success" className="security-tier-badge security-custom-profiles-chip">Business-specific</Badge>
+                              </div>
+                              {customRules.length > 0 && (
+                                <span className="security-custom-profiles-count-text">
+                                  {customProfileAppliedCount} of {customProfileLimit} enabled
+                                </span>
+                              )}
+                            </div>
                           </div>
                         </div>
                         <p className="security-custom-profiles-desc security-custom-profiles-desc--hero">
@@ -5775,85 +5933,55 @@ ${previewTranscript}`,
 
                       {customRules.length > 0 ? (
                         <div className="custom-profile-grid custom-profile-grid--hero">
-                          {customRules.slice(0, 3).map((rule, index) => (
-                            <div key={`${rule}-${index}`} className="custom-profile-card custom-profile-card--hero">
-                              <div className="custom-profile-card__header">
-                                <Toggle
-                                  checked
-                                  size="compact"
-                                  onChange={() => setCustomRules(prev => prev.filter((_, itemIndex) => itemIndex !== index))}
-                                  aria-label={`Disable custom profile ${index + 1}`}
-                                />
-                                <h4 className="custom-profile-card__name">
-                                  {index === 0 ? defaultGuidedCustomProfile.name : `Custom profile ${index + 1}`}
-                                </h4>
-                                <div className="custom-profile-card__actions">
-                                  <Button
-                                    variant="tertiary"
-                                    size="sm"
-                                    aria-label={`Edit custom profile ${index + 1}`}
-                                  >
-                                    <Icon name="edit" size={16} />
-                                  </Button>
-                                  <Button
-                                    variant="tertiary"
-                                    size="sm"
-                                    aria-label={`Delete custom profile ${index + 1}`}
-                                    onClick={() => setCustomRules(prev => prev.filter((_, itemIndex) => itemIndex !== index))}
-                                  >
-                                    <Icon name="delete" size={16} />
-                                  </Button>
-                                </div>
-                              </div>
-                              <p className="custom-profile-card__desc custom-profile-card__desc--expanded">
-                                {index === 0 ? defaultGuidedCustomProfile.description : rule}
-                              </p>
-                              {index === 0 && (
-                                <div className="custom-profile-card__logic-wrap">
-                                  <div className="custom-profile-card__logic custom-profile-card__logic--expanded">
-                                    <div className="custom-profile-card__logic-column custom-profile-card__logic-column--detects">
-                                      <span className="custom-profile-card__logic-label">
-                                        <Icon name="blocked" size={14} />
-                                        <span>Blocked</span>
-                                      </span>
-                                      <ul>
-                                        {defaultGuidedCustomProfile.blocked.map(item => <li key={item}>{item}</li>)}
-                                      </ul>
-                                    </div>
-                                    <div className="custom-profile-card__logic-column custom-profile-card__logic-column--allows">
-                                      <span className="custom-profile-card__logic-label">
-                                        <Icon name="check-circle" size={14} />
-                                        <span>Allows</span>
-                                      </span>
-                                      <ul>
-                                        {defaultGuidedCustomProfile.allowed.map(item => <li key={item}>{item}</li>)}
-                                      </ul>
-                                    </div>
-                                    <div className="custom-profile-card__logic-column custom-profile-card__logic-column--edge">
-                                      <span className="custom-profile-card__logic-label">
-                                        <Icon name="search" size={14} />
-                                        <span>Edge cases</span>
-                                      </span>
-                                      <ul>
-                                        {defaultGuidedCustomProfile.edgeCases.length > 0
-                                          ? defaultGuidedCustomProfile.edgeCases.map(item => <li key={item}>{item}</li>)
-                                          : <li className="custom-profile-card__logic-empty">No edge cases defined</li>}
-                                      </ul>
-                                    </div>
+                          {customRules.slice(0, 3).map((rule, index) => {
+                            const item = getGuidedCustomProfile(rule, index);
+
+                            return (
+                              <div key={item.id} className={`custom-profile-card custom-profile-card--hero${item.enabled ? '' : ' custom-profile-card--disabled'}`}>
+                                <div className="custom-profile-card__header">
+                                  <Toggle
+                                    checked={item.enabled}
+                                    aria-label={`${item.enabled ? 'Disable' : 'Enable'} ${item.name} profile`}
+                                    onChange={() => toggleGuidedCustomProfile(rule, item.name)}
+                                    size="compact"
+                                  />
+                                  <h4 className="custom-profile-card__name">{item.name}</h4>
+                                  <div className="custom-profile-card__actions">
+                                    <Button
+                                      variant="tertiary"
+                                      size="sm"
+                                      aria-label={`Edit ${item.name}`}
+                                    >
+                                      <Icon name="edit" size={16} />
+                                    </Button>
+                                    <Button
+                                      variant="tertiary"
+                                      size="sm"
+                                      aria-label={`Delete ${item.name}`}
+                                      onClick={() => deleteGuidedCustomProfile(rule)}
+                                    >
+                                      <Icon name="delete" size={16} />
+                                    </Button>
                                   </div>
                                 </div>
-                              )}
-                              <div className="custom-profile-card__meta">
-                                <span>{index === 0 ? defaultGuidedCustomProfile.createdBy : 'Generated from Eva recommendations'}</span>
-                                {index === 0 && (
-                                  <>
-                                    <span className="custom-profile-card__meta-sep" aria-hidden="true" />
-                                    <span>{defaultGuidedCustomProfile.createdAt}</span>
-                                  </>
-                                )}
+                                <ClampedDesc
+                                  text={item.description}
+                                  expanded={expandedProfileDescs.has(item.id)}
+                                  onToggle={() => setExpandedProfileDescs(prev => {
+                                    const next = new Set(prev);
+                                    if (next.has(item.id)) next.delete(item.id); else next.add(item.id);
+                                    return next;
+                                  })}
+                                />
+                                <ProfileLogicSummary overview={item.overview} />
+                                <div className="custom-profile-card__meta">
+                                  <span>{item.createdBy}</span>
+                                  <span className="custom-profile-card__meta-sep" aria-hidden="true" />
+                                  <span>{item.createdAt}</span>
+                                </div>
                               </div>
-                            </div>
-                          ))}
+                            );
+                          })}
                         </div>
                       ) : (
                         <div className="custom-profile-empty-hero">
@@ -5862,10 +5990,10 @@ ${previewTranscript}`,
                         </div>
                       )}
                       <Button
-                        variant="secondary"
+                        variant="primary"
                         size="sm"
                         className="security-custom-profiles-create-button"
-                        disabled={customRules.length >= 3}
+                        disabled={customRules.length >= customProfileLimit}
                         onClick={addGuidedCustomProfile}
                       >
                         <Icon name="plus" weight="bold" size={16} />
@@ -5878,8 +6006,12 @@ ${previewTranscript}`,
                         <div>
                           <span className="security-prebuilt-eyebrow">Baseline coverage</span>
                           <div className="security-prebuilt-title-row">
-                            <h4 className="security-prebuilt-title">Prebuilt guardrails</h4>
-                            <Badge variant="default">{prebuiltEnabledCount} of {prebuiltTotalCount} enabled</Badge>
+                            <div className="security-prebuilt-title-stack">
+                              <h4 className="security-prebuilt-title">Prebuilt guardrails</h4>
+                              <span className="security-prebuilt-count-text">
+                                {prebuiltEnabledCount} of {prebuiltTotalCount} enabled
+                              </span>
+                            </div>
                           </div>
                           <p className="security-prebuilt-desc">
                             Add broad protections that complement custom profiles. Categories stay collapsed so custom profiles stay easy to scan.
@@ -6057,6 +6189,9 @@ ${previewTranscript}`,
                       <Button onClick={handleReviewPreviewAction}>
                         Preview
                       </Button>
+                      <Button variant="secondary" onClick={createDraftAgent}>
+                        Complete creating agent
+                      </Button>
                     </div>
                   )}
                 </AiResponseMessage>
@@ -6076,6 +6211,9 @@ ${previewTranscript}`,
                   <div className="eva-dialogue__actions">
                     <Button onClick={() => setEvaStep('testing')}>
                       Evaluate my agent
+                    </Button>
+                    <Button variant="secondary" onClick={createDraftAgent}>
+                      Complete creating agent
                     </Button>
                   </div>
                 </AiResponseMessage>
@@ -6273,12 +6411,6 @@ ${previewTranscript}`,
                       </div>
                       {!readinessReport && !readinessTesting && testingScenarioStep === 'ready' && (
                         <>
-                          <Banner
-                            type="success"
-                            title="Overview ready"
-                            subtitle="The test will use this scenario, the current configuration, and preview transcript to generate the Passing report with aggregated performance metrics."
-                            dismissable={false}
-                          />
                           {testingScenarioDraft.method === 'generate' && (
                             <form
                               className="eva-testing-scenario-form eva-testing-scenario-form--review"
@@ -6344,6 +6476,12 @@ ${previewTranscript}`,
                               />
                             </form>
                           )}
+                          <Banner
+                            type="success"
+                            title="Overview ready"
+                            subtitle="The test will use this scenario, the current configuration, and preview transcript to generate the Passing report with aggregated performance metrics."
+                            dismissable={false}
+                          />
                         </>
                       )}
                       {readinessTesting && (
@@ -6502,24 +6640,6 @@ ${previewTranscript}`,
                                       )}
                                       {isExpandedGuardrailFix ? (
                                         <div className="eva-readiness-recommendation-fix-panel">
-                                          <div className="eva-readiness-guardrail-tier-row" role="group" aria-label="Guardrail tier">
-                                            <Button
-                                              type="button"
-                                              variant={securityTier === 'standard' ? 'primary' : 'secondary'}
-                                              size="sm"
-                                              onClick={() => setSecurityTier('standard')}
-                                            >
-                                              Standard
-                                            </Button>
-                                            <Button
-                                              type="button"
-                                              variant={securityTier === 'advanced' ? 'primary' : 'secondary'}
-                                              size="sm"
-                                              onClick={() => setSecurityTier('advanced')}
-                                            >
-                                              Advanced
-                                            </Button>
-                                          </div>
                                           <Textarea
                                             label="Guardrail rules"
                                             required

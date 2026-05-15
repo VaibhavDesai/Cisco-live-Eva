@@ -16045,7 +16045,6 @@ img.app-header__wordmark-logo {
 
 .eva-testing-scenario-question--header {
   padding-bottom: var(--spacing-xx-small);
-  border-bottom: var(--border-width-small) solid var(--border-color);
 }
 
 .eva-testing-scenario-question strong {
