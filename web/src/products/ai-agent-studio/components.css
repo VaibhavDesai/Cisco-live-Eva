@@ -3824,6 +3824,11 @@ html[data-product='ai-agent-studio'] .app-header {
   padding-bottom: clamp(220px, 34vh, 360px);
 }
 
+.eva-first-interface--free-chat .eva-first-interface__free-chat--agent-name-focus,
+.eva-first-interface--generated.eva-first-interface--free-chat .eva-first-interface__free-chat--agent-name-focus {
+  padding-bottom: clamp(180px, 28vh, 300px);
+}
+
 /* Free-chat composer width — when the chat-based variation is in
    free-chat mode (user is talking to the LLM but hasn't picked a
    template yet), the composer must visually match the conversation

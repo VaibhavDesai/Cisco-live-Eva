@@ -1129,9 +1129,28 @@ export default function EvaChatExperience({
           return;
         }
 
-        const latestBlock = scrollContainer.lastElementChild as HTMLElement | null;
+        const retailStepBlocks = latestAssistantMessage?.originStep
+          ? Array.from(scrollContainer.querySelectorAll<HTMLElement>(`[data-retail-origin-step="${latestAssistantMessage.originStep}"]`))
+          : [];
+        const latestBlock =
+          retailStepBlocks[retailStepBlocks.length - 1] ??
+          (scrollContainer.lastElementChild as HTMLElement | null);
         if (!latestBlock) return;
-        const offset = latestBlock.offsetTop - scrollContainer.offsetTop - 24;
+        const shouldCenterRetailPrompt =
+          latestAssistantMessage?.originStep === 'retail-agent-name' &&
+          retailPrototypeStep === 'agent-name';
+        const shouldLiftAnsweredRetailNamePrompt =
+          latestAssistantMessage?.originStep === 'retail-agent-name' &&
+          retailPrototypeStep === 'welcome';
+        const latestBlockRect = latestBlock.getBoundingClientRect();
+        const scrollContainerRect = scrollContainer.getBoundingClientRect();
+        const offset = shouldCenterRetailPrompt || shouldLiftAnsweredRetailNamePrompt
+          ? scrollContainer.scrollTop + latestBlockRect.top - scrollContainerRect.top - (
+            shouldCenterRetailPrompt
+              ? (scrollContainer.clientHeight - latestBlockRect.height) / 2
+              : Math.max(96, scrollContainer.clientHeight * 0.18)
+          )
+          : latestBlock.offsetTop - scrollContainer.offsetTop - 24;
         scrollContainer.scrollTo({ top: Math.max(0, offset), behavior: 'smooth' });
         return;
       }
@@ -1143,7 +1162,7 @@ export default function EvaChatExperience({
     });
     return () => window.cancelAnimationFrame(frameId);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [latestUserMessageText, messages.length, waterfallThinking, evaThinking, retailDiscoveryProgress, freeChatActive, guidanceVisible, orchestrationSuggested]);
+  }, [latestUserMessageText, messages.length, waterfallThinking, evaThinking, retailDiscoveryProgress, retailPrototypeStep, freeChatActive, guidanceVisible, orchestrationSuggested]);
 
   const completeEvaThinking = (callback: () => void) => {
     /* Deterministic build flow — clear any prior free-chat state so the
@@ -1249,9 +1268,9 @@ export default function EvaChatExperience({
   };
 
   const isRetailReceptionistStoryIntent = (normalized: string) => (
-    normalized.includes('agent') &&
-    normalized.includes('acme electronics') &&
-    normalized.includes('san jose')
+    /\bagents?\b/.test(normalized) &&
+    /\bacme\b/.test(normalized) &&
+    /\belectronics\b/.test(normalized)
   );
 
   const addOnboardingAssistantMessage = (text: string, followups?: string[], originStep?: string) => {
@@ -4630,6 +4649,18 @@ ${previewTranscript}`,
               messages.some(message => message.originStep === 'retail-phone-choice')
                 ? ' eva-first-interface__free-chat--phone-focus'
                 : ''
+            }${
+              messages.some(message => message.originStep === 'retail-agent-name') &&
+              (
+                retailPrototypeStep === 'agent-name' ||
+                (
+                  retailPrototypeStep === 'welcome' &&
+                  evaThinking &&
+                  !messages.some(message => message.originStep === 'retail-welcome-choice')
+                )
+              )
+                ? ' eva-first-interface__free-chat--agent-name-focus'
+                : ''
             }`}
             aria-label="AI Assistant conversation"
             aria-live="polite"
@@ -4688,6 +4719,7 @@ ${previewTranscript}`,
                 <AiResponseMessage
                   key={`free-${index}`}
                   className="eva-ai-response"
+                  data-retail-origin-step={message.originStep}
                   showActions={false}
                   assistantName="AI Assistant"
                   content={isRetailChannelChoice ? (

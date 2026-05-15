@@ -79,6 +79,7 @@ function AiResponseMessage({
   assistantState = 'static',
   className = '',
   showActions = true,
+  ...rootProps
 }) {
   const [feedback, setFeedback] = useState(null)
   const [feedbackSent, setFeedbackSent] = useState(false)
@@ -111,7 +112,7 @@ function AiResponseMessage({
   const responseContent = shouldShowGeneratingText ? 'Generating response...' : content
 
   return (
-    <div className={`ai-response ai-response--${assistantState} ${className}`}>
+    <div {...rootProps} className={`ai-response ai-response--${assistantState} ${className}`}>
       <div className="ai-response__accent" />
 
       <div className="ai-response__header">
