@@ -5121,11 +5121,18 @@ html[data-product='ai-agent-studio'] .app-header {
   width: 100%;
   margin: 0;
   padding: 0 10px;
+  opacity: 0.35;
+  transition: opacity 0.15s ease;
 }
 
 .sidebar-design-variation-select .form-label {
   margin-bottom: 4px;
   text-align: left;
+}
+
+.sidebar-design-variation-select.form-group:hover,
+.sidebar-design-variation-select.form-group:focus-within {
+  opacity: 0.55;
 }
 
 /* Comment-mode toggle — sits above the org pill, matches its pill shape. */
@@ -5142,6 +5149,13 @@ html[data-product='ai-agent-studio'] .app-header {
   font-size: 14px;
   font-weight: 500;
   line-height: 20px;
+  opacity: 0.35;
+  transition: opacity 0.15s ease;
+}
+
+.sidebar-comment-toggle:hover,
+.sidebar-comment-toggle:focus-within {
+  opacity: 0.55;
 }
 
 .sidebar-comment-toggle--with-hint {

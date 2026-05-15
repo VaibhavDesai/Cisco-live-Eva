@@ -19,7 +19,6 @@ const navItems: NavItem[] = [
   { path: '/observability', label: 'Observability', icon: 'multiline-chart-regular' },
   { path: '/assistant-skills', label: 'AI Assistant Skills', icon: 'setup-assistant-bold' },
   { path: '/knowledge', label: 'Knowledge', icon: 'apps-bold' },
-  { path: '/connections', label: 'Integrations', icon: 'extension-mobility-bold' },
   { path: '/settings', label: 'AI Engine', icon: 'tools-bold' },
 ];
 
