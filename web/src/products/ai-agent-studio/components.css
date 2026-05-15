@@ -2459,6 +2459,10 @@ html[data-product='ai-agent-studio'] .app-header {
   padding-top: var(--spacing-small);
 }
 
+.eva-guided-guardrails .custom-profile-grid--hero {
+  padding-top: 0;
+}
+
 .eva-guided-guardrails .custom-profile-card {
   --custom-profile-card-default-width: min(100%, 520px);
   display: flex;
