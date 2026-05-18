@@ -4,7 +4,7 @@ import { useLocation, useNavigate } from 'react-router-dom';
 import { useApp } from '../../contexts/AppContext';
 import { useDesignVariation } from '../../contexts/DesignVariationContext';
 import Button from '../../components/shared/Button';
-import { AccordionGroup, AccordionItem, AiFooter, AiResponseMessage, AiThreadPanel, AiUserMessage, Badge, Banner, Dropdown, Input, MenuItem, MenuOverlay, Modal, ModalBody, ModalFooter, ModalHeader, Radio, RadioGroup, Slider, Table, TableBody, TableCell, TableHead, TableHeader, TableRow, Textarea, TextLink, Toggle, useMenu } from '../../components/shared';
+import { AccordionGroup, AccordionItem, AiFooter, AiResponseMessage, AiThreadPanel, AiUserMessage, Badge, Banner, Card, Dropdown, Input, MenuItem, MenuOverlay, Modal, ModalBody, ModalFooter, ModalHeader, Radio, RadioGroup, Slider, Table, TableBody, TableCell, TableHead, TableHeader, TableRow, Textarea, TextLink, Toggle, useMenu } from '../../components/shared';
 import { AgentCard } from '../../components/agents';
 import { Icon } from '../../icons';
 import EvaHeroAnimation from './EvaHeroAnimation';
@@ -163,7 +163,7 @@ function float32ToPcm16Base64(input: Float32Array): string {
    build flow. The keyword list mirrors the matcher in that handler. */
 const EVA_SYSTEM_PROMPT = `You are AI Assistant, a conversational AI assistant inside Webex AI Agent Studio. You help product designers and admins design AI agents — defining purpose, knowledge sources, available actions, security policies, voice, and language settings.
 
-Available starter templates (and the trigger keywords that launch the guided build flow): Customer support (keyword: "support"), Knowledge assistant (keywords: "healthcare", "reception"), Workflow automation (keywords: "IT", "ticket", "helpdesk"), Policy compliance (keyword: "compliance"), Sales enablement (keyword: "sales").
+Available starter templates (and the trigger keywords that launch the guided build flow): Customer support (keyword: "support"), Candidate feedback loop agent (keywords: "candidate", "hiring", "interview", "feedback"), AI incident command agent (keywords: "incident", "outage", "Jira"), Property management service agent (keywords: "property", "tenant", "maintenance", "ServiceNow"), Sales enablement (keyword: "sales").
 
 Guidelines:
 - Keep replies concise (2–4 sentences). Be specific and actionable.
@@ -286,16 +286,16 @@ const CONTINUE_TO_STUDIO_LABEL = 'Continue in AI Agent Studio';
 const RETAIL_VOICE_LABEL = 'Voice';
 const RETAIL_DIGITAL_LABEL = 'Digital';
 const RETAIL_VIDEO_LABEL = 'Video';
-const RETAIL_CONFIRM_CHANNELS_LABEL = 'Continue';
-const RETAIL_AGENT_NAME_LABEL = 'Acme electronics agent';
+const RETAIL_CONFIRM_CHANNELS_LABEL = 'Continue to agent details';
+const RETAIL_AGENT_NAME_LABEL = 'Acme Electronics agent';
 const RETAIL_CUSTOM_AGENT_NAME_LABEL = 'Type a different name';
 const RETAIL_AGENT_NAME_CUSTOM_LABEL = 'Use typed name';
 const RETAIL_EDIT_WELCOME_LABEL = 'Edit welcome message';
 const RETAIL_WELCOME_CUSTOM_LABEL = 'Use edited message';
-const RETAIL_CONTINUE_TO_ACTIONS_LABEL = 'Confirm';
-const RETAIL_CONTINUE_TO_FINAL_LABEL = 'Confirm';
-const COMPLETE_RETAIL_AGENT_LABEL = 'Complete agent';
-const ENTER_AGENT_STUDIO_LABEL = 'Advanced configuration';
+const RETAIL_CONTINUE_TO_ACTIONS_LABEL = 'Confirm knowledge bases';
+const RETAIL_CONTINUE_TO_FINAL_LABEL = 'Confirm actions';
+const COMPLETE_RETAIL_AGENT_LABEL = 'Create agent';
+const ENTER_AGENT_STUDIO_LABEL = 'Configure advanced settings';
 const PREVIEW_RETAIL_AGENT_LABEL = 'Preview agent';
 const SKIP_RETAIL_PREVIEW_LABEL = 'Skip';
 const CONNECT_RETAIL_PHONE_LABEL = 'Connect phone number';
@@ -342,15 +342,15 @@ type RetailPrototypeStep =
   | 'previewing'
   | 'ready-to-create';
 
-const RETAIL_RECEPTIONIST_AGENT_NAME = 'Acme electronics agent';
+const RETAIL_RECEPTIONIST_AGENT_NAME = 'Acme Electronics agent';
 const RETAIL_RECEPTIONIST_DESCRIPTION = 'Voice agent for Acme Electronics in San Jose';
 const RETAIL_RECOMMENDED_WELCOME_MESSAGES = [
   {
     recommended: true,
     shortReason: 'Warm and friendly',
-    tone: 'Warm, helpful, concise, and professional.',
-    reason: 'Best for a neighborhood store receptionist because it sounds friendly and covers all core tasks.',
-    text: 'Hi, thanks for calling Acme Electronics in San Jose. I can help with store hours, directions, product availability, common questions, how can I help you today?',
+    tone: '',
+    reason: 'Works well for a store receptionist because it names the tasks customers are most likely to ask about.',
+    text: 'Hi, thanks for calling Acme Electronics in San Jose. I can help with store hours, directions, product availability, and common questions. How can I help?',
   },
   {
     shortReason: 'Concise and professional',
@@ -368,15 +368,15 @@ const RETAIL_RECOMMENDED_WELCOME_MESSAGES = [
 const RETAIL_DISCOVERY_ROWS = [
   {
     title: 'Store website',
-    detail: 'Found San Jose hours, location, parking notes, FAQs, warranty policy, and escalation rules.',
+    detail: 'Found San Jose hours, location, parking details, FAQs, warranty policy, and escalation rules.',
   },
   {
-    title: 'Inventory manager integration',
-    detail: 'Connected and checked stock signals for laptops, monitors, routers, headsets, and accessories.',
+    title: 'Inventory system',
+    detail: 'Connected and checked inventory for laptops, monitors, routers, headsets, and accessories.',
   },
   {
     title: 'Organization profile',
-    detail: 'Confirmed Matt’s store context, Pacific time zone, English customer-facing language, and manager escalation.',
+    detail: 'Confirmed Matt’s store details, Pacific time zone, English support language, and manager escalation path.',
   },
 ];
 
@@ -397,21 +397,21 @@ const RETAIL_RECOMMENDED_KNOWLEDGE_BASES = [
 
 const RETAIL_RECOMMENDED_ACTIONS = [
   {
-    name: 'Payments',
+    name: 'Check payment status',
     provider: 'Stripe',
     providerLogo: 'stripe',
     providerLogoLabel: 'S',
     description: 'Handle payments and refunds.',
   },
   {
-    name: 'Catalog sync',
+    name: 'Sync product updates',
     provider: 'Shopify',
     providerLogo: 'shopify',
     providerLogoLabel: 'S',
     description: 'Sync catalog and inventory.',
   },
   {
-    name: 'Shipments',
+    name: 'Track delivery status',
     provider: 'FedEx',
     providerLogo: 'fedex',
     providerLogoLabel: '',
@@ -443,13 +443,18 @@ const RETAIL_CHANNEL_OPTIONS = [
 const matchEvaTemplateFromText = (text: string): typeof EVA_TEMPLATES[number] | null => {
   const normalized = text.trim().toLowerCase();
   if (!normalized) return null;
-  if (normalized.includes('healthcare') || normalized.includes('reception')) {
+  if (normalized.includes('candidate') || normalized.includes('hiring') || normalized.includes('interview') || normalized.includes('feedback')) {
     return EVA_TEMPLATES.find(template => template.id === 'knowledge-assistant') ?? null;
   }
-  if (normalized.includes('it ') || normalized.includes('helpdesk') || normalized.includes('ticket')) {
+  if (normalized.includes('incident') || normalized.includes('outage') || normalized.includes('jira')) {
     return EVA_TEMPLATES.find(template => template.id === 'workflow-automation') ?? null;
   }
-  if (normalized.includes('policy') || normalized.includes('compliance')) {
+  if (
+    normalized.includes('property') ||
+    normalized.includes('tenant') ||
+    normalized.includes('maintenance') ||
+    normalized.includes('servicenow')
+  ) {
     return EVA_TEMPLATES.find(template => template.id === 'policy-compliance') ?? null;
   }
   if (normalized.includes('sales')) {
@@ -1408,7 +1413,7 @@ export default function EvaChatExperience({
     setAgentDescription(RETAIL_RECEPTIONIST_DESCRIPTION);
     setTimezone('America/Los_Angeles');
     setAiEngine('Webex AI Pro 1.0');
-    setWelcomeMessage('Hi, thanks for calling Acme Electronics in San Jose. I can help with store hours, directions, product availability, common questions, how can I help you today?');
+    setWelcomeMessage('Hi, thanks for calling Acme Electronics in San Jose. I can help with store hours, directions, product availability, and common questions. How can I help?');
     setInstructionPrompt(buildInstructionPrompt(nextDraft));
     setPersonality(prev => ({
       ...prev,
@@ -1456,7 +1461,7 @@ export default function EvaChatExperience({
           window.setTimeout(() => {
             setRetailPrototypeStep('channel');
             addOnboardingAssistantMessage(
-              'Great, I would like to help you with that. I found Acme Electronics in San Jose from Matt’s organization profile and connected store systems. Voice is selected by default. Add any other channels this agent should support.',
+              'I found Acme Electronics in San Jose from your organization profile and connected store systems. Voice is selected. Choose any additional channels for this agent.',
               undefined,
               'retail-channel-choice',
             );
@@ -1493,7 +1498,7 @@ export default function EvaChatExperience({
     setMessages([
       {
         role: 'assistant',
-        text: 'Now let’s review connected and recommended actions for this agent.',
+        text: 'Choose the actions this agent can run.',
         originStep: 'retail-actions-choice',
       },
       {
@@ -1595,7 +1600,7 @@ export default function EvaChatExperience({
       setMessages(prev => [...prev, { role: 'user', text: channelCopy }]);
     }
     addOnboardingAssistantMessage(
-      `${channelCopy} ${channels.length === 1 ? 'is' : 'are'} added for this receptionist. What should we name this agent?`,
+      `${channelCopy} ${channels.length === 1 ? 'is' : 'are'} selected for this receptionist. What should we name the agent?`,
       [RETAIL_AGENT_NAME_LABEL],
       'retail-agent-name',
     );
@@ -1661,7 +1666,7 @@ export default function EvaChatExperience({
       setRetailWelcomeInput(RETAIL_RECOMMENDED_WELCOME_MESSAGES[0].text);
       setRetailWelcomeInputVisible(false);
       addOnboardingAssistantMessage(
-        'I recommend this welcome message. You can use it as-is or edit it before continuing.',
+        'Here’s a suggested welcome message. Use it as is or edit it before continuing.',
         undefined,
         'retail-welcome-choice',
       );
@@ -1673,7 +1678,7 @@ export default function EvaChatExperience({
       setWelcomeMessage(nextWelcome);
       setRetailPrototypeStep('knowledge');
       addOnboardingAssistantMessage(
-        'Great. Next, here are the connected knowledge bases and a few recommended sources to enable for this agent.',
+        'Choose the knowledge sources this agent can use.',
         undefined,
         'retail-knowledge-choice',
       );
@@ -1699,7 +1704,7 @@ export default function EvaChatExperience({
       if (answer.trim() === RETAIL_CONTINUE_TO_ACTIONS_LABEL || normalized.includes('action')) {
         setRetailPrototypeStep('actions');
         addOnboardingAssistantMessage(
-          'Now let’s review connected and recommended actions for this agent.',
+          'Choose the actions this agent can run.',
           undefined,
           'retail-actions-choice',
         );
@@ -4141,7 +4146,7 @@ ${previewTranscript}`,
       showActions={false}
       assistantName="AI Assistant is checking Matt’s store context..."
       assistantState="processing"
-      content="I’m looking up the store profile and connected systems before I ask Matt for the setup choices."
+      content="I’m checking the store details and connected systems before asking Matt to choose setup options."
     >
       <div className="eva-waterfall-card eva-waterfall-status eva-waterfall-status--planning eva-waterfall-status--dynamic" aria-label="AI Assistant discovery process">
         {RETAIL_DISCOVERY_ROWS.map((row, index) => {
@@ -4184,7 +4189,7 @@ ${previewTranscript}`,
       title={(
         <span className="eva-retail-discovery-trace__title">
           <Icon name="sparkle" weight="bold" size="sm" />
-          Checked store website, inventory manager, and organization profile
+          Checked store website, inventory system, and organization profile
         </span>
       )}
       className="eva-retail-discovery-trace"
@@ -4692,7 +4697,7 @@ ${previewTranscript}`,
               <EvaHeroAnimation />
               <h1 id="eva-landing-title">AI Agent Studio</h1>
             </div>
-            <h2>Build, deploy, and manage AI agents across every collaboration moment.</h2>
+            <h2>Build, deploy, and manage AI agents for every interaction.</h2>
           </section>
         )}
 
@@ -4709,7 +4714,7 @@ ${previewTranscript}`,
               onSend={handleSend}
               processing={false}
               disabled={evaThinking}
-              placeholder={'Describe your agent.\ne.g. A friendly banking assistant that helps customers check their balance, dispute charges, and get account help — always calm and reassuring.'}
+              placeholder={'Describe the agent you want to build.\ne.g. A friendly banking assistant that helps customers check their balance, dispute charges, and get account help — always calm and reassuring.'}
               suggestions={[]}
               voiceActive={voiceActive}
               onVoiceToggle={() => setVoiceActive(prev => !prev)}
@@ -4719,9 +4724,9 @@ ${previewTranscript}`,
         )}
 
         {showLandingOptions && landingMode === 'build' && (
-          <div className="eva-landing-divider eva-landing-template-divider" role="separator" aria-label="or pick a template">
+          <div className="eva-landing-divider eva-landing-template-divider" role="separator" aria-label="choose a template">
             <span className="eva-landing-divider-line" aria-hidden="true" />
-            <span className="eva-landing-divider-text">Or pick a template</span>
+            <span className="eva-landing-divider-text">Choose a template</span>
             <span className="eva-landing-divider-line" aria-hidden="true" />
           </div>
         )}
@@ -4742,7 +4747,7 @@ ${previewTranscript}`,
                   <strong>{prompt.title}</strong>
                 </span>
                 <span>{prompt.description}</span>
-                <small>Start with it</small>
+                <small>Use template</small>
               </button>
             ))}
           </section>
@@ -4884,14 +4889,14 @@ ${previewTranscript}`,
                   ) : isRetailFinalActions ? (
                     <div className="eva-retail-final-heading">
                       <div className="eva-retail-final-heading__header">
-                        <strong>{`You're all set! ${agentName} is ready.`}</strong>
+                        <strong>{`Your ${agentName} draft is ready.`}</strong>
                         <span>
-                          I captured the connected knowledge bases, recommended actions, voice channel, escalation to Matt, and your selected greeting.
+                          I saved the voice channel, selected knowledge sources, selected actions, escalation contact, and greeting.
                         </span>
                       </div>
                       <div className="eva-retail-final-heading__body">
-                        <p>Preview the agent next, complete it now, or continue into advanced configuration.</p>
-                        <p>If you need to adjust anything or want me to consider more details, you can always ask here.</p>
+                        <p>Review the agent, create it now, or configure advanced settings.</p>
+                        <p>To change anything, ask me or open advanced configuration.</p>
                       </div>
                     </div>
                   ) : message.text}
@@ -4904,24 +4909,25 @@ ${previewTranscript}`,
                         {RETAIL_CHANNEL_OPTIONS.map(option => {
                           const isSelected = retailSelectedChannels.includes(option.label);
                           return (
-                            <button
+                            <Card
                               key={option.label}
-                              type="button"
-                              className={`eva-retail-channel-option${isSelected ? ' eva-retail-channel-option--selected' : ''}`}
+                              clickable
+                              selected={isSelected}
+                              disabled={isRetailChannelLocked}
+                              className="eva-retail-channel-option card-selectable"
                               aria-label={`${option.title}. ${option.description}`}
                               aria-pressed={isSelected}
-                              disabled={isRetailChannelLocked}
                               onClick={() => toggleRetailChannel(option.label)}
                             >
-                              <span className="eva-retail-channel-option__card">
-                                <span className="eva-retail-channel-option__icon" aria-hidden="true">
-                                  <Icon name={option.icon} weight="regular" size={24} />
-                                </span>
-                                <strong>{option.title}</strong>
+                              <span className="card-select-icon eva-retail-channel-option__select" aria-hidden="true">
+                                <Icon name={isSelected ? 'check-circle-filled' : 'check-circle'} weight="bold" size={20} />
                               </span>
-                              <span className="eva-retail-channel-option__checkbox" aria-hidden="true" />
+                              <span className="eva-retail-channel-option__icon" aria-hidden="true">
+                                <Icon name={option.icon} weight="regular" size={24} />
+                              </span>
+                              <strong>{option.title}</strong>
                               <span className="eva-retail-channel-option__description">{option.description}</span>
-                            </button>
+                            </Card>
                           );
                         })}
                       </div>
@@ -5057,16 +5063,16 @@ ${previewTranscript}`,
                         )}
                         <span className="eva-retail-welcome-option__reason">
                           <Icon name="sparkle" weight="bold" size="sm" />
-                          {`${RETAIL_RECOMMENDED_WELCOME_MESSAGES[0].tone} ${RETAIL_RECOMMENDED_WELCOME_MESSAGES[0].reason}`}
+                          {[RETAIL_RECOMMENDED_WELCOME_MESSAGES[0].tone, RETAIL_RECOMMENDED_WELCOME_MESSAGES[0].reason].filter(Boolean).join(' ')}
                         </span>
                         {!isRetailWelcomeLocked && (
                           <div className="eva-retail-welcome-option__actions">
                             <Button size="sm" onClick={() => handleLlmFollowupClick(retailWelcomeInput)}>
-                              Use this message
+                              Use greeting
                             </Button>
                             <Button size="sm" variant="secondary" onClick={() => handleLlmFollowupClick(RETAIL_EDIT_WELCOME_LABEL)}>
                               <Icon name="edit" weight="bold" size="sm" />
-                              Edit
+                              Edit greeting
                             </Button>
                           </div>
                         )}
@@ -5096,29 +5102,30 @@ ${previewTranscript}`,
                         </div>
                       </div>
                       <div className="eva-retail-recommendation-section">
-                        <span className="eva-retail-recommendation-eyebrow">Recommended for this agent</span>
+                        <span className="eva-retail-recommendation-eyebrow">Recommended knowledge bases</span>
                         <div className="eva-retail-recommendation-list">
                           {RETAIL_RECOMMENDED_KNOWLEDGE_BASES.map(option => {
                             const isSelected = selectedKnowledgeBases.includes(option.name);
                             return (
-                              <button
+                              <Card
                                 key={option.name}
-                                type="button"
-                                className={`eva-retail-recommendation-card${isSelected ? ' eva-retail-recommendation-card--selected' : ''}`}
+                                clickable
+                                selected={isSelected}
+                                disabled={isRetailKnowledgeLocked}
+                                className="eva-retail-recommendation-card card-selectable"
                                 aria-label={`${option.name}. ${option.description}`}
                                 aria-pressed={isSelected}
-                                disabled={isRetailKnowledgeLocked}
                                 onClick={() => handleLlmFollowupClick(option.name)}
                               >
-                                <span className="eva-retail-recommendation-card__surface">
-                                  <span className="eva-retail-recommendation-card__icon" aria-hidden="true">
-                                    <Icon name="files" weight="regular" size={24} />
-                                  </span>
-                                  <strong>{option.name}</strong>
+                                <span className="card-select-icon eva-retail-recommendation-card__select" aria-hidden="true">
+                                  <Icon name={isSelected ? 'check-circle-filled' : 'check-circle'} weight="bold" size={20} />
                                 </span>
-                                <span className="eva-retail-recommendation-card__checkbox" aria-hidden="true" />
+                                <span className="eva-retail-recommendation-card__icon" aria-hidden="true">
+                                  <Icon name="files" weight="regular" size={24} />
+                                </span>
+                                <strong>{option.name}</strong>
                                 <span className="eva-retail-recommendation-card__description">{option.description}</span>
-                              </button>
+                              </Card>
                             );
                           })}
                         </div>
@@ -5158,34 +5165,35 @@ ${previewTranscript}`,
                         </div>
                       </div>
                       <div className="eva-retail-recommendation-section">
-                        <span className="eva-retail-recommendation-eyebrow">Recommended for this agent</span>
+                        <span className="eva-retail-recommendation-eyebrow">Recommended actions</span>
                         <div className="eva-retail-recommendation-list">
                           {RETAIL_RECOMMENDED_ACTIONS.map(option => {
                             const isSelected = selectedActions.includes(option.name);
                             return (
-                              <button
+                              <Card
                                 key={option.name}
-                                type="button"
-                                className={`eva-retail-recommendation-card${isSelected ? ' eva-retail-recommendation-card--selected' : ''}`}
+                                clickable
+                                selected={isSelected}
+                                disabled={isRetailActionsLocked}
+                                className="eva-retail-recommendation-card card-selectable"
                                 aria-label={`${option.name}. ${option.provider}. ${option.description}`}
                                 aria-pressed={isSelected}
-                                disabled={isRetailActionsLocked}
                                 onClick={() => handleLlmFollowupClick(option.name)}
                               >
-                                <span className="eva-retail-recommendation-card__surface">
-                                  <span
-                                    className={`eva-retail-recommendation-card__icon eva-provider-chip__logo eva-provider-chip__logo--${option.providerLogo}`}
-                                    aria-hidden="true"
-                                  >
-                                    {option.providerLogoLabel}
-                                  </span>
-                                  <strong>{option.name}</strong>
+                                <span className="card-select-icon eva-retail-recommendation-card__select" aria-hidden="true">
+                                  <Icon name={isSelected ? 'check-circle-filled' : 'check-circle'} weight="bold" size={20} />
                                 </span>
-                                <span className="eva-retail-recommendation-card__checkbox" aria-hidden="true" />
+                                <span
+                                  className={`eva-retail-recommendation-card__icon eva-provider-chip__logo eva-provider-chip__logo--${option.providerLogo}`}
+                                  aria-hidden="true"
+                                >
+                                  {option.providerLogoLabel}
+                                </span>
+                                <strong>{option.name}</strong>
                                 <span className="eva-retail-recommendation-card__description">
                                   {`${option.provider}. ${option.description}`}
                                 </span>
-                              </button>
+                              </Card>
                             );
                           })}
                         </div>
@@ -5337,7 +5345,7 @@ ${previewTranscript}`,
                     <strong>{prompt.title}</strong>
                   </span>
                   <span>{prompt.description}</span>
-                  <small>Start with it</small>
+                  <small>Use template</small>
                 </button>
               ))}
             </section>
@@ -6189,8 +6197,11 @@ ${previewTranscript}`,
                       <Button onClick={handleReviewPreviewAction}>
                         Preview
                       </Button>
+                      <Button variant="secondary" onClick={handlePreviewTestingAction}>
+                        Evaluate agent
+                      </Button>
                       <Button variant="secondary" onClick={createDraftAgent}>
-                        Complete creating agent
+                        Create agent
                       </Button>
                     </div>
                   )}
@@ -6213,7 +6224,7 @@ ${previewTranscript}`,
                       Evaluate my agent
                     </Button>
                     <Button variant="secondary" onClick={createDraftAgent}>
-                      Complete creating agent
+                      Create agent
                     </Button>
                   </div>
                 </AiResponseMessage>
@@ -6836,7 +6847,7 @@ ${previewTranscript}`,
                   <div className="eva-dialogue__external-actions">
                     <Button onClick={createDraftAgent}>
                       <Icon name="sparkle" weight="bold" size="sm" />
-                      Complete create agent
+                      Create agent
                     </Button>
                   </div>
                 )}
@@ -6897,11 +6908,7 @@ ${previewTranscript}`,
                       onSend={guidanceVisible ? handleWaterfallFollowup : handleSend}
                       processing={false}
                       disabled={evaThinking || waterfallThinking || evaStep === 'preview'}
-                      placeholder={
-                        guidanceVisible || orchestrationSuggested
-                          ? 'Ask any question during your configuration.'
-                          : 'Type with AI Assistant. Try: Create an AI agent for customer onboarding...'
-                      }
+                      placeholder="Ask any question during your configuration."
                       suggestions={[]}
                       voiceActive={voiceActive}
                       onVoiceToggle={() => setVoiceActive(prev => !prev)}
@@ -7139,7 +7146,7 @@ ${previewTranscript}`,
               onSend={guidanceVisible ? handleWaterfallFollowup : handleSend}
               processing={false}
               disabled={evaThinking || waterfallThinking}
-              placeholder={guidanceVisible || orchestrationSuggested ? 'Ask any question during your configuration.' : 'Type with AI Assistant. Try: Create an AI agent for customer onboarding...'}
+              placeholder="Ask any question during your configuration."
               suggestions={[]}
               voiceActive={voiceActive}
               onVoiceToggle={() => setVoiceActive(prev => !prev)}

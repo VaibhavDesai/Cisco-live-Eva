@@ -1,0 +1,143 @@
+/*
+ * Landing page entry animation export
+ *
+ * Source:
+ * web/src/products/ai-agent-studio/components.css
+ *
+ * Sequence:
+ * - Aurora starts immediately and runs for 5.2s.
+ * - Hero starts at 0.35s and settles over 3.7s.
+ * - Composer reveals at 3.35s.
+ * - Template divider reveals at 3.65s.
+ * - Prompt cards stagger from 3.85s to 4.24s.
+ * - Final divider and secondary actions reveal at 4.45s.
+ */
+
+/* Landing background aurora entry */
+html[data-product='ai-agent-studio']:has(.eva-first-interface--landing) .app--ai__bg::before {
+  right: -80px;
+  bottom: -285px;
+  width: 880px;
+  height: 880px;
+  animation: evaLandingAuroraBlueIntro 5.2s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+html[data-product='ai-agent-studio']:has(.eva-first-interface--landing) .app--ai__bg::after {
+  right: -270px;
+  bottom: -365px;
+  width: 560px;
+  height: 560px;
+  animation: evaLandingAuroraWarmIntro 5.2s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+/* Hero settles in after aurora movement */
+.eva-landing-shell:not(.eva-first-interface--generated) .eva-first-interface__hero {
+  animation: evaLandingHeroSettle 3.7s cubic-bezier(0.22, 0.72, 0.18, 1) 0.35s both;
+  will-change: opacity, transform;
+}
+
+/* Composer reveal */
+.eva-landing-shell:not(.eva-first-interface--generated) .eva-landing-composer {
+  opacity: 0;
+  transform: translateY(var(--spacing-small)); /* 16px */
+  animation: evaLandingContentReveal 0.85s ease-out 3.35s forwards;
+}
+
+/* Template divider reveal */
+.eva-landing-shell:not(.eva-first-interface--generated) .eva-landing-divider.eva-landing-template-divider {
+  opacity: 0;
+  transform: translateY(var(--spacing-small)); /* 16px */
+  animation: evaLandingContentReveal 0.65s ease-out 3.65s forwards;
+}
+
+/* Prompt card stagger */
+.eva-landing-shell:not(.eva-first-interface--generated) .eva-prompt-card {
+  opacity: 0;
+  transform: translateY(var(--spacing-medium)); /* 20px */
+  animation: evaLandingContentReveal 0.65s ease-out forwards;
+}
+
+.eva-landing-shell:not(.eva-first-interface--generated) .eva-prompt-card:nth-child(1) {
+  animation-delay: 3.85s;
+}
+
+.eva-landing-shell:not(.eva-first-interface--generated) .eva-prompt-card:nth-child(2) {
+  animation-delay: 3.98s;
+}
+
+.eva-landing-shell:not(.eva-first-interface--generated) .eva-prompt-card:nth-child(3) {
+  animation-delay: 4.11s;
+}
+
+.eva-landing-shell:not(.eva-first-interface--generated) .eva-prompt-card:nth-child(4) {
+  animation-delay: 4.24s;
+}
+
+/* Final divider and secondary actions reveal */
+.eva-landing-shell:not(.eva-first-interface--generated) .eva-landing-divider,
+.eva-landing-shell:not(.eva-first-interface--generated) .eva-landing-secondary-actions {
+  opacity: 0;
+  transform: translateY(var(--spacing-small)); /* 16px */
+  animation: evaLandingContentReveal 0.75s ease-out 4.45s forwards;
+}
+
+@keyframes evaLandingAuroraBlueIntro {
+  0% {
+    opacity: 0;
+    transform: translate3d(-28vw, 3vh, 0) scale(0.98) rotate(-178.75deg);
+  }
+
+  34%,
+  56% {
+    opacity: 1;
+    transform: translate3d(-28vw, 3vh, 0) scale(0.98) rotate(-178.75deg);
+  }
+
+  100% {
+    opacity: 1;
+    transform: translate3d(-4vw, 3vh, 0) scale(1) rotate(-178.75deg);
+  }
+}
+
+@keyframes evaLandingAuroraWarmIntro {
+  0% {
+    opacity: 0;
+    transform: translate3d(-30vw, 3vh, 0) scale(1) rotate(-170.05deg);
+  }
+
+  34%,
+  56% {
+    opacity: 1;
+    transform: translate3d(-30vw, 3vh, 0) scale(1) rotate(-170.05deg);
+  }
+
+  100% {
+    opacity: 1;
+    transform: translate3d(-4vw, 3vh, 0) scale(1) rotate(-170.05deg);
+  }
+}
+
+@keyframes evaLandingHeroSettle {
+  0%,
+  42% {
+    opacity: 0;
+    transform: translateY(clamp(128px, 28vh, 320px));
+  }
+
+  68% {
+    opacity: 1;
+    transform: translateY(clamp(128px, 28vh, 320px));
+  }
+
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes evaLandingContentReveal {
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}

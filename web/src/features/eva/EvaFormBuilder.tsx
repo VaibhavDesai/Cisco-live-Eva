@@ -91,7 +91,7 @@ const initialTemplateDraft: EvaAgentDraft = EVA_TEMPLATES[0].draft;
    the form waterfall. */
 const FORM_BUILDER_EVA_SYSTEM_PROMPT = `You are AI Assistant, a conversational AI assistant inside Webex AI Agent Studio's form-based agent builder. You help product designers and admins design AI agents — defining purpose, knowledge sources, available actions, security policies, voice, and language settings.
 
-Available starter templates (and the trigger keywords that launch the form waterfall): Customer support (keyword: "support"), Knowledge assistant (keywords: "healthcare", "reception"), Workflow automation (keywords: "IT", "ticket", "helpdesk"), Policy compliance (keyword: "compliance"), Sales enablement (keyword: "sales").
+Available starter templates (and the trigger keywords that launch the form waterfall): Customer support (keyword: "support"), Candidate feedback loop agent (keywords: "candidate", "hiring", "interview", "feedback"), AI incident command agent (keywords: "incident", "outage", "Jira"), Property management service agent (keywords: "property", "tenant", "maintenance", "ServiceNow"), Sales enablement (keyword: "sales").
 
 Guidelines:
 - Keep replies concise (2–4 sentences). Be specific and actionable.
@@ -676,17 +676,22 @@ export default function EvaFormBuilder() {
 
     const normalized = trimmed.toLowerCase();
     const matched = EVA_TEMPLATES.find(template => {
-      if (normalized.includes('healthcare') || normalized.includes('reception')) {
+      if (normalized.includes('candidate') || normalized.includes('hiring') || normalized.includes('interview') || normalized.includes('feedback')) {
         return template.id === 'knowledge-assistant';
       }
       if (
-        normalized.includes('it ') ||
-        normalized.includes('helpdesk') ||
-        normalized.includes('ticket')
+        normalized.includes('incident') ||
+        normalized.includes('outage') ||
+        normalized.includes('jira')
       ) {
         return template.id === 'workflow-automation';
       }
-      if (normalized.includes('policy') || normalized.includes('compliance')) {
+      if (
+        normalized.includes('property') ||
+        normalized.includes('tenant') ||
+        normalized.includes('maintenance') ||
+        normalized.includes('servicenow')
+      ) {
         return template.id === 'policy-compliance';
       }
       if (normalized.includes('sales')) {
@@ -1146,7 +1151,7 @@ export default function EvaFormBuilder() {
                 <EvaHeroAnimation />
                 <h1 id="eva-form-builder-hero">AI Agent Studio</h1>
               </div>
-              <h2>Build, deploy, and manage AI agents across every collaboration moment.</h2>
+              <h2>Build, deploy, and manage AI agents for every interaction.</h2>
             </section>
           )}
 
@@ -1213,7 +1218,7 @@ export default function EvaFormBuilder() {
               onVoiceToggle={() => setVoiceActive(active => !active)}
               processing={false}
               disabled={chatThinking}
-              placeholder={'Describe your agent.\ne.g. A friendly banking assistant that helps customers check their balance, dispute charges, and get account help — always calm and reassuring.'}
+              placeholder={'Describe the agent you want to build.\ne.g. A friendly banking assistant that helps customers check their balance, dispute charges, and get account help — always calm and reassuring.'}
               suggestions={[]}
               voiceActive={voiceActive}
               showDisclaimer={false}
@@ -1222,9 +1227,9 @@ export default function EvaFormBuilder() {
           )}
 
           {chatMessages.length === 0 && !chatThinking && (
-            <div className="eva-landing-divider eva-landing-template-divider" role="separator" aria-label="or pick a template">
+            <div className="eva-landing-divider eva-landing-template-divider" role="separator" aria-label="choose a template">
               <span className="eva-landing-divider-line" aria-hidden="true" />
-              <span className="eva-landing-divider-text">Or pick a template</span>
+              <span className="eva-landing-divider-text">Choose a template</span>
               <span className="eva-landing-divider-line" aria-hidden="true" />
             </div>
           )}
@@ -1259,7 +1264,7 @@ export default function EvaFormBuilder() {
                       <strong>{prompt.title}</strong>
                     </span>
                     <span>{prompt.description}</span>
-                    <small>Start with it</small>
+                    <small>Use template</small>
                   </button>
                 ))}
               </section>
@@ -1303,7 +1308,7 @@ export default function EvaFormBuilder() {
               onVoiceToggle={() => setVoiceActive(active => !active)}
               processing={false}
               disabled={chatThinking}
-              placeholder="Type with AI Assistant. Try: Create an AI agent for customer onboarding..."
+              placeholder="Ask any question during your configuration."
               suggestions={[]}
               voiceActive={voiceActive}
             />

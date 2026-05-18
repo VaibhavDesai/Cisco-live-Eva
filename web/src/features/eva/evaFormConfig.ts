@@ -231,29 +231,29 @@ export const STARTER_PROMPTS: Array<{
   {
     templateId: 'customer-support',
     title: 'Retail store agent',
-    description: 'Build an agent for Acme Electronics in San Jose.',
+    description: 'Answer store calls, check inventory, send follow-ups, and surface demand signals.',
     prompt: 'Create an agent for Acme Electronics in San Jose',
     icon: 'bot-customer-assistant',
   },
   {
     templateId: 'knowledge-assistant',
-    title: 'Healthcare specialist',
-    description: 'Route appointments, insurance questions, medical FAQs, and billing.',
-    prompt: 'Create a healthcare receptionist agent.',
+    title: 'Candidate feedback loop agent',
+    description: 'Synthesize interview feedback, structure hiring decisions, and schedule follow-ups.',
+    prompt: 'Create a candidate feedback loop agent.',
     icon: 'headset',
   },
   {
     templateId: 'workflow-automation',
-    title: 'IT support copilot',
-    description: 'Diagnose issues, search docs, create tickets, and trigger workflows.',
-    prompt: 'Create an IT support copilot agent.',
+    title: 'AI incident command agent',
+    description: 'Coordinate outages, notify stakeholders, create Jira tasks, and document post-mortems.',
+    prompt: 'Create an AI incident command agent.',
     icon: 'setup-assistant',
   },
   {
     templateId: 'policy-compliance',
-    title: 'Policy reviewer',
-    description: 'Guide employees through governed requests and compliance checks.',
-    prompt: 'Create a policy compliance review agent.',
+    title: 'Property management service agent',
+    description: 'Verify callers, triage maintenance, create ServiceNow tickets, and schedule technicians.',
+    prompt: 'Create a property management service agent.',
     icon: 'shield',
   },
 ];
@@ -510,7 +510,52 @@ export interface EvaSessionState {
   customRules: string[];
 }
 
-const replacePersistedEvaCopy = (value: string) => value.replace(/\bEva\b/g, 'AI Assistant');
+const replacePersistedEvaCopy = (value: string) => value
+  .replace(/\bEva\b/g, 'AI Assistant')
+  .replace(
+    /(Voice|Digital|Video|Voice, Digital|Voice, Video|Digital, Video|Voice, Digital, Video) (is|are) added for this receptionist\. What should we name this agent\?/g,
+    '$1 $2 selected for this receptionist. What should we name the agent?',
+  )
+  .replace(
+    'Great, I would like to help you with that. I found Acme Electronics in San Jose from Matt’s organization profile and connected store systems. Voice is selected by default. Add any other channels this agent should support.',
+    'I found Acme Electronics in San Jose from your organization profile and connected store systems. Voice is selected. Choose any additional channels for this agent.',
+  )
+  .replace(
+    'I recommend this welcome message. You can use it as-is or edit it before continuing.',
+    'Here’s a suggested welcome message. Use it as is or edit it before continuing.',
+  )
+  .replace(
+    'Hi, thanks for calling Acme Electronics in San Jose. I can help with store hours, directions, product availability, common questions, how can I help you today?',
+    'Hi, thanks for calling Acme Electronics in San Jose. I can help with store hours, directions, product availability, and common questions. How can I help?',
+  )
+  .replace(
+    'Warm, helpful, concise, and professional. Best for a neighborhood store receptionist because it sounds friendly and covers all core tasks.',
+    'Works well for a store receptionist because it names the tasks customers are most likely to ask about.',
+  )
+  .replace(
+    'Great. Next, here are the connected knowledge bases and a few recommended sources to enable for this agent.',
+    'Choose the knowledge sources this agent can use.',
+  )
+  .replace(
+    'Now let’s review connected and recommended actions for this agent.',
+    'Choose the actions this agent can run.',
+  )
+  .replace(
+    /You're all set! (.+?) is ready\./g,
+    'Your $1 draft is ready.',
+  )
+  .replace(
+    'I captured the connected knowledge bases, recommended actions, voice channel, escalation to Matt, and your selected greeting.',
+    'I saved the voice channel, selected knowledge sources, selected actions, escalation contact, and greeting.',
+  )
+  .replace(
+    'Preview the agent next, complete it now, or continue into advanced configuration.',
+    'Review the agent, create it now, or configure advanced settings.',
+  )
+  .replace(
+    'If you need to adjust anything or want me to consider more details, you can always ask here.',
+    'To change anything, ask me or open advanced configuration.',
+  );
 
 const migratePersistedEvaCopy = (state: EvaSessionState): EvaSessionState => ({
   ...state,

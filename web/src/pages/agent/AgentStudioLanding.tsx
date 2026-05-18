@@ -626,7 +626,7 @@ export default function AgentStudioLanding() {
   const headerActions = (
     <div className="agent-studio-header-actions">
       <Button variant="secondary" onClick={completeCreating}>
-        Complete creating
+        Create agent
       </Button>
       <Button onClick={() => openGuidedSetup('instructions')}>
         <Icon name="sparkle" weight="bold" size="sm" />

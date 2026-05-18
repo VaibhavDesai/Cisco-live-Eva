@@ -273,7 +273,7 @@ export default function EvaAgentsTable() {
               <EvaHeroAnimation />
               <h1 id="eva-agents-landing-hero">AI Agent Studio</h1>
             </div>
-            <h2>Build, deploy, and manage AI agents across every collaboration moment.</h2>
+            <h2>Build, deploy, and manage AI agents for every interaction.</h2>
           </section>
 
           <div className="eva-landing-composer" aria-label="Talk to AI Assistant">
@@ -283,16 +283,16 @@ export default function EvaAgentsTable() {
               onSend={handleLandingSubmit}
               onVoiceToggle={() => setVoiceActive(active => !active)}
               processing={false}
-              placeholder={'Describe your agent.\ne.g. A friendly banking assistant that helps customers check their balance, dispute charges, and get account help — always calm and reassuring.'}
+              placeholder={'Describe the agent you want to build.\ne.g. A friendly banking assistant that helps customers check their balance, dispute charges, and get account help — always calm and reassuring.'}
               suggestions={[]}
               voiceActive={voiceActive}
               showDisclaimer={false}
             />
           </div>
 
-          <div className="eva-landing-divider eva-landing-template-divider" role="separator" aria-label="or pick a template">
+          <div className="eva-landing-divider eva-landing-template-divider" role="separator" aria-label="choose a template">
             <span className="eva-landing-divider-line" aria-hidden="true" />
-            <span className="eva-landing-divider-text">Or pick a template</span>
+            <span className="eva-landing-divider-text">Choose a template</span>
             <span className="eva-landing-divider-line" aria-hidden="true" />
           </div>
 
@@ -311,7 +311,7 @@ export default function EvaAgentsTable() {
                   <strong>{prompt.title}</strong>
                 </span>
                 <span>{prompt.description}</span>
-                <small>Start with it</small>
+                <small>Use template</small>
               </button>
             ))}
           </section>
