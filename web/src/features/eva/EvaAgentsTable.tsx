@@ -29,22 +29,38 @@ import {
 import { EVA_TEMPLATES } from './evaTemplates';
 import type { EvaAgentDraft, EvaKnowledgeRecommendation } from './types';
 
-type AgentTileType = 'Autonomous' | 'Scripted';
+type AgentTileType = 'Autonomous agent' | 'Scripted agent';
 
 const TYPE_OPTIONS = [
   { value: 'all', label: 'All types' },
-  { value: 'Autonomous', label: 'Autonomous' },
-  { value: 'Scripted', label: 'Scripted' },
+  { value: 'Autonomous agent', label: 'Autonomous agent' },
+  { value: 'Scripted agent', label: 'Scripted agent' },
 ];
 
 type Phase = 'landing' | 'table';
 
 const AGENT_TILE_META: Record<string, { type: AgentTileType; updatedOn: string; updatedBy: string }> = {
-  cs: { type: 'Autonomous', updatedOn: '17 Apr, 26', updatedBy: 'newstartup_imi' },
-  sa: { type: 'Autonomous', updatedOn: '12 Apr, 26', updatedBy: 'Team Alpha' },
-  it: { type: 'Scripted', updatedOn: '15 Apr, 26', updatedBy: 'svc-bot-builder' },
-  'webex-elec': { type: 'Autonomous', updatedOn: 'Just now', updatedBy: 'Matt' },
+  cs: { type: 'Autonomous agent', updatedOn: '17 Apr, 26', updatedBy: 'newstartup_imi' },
+  sa: { type: 'Autonomous agent', updatedOn: '12 Apr, 26', updatedBy: 'Team Alpha' },
+  it: { type: 'Scripted agent', updatedOn: '15 Apr, 26', updatedBy: 'svc-bot-builder' },
+  'webex-elec': { type: 'Autonomous agent', updatedOn: 'Just now', updatedBy: 'Matt' },
 };
+
+const INITIAL_AGENT_IDS = new Set(['cs', 'sa', 'it']);
+
+function formatAgentTimestamp(timestamp?: string) {
+  if (!timestamp) return undefined;
+  const date = new Date(timestamp);
+  if (Number.isNaN(date.getTime())) return undefined;
+
+  return date.toLocaleString('en-US', {
+    month: 'short',
+    day: 'numeric',
+    year: 'numeric',
+    hour: 'numeric',
+    minute: '2-digit',
+  });
+}
 
 const RETAIL_AGENT_PREVIEW_DETAILS = {
   description: 'Answers store calls for Acme Electronics in San Jose, checks product availability, handles FAQs, and escalates to Matt when needed.',
@@ -143,11 +159,29 @@ function buildPreviewSession(agent: Agent): EvaSessionState {
 }
 
 function getAgentTileMeta(agent: Agent, index: number) {
+  const fallback = AGENT_TILE_META[agent.id];
+  const updatedOn = formatAgentTimestamp(agent.updatedAt ?? agent.createdAt);
+
+  if (agent.createdAt || agent.updatedAt || agent.agentType || !INITIAL_AGENT_IDS.has(agent.id)) {
+    return {
+      type: agent.agentType ?? 'Autonomous agent',
+      updatedOn: updatedOn ?? fallback?.updatedOn ?? formatAgentTimestamp(new Date().toISOString()) ?? 'Just now',
+      updatedBy: fallback?.updatedBy ?? 'Matt',
+    };
+  }
+
   return AGENT_TILE_META[agent.id] ?? {
-    type: agent.status === 'Published' ? 'Autonomous' : 'Scripted',
+    type: agent.status === 'Published' ? 'Autonomous agent' : 'Scripted agent',
     updatedOn: ['17 Apr, 26', '15 Apr, 26', '14 Apr, 26', '12 Apr, 26'][index % 4],
     updatedBy: ['newstartup_imi', 'svc-bot-builder', 'Team Alpha', 'Ayesh Reddy'][index % 4],
   };
+}
+
+function getAgentSortTime(agent: Agent) {
+  const timestamp = agent.updatedAt ?? agent.createdAt;
+  if (!timestamp) return INITIAL_AGENT_IDS.has(agent.id) ? 0 : Date.now();
+  const time = new Date(timestamp).getTime();
+  return Number.isNaN(time) ? 0 : time;
 }
 
 export default function EvaAgentsTable() {
@@ -232,9 +266,11 @@ export default function EvaAgentsTable() {
           ...getAgentTileMeta(agent, index),
         }))
         .sort((a, b) => {
+          const byTime = getAgentSortTime(b.agent) - getAgentSortTime(a.agent);
+          if (byTime !== 0) return byTime;
           if (a.agent.id === 'webex-elec') return -1;
           if (b.agent.id === 'webex-elec') return 1;
-          return 0;
+          return a.agent.name.localeCompare(b.agent.name);
         }),
     [agents],
   );
@@ -395,11 +431,11 @@ export default function EvaAgentsTable() {
                   <div className="ai-agents-agent-card-head">
                     <span
                       className={`ai-agents-agent-avatar ${
-                        type === 'Autonomous' ? 'ai-agents-agent-avatar--purple' : 'ai-agents-agent-avatar--teal'
+                        type === 'Autonomous agent' ? 'ai-agents-agent-avatar--purple' : 'ai-agents-agent-avatar--teal'
                       }`}
                       aria-hidden="true"
                     >
-                      <Icon name={type === 'Autonomous' ? 'sparkle' : 'ucm-cloud'} weight="bold" size="md" />
+                      <Icon name={type === 'Autonomous agent' ? 'sparkle' : 'ucm-cloud'} weight="bold" size="md" />
                     </span>
                     <div className="ai-agents-agent-card-head-text">
                       <div className="ai-agents-agent-title-row">
@@ -415,7 +451,7 @@ export default function EvaAgentsTable() {
                         </button>
                         <AgentCardActions agent={agent} onNotify={showToast} />
                       </div>
-                      <Badge variant={type === 'Autonomous' ? 'success' : 'info'}>
+                      <Badge variant={type === 'Autonomous agent' ? 'success' : 'info'}>
                         {type}
                       </Badge>
                     </div>

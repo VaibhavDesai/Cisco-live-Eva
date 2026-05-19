@@ -8174,14 +8174,14 @@ html[data-product='ai-agent-studio']:has(.eva-form-builder.primary-content) .app
   width: 128px;
   min-height: 146px;
   margin-bottom: 0;
-  padding: var(--spacing-x-small) var(--spacing-xxx-small);
+  padding: var(--spacing-small) var(--spacing-small) var(--spacing-large);
   text-align: center;
 }
 
 .eva-retail-channel-option__select {
   position: absolute;
-  top: var(--spacing-xx-small);
-  right: var(--spacing-xx-small);
+  top: var(--spacing-small);
+  right: var(--spacing-small);
 }
 
 .eva-retail-channel-option__icon {
@@ -8194,8 +8194,8 @@ html[data-product='ai-agent-studio']:has(.eva-form-builder.primary-content) .app
 .eva-retail-channel-option strong {
   color: var(--text-primary);
   font-size: var(--font-size-body-midsize);
-  font-weight: var(--font-weight-bold);
-  line-height: 22px;
+  font-weight: var(--font-weight-regular);
+  line-height: var(--font-lineheight-body-midsize);
 }
 
 .eva-retail-channel-option__description {
@@ -8216,6 +8216,38 @@ html[data-product='ai-agent-studio']:has(.eva-form-builder.primary-content) .app
   cursor: default;
   opacity: 1;
   pointer-events: none;
+}
+
+.eva-agents-landing .eva-first-interface .card.card-selectable {
+  border: var(--border-width-small) solid var(--mds-color-theme-outline-secondary-normal, var(--border-color));
+  border-radius: var(--border-radius-medium);
+  background: transparent;
+  box-shadow: none;
+}
+
+.eva-agents-landing .eva-first-interface .card.card-selectable:hover {
+  background: var(--mds-color-theme-background-primary-hover, var(--button-secondary-hover));
+}
+
+.eva-agents-landing .eva-first-interface .card.card-selectable:active {
+  background: var(--mds-color-theme-background-primary-active, var(--button-secondary-active));
+}
+
+.eva-agents-landing .eva-first-interface .card.card-selectable.card-selected {
+  border-width: calc(var(--border-width-small) * 1.5);
+  border-color: var(--mds-color-theme-outline-secondary-normal, var(--border-color));
+  background: var(--mds-color-theme-background-primary-active, var(--button-secondary-active));
+  box-shadow: none;
+}
+
+.eva-agents-landing .eva-first-interface .card.card-selectable .card-select-icon {
+  width: var(--spacing-large);
+  height: var(--spacing-large);
+  color: var(--text-primary);
+}
+
+.eva-agents-landing .eva-first-interface .card.card-selectable.card-selected .card-select-icon {
+  color: var(--mds-color-theme-inverted-text-accent-normal, var(--accent-color));
 }
 
 .eva-retail-phone-options {
@@ -8705,14 +8737,14 @@ html[data-product='ai-agent-studio']:has(.eva-form-builder.primary-content) .app
   width: 145px;
   min-height: 146px;
   margin-bottom: 0;
-  padding: var(--spacing-x-small) var(--spacing-xxx-small);
+  padding: var(--spacing-small) var(--spacing-small) var(--spacing-large);
   text-align: center;
 }
 
 .eva-retail-recommendation-card__select {
   position: absolute;
-  top: var(--spacing-xx-small);
-  right: var(--spacing-xx-small);
+  top: var(--spacing-small);
+  right: var(--spacing-small);
 }
 
 .eva-retail-recommendation-card__icon {
@@ -8733,8 +8765,8 @@ html[data-product='ai-agent-studio']:has(.eva-form-builder.primary-content) .app
   overflow: hidden;
   color: var(--text-primary);
   font-size: var(--font-size-body-midsize);
-  font-weight: var(--font-weight-bold);
-  line-height: 22px;
+  font-weight: var(--font-weight-regular);
+  line-height: var(--font-lineheight-body-midsize);
   text-overflow: ellipsis;
 }
 

@@ -15,6 +15,9 @@ export interface Agent {
   avgResponse: string;
   meta: string;
   knowledgeBases?: string[];
+  createdAt?: string;
+  updatedAt?: string;
+  agentType?: 'Autonomous agent' | 'Scripted agent';
 }
 
 export interface AgentsMap {
@@ -223,6 +226,7 @@ export function AppProvider({ children }: AppProviderProps) {
   // Add new agent
   const addAgent = useCallback((newAgent: Partial<Agent> & { name: string; description: string; gradient: string; status: string }) => {
     const id = newAgent.name.toLowerCase().replace(/\s+/g, '-').slice(0, 10);
+    const createdAt = new Date().toISOString();
     const agentWithId: Agent = {
       id,
       name: newAgent.name,
@@ -235,7 +239,10 @@ export function AppProvider({ children }: AppProviderProps) {
       successRate: '—',
       messages: '—',
       avgResponse: '—',
-      meta: `${newAgent.description} • Just created`
+      meta: `${newAgent.description} • Just created`,
+      createdAt,
+      updatedAt: createdAt,
+      agentType: newAgent.agentType ?? 'Autonomous agent',
     };
     
     setAgents(prev => ({
