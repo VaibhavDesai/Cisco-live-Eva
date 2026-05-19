@@ -8236,7 +8236,7 @@ html[data-product='ai-agent-studio']:has(.eva-form-builder.primary-content) .app
 .eva-agents-landing .eva-first-interface .card.card-selectable.card-selected {
   border-width: calc(var(--border-width-small) * 1.5);
   border-color: var(--mds-color-theme-outline-secondary-normal, var(--border-color));
-  background: var(--mds-color-theme-background-primary-active, var(--button-secondary-active));
+  background: var(--mds-color-theme-background-primary-active, var(--bg-input-pressed));
   box-shadow: none;
 }
 
@@ -8247,7 +8247,7 @@ html[data-product='ai-agent-studio']:has(.eva-form-builder.primary-content) .app
 }
 
 .eva-agents-landing .eva-first-interface .card.card-selectable.card-selected .card-select-icon {
-  color: var(--mds-color-theme-inverted-text-accent-normal, var(--accent-color));
+  color: var(--mds-color-theme-control-active-normal, var(--accent-color));
 }
 
 .eva-retail-phone-options {
