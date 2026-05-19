@@ -8876,7 +8876,8 @@ html[data-product='ai-agent-studio']:has(.eva-form-builder.primary-content) .app
     '. action';
   column-gap: var(--spacing-medium);
   row-gap: var(--spacing-large);
-  width: min(100%, 332px);
+  width: 100%;
+  min-width: 100%;
   min-height: 154px;
   padding: 14px var(--spacing-small) var(--spacing-small);
   border: var(--border-width-small) solid var(--mds-color-theme-outline-secondary-normal, var(--border-color));
@@ -8964,6 +8965,8 @@ html[data-product='ai-agent-studio']:has(.eva-form-builder.primary-content) .app
   display: inline-flex;
   align-items: center;
   justify-content: center;
+  justify-self: start;
+  width: max-content;
   gap: var(--spacing-xxx-small);
   min-height: 28px;
   padding: var(--spacing-xxx-small) var(--spacing-x-small);
