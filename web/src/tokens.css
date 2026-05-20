@@ -64,6 +64,23 @@
 
   /* Custom visual effects */
   --gradient-divider: linear-gradient(90deg, rgba(0, 0, 0, 0) 0%, rgba(0, 0, 0, 0.12) 22%, rgba(0, 0, 0, 0.12) 78%, rgba(0, 0, 0, 0) 100%);
+  /* AI Special Border */
+  --border-ai-special-width: 1px;
+  --border-ai-special-radius: 18px;
+  --border-ai-special-source: conic-gradient(
+    from var(--border-ai-special-angle, 180deg) at 50.14% 50.55%,
+    rgba(44, 126, 249, 0) 0deg,
+    #2c7ef9 84.81deg,
+    #d95591 148.85deg,
+    #eaa034 223.27deg,
+    rgba(234, 160, 52, 0) 294.23deg,
+    rgba(44, 126, 249, 0) 360deg
+  );
+  --shadow-ai-special-border: 0px 0px 14px 1px rgba(255, 164, 78, 0.16);
+  --motion-ai-special-border-delay: 0ms;
+  --motion-ai-special-border-duration: 8000ms;
+  --motion-ai-special-border-cycle-duration: 8000ms;
+  --motion-ai-special-border-easing: linear;
 
   /* Popover / Tooltip */
   --surface-tooltip-tonal-fill: var(--color-theme-background-solid-secondary-normal, #f7f7f7);

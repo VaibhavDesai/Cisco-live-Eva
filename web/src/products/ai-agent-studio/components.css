@@ -8880,14 +8880,42 @@ html[data-product='ai-agent-studio']:has(.eva-form-builder.primary-content) .app
   min-width: 100%;
   min-height: 154px;
   padding: 14px var(--spacing-small) var(--spacing-small);
-  border: var(--border-width-small) solid var(--mds-color-theme-outline-secondary-normal, var(--border-color));
-  border-radius: 18px;
+  border: 0;
+  border-radius: var(--border-ai-special-radius);
   background: var(--bg-glass);
   color: var(--text-primary);
   text-align: left;
   cursor: pointer;
-  overflow: hidden;
+  overflow: visible;
+  box-shadow: var(--shadow-ai-special-border);
   transition: background 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease;
+  isolation: isolate;
+  --border-ai-special-angle: 180deg;
+}
+
+.eva-retail-preview-card::before {
+  position: absolute;
+  inset: calc(-1 * var(--border-ai-special-width));
+  z-index: 0;
+  padding: var(--border-ai-special-width);
+  border-radius: calc(var(--border-ai-special-radius) + var(--border-ai-special-width));
+  background: var(--border-ai-special-source);
+  content: '';
+  pointer-events: none;
+  -webkit-mask:
+    linear-gradient(#000 0 0) content-box,
+    linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+  mask:
+    linear-gradient(#000 0 0) content-box,
+    linear-gradient(#000 0 0);
+  mask-composite: exclude;
+  animation: evaAiSpecialBorderLoop var(--motion-ai-special-border-cycle-duration) var(--motion-ai-special-border-easing) infinite;
+}
+
+.eva-retail-preview-card > * {
+  position: relative;
+  z-index: 1;
 }
 
 .eva-retail-preview-card:hover {
@@ -8897,9 +8925,26 @@ html[data-product='ai-agent-studio']:has(.eva-form-builder.primary-content) .app
 .eva-retail-preview-card:focus-visible {
   outline: none;
   box-shadow:
+    var(--shadow-ai-special-border),
     0 0 0 2px var(--focus-ring-0),
     0 0 0 4px var(--focus-ring-1),
     0 0 0 5px var(--focus-ring-2);
+}
+
+@property --border-ai-special-angle {
+  syntax: '<angle>';
+  inherits: false;
+  initial-value: 180deg;
+}
+
+@keyframes evaAiSpecialBorderLoop {
+  from {
+    --border-ai-special-angle: 180deg;
+  }
+
+  to {
+    --border-ai-special-angle: 540deg;
+  }
 }
 
 .eva-retail-preview-card--active {
