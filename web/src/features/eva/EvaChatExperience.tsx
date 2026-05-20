@@ -1600,7 +1600,7 @@ export default function EvaChatExperience({
       setMessages(prev => [...prev, { role: 'user', text: channelCopy }]);
     }
     addOnboardingAssistantMessage(
-      `${channelCopy} ${channels.length === 1 ? 'is' : 'are'} selected for this receptionist. What should we name the agent?`,
+      `${channelCopy} ${channels.length === 1 ? 'is' : 'are'} selected for this agent. What should we name the agent?`,
       [RETAIL_AGENT_NAME_LABEL],
       'retail-agent-name',
     );

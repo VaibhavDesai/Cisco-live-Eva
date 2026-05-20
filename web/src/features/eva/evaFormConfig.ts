@@ -514,7 +514,7 @@ const replacePersistedEvaCopy = (value: string) => value
   .replace(/\bEva\b/g, 'AI Assistant')
   .replace(
     /(Voice|Digital|Video|Voice, Digital|Voice, Video|Digital, Video|Voice, Digital, Video) (is|are) added for this receptionist\. What should we name this agent\?/g,
-    '$1 $2 selected for this receptionist. What should we name the agent?',
+    '$1 $2 selected for this agent. What should we name the agent?',
   )
   .replace(
     'Great, I would like to help you with that. I found Acme Electronics in San Jose from Matt’s organization profile and connected store systems. Voice is selected by default. Add any other channels this agent should support.',
