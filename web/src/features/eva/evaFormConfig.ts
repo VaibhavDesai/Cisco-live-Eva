@@ -255,11 +255,11 @@ export const STARTER_PROMPTS: Array<{
   },
   {
     templateId: 'workflow-automation',
-    title: 'Business Workflow',
-    summary: 'Automate tasks across systems',
-    description: 'Triggers approvals, updates records, and follows up automatically.',
-    prompt: 'Create a business workflow agent.',
-    icon: 'automation',
+    title: 'Order Management',
+    summary: 'Track order status',
+    description: 'Handles order inquiries, tracking, delivery estimates, and basic returns.',
+    prompt: 'Create an order management agent.',
+    icon: 'shopping-cart',
   },
 ];
 

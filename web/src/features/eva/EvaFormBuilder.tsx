@@ -91,7 +91,7 @@ const initialTemplateDraft: EvaAgentDraft = EVA_TEMPLATES[0].draft;
    the form waterfall. */
 const FORM_BUILDER_EVA_SYSTEM_PROMPT = `You are AI Assistant, a conversational AI assistant inside Webex AI Agent Studio's form-based agent builder. You help product designers and admins design AI agents — defining purpose, knowledge sources, available actions, security policies, voice, and language settings.
 
-Available starter templates (and the trigger keywords that launch the form waterfall): Receptionist (keywords: "receptionist", "appointment", "reminder", "support"), Customer Concierge (keywords: "concierge", "customer", "request"), Help Desk (keywords: "help desk", "employee", "password", "PTO"), Business Workflow (keywords: "business workflow", "approval", "record", "workflow"), Sales enablement (keyword: "sales").
+Available starter templates (and the trigger keywords that launch the form waterfall): Receptionist (keywords: "receptionist", "appointment", "reminder", "support"), Customer Concierge (keywords: "concierge", "customer", "request"), Help Desk (keywords: "help desk", "employee", "password", "PTO"), Order Management (keywords: "order", "tracking", "delivery", "returns"), Sales enablement (keyword: "sales").
 
 Guidelines:
 - Keep replies concise (2–4 sentences). Be specific and actionable.
@@ -703,7 +703,7 @@ export default function EvaFormBuilder() {
       if (normalized.includes('help desk') || normalized.includes('employee') || normalized.includes('password') || normalized.includes('pto')) {
         return template.id === 'policy-compliance';
       }
-      if (normalized.includes('business workflow') || normalized.includes('approval') || normalized.includes('record') || normalized.includes('workflow')) {
+      if (normalized.includes('order') || normalized.includes('tracking') || normalized.includes('delivery') || normalized.includes('return')) {
         return template.id === 'workflow-automation';
       }
       return false;

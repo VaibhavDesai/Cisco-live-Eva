@@ -23,7 +23,7 @@ export interface DesignVariationContextValue {
 
 export const DesignVariationContext = createContext<DesignVariationContextValue | null>(null);
 
-export const DESIGN_VARIATION_STORAGE_KEY = 'designVariation.value.v2';
+export const DESIGN_VARIATION_STORAGE_KEY = 'designVariation.value.v3';
 
 const isDesignVariation = (value: string | null): value is DesignVariation =>
   value === 'landing' || value === 'dashboard' || value === 'form-bases';

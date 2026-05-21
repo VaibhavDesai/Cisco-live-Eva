@@ -163,7 +163,7 @@ function float32ToPcm16Base64(input: Float32Array): string {
    build flow. The keyword list mirrors the matcher in that handler. */
 const EVA_SYSTEM_PROMPT = `You are AI Assistant, a conversational AI assistant inside Webex AI Agent Studio. You help product designers and admins design AI agents — defining purpose, knowledge sources, available actions, security policies, voice, and language settings.
 
-Available starter templates (and the trigger keywords that launch the guided build flow): Receptionist (keywords: "receptionist", "appointment", "reminder", "support"), Customer Concierge (keywords: "concierge", "customer", "request"), Help Desk (keywords: "help desk", "employee", "password", "PTO"), Business Workflow (keywords: "business workflow", "approval", "record", "workflow"), Sales enablement (keyword: "sales").
+Available starter templates (and the trigger keywords that launch the guided build flow): Receptionist (keywords: "receptionist", "appointment", "reminder", "support"), Customer Concierge (keywords: "concierge", "customer", "request"), Help Desk (keywords: "help desk", "employee", "password", "PTO"), Order Management (keywords: "order", "tracking", "delivery", "returns"), Sales enablement (keyword: "sales").
 
 Guidelines:
 - Keep replies concise (2–4 sentences). Be specific and actionable.
@@ -466,7 +466,7 @@ const matchEvaTemplateFromText = (text: string): typeof EVA_TEMPLATES[number] | 
   if (normalized.includes('help desk') || normalized.includes('employee') || normalized.includes('password') || normalized.includes('pto')) {
     return EVA_TEMPLATES.find(template => template.id === 'policy-compliance') ?? null;
   }
-  if (normalized.includes('business workflow') || normalized.includes('approval') || normalized.includes('record') || normalized.includes('workflow')) {
+  if (normalized.includes('order') || normalized.includes('tracking') || normalized.includes('delivery') || normalized.includes('return')) {
     return EVA_TEMPLATES.find(template => template.id === 'workflow-automation') ?? null;
   }
   return null;

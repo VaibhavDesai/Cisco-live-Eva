@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react'
+import { useState, useCallback, useEffect, useRef } from 'react'
 import Icon from './Icon'
 import AiSymbol from './ai/AiSymbol'
 import Avatar from './Avatar'
@@ -25,6 +25,7 @@ import SearchField from './SearchField'
  * @param {Object[]} [props.utilityIcons] — trailing icon buttons; items use `key`, `icon`, `label`, optional `onClick`, optional `badgeCount` (defaults to built-in feedback/help)
  * @param {number} [props.alertCount=0] — when positive, wraps the alerts icon with a counter badge
  * @param {boolean} [props.showWaffleMenu=true] — show the app launcher (waffle) control (desktop)
+ * @param {*} [props.appLauncherContent] — optional dropdown content rendered from the app launcher
  * @param {string} [props.avatarSrc] — avatar image URL for the user control
  * @param {string} [props.avatarName] — display name used for initials when no photo
  * @param {function(): void} [props.onAvatarClick] — when provided, avatar is interactive
@@ -56,6 +57,7 @@ export default function AppHeader({
   utilityIcons = DEFAULT_UTILITY_ICONS,
   alertCount = 0,
   showWaffleMenu = true,
+  appLauncherContent,
   avatarSrc,
   avatarName,
   onAvatarClick,
@@ -64,6 +66,8 @@ export default function AppHeader({
   ...rest
 }) {
   const [searchVal, setSearchVal] = useState('')
+  const [appLauncherOpen, setAppLauncherOpen] = useState(false)
+  const appLauncherRef = useRef(null)
   const isMobile = type === 'mobile'
   const isDesktop = !isMobile
 
@@ -71,6 +75,29 @@ export default function AppHeader({
     setSearchVal(val)
     onSearch?.(val)
   }, [onSearch])
+
+  useEffect(() => {
+    if (!appLauncherOpen) return undefined
+
+    const handlePointerDown = (event) => {
+      if (!appLauncherRef.current?.contains(event.target)) {
+        setAppLauncherOpen(false)
+      }
+    }
+
+    const handleKeyDown = (event) => {
+      if (event.key === 'Escape') {
+        setAppLauncherOpen(false)
+      }
+    }
+
+    document.addEventListener('mousedown', handlePointerDown)
+    document.addEventListener('keydown', handleKeyDown)
+    return () => {
+      document.removeEventListener('mousedown', handlePointerDown)
+      document.removeEventListener('keydown', handleKeyDown)
+    }
+  }, [appLauncherOpen])
 
   const classes = [
     'app-header',
@@ -187,13 +214,27 @@ export default function AppHeader({
           {children}
 
           {showWaffleMenu && (
-            <button
-              type="button"
-              className="app-header__icon-btn"
-              aria-label="App Launcher"
-            >
-              <Icon name="waffle-menu-bold" size={24} />
-            </button>
+            <div className="app-header__app-launcher" ref={appLauncherRef}>
+              <button
+                type="button"
+                className="app-header__icon-btn"
+                aria-label="App Launcher"
+                aria-haspopup={appLauncherContent ? 'menu' : undefined}
+                aria-expanded={appLauncherContent ? appLauncherOpen : undefined}
+                onClick={() => {
+                  if (appLauncherContent) {
+                    setAppLauncherOpen(open => !open)
+                  }
+                }}
+              >
+                <Icon name="waffle-menu-bold" size={24} />
+              </button>
+              {appLauncherContent && appLauncherOpen && (
+                <div className="app-header__app-launcher-menu" role="menu" data-review-ui>
+                  {appLauncherContent}
+                </div>
+              )}
+            </div>
           )}
 
           <div className="app-header__avatar">

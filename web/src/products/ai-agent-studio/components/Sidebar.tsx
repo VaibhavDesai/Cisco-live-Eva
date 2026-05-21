@@ -1,11 +1,7 @@
 import { useLocation, useNavigate } from 'react-router-dom';
 import SideNav from '../../../components/shared/SideNav';
 import { Icon } from '../../../icons/Icon';
-import Toggle from '../../../components/shared/Toggle';
-import Dropdown from '../../../components/shared/Dropdown';
-import { useReview } from '../../../features/review/ReviewProvider';
 import { useDesignVariation } from '../../../contexts/DesignVariationContext';
-import type { DesignVariation } from '../../../contexts/designVariationStore';
 
 interface NavItem {
   path: string;
@@ -24,12 +20,6 @@ const navItems: NavItem[] = [
 
 const ORGANIZATION_NAME = 'Renergize Healthcare';
 
-const DESIGN_VARIATION_OPTIONS: Array<{ value: DesignVariation; label: string }> = [
-  { value: 'landing', label: 'Chat-based in Ai Agent' },
-  { value: 'dashboard', label: 'Chat-based in Dashboard' },
-  { value: 'form-bases', label: 'Form-based in Ai Agent' },
-];
-
 interface SidebarProps {
   collapsed?: boolean;
 }
@@ -37,13 +27,7 @@ interface SidebarProps {
 export default function Sidebar({ collapsed = false }: SidebarProps) {
   const location = useLocation();
   const navigate = useNavigate();
-  const {
-    configured: reviewConfigured,
-    active: reviewActive,
-    toggleActive: toggleReview,
-    openCommentsModal,
-  } = useReview();
-  const { variation, setVariation } = useDesignVariation();
+  const { setVariation } = useDesignVariation();
 
   const isActive = (path: string, end = false) => {
     if (end) return location.pathname === path;
@@ -96,51 +80,6 @@ export default function Sidebar({ collapsed = false }: SidebarProps) {
         </SideNav>
       </div>
       <div className="sidebar-bottom">
-        <div
-          className="sidebar-comment-toggle sidebar-comment-toggle--with-hint"
-          data-review-ui
-          title={
-            !reviewConfigured
-              ? 'Comment mode unavailable — Supabase is not configured.'
-              : reviewActive
-                ? 'Comment mode is on — click any element to leave feedback.'
-                : 'Turn on to leave inline comments on any element.'
-          }
-        >
-          <span className="sidebar-comment-toggle__copy">
-            <span className="sidebar-comment-toggle__label">Comment mode</span>
-            <span className="sidebar-comment-toggle__hint">Press C to turn on/off</span>
-          </span>
-          <Toggle
-            size="compact"
-            checked={reviewActive}
-            disabled={!reviewConfigured}
-            onChange={() => {
-              void toggleReview();
-            }}
-            aria-label={reviewActive ? 'Turn off comment mode' : 'Turn on comment mode'}
-          />
-          <button
-            type="button"
-            className="sidebar-comment-toggle__view-all"
-            data-review-ui
-            onClick={openCommentsModal}
-            disabled={!reviewConfigured}
-            title="View all comments"
-            aria-label="View all comments"
-          >
-            <Icon name="list-menu" size={14} />
-          </button>
-        </div>
-        <Dropdown
-          className="sidebar-design-variation-select"
-          label="Design Variations"
-          options={DESIGN_VARIATION_OPTIONS}
-          value={variation}
-          size="compact"
-          menuPlacement="top"
-          onChange={value => setVariation(value as DesignVariation)}
-        />
         <button
           type="button"
           className={`sidebar-org-pill${location.pathname === '/settings/organization' ? ' sidebar-org-pill--active' : ''}`}
