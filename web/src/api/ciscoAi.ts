@@ -25,6 +25,19 @@ function getCompanionApiUrl(path: string): string {
   return `${baseUrl}${path}`;
 }
 
+function normalizeCompanionApiUrl(configuredUrl: string | undefined, path: string): string {
+  if (!configuredUrl) return getCompanionApiUrl(path);
+
+  const trimmedUrl = configuredUrl.trim();
+  const normalizedPath = path.startsWith('/') ? path : `/${path}`;
+  const baseUrl = trimmedUrl
+    .replace(/\/chat\/?$/, '')
+    .replace(new RegExp(`${normalizedPath.replace(/\//g, '\\/')}/?$`), '')
+    .replace(/\/$/, '');
+
+  return `${baseUrl}${normalizedPath}`;
+}
+
 const SYSTEM_PROMPT = `You are a guardrail policy assistant for an AI Agent Studio. Your job is to help users create and refine custom guardrail profiles that govern how an AI agent behaves.
 
 When the user describes a policy they want to create, respond with:
@@ -194,7 +207,10 @@ export async function sendEvaChat(messages: ChatMessage[]): Promise<string> {
 }
 
 export async function getElevenLabsConversationSignedUrl(): Promise<string> {
-  const apiUrl = import.meta.env.VITE_CONVAI_SIGNED_URL_API_URL || getCompanionApiUrl('/convai/signed-url');
+  const apiUrl = normalizeCompanionApiUrl(
+    import.meta.env.VITE_CONVAI_SIGNED_URL_API_URL,
+    '/convai/signed-url',
+  );
   let res: Response;
   try {
     res = await fetch(apiUrl, {

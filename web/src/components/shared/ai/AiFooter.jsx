@@ -169,9 +169,18 @@ function AiFooter({
 
   const transcribeBlob = useCallback(async (blob) => {
     const chatApiUrl = import.meta.env.VITE_CHAT_API_URL
+    const companionApiUrl = chatApiUrl
+      ? `${chatApiUrl.replace(/\/chat\/?$/, '').replace(/\/$/, '')}/transcribe`
+      : '/api/transcribe'
+    const configuredTranscribeUrl = import.meta.env.VITE_TRANSCRIBE_API_URL
     const transcribeApiUrl =
-      import.meta.env.VITE_TRANSCRIBE_API_URL ||
-      (chatApiUrl ? `${chatApiUrl.replace(/\/$/, '')}/transcribe` : '/api/transcribe')
+      (configuredTranscribeUrl
+        ? `${configuredTranscribeUrl
+            .replace(/\/chat\/?$/, '')
+            .replace(/\/transcribe\/?$/, '')
+            .replace(/\/$/, '')}/transcribe`
+        : '') ||
+      companionApiUrl
 
     const res = await fetch(transcribeApiUrl, {
       method: 'POST',
