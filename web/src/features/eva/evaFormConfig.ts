@@ -239,11 +239,11 @@ export const STARTER_PROMPTS: Array<{
   },
   {
     templateId: 'knowledge-assistant',
-    title: 'Customer Concierge',
+    title: 'CX Concierge',
     summary: 'Handle customer needs end-to-end',
     description: 'Resolves issues, answers questions, updates accounts, routes requests, and more.',
     prompt: 'Create a customer concierge agent.',
-    icon: 'headset',
+    icon: 'concierge',
   },
   {
     templateId: 'policy-compliance',

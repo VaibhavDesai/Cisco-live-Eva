@@ -237,11 +237,6 @@ export default function EvaAgentsTable() {
     setPhase('table');
   };
 
-  const handleStartWithEva = () => {
-    setVariation('dashboard');
-    navigate('/');
-  };
-
   /* "Existing agent" landing button — drops the user straight into the
      agents table for this variation. They're already on the dashboard
      variation, so there's no design-variation switch to do; just exit
@@ -412,10 +407,6 @@ export default function EvaAgentsTable() {
             onChange={setCreatorFilter}
           />
           <div className="eva-form-builder__compact-header-actions ai-agents-header-actions ai-agents-toolbar-actions">
-            <Button variant="secondary" onClick={handleStartWithEva}>
-              <Icon name="sparkle" weight="bold" size="sm" />
-              Start with AI Assistant
-            </Button>
             <Button onClick={() => setIsCreateModalOpen(true)}>+ Create Agent</Button>
           </div>
         </div>

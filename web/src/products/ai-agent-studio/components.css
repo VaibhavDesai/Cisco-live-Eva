@@ -8646,12 +8646,19 @@ html[data-product='ai-agent-studio']:has(.eva-form-builder.primary-content) .app
 }
 
 .eva-retail-recommendation-eyebrow {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--spacing-xxx-small);
   color: var(--text-primary);
   font-size: var(--font-size-body-small);
   font-weight: var(--font-weight-bold);
   letter-spacing: 0;
   line-height: var(--font-lineheight-body-small);
   text-transform: none;
+}
+
+.eva-retail-recommendation-eyebrow .icon {
+  color: var(--mds-color-theme-text-accent-normal, var(--accent-color));
 }
 
 .eva-retail-connected-list {
@@ -8807,24 +8814,32 @@ html[data-product='ai-agent-studio']:has(.eva-form-builder.primary-content) .app
   overflow: hidden;
 }
 
-.eva-provider-chip__logo--stripe {
-  background: transparent url('../../assets/provider-stripe.svg') center / contain no-repeat;
-  color: transparent;
+.eva-provider-chip__logo--payment,
+.eva-provider-chip__logo--sync,
+.eva-provider-chip__logo--delivery {
+  position: relative;
+  width: 28px;
+  border-radius: var(--border-radius-small);
+  color: var(--text-primary);
+  font-size: 15px;
+  font-weight: var(--font-weight-bold);
+  line-height: 1;
 }
 
-.eva-provider-chip__logo--shopify {
-  background: transparent url('../../assets/provider-shopify.svg') center / contain no-repeat;
-  color: transparent;
+.eva-provider-chip__logo--payment {
+  background: color-mix(in srgb, var(--mds-color-theme-outline-label-violet, var(--accent-color)) 22%, transparent);
+}
+
+.eva-provider-chip__logo--sync {
+  background: color-mix(in srgb, var(--mds-color-theme-outline-label-mint, var(--success-color)) 22%, transparent);
+}
+
+.eva-provider-chip__logo--delivery {
+  background: color-mix(in srgb, var(--mds-color-theme-outline-label-orange, var(--warning-color)) 22%, transparent);
 }
 
 .eva-provider-chip__logo--ups {
   background: var(--mds-color-theme-background-label-gold-normal, var(--warning-bg));
-}
-
-.eva-provider-chip__logo--fedex {
-  width: var(--spacing-xxx-large);
-  background: transparent url('../../assets/provider-fedex.png') center / cover no-repeat;
-  color: transparent;
 }
 
 .eva-retail-recommendation-card small {

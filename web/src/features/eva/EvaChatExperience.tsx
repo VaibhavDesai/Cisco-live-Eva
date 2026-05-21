@@ -382,7 +382,7 @@ const RETAIL_DISCOVERY_ROWS = [
 
 const RETAIL_RECOMMENDED_KNOWLEDGE_BASES = [
   {
-    name: 'Product catalog',
+    name: 'Product information',
     description: 'Answer availability from approved catalog details.',
   },
   {
@@ -399,22 +399,22 @@ const RETAIL_RECOMMENDED_ACTIONS = [
   {
     name: 'Check payment status',
     provider: 'Stripe',
-    providerLogo: 'stripe',
-    providerLogoLabel: 'S',
+    providerLogo: 'payment',
+    providerLogoLabel: '$',
     description: 'Handle payments and refunds.',
   },
   {
     name: 'Sync product updates',
     provider: 'Shopify',
-    providerLogo: 'shopify',
-    providerLogoLabel: 'S',
+    providerLogo: 'sync',
+    providerLogoLabel: '↻',
     description: 'Sync catalog and inventory.',
   },
   {
     name: 'Track delivery status',
     provider: 'FedEx',
-    providerLogo: 'fedex',
-    providerLogoLabel: '',
+    providerLogo: 'delivery',
+    providerLogoLabel: '▣',
     description: 'Track orders and delivery updates.',
   },
 ];
@@ -5103,7 +5103,10 @@ ${previewTranscript}`,
                   {isRetailKnowledgePrompt && (
                     <div className="eva-retail-recommendation-panel" aria-label="Knowledge base recommendations">
                       <div className="eva-retail-recommendation-section">
-                        <span className="eva-retail-recommendation-eyebrow">Connected knowledge bases</span>
+                        <span className="eva-retail-recommendation-eyebrow">
+                          <Icon name="sparkle" weight="bold" size={14} />
+                          Connected knowledge bases
+                        </span>
                         <div className="eva-retail-connected-list">
                           {selectedKnowledgeBases.map(item => (
                             <span key={item} className="eva-retail-connected-chip">
@@ -5166,7 +5169,10 @@ ${previewTranscript}`,
                   {isRetailActionsPrompt && (
                     <div className="eva-retail-recommendation-panel" aria-label="Action recommendations">
                       <div className="eva-retail-recommendation-section">
-                        <span className="eva-retail-recommendation-eyebrow">Connected actions</span>
+                        <span className="eva-retail-recommendation-eyebrow">
+                          <Icon name="sparkle" weight="bold" size={14} />
+                          Connected actions
+                        </span>
                         <div className="eva-retail-connected-list">
                           {selectedActions.map(item => (
                             <span key={item} className="eva-retail-connected-chip">
