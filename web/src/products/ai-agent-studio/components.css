@@ -2181,15 +2181,17 @@ html[data-product='ai-agent-studio'] .app-header__menu-row-hint {
 .eva-ai-response .ai-footer__suggestion,
 .eva-ai-footer .ai-footer__suggestion,
 .eva-next-step-block__chips button {
-  gap: var(--spacing-xxx-small);
+  height: 28px;
   min-height: 28px;
-  padding: var(--spacing-xxx-small) var(--spacing-x-small);
-  border-color: var(--outline-button);
+  gap: 6px;
+  padding: 1px var(--spacing-x-small);
+  border-color: color-mix(in srgb, var(--mds-color-theme-common-outline-button-normal, var(--outline-button)) 60%, transparent);
   border-radius: var(--border-radius-pill);
   background: transparent;
-  font-size: var(--font-size-body-midsize);
+  font-size: 13px;
   font-weight: var(--font-weight-medium);
-  line-height: var(--font-lineheight-body-midsize);
+  line-height: var(--font-lineheight-body-large);
+  font-feature-settings: 'ss02' 1;
 }
 
 .eva-ai-response .ai-footer__suggestion:hover,
@@ -3983,9 +3985,11 @@ html[data-product='ai-agent-studio'] .app-header__menu-row-hint {
   z-index: 4;
   width: 32px;
   min-width: 32px;
-  height: 32px;
-  padding: 0;
+  height: 32px !important;
+  min-height: 32px !important;
+  padding: 0 !important;
   border-color: transparent;
+  border-radius: var(--border-radius-pill);
   background: transparent;
   color: var(--text-secondary);
 }
@@ -8136,8 +8140,6 @@ html[data-product='ai-agent-studio']:has(.eva-form-builder.primary-content) .app
   flex-direction: column;
   gap: var(--spacing-medium);
   width: 100%;
-  padding-left: var(--spacing-large);
-  border-left: var(--border-width-small) solid var(--mds-color-theme-outline-secondary-normal, var(--border-color));
 }
 
 .eva-retail-channel-options {
@@ -8398,7 +8400,11 @@ html[data-product='ai-agent-studio']:has(.eva-form-builder.primary-content) .app
 }
 
 .eva-retail-phone-selector__later {
-  min-height: 32px;
+  height: 32px !important;
+  min-height: 32px !important;
+  padding: var(--spacing-xxx-small) var(--spacing-x-small) !important;
+  font-size: var(--font-size-body-midsize) !important;
+  line-height: var(--font-lineheight-body-midsize) !important;
 }
 
 .eva-retail-phone-options .ai-footer__suggestion:disabled {
@@ -8499,7 +8505,16 @@ html[data-product='ai-agent-studio']:has(.eva-form-builder.primary-content) .app
 
 .eva-retail-agent-name-options .ai-footer__suggestion {
   height: 32px;
+  min-height: 32px;
   padding: var(--spacing-xxx-small) var(--spacing-x-small);
+}
+
+.eva-retail-agent-name-options .btn {
+  height: 32px !important;
+  min-height: 32px !important;
+  padding: var(--spacing-xxx-small) var(--spacing-x-small) !important;
+  font-size: var(--font-size-body-midsize) !important;
+  line-height: var(--font-lineheight-body-midsize) !important;
 }
 
 .eva-retail-agent-name-options .form-group {
@@ -8616,8 +8631,6 @@ html[data-product='ai-agent-studio']:has(.eva-form-builder.primary-content) .app
   gap: var(--spacing-medium);
   width: 484px;
   max-width: 100%;
-  padding-left: var(--spacing-small);
-  border-left: var(--border-width-small) solid var(--mds-color-theme-outline-secondary-normal, var(--border-color));
 }
 
 .eva-retail-recommendation-section + .eva-retail-recommendation-section {
@@ -8838,8 +8851,6 @@ html[data-product='ai-agent-studio']:has(.eva-form-builder.primary-content) .app
   justify-content: flex-start;
   width: fit-content;
   max-width: 100%;
-  padding-left: var(--spacing-large);
-  border-left: var(--border-width-small) solid var(--mds-color-theme-outline-secondary-normal, var(--border-color));
 }
 
 .eva-retail-final-block {
@@ -9003,15 +9014,17 @@ html[data-product='ai-agent-studio']:has(.eva-form-builder.primary-content) .app
   justify-content: center;
   justify-self: start;
   width: max-content;
-  gap: var(--spacing-xxx-small);
+  height: 28px;
   min-height: 28px;
-  padding: var(--spacing-xxx-small) var(--spacing-x-small);
-  border: var(--border-width-small) solid var(--outline-button);
+  gap: 6px;
+  padding: 1px var(--spacing-x-small);
+  border: var(--border-width-small) solid color-mix(in srgb, var(--mds-color-theme-common-outline-button-normal, var(--outline-button)) 60%, transparent);
   border-radius: var(--border-radius-pill);
   color: var(--text-primary);
-  font-size: var(--font-size-body-midsize);
+  font-size: 13px;
   font-weight: var(--font-weight-medium);
-  line-height: var(--font-lineheight-body-midsize);
+  line-height: var(--font-lineheight-body-large);
+  font-feature-settings: 'ss02' 1;
 }
 
 .eva-retail-preview-card__control {
@@ -9653,10 +9666,16 @@ html[data-product='ai-agent-studio']:has(.eva-form-builder.primary-content) .app
   .eva-side-card,
   .agent-studio-landing
 ) .btn {
+  height: 28px;
+  min-height: 28px;
+  gap: 6px;
+  padding: 1px var(--spacing-x-small);
   overflow: clip;
   border-radius: var(--border-radius-pill);
   font-family: var(--font-family-primary);
+  font-size: 13px;
   font-weight: var(--font-weight-medium);
+  line-height: var(--font-lineheight-body-large);
   font-feature-settings: 'ss02' 1;
   transition:
     background 0.15s ease,
@@ -9674,9 +9693,27 @@ html[data-product='ai-agent-studio']:has(.eva-form-builder.primary-content) .app
   .eva-mini-assistant,
   .eva-side-card,
   .agent-studio-landing
+) .btn-sm {
+  height: 28px;
+  min-height: 28px;
+  padding: 1px var(--spacing-x-small);
+  gap: 6px;
+  font-size: 13px;
+  line-height: var(--font-lineheight-body-large);
+}
+
+.app--ai :is(
+  .eva-agents-landing,
+  .eva-form-builder,
+  .eva-dialogue,
+  .eva-generated-layout,
+  .eva-preview-session,
+  .eva-mini-assistant,
+  .eva-side-card,
+  .agent-studio-landing
 ) .btn-primary {
-  background: var(--mds-color-theme-common-button-primary-normal, var(--button-primary-bg));
-  color: var(--mds-color-theme-common-inverted-text-primary-normal, var(--text-inverted));
+  background: var(--color-core-blue-70, #0353A8);
+  color: var(--mds-color-theme-common-text-primary-normal, var(--text-inverted));
   border-color: transparent;
 }
 
@@ -9694,11 +9731,7 @@ html[data-product='ai-agent-studio']:has(.eva-form-builder.primary-content) .app
   position: absolute;
   inset: 0;
   border-radius: inherit;
-  box-shadow: inset 0 -2px 8px color-mix(
-    in srgb,
-    var(--mds-color-theme-common-background-solid-light, var(--text-primary)) 30%,
-    transparent
-  );
+  box-shadow: 0 -4px 4.7px 0 color-mix(in srgb, var(--mds-color-theme-common-background-solid-light, var(--text-primary)) 20%, transparent) inset;
   pointer-events: none;
 }
 
@@ -9712,7 +9745,7 @@ html[data-product='ai-agent-studio']:has(.eva-form-builder.primary-content) .app
   .eva-side-card,
   .agent-studio-landing
 ) .btn-primary:hover:not(:disabled) {
-  background: var(--mds-color-theme-common-button-primary-hover, var(--button-primary-hover));
+  background: var(--mds-color-theme-control-active-normal, var(--button-primary-hover));
 }
 
 .app--ai :is(
@@ -9735,11 +9768,7 @@ html[data-product='ai-agent-studio']:has(.eva-form-builder.primary-content) .app
   .eva-side-card,
   .agent-studio-landing
 ) .btn-primary:active:not(:disabled)::after {
-  box-shadow: inset 0 -1px 5px color-mix(
-    in srgb,
-    var(--mds-color-theme-common-background-solid-light, var(--text-primary)) 20%,
-    transparent
-  );
+  box-shadow: 0 -4px 4.7px 0 color-mix(in srgb, var(--mds-color-theme-common-background-solid-light, var(--text-primary)) 20%, transparent) inset;
 }
 
 .app--ai :is(
@@ -9752,7 +9781,7 @@ html[data-product='ai-agent-studio']:has(.eva-form-builder.primary-content) .app
   .eva-side-card,
   .agent-studio-landing
 ) .btn-primary:active:not(:disabled) {
-  background: var(--mds-color-theme-common-button-primary-pressed, var(--button-primary-pressed));
+  background: var(--mds-color-theme-control-active-pressed, var(--button-primary-pressed));
 }
 
 .app--ai :is(
@@ -9781,7 +9810,7 @@ html[data-product='ai-agent-studio']:has(.eva-form-builder.primary-content) .app
 ) .btn-secondary {
   background: var(--mds-color-theme-common-button-secondary-normal, var(--button-secondary-bg));
   color: var(--mds-color-theme-common-text-primary-normal, var(--text-primary));
-  border-color: var(--mds-color-theme-common-outline-button-normal, var(--outline-button));
+  border-color: color-mix(in srgb, var(--mds-color-theme-common-outline-button-normal, var(--outline-button)) 60%, transparent);
 }
 
 .app--ai :is(
@@ -9804,7 +9833,8 @@ html[data-product='ai-agent-studio']:has(.eva-form-builder.primary-content) .app
   .eva-side-card,
   .agent-studio-landing
 ) .btn-tertiary:hover:not(:disabled) {
-  background: var(--mds-color-theme-common-button-secondary-hover, var(--button-secondary-hover));
+  border-color: transparent;
+  background: var(--mds-color-theme-background-primary-active, var(--button-secondary-active));
 }
 
 .app--ai :is(
@@ -9827,6 +9857,7 @@ html[data-product='ai-agent-studio']:has(.eva-form-builder.primary-content) .app
   .eva-side-card,
   .agent-studio-landing
 ) .btn-tertiary:active:not(:disabled) {
+  border-color: transparent;
   background: var(--mds-color-theme-common-button-secondary-pressed, var(--button-secondary-active));
 }
 
@@ -9842,7 +9873,7 @@ html[data-product='ai-agent-studio']:has(.eva-form-builder.primary-content) .app
 ) .btn-tertiary {
   background: transparent;
   color: var(--mds-color-theme-common-text-primary-normal, var(--text-primary));
-  border-color: transparent;
+  border-color: color-mix(in srgb, var(--mds-color-theme-common-outline-button-normal, var(--outline-button)) 60%, transparent);
 }
 
 [data-theme='light'] .app--ai :is(
@@ -9855,8 +9886,8 @@ html[data-product='ai-agent-studio']:has(.eva-form-builder.primary-content) .app
   .eva-side-card,
   .agent-studio-landing
 ) .btn-primary {
-  background: var(--button-primary-bg);
-  color: var(--text-inverted);
+  background: color-mix(in srgb, var(--text-primary) 50%, transparent);
+  color: var(--mds-color-theme-common-text-primary-normal, var(--text-inverted));
   border-color: transparent;
 }
 
@@ -9948,7 +9979,7 @@ html[data-product='ai-agent-studio']:has(.eva-form-builder.primary-content) .app
 ) .btn-secondary {
   background: var(--button-secondary-bg);
   color: var(--text-primary);
-  border-color: var(--outline-button);
+  border-color: color-mix(in srgb, var(--outline-button) 60%, transparent);
 }
 
 [data-theme='light'] .app--ai :is(
@@ -10024,5 +10055,5 @@ html[data-product='ai-agent-studio']:has(.eva-form-builder.primary-content) .app
 ) .btn-tertiary {
   background: transparent;
   color: var(--text-primary);
-  border-color: transparent;
+  border-color: color-mix(in srgb, var(--outline-button) 60%, transparent);
 }

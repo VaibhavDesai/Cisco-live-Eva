@@ -676,6 +676,16 @@ export default function EvaFormBuilder() {
 
     const normalized = trimmed.toLowerCase();
     const matched = EVA_TEMPLATES.find(template => {
+      if (
+        (normalized.includes('acme') || normalized.includes('acme electronics')) &&
+        (normalized.includes('agent') ||
+          normalized.includes('assistant') ||
+          normalized.includes('receptionist') ||
+          normalized.includes('voice') ||
+          normalized.includes('store'))
+      ) {
+        return template.id === 'customer-support';
+      }
       if (normalized.includes('concierge') || normalized.includes('candidate') || normalized.includes('hiring') || normalized.includes('interview') || normalized.includes('feedback')) {
         return template.id === 'knowledge-assistant';
       }

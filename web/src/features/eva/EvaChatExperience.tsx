@@ -1375,10 +1375,17 @@ export default function EvaChatExperience({
     navigate('/agents');
   };
 
-  const isRetailReceptionistStoryIntent = (normalized: string) => (
-    /\bagents?\b/.test(normalized) &&
-    /\bacme\b/.test(normalized)
-  );
+  const isRetailReceptionistStoryIntent = (normalized: string) => {
+    const mentionsAcme = /\bacme\b/.test(normalized) || normalized.includes('acme electronics');
+    const mentionsRetailAgent =
+      /\bagents?\b/.test(normalized) ||
+      /\bassistant\b/.test(normalized) ||
+      /\breceptionist\b/.test(normalized) ||
+      /\bvoice\b/.test(normalized) ||
+      /\bstore\b/.test(normalized);
+
+    return mentionsAcme && mentionsRetailAgent;
+  };
 
   const addOnboardingAssistantMessage = (text: string, followups?: string[], originStep?: string) => {
     if (onboardingResponseTimerRef.current) {
@@ -2381,6 +2388,11 @@ export default function EvaChatExperience({
         return;
       }
       completeConversationalOnboarding();
+      return;
+    }
+    if (isRetailReceptionistStoryIntent(trimmed.toLowerCase())) {
+      setMessages(prev => [...prev, { role: 'user', text: trimmed }]);
+      beginRetailReceptionistStory();
       return;
     }
     const matched = matchTemplateFromText(trimmed);
@@ -4803,7 +4815,7 @@ ${previewTranscript}`,
             aria-label="Start a new chat"
             title="Start a new chat"
           >
-            <Icon name="edit" weight="bold" size="sm" />
+            <Icon name="edit" weight="bold" size={20} />
           </Button>
         )}
 
