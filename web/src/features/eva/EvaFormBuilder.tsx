@@ -91,7 +91,7 @@ const initialTemplateDraft: EvaAgentDraft = EVA_TEMPLATES[0].draft;
    the form waterfall. */
 const FORM_BUILDER_EVA_SYSTEM_PROMPT = `You are AI Assistant, a conversational AI assistant inside Webex AI Agent Studio's form-based agent builder. You help product designers and admins design AI agents — defining purpose, knowledge sources, available actions, security policies, voice, and language settings.
 
-Available starter templates (and the trigger keywords that launch the form waterfall): Customer support (keyword: "support"), Candidate feedback loop agent (keywords: "candidate", "hiring", "interview", "feedback"), AI incident command agent (keywords: "incident", "outage", "Jira"), Property management service agent (keywords: "property", "tenant", "maintenance", "ServiceNow"), Sales enablement (keyword: "sales").
+Available starter templates (and the trigger keywords that launch the form waterfall): Receptionist (keywords: "receptionist", "appointment", "reminder", "support"), Customer Concierge (keywords: "concierge", "customer", "request"), Help Desk (keywords: "help desk", "employee", "password", "PTO"), Business Workflow (keywords: "business workflow", "approval", "record", "workflow"), Sales enablement (keyword: "sales").
 
 Guidelines:
 - Keep replies concise (2–4 sentences). Be specific and actionable.
@@ -676,7 +676,7 @@ export default function EvaFormBuilder() {
 
     const normalized = trimmed.toLowerCase();
     const matched = EVA_TEMPLATES.find(template => {
-      if (normalized.includes('candidate') || normalized.includes('hiring') || normalized.includes('interview') || normalized.includes('feedback')) {
+      if (normalized.includes('concierge') || normalized.includes('candidate') || normalized.includes('hiring') || normalized.includes('interview') || normalized.includes('feedback')) {
         return template.id === 'knowledge-assistant';
       }
       if (
@@ -697,8 +697,14 @@ export default function EvaFormBuilder() {
       if (normalized.includes('sales')) {
         return template.id === 'sales-enablement';
       }
-      if (normalized.includes('customer') || normalized.includes('support')) {
+      if (normalized.includes('receptionist') || normalized.includes('appointment') || normalized.includes('reminder') || normalized.includes('customer') || normalized.includes('support')) {
         return template.id === 'customer-support';
+      }
+      if (normalized.includes('help desk') || normalized.includes('employee') || normalized.includes('password') || normalized.includes('pto')) {
+        return template.id === 'policy-compliance';
+      }
+      if (normalized.includes('business workflow') || normalized.includes('approval') || normalized.includes('record') || normalized.includes('workflow')) {
+        return template.id === 'workflow-automation';
       }
       return false;
     });
@@ -1263,7 +1269,10 @@ export default function EvaFormBuilder() {
                       </span>
                       <strong>{prompt.title}</strong>
                     </span>
-                    <span>{prompt.description}</span>
+                    <span className="eva-prompt-card__copy">
+                      <strong>{prompt.summary}</strong>
+                      <span>{prompt.description}</span>
+                    </span>
                     <small>Use template</small>
                   </button>
                 ))}

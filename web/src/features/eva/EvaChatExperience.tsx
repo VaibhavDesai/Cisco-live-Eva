@@ -163,7 +163,7 @@ function float32ToPcm16Base64(input: Float32Array): string {
    build flow. The keyword list mirrors the matcher in that handler. */
 const EVA_SYSTEM_PROMPT = `You are AI Assistant, a conversational AI assistant inside Webex AI Agent Studio. You help product designers and admins design AI agents — defining purpose, knowledge sources, available actions, security policies, voice, and language settings.
 
-Available starter templates (and the trigger keywords that launch the guided build flow): Customer support (keyword: "support"), Candidate feedback loop agent (keywords: "candidate", "hiring", "interview", "feedback"), AI incident command agent (keywords: "incident", "outage", "Jira"), Property management service agent (keywords: "property", "tenant", "maintenance", "ServiceNow"), Sales enablement (keyword: "sales").
+Available starter templates (and the trigger keywords that launch the guided build flow): Receptionist (keywords: "receptionist", "appointment", "reminder", "support"), Customer Concierge (keywords: "concierge", "customer", "request"), Help Desk (keywords: "help desk", "employee", "password", "PTO"), Business Workflow (keywords: "business workflow", "approval", "record", "workflow"), Sales enablement (keyword: "sales").
 
 Guidelines:
 - Keep replies concise (2–4 sentences). Be specific and actionable.
@@ -443,7 +443,7 @@ const RETAIL_CHANNEL_OPTIONS = [
 const matchEvaTemplateFromText = (text: string): typeof EVA_TEMPLATES[number] | null => {
   const normalized = text.trim().toLowerCase();
   if (!normalized) return null;
-  if (normalized.includes('candidate') || normalized.includes('hiring') || normalized.includes('interview') || normalized.includes('feedback')) {
+  if (normalized.includes('concierge') || normalized.includes('candidate') || normalized.includes('hiring') || normalized.includes('interview') || normalized.includes('feedback')) {
     return EVA_TEMPLATES.find(template => template.id === 'knowledge-assistant') ?? null;
   }
   if (normalized.includes('incident') || normalized.includes('outage') || normalized.includes('jira')) {
@@ -460,8 +460,14 @@ const matchEvaTemplateFromText = (text: string): typeof EVA_TEMPLATES[number] | 
   if (normalized.includes('sales')) {
     return EVA_TEMPLATES.find(template => template.id === 'sales-enablement') ?? null;
   }
-  if (normalized.includes('customer') || normalized.includes('support')) {
+  if (normalized.includes('receptionist') || normalized.includes('appointment') || normalized.includes('reminder') || normalized.includes('customer') || normalized.includes('support')) {
     return EVA_TEMPLATES.find(template => template.id === 'customer-support') ?? null;
+  }
+  if (normalized.includes('help desk') || normalized.includes('employee') || normalized.includes('password') || normalized.includes('pto')) {
+    return EVA_TEMPLATES.find(template => template.id === 'policy-compliance') ?? null;
+  }
+  if (normalized.includes('business workflow') || normalized.includes('approval') || normalized.includes('record') || normalized.includes('workflow')) {
+    return EVA_TEMPLATES.find(template => template.id === 'workflow-automation') ?? null;
   }
   return null;
 };
@@ -4746,7 +4752,10 @@ ${previewTranscript}`,
                   </span>
                   <strong>{prompt.title}</strong>
                 </span>
-                <span>{prompt.description}</span>
+                <span className="eva-prompt-card__copy">
+                  <strong>{prompt.summary}</strong>
+                  <span>{prompt.description}</span>
+                </span>
                 <small>Use template</small>
               </button>
             ))}
@@ -5344,7 +5353,10 @@ ${previewTranscript}`,
                     </span>
                     <strong>{prompt.title}</strong>
                   </span>
-                  <span>{prompt.description}</span>
+                  <span className="eva-prompt-card__copy">
+                    <strong>{prompt.summary}</strong>
+                    <span>{prompt.description}</span>
+                  </span>
                   <small>Use template</small>
                 </button>
               ))}

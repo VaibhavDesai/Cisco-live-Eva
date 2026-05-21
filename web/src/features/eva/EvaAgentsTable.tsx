@@ -346,7 +346,10 @@ export default function EvaAgentsTable() {
                   </span>
                   <strong>{prompt.title}</strong>
                 </span>
-                <span>{prompt.description}</span>
+                <span className="eva-prompt-card__copy">
+                  <strong>{prompt.summary}</strong>
+                  <span>{prompt.description}</span>
+                </span>
                 <small>Use template</small>
               </button>
             ))}

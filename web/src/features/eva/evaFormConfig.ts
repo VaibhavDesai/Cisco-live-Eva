@@ -224,37 +224,42 @@ export const INSTRUCTION_TIPS = [
 export const STARTER_PROMPTS: Array<{
   templateId: EvaTemplateId;
   title: string;
+  summary: string;
   description: string;
   prompt: string;
   icon: IconName;
 }> = [
   {
     templateId: 'customer-support',
-    title: 'Retail store agent',
-    description: 'Answer store calls, check inventory, send follow-ups, and surface demand signals.',
-    prompt: 'Create an agent for Acme Electronics in San Jose',
+    title: 'Receptionist',
+    summary: 'Answer and route every request',
+    description: 'Books appointments, confirms details, and sends reminders.',
+    prompt: 'Create a receptionist agent.',
     icon: 'bot-customer-assistant',
   },
   {
     templateId: 'knowledge-assistant',
-    title: 'Candidate feedback loop agent',
-    description: 'Synthesize interview feedback, structure hiring decisions, and schedule follow-ups.',
-    prompt: 'Create a candidate feedback loop agent.',
+    title: 'Customer Concierge',
+    summary: 'Handle customer needs end-to-end',
+    description: 'Books, updates, and manages requests without handoffs.',
+    prompt: 'Create a customer concierge agent.',
     icon: 'headset',
   },
   {
-    templateId: 'workflow-automation',
-    title: 'AI incident command agent',
-    description: 'Coordinate outages, notify stakeholders, create Jira tasks, and document post-mortems.',
-    prompt: 'Create an AI incident command agent.',
-    icon: 'setup-assistant',
+    templateId: 'policy-compliance',
+    title: 'Help Desk',
+    summary: 'Resolve employee requests instantly',
+    description: 'Handles passwords, PTO, and common internal tasks.',
+    prompt: 'Create a help desk agent.',
+    icon: 'helpdesk',
   },
   {
-    templateId: 'policy-compliance',
-    title: 'Property management service agent',
-    description: 'Verify callers, triage maintenance, create ServiceNow tickets, and schedule technicians.',
-    prompt: 'Create a property management service agent.',
-    icon: 'shield',
+    templateId: 'workflow-automation',
+    title: 'Business Workflow',
+    summary: 'Automate tasks across systems',
+    description: 'Triggers approvals, updates records, and follows up automatically.',
+    prompt: 'Create a business workflow agent.',
+    icon: 'automation',
   },
 ];
 

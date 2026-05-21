@@ -1715,11 +1715,19 @@ html[data-product='ai-agent-studio'] .app-header {
   white-space: normal;
 }
 
-.eva-prompt-card > span:not(.eva-prompt-card__header) {
+.eva-prompt-card__copy {
+  display: flex;
   flex: 1;
+  flex-direction: column;
+  gap: var(--spacing-xxx-small);
   color: var(--text-secondary);
   font-size: var(--font-size-body-small);
   line-height: var(--font-lineheight-body-small);
+}
+
+.eva-prompt-card__copy strong {
+  color: var(--text-primary);
+  font-weight: var(--font-weight-bold);
 }
 
 .eva-prompt-card small {
