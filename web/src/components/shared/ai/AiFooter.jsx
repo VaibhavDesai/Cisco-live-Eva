@@ -188,18 +188,21 @@ function AiFooter({
       body: blob,
     })
 
-    if (!res.ok) {
-      let message = `Transcription failed (${res.status})`
-      try {
-        const data = await res.json()
-        if (data?.error) message = data.error
-      } catch {
-        /* response wasn't JSON; keep the generic message */
+    const rawResponse = await res.text()
+    let data = null
+    try {
+      data = rawResponse ? JSON.parse(rawResponse) : null
+    } catch {
+      if (!res.ok) {
+        throw new Error(`Transcription failed (${res.status})`)
       }
-      throw new Error(message)
+      throw new Error('Transcription returned an invalid response.')
     }
 
-    const data = await res.json()
+    if (!res.ok) {
+      throw new Error(data?.error || `Transcription failed (${res.status})`)
+    }
+
     return typeof data.text === 'string' ? data.text.trim() : ''
   }, [])
 
