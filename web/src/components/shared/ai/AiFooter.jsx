@@ -79,6 +79,18 @@ function AiFooter({
   const recordingSessionActiveRef = useRef(false)
   const transcribeQueueRef = useRef(Promise.resolve())
 
+  const getFriendlyVoiceError = useCallback((err) => {
+    const message = err instanceof Error ? err.message : String(err || '')
+    if (
+      /unexpected token/i.test(message) ||
+      /messages array required/i.test(message) ||
+      /invalid response/i.test(message)
+    ) {
+      return 'Transcription service is unavailable. Try again.'
+    }
+    return message || 'Transcription failed.'
+  }, [])
+
   const autoResize = useCallback(() => {
     const ta = textareaRef.current
     if (!ta) return
@@ -200,11 +212,11 @@ function AiFooter({
     }
 
     if (!res.ok) {
-      throw new Error(data?.error || `Transcription failed (${res.status})`)
+      throw new Error(getFriendlyVoiceError(new Error(data?.error || `Transcription failed (${res.status})`)))
     }
 
     return typeof data.text === 'string' ? data.text.trim() : ''
-  }, [])
+  }, [getFriendlyVoiceError])
 
   const appendTranscript = useCallback((transcript) => {
     const cleanTranscript = transcript.trim()
@@ -252,8 +264,7 @@ function AiFooter({
             if (transcript) setVoiceError('')
           } catch (err) {
             if (recordingSessionActiveRef.current) return
-            const message = err instanceof Error ? err.message : 'Transcription failed.'
-            setVoiceError(message)
+            setVoiceError(getFriendlyVoiceError(err))
           } finally {
             setIsTranscribing(false)
           }
@@ -342,7 +353,7 @@ function AiFooter({
     setIsRecording(true)
     onVoiceToggle?.(true)
     return true
-  }, [appendTranscript, onVoiceToggle, pickRecorderMimeType, stopMicTracks, transcribeBlob])
+  }, [appendTranscript, getFriendlyVoiceError, onVoiceToggle, pickRecorderMimeType, stopMicTracks, transcribeBlob])
 
   const startBrowserSpeechRecognition = useCallback(() => {
     const SpeechRecognition =

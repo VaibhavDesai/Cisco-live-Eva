@@ -15291,24 +15291,23 @@ img.app-header__wordmark-logo {
 }
 
 /* Live recording state — used while MediaRecorder is capturing audio. The
-   solid red accent + slow pulse make it unambiguous that the mic is hot,
-   distinguishing it from the idle / parent-controlled "active" state. */
+   green accent + slow pulse make it clear the user is actively talking. */
 .ai-footer__voice-btn--recording:not(:disabled) {
-  background: var(--mds-color-theme-indicator-stable-error-normal, #ff3b30);
-  color: #ffffff;
+  background: var(--mds-color-theme-button-join-normal, var(--success-color));
+  color: var(--mds-color-theme-common-text-primary-normal, #ffffff);
   animation: ai-footer-mic-pulse 1.4s ease-in-out infinite;
 }
 
 .ai-footer__voice-btn--recording:not(:disabled):hover {
-  background: var(--mds-color-theme-indicator-stable-error-hover, #d92e25);
+  background: var(--mds-color-theme-button-join-hover, var(--success-color));
 }
 
 @keyframes ai-footer-mic-pulse {
   0%, 100% {
-    box-shadow: 0 0 0 0 color-mix(in srgb, var(--mds-color-theme-indicator-stable-error-normal, #ff3b30) 60%, transparent);
+    box-shadow: 0 0 0 0 color-mix(in srgb, var(--mds-color-theme-button-join-normal, var(--success-color)) 60%, transparent);
   }
   50% {
-    box-shadow: 0 0 0 6px color-mix(in srgb, var(--mds-color-theme-indicator-stable-error-normal, #ff3b30) 0%, transparent);
+    box-shadow: 0 0 0 6px color-mix(in srgb, var(--mds-color-theme-button-join-normal, var(--success-color)) 0%, transparent);
   }
 }
 
