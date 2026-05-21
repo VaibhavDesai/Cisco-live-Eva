@@ -9058,6 +9058,7 @@ html[data-product='ai-agent-studio']:has(.eva-form-builder.primary-content) .app
   flex-wrap: wrap;
   justify-content: flex-start;
   gap: var(--spacing-xx-small);
+  margin-top: var(--spacing-xx-small);
 }
 
 .eva-retail-final-heading {

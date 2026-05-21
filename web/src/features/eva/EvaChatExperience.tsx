@@ -4742,9 +4742,9 @@ ${previewTranscript}`,
         )}
 
         {showLandingOptions && landingMode === 'build' && (
-          <div className="eva-landing-divider eva-landing-template-divider" role="separator" aria-label="choose a template">
+          <div className="eva-landing-divider eva-landing-template-divider" role="separator" aria-label="quick start with">
             <span className="eva-landing-divider-line" aria-hidden="true" />
-            <span className="eva-landing-divider-text">Choose a template</span>
+            <span className="eva-landing-divider-text">Quick start with</span>
             <span className="eva-landing-divider-line" aria-hidden="true" />
           </div>
         )}
@@ -4768,7 +4768,7 @@ ${previewTranscript}`,
                   <strong>{prompt.summary}</strong>
                   <span>{prompt.description}</span>
                 </span>
-                <small>Use template</small>
+                <small>Start here</small>
               </button>
             ))}
           </section>
@@ -5369,7 +5369,7 @@ ${previewTranscript}`,
                     <strong>{prompt.summary}</strong>
                     <span>{prompt.description}</span>
                   </span>
-                  <small>Use template</small>
+                  <small>Start here</small>
                 </button>
               ))}
             </section>
