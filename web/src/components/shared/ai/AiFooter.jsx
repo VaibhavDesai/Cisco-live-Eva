@@ -91,6 +91,14 @@ function AiFooter({
     return message || 'Transcription failed.'
   }, [])
 
+  const getEndpointPath = useCallback((url) => {
+    try {
+      return new URL(url, window.location.origin).pathname
+    } catch {
+      return '/transcribe'
+    }
+  }, [])
+
   const autoResize = useCallback(() => {
     const ta = textareaRef.current
     if (!ta) return
@@ -205,18 +213,24 @@ function AiFooter({
     try {
       data = rawResponse ? JSON.parse(rawResponse) : null
     } catch {
+      const endpointPath = getEndpointPath(transcribeApiUrl)
       if (!res.ok) {
-        throw new Error(`Transcription failed (${res.status})`)
+        throw new Error(`Transcription failed (${res.status} ${endpointPath})`)
       }
-      throw new Error('Transcription returned an invalid response.')
+      throw new Error(`Transcription returned invalid JSON (${endpointPath})`)
     }
 
     if (!res.ok) {
-      throw new Error(getFriendlyVoiceError(new Error(data?.error || `Transcription failed (${res.status})`)))
+      const endpointPath = getEndpointPath(transcribeApiUrl)
+      const reason = getFriendlyVoiceError(new Error(data?.error || `HTTP ${res.status}`))
+      const detail = typeof data?.details === 'string'
+        ? data.details.replace(/\s+/g, ' ').slice(0, 80)
+        : ''
+      throw new Error(`${reason} (${res.status} ${endpointPath}${detail ? `: ${detail}` : ''})`)
     }
 
     return typeof data.text === 'string' ? data.text.trim() : ''
-  }, [getFriendlyVoiceError])
+  }, [getEndpointPath, getFriendlyVoiceError])
 
   const appendTranscript = useCallback((transcript) => {
     const cleanTranscript = transcript.trim()
