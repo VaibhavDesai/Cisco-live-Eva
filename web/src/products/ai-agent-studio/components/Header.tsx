@@ -36,7 +36,7 @@ export default function Header({ onAiClick, onMenuClick, centerContent }: Studio
       wordmarkAlt="Webex AI Agent Studio"
       showSearch={false}
       centerContent={centerContent}
-      alertCount={1}
+      alertCount={0}
       avatarSrc="https://i.pravatar.cc/64?img=12"
       avatarName="Austen Jones"
       onAiClick={onAiClick}
