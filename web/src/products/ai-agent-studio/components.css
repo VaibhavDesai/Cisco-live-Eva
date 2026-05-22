@@ -743,8 +743,31 @@ html[data-product='ai-agent-studio'] .app-header__menu-row-hint {
 }
 
 .eva-view-actions__icon-btn.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   width: 32px;
+  min-width: 32px;
+  height: 32px !important;
+  min-height: 32px !important;
   padding: 0;
+  border-radius: var(--border-radius-pill);
+}
+
+.eva-view-actions__icon-btn.btn > span,
+.eva-view-actions__icon-btn.btn .mds-icon-inline-svg {
+  display: inline-flex !important;
+  align-items: center;
+  justify-content: center;
+  width: 18px !important;
+  height: 18px !important;
+  flex: 0 0 18px;
+  line-height: 0;
+}
+
+.eva-view-actions__icon-btn.btn svg {
+  width: 18px;
+  height: 18px;
 }
 
 .eva-generated-layout {
@@ -3994,6 +4017,11 @@ html[data-product='ai-agent-studio'] .app-header__menu-row-hint {
   color: var(--text-secondary);
 }
 
+.eva-free-chat-new-thread.btn svg {
+  width: 16px;
+  height: 16px;
+}
+
 .eva-free-chat-new-thread.btn:hover {
   border-color: color-mix(in srgb, var(--border-color) 58%, transparent);
   background: color-mix(in srgb, var(--bg-glass) 56%, transparent);
@@ -4201,7 +4229,7 @@ html[data-product='ai-agent-studio'] .app-header__menu-row-hint {
     ) border-box !important;
   backdrop-filter: blur(20px) saturate(140%);
   -webkit-backdrop-filter: blur(20px) saturate(140%);
-  box-shadow: 0 12px 40px color-mix(in srgb, var(--bg-primary) 12%, transparent);
+  box-shadow: none !important;
 }
 
 .eva-generated-layout__main .eva-first-interface__chat--sticky .eva-ai-footer .ai-footer__group:hover,
@@ -8537,9 +8565,9 @@ html[data-product='ai-agent-studio']:has(.eva-form-builder.primary-content) .app
   gap: var(--spacing-xxx-small);
   width: 100%;
   min-width: 0;
-  padding: var(--spacing-small);
+  padding: var(--spacing-small) var(--spacing-large);
   border: var(--border-width-small) solid var(--border-color);
-  border-radius: var(--border-radius-large);
+  border-radius: var(--border-radius-medium);
   background: var(--bg-glass);
   box-shadow: inset 0 0 24.95px 0 rgba(255, 255, 255, 0.07);
   color: var(--text-primary);
@@ -8902,12 +8930,18 @@ html[data-product='ai-agent-studio']:has(.eva-form-builder.primary-content) .app
   isolation: isolate;
 }
 
+button.eva-retail-preview-card {
+  column-gap: var(--spacing-x-small);
+  padding: var(--spacing-small) var(--spacing-large) var(--spacing-small);
+  border-radius: var(--border-radius-medium);
+}
+
 .eva-retail-preview-card::before {
   position: absolute;
-  inset: calc(-1 * var(--border-ai-special-width));
+  inset: 0;
   z-index: 0;
   padding: var(--border-ai-special-width);
-  border-radius: calc(var(--border-ai-special-radius) + var(--border-ai-special-width));
+  border-radius: inherit;
   background: var(--border-ai-special-source);
   background-position: 50% 50%;
   background-size: 220% 220%;
@@ -8922,6 +8956,10 @@ html[data-product='ai-agent-studio']:has(.eva-form-builder.primary-content) .app
     linear-gradient(#000 0 0);
   mask-composite: exclude;
   animation: evaAiSpecialBorderLoop var(--motion-ai-special-border-cycle-duration) var(--motion-ai-special-border-easing) infinite;
+}
+
+button.eva-retail-preview-card::before {
+  border-radius: inherit;
 }
 
 .eva-retail-preview-card > * {
@@ -8965,11 +9003,17 @@ html[data-product='ai-agent-studio']:has(.eva-form-builder.primary-content) .app
 }
 
 .eva-retail-preview-card--active {
-  display: flex;
-  flex-direction: column;
-  gap: var(--spacing-small);
+  display: grid;
+  column-gap: var(--spacing-x-small);
+  row-gap: var(--spacing-large);
+  grid-template-areas:
+    'avatar copy'
+    'control control';
   width: 100%;
+  min-width: 100%;
   min-height: 0;
+  padding: var(--spacing-small) var(--spacing-large) var(--spacing-small);
+  border-radius: var(--border-radius-medium);
   cursor: default;
 }
 
@@ -8984,16 +9028,27 @@ html[data-product='ai-agent-studio']:has(.eva-form-builder.primary-content) .app
 }
 
 .eva-retail-preview-card--active .eva-retail-preview-card__summary {
+  grid-column: 1 / -1;
+  grid-row: 1;
+  width: 100%;
   max-width: none;
 }
 
 .eva-retail-preview-card__avatar {
   grid-area: avatar;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   width: 48px;
   height: 48px;
+  aspect-ratio: 1;
   flex: 0 0 48px;
   margin-right: 0;
+  border-radius: var(--border-radius-half-height);
+  overflow: hidden;
+  color: var(--color-theme-common-text-primary-normal);
   font-size: var(--font-size-body-midsize);
+  font-weight: var(--font-weight-bold);
   line-height: 1;
 }
 
@@ -9027,7 +9082,8 @@ html[data-product='ai-agent-studio']:has(.eva-form-builder.primary-content) .app
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  justify-self: start;
+  align-self: end;
+  justify-self: end;
   width: max-content;
   height: 28px;
   min-height: 28px;
@@ -9043,7 +9099,11 @@ html[data-product='ai-agent-studio']:has(.eva-form-builder.primary-content) .app
 }
 
 .eva-retail-preview-card__control {
+  grid-area: control;
+  align-self: stretch;
+  justify-self: stretch;
   width: 100%;
+  max-width: none;
 }
 
 .eva-retail-preview-card__control .eva-preview-session {
@@ -9066,6 +9126,16 @@ html[data-product='ai-agent-studio']:has(.eva-form-builder.primary-content) .app
 
 .eva-retail-preview-card__control .eva-voice-preview__agent {
   display: none;
+}
+
+.eva-voice-preview__transcript-toggle-btn.btn {
+  border-color: transparent !important;
+  background: transparent;
+}
+
+.eva-voice-preview__transcript-toggle-btn.btn:hover:not(:disabled),
+.eva-voice-preview__transcript-toggle-btn.btn:active:not(:disabled) {
+  border-color: transparent !important;
 }
 
 .eva-retail-final-actions {
@@ -9320,10 +9390,21 @@ html[data-product='ai-agent-studio']:has(.eva-form-builder.primary-content) .app
       var(--mds-color-theme-background-glass-medium, rgba(0, 0, 0, 0.6))
     ) padding-box,
     linear-gradient(180deg, rgba(255, 255, 255, 0.11) 0%, rgba(255, 255, 255, 0.05) 100%) border-box !important;
-  box-shadow: inset 0 0 24.95px 0 rgba(255, 255, 255, 0.07);
+  box-shadow: none;
   backdrop-filter: blur(20px);
   -webkit-backdrop-filter: blur(20px);
   transition: box-shadow 0.2s ease-in-out;
+}
+
+.ai-chat-textarea {
+  box-shadow: inset 0 0 24.95px 0 rgba(255, 255, 255, 0.07);
+}
+
+.ai-footer__group {
+  border: 1px solid var(--color-theme-outline-secondary-normal, #FFFFFF33) !important;
+  background: var(--color-theme-background-glass-light, #00000066) !important;
+  box-shadow: none !important;
+  filter: none !important;
 }
 
 .ai-footer__input-row,
@@ -9351,6 +9432,24 @@ html[data-product='ai-agent-studio']:has(.eva-form-builder.primary-content) .app
       var(--mds-color-theme-background-glass-medium, rgba(0, 0, 0, 0.6))
     ) padding-box,
     linear-gradient(180deg, rgba(255, 255, 255, 0.11) 0%, rgba(255, 255, 255, 0.05) 100%) border-box !important;
+}
+
+.ai-footer__group:hover,
+.ai-footer__group:active {
+  background: var(--color-theme-background-glass-light, #00000066) !important;
+  box-shadow: none !important;
+  filter: none !important;
+}
+
+.app--ai .eva-first-interface.eva-first-interface--free-chat .eva-ai-footer .ai-footer__group,
+.app--ai .eva-first-interface.eva-first-interface--free-chat .eva-ai-footer .ai-footer__group:hover,
+.app--ai .eva-first-interface.eva-first-interface--free-chat .eva-ai-footer .ai-footer__group:active {
+  border: 1px solid var(--color-theme-outline-secondary-normal, #FFFFFF33) !important;
+  background: var(--color-theme-background-glass-light, #00000066) !important;
+  box-shadow: none !important;
+  filter: none !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
 }
 
 .ai-footer__input-row {
@@ -9565,7 +9664,8 @@ html[data-product='ai-agent-studio']:has(.eva-form-builder.primary-content) .app
     ) border-box !important;
   backdrop-filter: blur(20px) saturate(140%) !important;
   -webkit-backdrop-filter: blur(20px) saturate(140%) !important;
-  box-shadow: 0 12px 40px color-mix(in srgb, var(--bg-primary) 12%, transparent) !important;
+  box-shadow: none !important;
+  filter: none !important;
 }
 
 .eva-generated-layout__main .eva-generated-composer .eva-ai-footer .ai-footer__disclaimer {
@@ -9625,6 +9725,40 @@ html[data-product='ai-agent-studio']:has(.eva-form-builder.primary-content) .app
   gap: var(--spacing-small);
 }
 
+.app--ai .eva-first-interface__free-chat .eva-ai-response.ai-response {
+  width: 100%;
+  max-width: 100%;
+  margin-left: 0 !important;
+  padding-left: 0 !important;
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.app--ai .eva-first-interface__free-chat .eva-ai-response .ai-response__body {
+  grid-column: 1;
+  grid-row: auto;
+  justify-self: stretch;
+  width: 100%;
+  margin-left: 0 !important;
+  padding-left: 0 !important;
+  text-align: left;
+}
+
+.app--ai .eva-first-interface__free-chat .eva-ai-response .ai-response__content,
+.app--ai .eva-first-interface__free-chat .eva-ai-response .ai-response__content > p,
+.app--ai .eva-first-interface__free-chat .eva-ai-response .ai-response__generating-text {
+  margin-left: 0 !important;
+  padding-left: 0 !important;
+  text-indent: 0 !important;
+}
+
+.app--ai .eva-first-interface__free-chat .eva-ai-response.ai-response--processing .ai-response__body,
+.app--ai .eva-first-interface__free-chat .eva-ai-response.ai-response--responding .ai-response__body {
+  grid-column: 1 / -1;
+  justify-self: stretch;
+  width: 100%;
+  text-align: left;
+}
+
 .app--ai .ai-response__content {
   width: 100%;
   max-width: 100%;
@@ -9643,7 +9777,14 @@ html[data-product='ai-agent-studio']:has(.eva-form-builder.primary-content) .app
 .app--ai .ai-response__generating-text {
   display: inline-flex;
   align-items: center;
+  justify-content: flex-start;
+  width: 100%;
   gap: var(--spacing-xx-small);
+  text-align: left;
+}
+
+.app--ai .eva-first-interface__free-chat .ai-response__generating-icon {
+  display: none;
 }
 
 .app--ai .ai-response__generating-icon {
@@ -10072,4 +10213,42 @@ html[data-product='ai-agent-studio']:has(.eva-form-builder.primary-content) .app
   background: transparent;
   color: var(--text-primary);
   border-color: color-mix(in srgb, var(--outline-button) 60%, transparent);
+}
+
+/* Free-chat transcript edge alignment.
+   This block is intentionally last in the product stylesheet because the
+   chat transcript mixes shared AI response, card, accordion, and retail
+   discovery components. The visual requirement is simpler than those
+   component defaults: content should start at the same left edge as the
+   composer surface. */
+.app--ai section.eva-dialogue.eva-first-interface__free-chat {
+  padding-left: 0 !important;
+  padding-right: 0 !important;
+}
+
+.app--ai section.eva-dialogue.eva-first-interface__free-chat > :is(.eva-ai-response, .eva-waterfall-card) {
+  margin-left: 0 !important;
+  padding-left: 0 !important;
+  transform: none !important;
+}
+
+.app--ai section.eva-dialogue.eva-first-interface__free-chat .eva-ai-response.ai-response,
+.app--ai section.eva-dialogue.eva-first-interface__free-chat .eva-ai-response .ai-response__body,
+.app--ai section.eva-dialogue.eva-first-interface__free-chat .eva-ai-response .ai-response__content,
+.app--ai section.eva-dialogue.eva-first-interface__free-chat .eva-ai-response .ai-response__content > p,
+.app--ai section.eva-dialogue.eva-first-interface__free-chat .eva-ai-response .ai-response__generating-text,
+.app--ai section.eva-dialogue.eva-first-interface__free-chat .eva-retail-channel-panel,
+.app--ai section.eva-dialogue.eva-first-interface__free-chat .eva-retail-discovery-trace,
+.app--ai section.eva-dialogue.eva-first-interface__free-chat .eva-retail-final-group {
+  margin-left: 0 !important;
+  padding-left: 0 !important;
+  text-indent: 0 !important;
+}
+
+.app--ai section.eva-dialogue.eva-first-interface__free-chat .eva-waterfall-status--dynamic {
+  padding-left: 0 !important;
+}
+
+.app--ai section.eva-dialogue.eva-first-interface__free-chat .eva-waterfall-status--dynamic::before {
+  display: none;
 }

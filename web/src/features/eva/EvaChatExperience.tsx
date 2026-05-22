@@ -3345,18 +3345,19 @@ Simulation rules:
                 <Icon name="phone" weight="bold" size="sm" />
                 {voiceCallStatus === 'ended' || voiceCallStatus === 'error' ? 'Start again' : 'Start call'}
               </Button>
-              <Button
-                variant="secondary"
-                size="sm"
-                onClick={() => stopVoiceCall('ended')}
-                disabled={!callLive}
-              >
-                End call
-              </Button>
+              {callLive && (
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  onClick={() => stopVoiceCall('ended')}
+                >
+                  End call
+                </Button>
+              )}
             </div>
             <button
               type="button"
-              className={`btn ${voiceTranscriptExpanded ? 'btn-secondary' : 'btn-tertiary'} btn-sm eva-voice-preview__transcript-toggle-btn`}
+              className="btn btn-tertiary btn-sm eva-voice-preview__transcript-toggle-btn"
               aria-pressed={voiceTranscriptExpanded}
               aria-expanded={voiceTranscriptExpanded}
               onPointerDown={handleVoiceTranscriptPointerDown}
@@ -4659,7 +4660,7 @@ ${previewTranscript}`,
                   aria-expanded={panelMenu.open}
                   title="Panel options"
                 >
-                  <Icon name="side-panel" weight="bold" size="sm" />
+                  <Icon name="side-panel" weight="bold" size={18} />
                 </Button>
               </span>
               <MenuOverlay
@@ -4698,7 +4699,7 @@ ${previewTranscript}`,
                 aria-label="Open canvas view"
                 title="Canvas view"
               >
-                <Icon name="workflow-deployments" weight="bold" size="sm" />
+                <Icon name="workflow-deployments" weight="bold" size={18} />
               </Button>
               <Button variant="secondary" size="sm" onClick={handleNewEvaThread}>
                 <Icon name="plus" weight="bold" size="sm" />
@@ -4813,7 +4814,7 @@ ${previewTranscript}`,
             aria-label="Start a new chat"
             title="Start a new chat"
           >
-            <Icon name="edit" weight="bold" size={20} />
+            <Icon name="edit" weight="bold" size={16} />
           </Button>
         )}
 
@@ -5241,7 +5242,7 @@ ${previewTranscript}`,
                       {retailPrototypeStep === 'previewing' ? (
                         <section className="eva-retail-preview-card eva-retail-preview-card--active" aria-label={`Preview ${retailPreviewAgentName}`}>
                           <div className="eva-retail-preview-card__summary">
-                            <div className="agent-avatar eva-retail-preview-card__avatar" style={{ background: gradient }}>
+                            <div className="eva-retail-preview-card__avatar" style={{ background: gradient }}>
                               {profileInitials}
                             </div>
                             <div className="eva-retail-preview-card__copy">
@@ -5259,7 +5260,7 @@ ${previewTranscript}`,
                           className="eva-retail-preview-card"
                           onClick={startRetailPreviewInFinalCard}
                         >
-                          <span className="agent-avatar eva-retail-preview-card__avatar" style={{ background: gradient }}>
+                          <span className="eva-retail-preview-card__avatar" style={{ background: gradient }}>
                             {profileInitials}
                           </span>
                           <span className="eva-retail-preview-card__copy">
