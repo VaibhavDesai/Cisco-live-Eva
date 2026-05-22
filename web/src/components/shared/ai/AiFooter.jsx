@@ -44,6 +44,7 @@ function AiFooter({
 }) {
   const [text, setText] = useState(initialText)
   const textareaRef = useRef(null)
+  const shouldRestoreFocusRef = useRef(false)
 
   /* Watch for parent-driven prefill triggers. A bumped `prefillKey`
      replaces whatever's in the textarea with the latest `initialText` so
@@ -104,10 +105,22 @@ function AiFooter({
 
   const handleSend = useCallback(() => {
     const trimmed = text.trim()
-    if (!trimmed || disabled || processing) return
+    if (!trimmed || disabled) return
+    shouldRestoreFocusRef.current = true
     onSend?.(trimmed)
     setText('')
-  }, [text, disabled, processing, onSend])
+  }, [text, disabled, onSend])
+
+  useEffect(() => {
+    if (!shouldRestoreFocusRef.current) return
+    const frameId = window.requestAnimationFrame(() => {
+      if (!isTranscribing) {
+        textareaRef.current?.focus()
+      }
+      shouldRestoreFocusRef.current = false
+    })
+    return () => window.cancelAnimationFrame(frameId)
+  }, [isTranscribing, text])
 
   const handleKeyDown = useCallback((e) => {
     if (e.key === 'Enter' && !e.shiftKey) {
@@ -403,14 +416,19 @@ function AiFooter({
 
   return (
     <div className={`ai-footer ${className}`} style={fillContainerStyle}>
-      {suggestions.length > 0 && !processing && (
+      {suggestions.length > 0 && (
         <div className="ai-footer__suggestions">
           {suggestions.map((s, i) => (
             <button
               key={i}
               type="button"
               className="ai-footer__suggestion"
-              onClick={() => onSend?.(s)}
+              onClick={() => {
+                if (processing || isTranscribing || disabled) return
+                shouldRestoreFocusRef.current = true
+                onSend?.(s)
+              }}
+              disabled={processing || isTranscribing || disabled}
             >
               {s}
             </button>
@@ -418,64 +436,57 @@ function AiFooter({
         </div>
       )}
       <div className="ai-footer__group" style={groupStyle}>
-        {processing ? (
-          <div className="ai-footer__input-row" style={{ ...inputRowStyle, alignItems: 'center', justifyContent: 'center' }}>
-            <AiSymbol size={24} state="processing" />
-            <span style={{ color: 'var(--text-secondary)', fontSize: 14, marginLeft: 8 }}>Processing...</span>
+        <div className="ai-footer__input-row" style={inputRowStyle}>
+          <div className="ai-footer__type-area">
+            <textarea
+              ref={textareaRef}
+              className="ai-footer__textarea"
+              placeholder={isRecording ? 'Listening\u2026' : isTranscribing ? 'Transcribing\u2026' : placeholder}
+              value={text}
+              onChange={(e) => setText(e.target.value)}
+              onKeyDown={handleKeyDown}
+              rows={1}
+              disabled={isTranscribing}
+            />
           </div>
-        ) : (
-          <div className="ai-footer__input-row" style={inputRowStyle}>
-            <div className="ai-footer__type-area">
-              <textarea
-                ref={textareaRef}
-                className="ai-footer__textarea"
-                placeholder={isRecording ? 'Listening\u2026' : isTranscribing ? 'Transcribing\u2026' : placeholder}
-                value={text}
-                onChange={(e) => setText(e.target.value)}
-                onKeyDown={handleKeyDown}
-                rows={1}
-                disabled={disabled || isTranscribing}
-              />
-            </div>
-            <div className="ai-footer__action-bar">
-              {voiceError && (
-                /* Inline error sits immediately to the left of the mic
-                   button so it's clearly tied to the mic action without
-                   pushing the textarea height around. Auto-clears the
-                   next time the user starts a recording (handleMicClick
-                   resets `voiceError`). */
-                <span
-                  className="ai-footer__voice-error"
-                  role="status"
-                  title={voiceError}
-                >
-                  {voiceError}
-                </span>
-              )}
-              {onVoiceToggle && (
-                <button
-                  type="button"
-                  className={micClassName}
-                  aria-label={micAria}
-                  aria-pressed={showRecording || showActive}
-                  disabled={disabled || isTranscribing}
-                  onClick={handleMicClick}
-                >
-                  <Icon name={micIcon} size={16} />
-                </button>
-              )}
+          <div className="ai-footer__action-bar">
+            {voiceError && (
+              /* Inline error sits immediately to the left of the mic
+                 button so it's clearly tied to the mic action without
+                 pushing the textarea height around. Auto-clears the
+                 next time the user starts a recording (handleMicClick
+                 resets `voiceError`). */
+              <span
+                className="ai-footer__voice-error"
+                role="status"
+                title={voiceError}
+              >
+                {voiceError}
+              </span>
+            )}
+            {onVoiceToggle && (
               <button
                 type="button"
-                className="ai-footer__send-btn"
-                aria-label="Send"
-                disabled={!text.trim() || disabled || isTranscribing}
-                onClick={handleSend}
+                className={micClassName}
+                aria-label={micAria}
+                aria-pressed={showRecording || showActive}
+                disabled={disabled || isTranscribing}
+                onClick={handleMicClick}
               >
-                <Icon name="send-bold" size={16} />
+                <Icon name={micIcon} size={16} />
               </button>
-            </div>
+            )}
+            <button
+              type="button"
+              className="ai-footer__send-btn"
+              aria-label="Send"
+              disabled={!text.trim() || disabled || isTranscribing}
+              onClick={handleSend}
+            >
+              <Icon name="send-bold" size={16} />
+            </button>
           </div>
-        )}
+        </div>
         <div className="ai-footer__disclaimer">
           Assistant can make mistakes. Verify responses. Learn how the AI Assistant handles personal data at{' '}
           <a href="#">AI Assistant Data Privacy</a>.
