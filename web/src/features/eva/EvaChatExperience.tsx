@@ -7,7 +7,6 @@ import Button from '../../components/shared/Button';
 import { AccordionGroup, AccordionItem, AiFooter, AiResponseMessage, AiThreadPanel, AiUserMessage, Badge, Banner, Card, Dropdown, Input, MenuItem, MenuOverlay, Modal, ModalBody, ModalFooter, ModalHeader, Radio, RadioGroup, Slider, Table, TableBody, TableCell, TableHead, TableHeader, TableRow, Textarea, TextLink, Toggle, useMenu } from '../../components/shared';
 import { AgentCard } from '../../components/agents';
 import { Icon } from '../../icons';
-import EvaHeroAnimation from './EvaHeroAnimation';
 import {
   EVA_CANVAS_AGENTS_PATH,
   EVA_CANVAS_DASHBOARD_PATH,
@@ -4712,7 +4711,6 @@ ${previewTranscript}`,
         {showLandingOptions && (
           <section className="eva-first-interface__hero" aria-labelledby="eva-landing-title">
             <div className="eva-landing-hero-brand">
-              <EvaHeroAnimation />
               <h1 id="eva-landing-title">AI Agent Studio</h1>
             </div>
             <h2>Build, deploy, and manage AI agents for every interaction.</h2>

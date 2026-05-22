@@ -29,7 +29,6 @@ import { Icon } from '../../icons';
 import { optimizeInstructions, sendEvaChat } from '../../api/ciscoAi';
 import { formatRelative } from '../../pages/knowledge/utils';
 import { EVA_TEMPLATES } from './evaTemplates';
-import EvaHeroAnimation from './EvaHeroAnimation';
 import {
   EVA_CANVAS_AGENTS_PATH,
   EVA_CANVAS_DASHBOARD_PATH,
@@ -1164,7 +1163,6 @@ export default function EvaFormBuilder() {
               aria-labelledby="eva-form-builder-hero"
             >
               <div className="eva-landing-hero-brand">
-                <EvaHeroAnimation />
                 <h1 id="eva-form-builder-hero">AI Agent Studio</h1>
               </div>
               <h2>Build, deploy, and manage AI agents for every interaction.</h2>

@@ -35,7 +35,6 @@ export default function Header({ onAiClick, onMenuClick, centerContent }: Studio
       wordmarkSvg={webexAiAgentStudioWordmark}
       wordmarkAlt="Webex AI Agent Studio"
       showSearch={false}
-      showAiButton={false}
       centerContent={centerContent}
       alertCount={1}
       avatarSrc="https://i.pravatar.cc/64?img=12"

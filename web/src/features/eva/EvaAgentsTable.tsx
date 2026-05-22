@@ -14,7 +14,6 @@ import {
   useMenu,
 } from '../../components/shared';
 import { Icon } from '../../icons';
-import EvaHeroAnimation from './EvaHeroAnimation';
 import {
   buildInstructionPrompt,
   buildWelcomeMessage,
@@ -301,7 +300,6 @@ export default function EvaAgentsTable() {
             aria-labelledby="eva-agents-landing-hero"
           >
             <div className="eva-landing-hero-brand">
-              <EvaHeroAnimation />
               <h1 id="eva-agents-landing-hero">AI Agent Studio</h1>
             </div>
             <h2>Build, deploy, and manage AI agents for every interaction.</h2>
