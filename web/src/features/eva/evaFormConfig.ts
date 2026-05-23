@@ -535,7 +535,7 @@ const replacePersistedEvaCopy = (value: string) => value
   )
   .replace(
     'Warm, helpful, concise, and professional. Best for a neighborhood store receptionist because it sounds friendly and covers all core tasks.',
-    'Works well for a store receptionist because it names the tasks customers are most likely to ask about.',
+    'Sets clear expectations for callers and covers common store questions.',
   )
   .replace(
     'Great. Next, here are the connected knowledge bases and a few recommended sources to enable for this agent.',

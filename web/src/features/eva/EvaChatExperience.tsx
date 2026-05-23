@@ -23,6 +23,9 @@ import {
   extractFieldSuggestionAndProse,
   getFieldSuggestionLabel,
 } from './evaSuggestion';
+import providerServiceNowLogo from '../../assets/provider-servicenow.png';
+import providerSalesforceLogo from '../../../asserts/image-970a0f16-ad96-4ce4-ba0f-01d8e724dfa4.png';
+import providerStripeLogo from '../../../asserts/image-de1daa48-7bd9-4599-a2f3-6b82797ed1ad.png';
 import {
   CHANNEL_PHONE_NUMBER_OPTIONS,
   DIGITAL_CHANNEL_DETAILS,
@@ -348,7 +351,7 @@ const RETAIL_RECOMMENDED_WELCOME_MESSAGES = [
     recommended: true,
     shortReason: 'Warm and friendly',
     tone: '',
-    reason: 'Works well for a store receptionist because it names the tasks customers are most likely to ask about.',
+    reason: 'Sets clear expectations for callers and covers common store questions.',
     text: 'Hi, thanks for calling Acme Electronics in San Jose. I can help with store hours, directions, product availability, and common questions. How can I help?',
   },
   {
@@ -396,25 +399,22 @@ const RETAIL_RECOMMENDED_KNOWLEDGE_BASES = [
 
 const RETAIL_RECOMMENDED_ACTIONS = [
   {
+    name: 'Look up purchase history',
+    provider: 'Salesforce',
+    providerLogoSrc: providerSalesforceLogo,
+    description: 'Find local shopper profiles, warranty coverage, and past device purchases.',
+  },
+  {
+    name: 'Create a repair ticket',
+    provider: 'ServiceNow',
+    providerLogoSrc: providerServiceNowLogo,
+    description: 'Route phone, laptop, and accessory repair requests to the right store workflow.',
+  },
+  {
     name: 'Check payment status',
     provider: 'Stripe',
-    providerLogo: 'payment',
-    providerLogoLabel: '$',
-    description: 'Handle payments and refunds.',
-  },
-  {
-    name: 'Sync product updates',
-    provider: 'Shopify',
-    providerLogo: 'sync',
-    providerLogoLabel: '↻',
-    description: 'Sync catalog and inventory.',
-  },
-  {
-    name: 'Track delivery status',
-    provider: 'FedEx',
-    providerLogo: 'delivery',
-    providerLogoLabel: '▣',
-    description: 'Track orders and delivery updates.',
+    providerLogoSrc: providerStripeLogo,
+    description: 'Check card charges, deposits, refunds, and receipt issues for store orders.',
   },
 ];
 
@@ -1366,7 +1366,7 @@ export default function EvaChatExperience({
     setIsCreateModalOpen(true);
   };
 
-  /* "Existing agent" landing button — switches the design variation to
+  /* "All agents" landing button — switches the design variation to
      the table view and navigates to AI Agents, including when this
      landing is mounted from the Dashboard route. */
   const handleSwitchToExistingAgents = () => {
@@ -4787,7 +4787,7 @@ ${previewTranscript}`,
             <div className="eva-landing-secondary-actions">
               <Button variant="secondary" onClick={handleSwitchToExistingAgents}>
                 <Icon name="user" weight="bold" size="sm" />
-                Existing agent
+                All agents
               </Button>
 
               <Button variant="secondary" onClick={handleBuildFromScratch}>
@@ -5210,10 +5210,10 @@ ${previewTranscript}`,
                                   <Icon name={isSelected ? 'check-circle-filled' : 'check-circle'} weight="bold" size={20} />
                                 </span>
                                 <span
-                                  className={`eva-retail-recommendation-card__icon eva-provider-chip__logo eva-provider-chip__logo--${option.providerLogo}`}
+                                  className="eva-retail-recommendation-card__icon eva-provider-chip__logo eva-provider-chip__logo--brand"
                                   aria-hidden="true"
                                 >
-                                  {option.providerLogoLabel}
+                                  <img className="eva-provider-chip__logo-image" src={option.providerLogoSrc} alt="" />
                                 </span>
                                 <strong>{option.name}</strong>
                                 <span className="eva-retail-recommendation-card__description">

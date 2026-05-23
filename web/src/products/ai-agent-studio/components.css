@@ -8866,6 +8866,18 @@ html[data-product='ai-agent-studio']:has(.eva-form-builder.primary-content) .app
   background: color-mix(in srgb, var(--mds-color-theme-outline-label-orange, var(--warning-color)) 22%, transparent);
 }
 
+.eva-provider-chip__logo--brand {
+  width: 52px;
+  background: transparent;
+}
+
+.eva-provider-chip__logo-image {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
 .eva-provider-chip__logo--ups {
   background: var(--mds-color-theme-background-label-gold-normal, var(--warning-bg));
 }
