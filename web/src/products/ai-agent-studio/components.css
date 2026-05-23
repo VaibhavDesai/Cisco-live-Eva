@@ -9656,6 +9656,8 @@ button.eva-retail-preview-card::before {
 }
 
 .eva-generated-layout__main .eva-generated-composer .eva-generated-composer__surface {
+  width: min(100%, 960px) !important;
+  margin-inline: auto !important;
   border: 0 !important;
   background: transparent !important;
   box-shadow: none !important;
