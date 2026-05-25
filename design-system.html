@@ -1,0 +1,2951 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AI Agent Studio - Design System</title>
+  <style>
+    /* Base Reset */
+    *, *::before, *::after {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    /* Color Tokens */
+    :root {
+      /* Backgrounds */
+      --bg-primary: #000000;
+      --bg-secondary: #1a1a1a;
+      --bg-glass: rgba(255,255,255,0.05);
+      --bg-glass-light: rgba(0,0,0,0.4);
+      --bg-card: rgba(255,255,255,0.05);
+      
+      /* Text */
+      --text-primary: rgba(255,255,255,0.95);
+      --text-secondary: rgba(255,255,255,0.70);
+      --text-muted: rgba(255,255,255,0.40);
+      
+      /* Borders */
+      --border-color: rgba(255,255,255,0.20);
+      --outline-color: rgba(255,255,255,0.40);
+      
+      /* Accent */
+      --accent-color: #64b4fa;
+      --accent-bg: #1170cf;
+      --accent-hover: #bfe3ff;
+      
+      /* Status */
+      --success-color: #3cc29a;
+      --success-bg: #0e2b20;
+      --warning-color: #f2990a;
+      --warning-bg: #36220c;
+      --danger-color: #fc8b98;
+      --danger-bg: #4f0e10;
+      
+      /* Buttons */
+      --button-secondary-bg: transparent;
+      --button-secondary-active: rgba(255,255,255,0.20);
+      
+      /* Fonts */
+      --font-family: 'CiscoSansTT', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    }
+
+    body {
+      font-family: var(--font-family);
+      font-size: 14px;
+      line-height: 1.5;
+      color: var(--text-primary);
+      background: var(--bg-primary);
+      padding: 40px;
+    }
+
+    /* Layout */
+    .container {
+      max-width: 1200px;
+      margin: 0 auto;
+    }
+
+    .section {
+      margin-bottom: 60px;
+    }
+
+    .section-title {
+      font-size: 28px;
+      font-weight: 700;
+      margin-bottom: 8px;
+      color: var(--text-primary);
+    }
+
+    .section-subtitle {
+      font-size: 14px;
+      color: var(--text-secondary);
+      margin-bottom: 32px;
+    }
+
+    .subsection {
+      margin-bottom: 40px;
+    }
+
+    .subsection-title {
+      font-size: 16px;
+      font-weight: 600;
+      margin-bottom: 16px;
+      color: var(--text-primary);
+    }
+
+    .grid {
+      display: grid;
+      gap: 16px;
+    }
+
+    .grid-2 { grid-template-columns: repeat(2, 1fr); }
+    .grid-3 { grid-template-columns: repeat(3, 1fr); }
+    .grid-4 { grid-template-columns: repeat(4, 1fr); }
+    .grid-5 { grid-template-columns: repeat(5, 1fr); }
+
+    .flex {
+      display: flex;
+      gap: 12px;
+      align-items: center;
+      flex-wrap: wrap;
+    }
+
+    /* Color Swatches */
+    .color-swatch {
+      border-radius: 12px;
+      overflow: hidden;
+      border: 1px solid var(--border-color);
+    }
+
+    .color-swatch-preview {
+      height: 80px;
+    }
+
+    .color-swatch-info {
+      padding: 12px;
+      background: var(--bg-secondary);
+    }
+
+    .color-swatch-name {
+      font-weight: 600;
+      font-size: 13px;
+      margin-bottom: 4px;
+    }
+
+    .color-swatch-value {
+      font-size: 11px;
+      color: var(--text-muted);
+      font-family: 'Monaco', 'Menlo', monospace;
+    }
+
+    /* Typography Samples */
+    .type-sample {
+      padding: 16px;
+      background: var(--bg-glass);
+      border-radius: 8px;
+      margin-bottom: 12px;
+    }
+
+    .type-label {
+      font-size: 11px;
+      color: var(--text-muted);
+      margin-bottom: 8px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    /* Brand logos (421-2344) */
+    .brand-strip {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 24px;
+      align-items: flex-end;
+      padding: 24px;
+      border-radius: 12px;
+      border: 1px solid var(--border-color);
+    }
+    .brand-strip--dark {
+      background: #0f0f0f;
+    }
+    .brand-strip--light {
+      background: #ffffff;
+      border-color: rgba(0,0,0,0.12);
+    }
+    .brand-sample-label {
+      font-size: 11px;
+      color: var(--text-muted);
+      margin-bottom: 10px;
+      font-family: Monaco, Menlo, monospace;
+    }
+    .brand-strip--dark .brand-sample-label {
+      color: rgba(255,255,255,0.55);
+    }
+    .brand-strip--light .brand-sample-label {
+      color: rgba(0,0,0,0.45);
+    }
+    .webex-text-demo {
+      font-family: var(--font-family);
+      font-size: 18px;
+      font-weight: 500;
+      letter-spacing: -0.5px;
+    }
+    .brand-lockup-h {
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .header-lockup-demo {
+      display: inline-flex;
+      align-items: center;
+    }
+    .header-divider-demo {
+      width: 1px;
+      height: 28px;
+      margin: 0 8px;
+      background: linear-gradient(180deg, rgba(255,255,255,0) 0%, rgba(255,255,255,0.2) 22%, rgba(255,255,255,0.2) 78%, rgba(255,255,255,0) 100%);
+    }
+
+    /* Buttons */
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      padding: 10px 20px;
+      border-radius: 24px;
+      font-size: 14px;
+      font-weight: 500;
+      font-family: inherit;
+      cursor: pointer;
+      transition: all 0.15s ease;
+      border: 1px solid transparent;
+    }
+
+    .btn-primary {
+      background: var(--text-primary);
+      color: var(--bg-primary);
+    }
+
+    .btn-primary:hover {
+      background: rgba(255,255,255,0.85);
+    }
+
+    .btn-secondary {
+      background: transparent;
+      color: var(--text-primary);
+      border: 1px solid var(--outline-color);
+    }
+
+    .btn-secondary:hover {
+      background: var(--button-secondary-active);
+    }
+
+    .btn-sm {
+      padding: 6px 16px;
+      font-size: 13px;
+    }
+
+    .btn-danger {
+      background: var(--danger-color);
+      color: var(--bg-primary);
+    }
+
+    /* Form Inputs - Momentum Design Style (Exact Figma) */
+    .form-group {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      margin-bottom: 16px;
+    }
+
+    .form-label {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 14px;
+      font-weight: 500;
+      line-height: 20px;
+      color: rgba(255, 255, 255, 0.95);
+    }
+
+    .form-label .required {
+      color: #fc8b98;
+      font-weight: 500;
+    }
+
+    .form-input {
+      width: 100%;
+      height: 32px;
+      padding: 5px 6px 5px 12px;
+      background: transparent;
+      border: 1px solid rgba(255, 255, 255, 0.5);
+      border-radius: 8px;
+      color: rgba(255, 255, 255, 0.95);
+      font-size: 14px;
+      line-height: 20px;
+      font-weight: 400;
+      font-family: inherit;
+      transition: border-color 0.15s ease, box-shadow 0.15s ease;
+    }
+
+    .form-input:hover {
+      border-color: rgba(255, 255, 255, 0.7);
+    }
+
+    .form-input:focus {
+      outline: none;
+      border-color: rgba(255, 255, 255, 0.5);
+      box-shadow: 
+        0 0 0 2px #000000,
+        0 0 0 4px #64b4fa,
+        0 0 0 5px rgba(100, 180, 250, 0.35);
+    }
+
+    .form-input::placeholder {
+      color: rgba(255, 255, 255, 0.7);
+    }
+
+    .form-input:disabled {
+      opacity: 0.4;
+      cursor: not-allowed;
+    }
+
+    .form-input.error {
+      border-color: #fc8b98;
+    }
+
+    .form-input.error:focus {
+      box-shadow: 
+        0 0 0 2px #000000,
+        0 0 0 4px #fc8b98,
+        0 0 0 5px rgba(252, 139, 152, 0.35);
+    }
+
+    textarea.form-input {
+      height: auto;
+      min-height: 100px;
+      padding: 8px 12px;
+      resize: vertical;
+    }
+
+    select.form-input {
+      padding-right: 32px;
+      appearance: none;
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 16 16'%3E%3Cpath fill='rgba(255,255,255,0.7)' d='M4 6l4 4 4-4'/%3E%3C/svg%3E");
+      background-repeat: no-repeat;
+      background-position: right 8px center;
+      cursor: pointer;
+    }
+
+    .form-hint {
+      font-size: 14px;
+      font-weight: 400;
+      line-height: 20px;
+      color: rgba(255, 255, 255, 0.7);
+    }
+
+    .form-hint.error {
+      color: #fc8b98;
+    }
+
+    /* Search Field (Momentum Design) */
+    .search-field {
+      position: relative;
+      display: flex;
+      align-items: center;
+      width: 100%;
+    }
+
+    .search-field-input {
+      width: 100%;
+      height: 32px;
+      padding: 5px 36px 5px 40px;
+      border: 1px solid rgba(255, 255, 255, 0.5);
+      border-radius: 8px;
+      font-size: 14px;
+      line-height: 20px;
+      font-weight: 400;
+      background: transparent;
+      color: rgba(255, 255, 255, 0.95);
+      font-family: inherit;
+      transition: border-color 0.15s, box-shadow 0.15s;
+    }
+
+    .search-field-input:hover {
+      border-color: rgba(255, 255, 255, 0.7);
+    }
+
+    .search-field-input:focus {
+      outline: none;
+      border-color: #1170cf;
+      box-shadow: 
+        0 0 0 2px #000000,
+        0 0 0 4px #1170cf,
+        0 0 0 5px rgba(17, 112, 207, 0.35);
+    }
+
+    .search-field-input::placeholder {
+      color: rgba(255, 255, 255, 0.7);
+      font-weight: 400;
+    }
+
+    .search-field-input:disabled {
+      opacity: 0.4;
+      cursor: not-allowed;
+    }
+
+    .search-field-icon {
+      position: absolute;
+      left: 12px;
+      top: 50%;
+      transform: translateY(-50%);
+      width: 16px;
+      height: 16px;
+      color: rgba(255, 255, 255, 0.7);
+      pointer-events: none;
+    }
+
+    .search-field-clear {
+      position: absolute;
+      right: 6px;
+      top: 50%;
+      transform: translateY(-50%);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 20px;
+      height: 20px;
+      padding: 0;
+      border: none;
+      border-radius: 100px;
+      background: transparent;
+      color: rgba(255, 255, 255, 0.7);
+      cursor: pointer;
+      transition: background 0.15s, color 0.15s;
+    }
+
+    .search-field-clear:hover {
+      background: rgba(255, 255, 255, 0.1);
+      color: rgba(255, 255, 255, 0.95);
+    }
+
+    .search-field-wrapper {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .search-field-label {
+      font-size: 14px;
+      font-weight: 500;
+      line-height: 20px;
+      color: rgba(255, 255, 255, 0.95);
+    }
+
+    .search-chip {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      padding: 2px 8px;
+      background: #262626;
+      border: 1px solid rgba(255, 255, 255, 0.5);
+      border-radius: 4px;
+      font-size: 14px;
+      font-weight: 400;
+      color: rgba(255, 255, 255, 0.95);
+      white-space: nowrap;
+    }
+
+    .search-chip-remove {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 16px;
+      height: 16px;
+      padding: 0;
+      border: none;
+      border-radius: 100px;
+      background: transparent;
+      color: rgba(255, 255, 255, 0.7);
+      cursor: pointer;
+    }
+
+    .search-chip-remove:hover {
+      color: rgba(255, 255, 255, 0.95);
+    }
+
+    /* Filter Dropdown (Momentum Design) */
+    .filter-dropdown {
+      position: relative;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .filter-dropdown-label {
+      font-size: 14px;
+      font-weight: 500;
+      line-height: 20px;
+      color: rgba(255, 255, 255, 0.95);
+    }
+
+    .filter-dropdown-select {
+      width: 100%;
+      height: 32px;
+      padding: 5px 32px 5px 12px;
+      border: 1px solid rgba(255, 255, 255, 0.5);
+      border-radius: 8px;
+      font-size: 14px;
+      font-weight: 400;
+      line-height: 20px;
+      background: transparent;
+      color: rgba(255, 255, 255, 0.95);
+      font-family: inherit;
+      appearance: none;
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 16 16' fill='none' stroke='rgba(255,255,255,0.7)' stroke-width='1.5'%3E%3Cpath d='M4 6l4 4 4-4'/%3E%3C/svg%3E");
+      background-repeat: no-repeat;
+      background-position: right 8px center;
+      cursor: pointer;
+      transition: border-color 0.15s, box-shadow 0.15s;
+    }
+
+    .filter-dropdown-select:hover {
+      border-color: rgba(255, 255, 255, 0.7);
+    }
+
+    .filter-dropdown-select:focus {
+      outline: none;
+      border-color: #1170cf;
+      box-shadow: 
+        0 0 0 2px #000000,
+        0 0 0 4px #1170cf,
+        0 0 0 5px rgba(17, 112, 207, 0.35);
+    }
+
+    .filter-dropdown-select option {
+      background: #000000;
+      color: rgba(255, 255, 255, 0.95);
+    }
+
+    .filter-dropdown-select:disabled {
+      opacity: 0.4;
+      cursor: not-allowed;
+    }
+
+    .filter-dropdown-select.has-value {
+      color: #64b4fa;
+    }
+
+    .filter-dropdown-hint {
+      font-size: 14px;
+      font-weight: 400;
+      line-height: 20px;
+      color: rgba(255, 255, 255, 0.7);
+    }
+
+    /* Custom Dropdown Component - Full Momentum Design Style */
+    .custom-dropdown {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      min-width: 120px;
+    }
+
+    .custom-dropdown-label {
+      font-size: 12px;
+      font-weight: 500;
+      color: rgba(255, 255, 255, 0.7);
+      line-height: 16px;
+    }
+
+    .custom-dropdown-trigger {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      width: 100%;
+      min-height: 36px;
+      padding: 8px 12px;
+      background: transparent;
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      border-radius: 8px;
+      color: rgba(255, 255, 255, 0.95);
+      font-size: 14px;
+      font-weight: 400;
+      line-height: 20px;
+      text-align: left;
+      cursor: pointer;
+      transition: border-color 0.15s ease, background 0.15s ease, box-shadow 0.15s ease;
+    }
+
+    .custom-dropdown-trigger:hover {
+      border-color: rgba(255, 255, 255, 0.4);
+      background: rgba(255, 255, 255, 0.03);
+    }
+
+    .custom-dropdown-trigger:focus {
+      outline: none;
+      border-color: #64b4fa;
+      box-shadow: 0 0 0 1px #64b4fa;
+    }
+
+    .custom-dropdown-trigger.open {
+      border-color: #64b4fa;
+      background: rgba(255, 255, 255, 0.05);
+    }
+
+    .custom-dropdown-trigger:disabled {
+      opacity: 0.4;
+      cursor: not-allowed;
+      background: transparent;
+    }
+
+    .custom-dropdown-value {
+      flex: 1;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .custom-dropdown-value.placeholder {
+      color: rgba(255, 255, 255, 0.5);
+    }
+
+    .custom-dropdown-arrow {
+      flex-shrink: 0;
+      color: rgba(255, 255, 255, 0.7);
+      transition: transform 0.2s ease;
+    }
+
+    .custom-dropdown-trigger.open .custom-dropdown-arrow {
+      transform: rotate(180deg);
+    }
+
+    .custom-dropdown-hint {
+      font-size: 12px;
+      color: rgba(255, 255, 255, 0.5);
+      line-height: 16px;
+    }
+
+    .custom-dropdown-menu {
+      position: absolute;
+      background: #292929;
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      border-radius: 12px;
+      padding: 4px;
+      box-shadow: 
+        0 8px 32px rgba(0, 0, 0, 0.5),
+        0 2px 8px rgba(0, 0, 0, 0.3),
+        inset 0 1px 0 rgba(255, 255, 255, 0.05);
+      min-width: 160px;
+      max-height: 300px;
+      overflow-y: auto;
+      z-index: 1000;
+    }
+
+    .custom-dropdown-item {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      width: 100%;
+      padding: 8px 12px;
+      background: transparent;
+      border: none;
+      color: rgba(255, 255, 255, 0.95);
+      font-size: 14px;
+      font-weight: 400;
+      line-height: 20px;
+      text-align: left;
+      cursor: pointer;
+      border-radius: 8px;
+      transition: background 0.15s ease;
+    }
+
+    .custom-dropdown-item:hover,
+    .custom-dropdown-item.highlighted {
+      background: rgba(255, 255, 255, 0.07);
+    }
+
+    .custom-dropdown-item:active {
+      background: rgba(255, 255, 255, 0.11);
+    }
+
+    .custom-dropdown-item.selected {
+      background: rgba(255, 255, 255, 0.07);
+    }
+
+    .custom-dropdown-item.disabled {
+      background: transparent;
+      opacity: 0.4;
+      cursor: not-allowed;
+      pointer-events: none;
+    }
+
+    .custom-dropdown-item-label {
+      flex: 1;
+    }
+
+    .custom-dropdown-check {
+      flex-shrink: 0;
+      color: rgba(255, 255, 255, 0.95);
+    }
+
+    /* Cards */
+    .card {
+      background: var(--bg-glass);
+      border: 1px solid var(--border-color);
+      border-radius: 16px;
+      padding: 20px;
+    }
+
+    .card-title {
+      font-size: 16px;
+      font-weight: 600;
+      margin-bottom: 12px;
+    }
+
+    .stat-card {
+      background: rgba(255, 255, 255, 0.03);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: 16px;
+      padding: 20px;
+    }
+
+    .stat-label {
+      font-size: 14px;
+      color: var(--text-secondary);
+      margin-bottom: 4px;
+    }
+
+    .stat-value {
+      font-size: 32px;
+      font-weight: 700;
+    }
+
+    .stat-change {
+      font-size: 13px;
+      margin-top: 4px;
+    }
+
+    .stat-change.positive { color: var(--success-color); }
+    .stat-change.negative { color: var(--danger-color); }
+
+    /* Badges - Momentum Style (Exact Figma Colors) */
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      padding: 2px 8px;
+      border-radius: 4px;
+      font-size: 14px;
+      font-weight: 400;
+      line-height: 20px;
+      border: 1px solid;
+      color: var(--text-primary);
+    }
+
+    .badge-default {
+      background: #3b3b3b;
+      border-color: rgba(255, 255, 255, 0.5);
+    }
+
+    .badge-success {
+      background: #0e2b20;
+      border-color: #3cc29a;
+    }
+
+    .badge-warning {
+      background: #36220c;
+      border-color: #f2990a;
+    }
+
+    .badge-danger {
+      background: #4f0e10;
+      border-color: #fc8b98;
+    }
+
+    .badge-info {
+      background: #0a274a;
+      border-color: #64b4fa;
+    }
+
+    /* Label Chips - Momentum Style (Exact Figma Colors) */
+    .label-chip {
+      display: inline-flex;
+      align-items: center;
+      padding: 2px 8px;
+      border-radius: 4px;
+      font-size: 14px;
+      font-weight: 400;
+      line-height: 20px;
+      border: 1px solid;
+      color: var(--text-primary);
+    }
+
+    .label-chip-slate {
+      background: #26262b;
+      border-color: #b0b4d9;
+    }
+
+    .label-chip-cobalt {
+      background: #12283d;
+      border-color: #5ebff7;
+    }
+
+    .label-chip-violet {
+      background: #29223d;
+      border-color: #c7a5fa;
+    }
+
+    .label-chip-purple {
+      background: #3b1840;
+      border-color: #f294f1;
+    }
+
+    .label-chip-pink {
+      background: #3b1e21;
+      border-color: #fc97aa;
+    }
+
+    .label-chip-orange {
+      background: #411b04;
+      border-color: #fd884e;
+    }
+
+    .label-chip-gold {
+      background: #30240d;
+      border-color: #d6b220;
+    }
+
+    .label-chip-lime {
+      background: #1e2b10;
+      border-color: #93c437;
+    }
+
+    .label-chip-mint {
+      background: #102b2a;
+      border-color: #30c9b0;
+    }
+
+    /* Alert Chips - Momentum Style (Exact Figma Colors) */
+    .alert-chip {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      padding: 2px 8px;
+      border-radius: 4px;
+      font-size: 14px;
+      font-weight: 400;
+      line-height: 20px;
+      border: 1px solid;
+      color: var(--text-primary);
+    }
+
+    .alert-chip-default {
+      background: #3b3b3b;
+      border-color: rgba(255, 255, 255, 0.5);
+    }
+
+    .alert-chip-default .alert-icon {
+      color: rgba(255, 255, 255, 0.7);
+    }
+
+    .alert-chip-error {
+      background: #4f0e10;
+      border-color: #fc8b98;
+    }
+
+    .alert-chip-error .alert-icon {
+      color: #fc8b98;
+    }
+
+    .alert-chip-warning {
+      background: #36220c;
+      border-color: #f2990a;
+    }
+
+    .alert-chip-warning .alert-icon {
+      color: #f2990a;
+    }
+
+    .alert-chip-success {
+      background: #0e2b20;
+      border-color: #3cc29a;
+    }
+
+    .alert-chip-success .alert-icon {
+      color: #3cc29a;
+    }
+
+    .alert-chip-info {
+      background: #0a274a;
+      border-color: #64b4fa;
+    }
+
+    .alert-chip-info .alert-icon {
+      color: #64b4fa;
+    }
+
+    .alert-icon {
+      width: 14px;
+      height: 14px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 12px;
+    }
+
+    /* Toggle */
+    .toggle-wrapper {
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      cursor: pointer;
+    }
+
+    .toggle-track {
+      width: 36px;
+      height: 20px;
+      background: var(--bg-glass);
+      border: 1px solid var(--border-color);
+      border-radius: 10px;
+      position: relative;
+      transition: all 0.2s ease;
+    }
+
+    .toggle-track.active {
+      background: var(--accent-color);
+      border-color: var(--accent-color);
+    }
+
+    .toggle-thumb {
+      width: 16px;
+      height: 16px;
+      background: white;
+      border-radius: 50%;
+      position: absolute;
+      top: 1px;
+      left: 1px;
+      transition: transform 0.2s ease;
+    }
+
+    .toggle-track.active .toggle-thumb {
+      transform: translateX(16px);
+    }
+
+    /* Table */
+    .table {
+      width: 100%;
+      border-collapse: collapse;
+    }
+
+    .table th,
+    .table td {
+      padding: 12px 16px;
+      text-align: left;
+      border-bottom: 1px solid var(--border-color);
+    }
+
+    .table th {
+      font-size: 11px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      color: var(--text-muted);
+    }
+
+    .table tr:hover {
+      background: var(--bg-glass);
+    }
+
+    /* Tabs - Pill Style (Momentum Design) */
+    .tabs {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+      margin-bottom: 20px;
+    }
+
+    .tab {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      height: 32px;
+      padding: 0 12px;
+      font-size: 14px;
+      font-weight: 500;
+      color: rgba(255, 255, 255, 0.7);
+      cursor: pointer;
+      border-radius: 8px;
+      transition: all 0.15s ease;
+      background: transparent;
+      border: none;
+      white-space: nowrap;
+    }
+
+    .tab:hover {
+      color: rgba(255, 255, 255, 0.95);
+      background: rgba(255, 255, 255, 0.1);
+    }
+
+    .tab:active {
+      background: rgba(255, 255, 255, 0.15);
+    }
+
+    .tab.active {
+      color: rgba(255, 255, 255, 0.95);
+      background: #262626;
+    }
+
+    .tab.active:hover {
+      background: #2a2a2a;
+    }
+
+    .tab:disabled,
+    .tab.disabled {
+      color: rgba(255, 255, 255, 0.25);
+      cursor: not-allowed;
+      pointer-events: none;
+    }
+
+    /* Tab badge */
+    .tab-badge {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-width: 16px;
+      height: 16px;
+      padding: 0 4px;
+      font-size: 12px;
+      font-weight: 500;
+      color: rgba(255, 255, 255, 0.95);
+      background: #1170cf;
+      border-radius: 100px;
+    }
+
+    /* Tab chip */
+    .tab-chip {
+      display: inline-flex;
+      align-items: center;
+      padding: 2px 8px;
+      font-size: 14px;
+      font-weight: 400;
+      color: rgba(255, 255, 255, 0.95);
+      background: #262626;
+      border: 1px solid rgba(255, 255, 255, 0.5);
+      border-radius: 4px;
+    }
+
+    /* Line Tabs (Subtabs) */
+    .subtabs {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+      margin-bottom: 20px;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+      padding-bottom: 0;
+    }
+
+    .subtab {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      height: 32px;
+      padding: 0 12px;
+      font-size: 14px;
+      font-weight: 500;
+      color: rgba(255, 255, 255, 0.7);
+      cursor: pointer;
+      position: relative;
+      transition: color 0.15s ease;
+      background: transparent;
+      border: none;
+      border-radius: 8px 8px 0 0;
+    }
+
+    .subtab:hover {
+      color: rgba(255, 255, 255, 0.95);
+      background: rgba(255, 255, 255, 0.05);
+    }
+
+    .subtab.active {
+      color: rgba(255, 255, 255, 0.95);
+    }
+
+    .subtab.active::after {
+      content: '';
+      position: absolute;
+      bottom: -1px;
+      left: 0;
+      right: 0;
+      height: 2px;
+      background: rgba(255, 255, 255, 0.95);
+      border-radius: 2px 2px 0 0;
+    }
+
+    /* Glass Tabs */
+    .tabs.tabs-glass .tab {
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+    }
+
+    .tabs.tabs-glass .tab:hover {
+      background: rgba(255, 255, 255, 0.1);
+      border-color: rgba(255, 255, 255, 0.15);
+    }
+
+    .tabs.tabs-glass .tab.active {
+      background: rgba(255, 255, 255, 0.15);
+      border-color: rgba(255, 255, 255, 0.2);
+    }
+
+    /* Avatar */
+    .avatar {
+      width: 40px;
+      height: 40px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 600;
+      font-size: 14px;
+      color: white;
+    }
+
+    .avatar-sm { width: 32px; height: 32px; font-size: 12px; }
+    .avatar-lg { width: 56px; height: 56px; font-size: 18px; }
+
+    /* Toolbar - Momentum Design Style (Exact Figma) */
+    .toolbar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 4px 4px 4px 8px;
+      background: rgba(255, 255, 255, 0.07);
+      border: none;
+      border-radius: 8px 8px 0 0;
+      gap: 8px;
+    }
+
+    .toolbar-left {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .toolbar-group {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+    }
+
+    /* Icon buttons - Ghost style (transparent, muted icons) */
+    .toolbar-btn {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 24px;
+      height: 24px;
+      background: transparent;
+      border: none;
+      border-radius: 4px;
+      color: rgba(255, 255, 255, 0.5);
+      font-size: 14px;
+      cursor: pointer;
+      transition: all 0.15s ease;
+    }
+
+    .toolbar-btn:hover {
+      background: rgba(255, 255, 255, 0.1);
+      color: rgba(255, 255, 255, 0.95);
+    }
+
+    .toolbar-btn.active {
+      color: rgba(255, 255, 255, 0.95);
+    }
+
+    .toolbar-btn svg {
+      width: 16px;
+      height: 16px;
+    }
+
+    /* Example Button - Ghost style with text (Exact Figma) */
+    .toolbar-btn-example {
+      width: auto;
+      height: 24px;
+      padding: 0 8px;
+      gap: 6px;
+      background: transparent;
+      border: none;
+      border-radius: 4px;
+      color: rgba(255, 255, 255, 0.5);
+      font-size: 14px;
+      font-weight: 400;
+    }
+
+    .toolbar-btn-example:hover {
+      background: rgba(255, 255, 255, 0.1);
+      color: rgba(255, 255, 255, 0.95);
+    }
+
+    /* Optimize Button - Accent text, no border (Exact Figma) */
+    .toolbar-btn-optimize {
+      width: auto;
+      height: 24px;
+      padding: 4px 10px;
+      gap: 4px;
+      background: transparent;
+      border: none;
+      border-radius: 100px;
+      color: #64b4fa;
+      font-size: 12px;
+      font-weight: 500;
+    }
+
+    .toolbar-btn-optimize:hover {
+      background: rgba(100, 180, 250, 0.1);
+    }
+
+    .toolbar-divider {
+      width: 1px;
+      height: 12px;
+      background: rgba(255, 255, 255, 0.2);
+      margin: 0;
+      flex-shrink: 0;
+    }
+
+    /* Dropdown Menu - Momentum Design Style (Exact Figma) */
+    .dropdown-menu {
+      background: #000000;
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: 8px;
+      box-shadow: 
+        0 6px 24px rgba(0, 0, 0, 0.25),
+        inset 0 0 0 1px rgba(255, 255, 255, 0.05);
+      padding: 12px 8px;
+      min-width: 220px;
+      position: relative;
+    }
+
+    /* Gradient glow effect */
+    .dropdown-menu::before {
+      content: '';
+      position: absolute;
+      inset: -1px;
+      border-radius: 9px;
+      padding: 1px;
+      background: linear-gradient(
+        135deg,
+        rgba(100, 58, 189, 0.3) 0%,
+        rgba(255, 255, 255, 0.1) 50%,
+        rgba(100, 58, 189, 0.2) 100%
+      );
+      -webkit-mask: 
+        linear-gradient(#fff 0 0) content-box, 
+        linear-gradient(#fff 0 0);
+      -webkit-mask-composite: xor;
+      mask-composite: exclude;
+      pointer-events: none;
+    }
+
+    .dropdown-item {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      width: 100%;
+      padding: 8px 12px;
+      background: transparent;
+      border: none;
+      color: rgba(255, 255, 255, 0.95);
+      font-size: 14px;
+      font-weight: 400;
+      line-height: 20px;
+      text-align: left;
+      cursor: pointer;
+      border-radius: 8px;
+      transition: background 0.15s ease;
+    }
+
+    .dropdown-item:hover {
+      background: rgba(255, 255, 255, 0.07);
+    }
+
+    .dropdown-item:active {
+      background: rgba(255, 255, 255, 0.11);
+    }
+
+    .dropdown-item:focus-visible {
+      outline: none;
+      box-shadow: 
+        0 0 0 2px #000000,
+        0 0 0 4px #64b4fa,
+        0 0 0 5px rgba(100, 180, 250, 0.35);
+    }
+
+    .dropdown-item.selected {
+      background: rgba(255, 255, 255, 0.07);
+    }
+
+    .dropdown-item.selected::after {
+      content: '';
+      margin-left: auto;
+      width: 16px;
+      height: 16px;
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 16 16' fill='none'%3E%3Cpath d='M13.5 4.5L6 12L2.5 8.5' stroke='rgba(255,255,255,0.95)' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+      background-repeat: no-repeat;
+      background-position: center;
+      flex-shrink: 0;
+    }
+
+    .dropdown-item.disabled {
+      background: transparent;
+      opacity: 0.4;
+      cursor: not-allowed;
+      pointer-events: none;
+    }
+
+    .dropdown-icon {
+      width: 20px;
+      height: 20px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: rgba(255, 255, 255, 0.7);
+    }
+
+    .dropdown-divider {
+      height: 1px;
+      background: rgba(255, 255, 255, 0.08);
+      margin: 8px 0;
+    }
+
+    .dropdown-section-header {
+      padding: 8px 12px;
+      font-size: 12px;
+      font-weight: 500;
+      text-transform: uppercase;
+      color: rgba(255, 255, 255, 0.5);
+      letter-spacing: 0.5px;
+    }
+
+    /* Modal */
+    .modal-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.7);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .modal {
+      background: var(--bg-secondary);
+      border: 1px solid var(--border-color);
+      border-radius: 16px;
+      width: 100%;
+      max-width: 500px;
+      max-height: 90vh;
+      overflow: hidden;
+    }
+
+    .modal-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 20px 24px;
+      border-bottom: 1px solid var(--border-color);
+    }
+
+    .modal-title {
+      font-size: 18px;
+      font-weight: 600;
+    }
+
+    .modal-close {
+      width: 32px;
+      height: 32px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: transparent;
+      border: none;
+      border-radius: 8px;
+      color: var(--text-secondary);
+      cursor: pointer;
+      font-size: 20px;
+    }
+
+    .modal-close:hover {
+      background: var(--bg-glass);
+      color: var(--text-primary);
+    }
+
+    .modal-body {
+      padding: 24px;
+    }
+
+    .modal-footer {
+      display: flex;
+      align-items: center;
+      justify-content: flex-end;
+      gap: 8px;
+      padding: 16px 24px;
+      border-top: 1px solid var(--border-color);
+    }
+
+    /* Capability Chips - Momentum Style (Exact Figma Colors) */
+    .chip {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      padding: 2px 8px;
+      border-radius: 4px;
+      font-size: 14px;
+      font-weight: 400;
+      line-height: 20px;
+      border: 1px solid;
+      color: var(--text-primary);
+    }
+
+    .chip-mcp {
+      background: #12283d;
+      border-color: #5ebff7;
+    }
+
+    .chip-mcp .chip-icon {
+      color: #5ebff7;
+    }
+
+    .chip-action {
+      background: #29223d;
+      border-color: #c7a5fa;
+    }
+
+    .chip-action .chip-icon {
+      color: #c7a5fa;
+    }
+
+    .chip-handoff {
+      background: #0e2b20;
+      border-color: #3cc29a;
+    }
+
+    .chip-handoff .chip-icon {
+      color: #3cc29a;
+    }
+
+    .chip-icon {
+      font-size: 14px;
+    }
+
+    /* Filter Chips - Momentum Style (Exact Figma Colors) */
+    .filter-chip {
+      display: inline-flex;
+      align-items: center;
+      padding: 2px 8px;
+      border-radius: 4px;
+      font-size: 14px;
+      font-weight: 400;
+      line-height: 20px;
+      background: #26262b;
+      border: 1px solid rgba(255, 255, 255, 0.5);
+      color: var(--text-primary);
+      cursor: pointer;
+      transition: all 0.15s ease;
+    }
+
+    .filter-chip:hover {
+      background: rgba(255, 255, 255, 0.1);
+    }
+
+    .filter-chip.selected {
+      background: #12283d;
+      border-color: #5ebff7;
+    }
+
+    /* Input Chips - Momentum Style (Exact Figma Colors) */
+    .input-chip {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      padding: 2px 8px;
+      border-radius: 4px;
+      font-size: 14px;
+      font-weight: 400;
+      line-height: 20px;
+      background: #26262b;
+      border: 1px solid rgba(255, 255, 255, 0.5);
+      color: var(--text-primary);
+    }
+
+    .input-chip .chip-remove {
+      width: 16px;
+      height: 16px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 50%;
+      cursor: pointer;
+      color: rgba(255, 255, 255, 0.7);
+      transition: all 0.15s ease;
+    }
+
+    .input-chip .chip-remove:hover {
+      background: rgba(255, 255, 255, 0.2);
+      color: var(--text-primary);
+    }
+
+    /* Navigation */
+    .nav-item {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 10px 12px;
+      border-radius: 8px;
+      color: var(--text-secondary);
+      text-decoration: none;
+      transition: all 0.15s ease;
+    }
+
+    .nav-item:hover {
+      background: var(--bg-glass);
+      color: var(--text-primary);
+    }
+
+    .nav-item.active {
+      background: var(--bg-glass);
+      color: var(--text-primary);
+    }
+
+    .nav-icon {
+      width: 20px;
+      height: 20px;
+    }
+
+    /* Toast - Momentum Design Style (Exact Figma) */
+    .toast {
+      background: #000000;
+      border: 1px solid rgba(255, 255, 255, 0.4);
+      border-radius: 8px;
+      box-shadow: 0 6px 24px rgba(0, 0, 0, 0.25);
+      padding: 16px;
+      width: 400px;
+      max-width: 100%;
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+
+    .toast-content {
+      display: flex;
+      gap: 12px;
+      align-items: flex-start;
+      width: 100%;
+    }
+
+    .toast-icon {
+      flex-shrink: 0;
+      width: 24px;
+      height: 24px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .toast-icon svg {
+      width: 24px;
+      height: 24px;
+    }
+
+    .toast-icon-success svg { color: #3cc29a; }
+    .toast-icon-error svg { color: #fc8b98; }
+    .toast-icon-warning svg { color: #f2990a; }
+    .toast-icon-info svg { color: #64b4fa; }
+
+    .toast-body {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      min-width: 0;
+      color: rgba(255, 255, 255, 0.95);
+    }
+
+    .toast-header {
+      font-size: 16px;
+      font-weight: 500;
+      line-height: 24px;
+    }
+
+    .toast-message {
+      font-size: 14px;
+      font-weight: 400;
+      line-height: 20px;
+    }
+
+    .toast-message a {
+      color: #64b4fa;
+      text-decoration: underline;
+    }
+
+    .toast-close {
+      flex-shrink: 0;
+      width: 20px;
+      height: 20px;
+      padding: 2px;
+      background: transparent;
+      border: none;
+      border-radius: 100px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: rgba(255, 255, 255, 0.7);
+    }
+
+    .toast-close:hover {
+      background: rgba(255, 255, 255, 0.1);
+      color: rgba(255, 255, 255, 0.95);
+    }
+
+    .toast-close svg {
+      width: 16px;
+      height: 16px;
+    }
+
+    .toast-actions {
+      display: flex;
+      gap: 12px;
+      align-items: center;
+      justify-content: flex-end;
+      width: 100%;
+    }
+
+    .toast-btn {
+      height: 32px;
+      padding: 4px 12px;
+      border-radius: 100px;
+      font-size: 16px;
+      font-weight: 500;
+      line-height: 24px;
+      cursor: pointer;
+    }
+
+    .toast-btn-primary {
+      background: rgba(255, 255, 255, 0.95);
+      border: none;
+      color: rgba(0, 0, 0, 0.95);
+    }
+
+    .toast-btn-secondary {
+      background: transparent;
+      border: 1px solid rgba(255, 255, 255, 0.5);
+      color: rgba(255, 255, 255, 0.95);
+    }
+
+    .toast-btn-tertiary {
+      background: transparent;
+      border: none;
+      color: rgba(255, 255, 255, 0.95);
+    }
+
+    /* Toast Variants */
+    .toast-success { border-color: rgba(60, 194, 154, 0.4); }
+    .toast-error { border-color: rgba(252, 139, 152, 0.4); }
+    .toast-warning { border-color: rgba(242, 153, 10, 0.4); }
+    .toast-info { border-color: rgba(100, 180, 250, 0.4); }
+
+    /* Divider */
+    .divider {
+      height: 1px;
+      background: linear-gradient(90deg, rgba(255,255,255,0) 0%, rgba(255,255,255,0.2) 22%, rgba(255,255,255,0.2) 78%, rgba(255,255,255,0) 100%);
+      margin: 24px 0;
+    }
+
+    /* Demo Section Background */
+    .demo-box {
+      background: var(--bg-glass);
+      border: 1px solid var(--border-color);
+      border-radius: 12px;
+      padding: 24px;
+    }
+
+    /* Code */
+    code {
+      font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+      font-size: 12px;
+      background: var(--bg-glass);
+      padding: 2px 6px;
+      border-radius: 4px;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <!-- Header -->
+    <div class="section">
+      <h1 class="section-title">AI Agent Studio</h1>
+      <p class="section-subtitle">Design System Documentation</p>
+    </div>
+
+    <!-- Colors -->
+    <div class="section">
+      <h2 class="section-title">Colors</h2>
+      <p class="section-subtitle">Core color tokens used throughout the application</p>
+
+      <div class="subsection">
+        <h3 class="subsection-title">Backgrounds</h3>
+        <div class="grid grid-5">
+          <div class="color-swatch">
+            <div class="color-swatch-preview" style="background: #000000;"></div>
+            <div class="color-swatch-info">
+              <div class="color-swatch-name">Primary</div>
+              <div class="color-swatch-value">#000000</div>
+            </div>
+          </div>
+          <div class="color-swatch">
+            <div class="color-swatch-preview" style="background: #1a1a1a;"></div>
+            <div class="color-swatch-info">
+              <div class="color-swatch-name">Secondary</div>
+              <div class="color-swatch-value">#1a1a1a</div>
+            </div>
+          </div>
+          <div class="color-swatch">
+            <div class="color-swatch-preview" style="background: rgba(255,255,255,0.05);"></div>
+            <div class="color-swatch-info">
+              <div class="color-swatch-name">Glass</div>
+              <div class="color-swatch-value">rgba(255,255,255,0.05)</div>
+            </div>
+          </div>
+          <div class="color-swatch">
+            <div class="color-swatch-preview" style="background: rgba(0,0,0,0.4);"></div>
+            <div class="color-swatch-info">
+              <div class="color-swatch-name">Glass Light</div>
+              <div class="color-swatch-value">rgba(0,0,0,0.4)</div>
+            </div>
+          </div>
+          <div class="color-swatch">
+            <div class="color-swatch-preview" style="background: rgba(255,255,255,0.05);"></div>
+            <div class="color-swatch-info">
+              <div class="color-swatch-name">Card</div>
+              <div class="color-swatch-value">rgba(255,255,255,0.05)</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="subsection">
+        <h3 class="subsection-title">Text</h3>
+        <div class="grid grid-3">
+          <div class="color-swatch">
+            <div class="color-swatch-preview" style="background: rgba(255,255,255,0.95);"></div>
+            <div class="color-swatch-info">
+              <div class="color-swatch-name">Primary</div>
+              <div class="color-swatch-value">rgba(255,255,255,0.95)</div>
+            </div>
+          </div>
+          <div class="color-swatch">
+            <div class="color-swatch-preview" style="background: rgba(255,255,255,0.70);"></div>
+            <div class="color-swatch-info">
+              <div class="color-swatch-name">Secondary</div>
+              <div class="color-swatch-value">rgba(255,255,255,0.70)</div>
+            </div>
+          </div>
+          <div class="color-swatch">
+            <div class="color-swatch-preview" style="background: rgba(255,255,255,0.40);"></div>
+            <div class="color-swatch-info">
+              <div class="color-swatch-name">Muted</div>
+              <div class="color-swatch-value">rgba(255,255,255,0.40)</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="subsection">
+        <h3 class="subsection-title">Alert Status Colors (Exact Figma)</h3>
+        <div class="grid grid-4">
+          <div class="color-swatch">
+            <div class="color-swatch-preview" style="background: linear-gradient(180deg, #64b4fa 0%, #0a274a 100%);"></div>
+            <div class="color-swatch-info">
+              <div class="color-swatch-name">Info</div>
+              <div class="color-swatch-value">border: #64b4fa<br>bg: #0a274a</div>
+            </div>
+          </div>
+          <div class="color-swatch">
+            <div class="color-swatch-preview" style="background: linear-gradient(180deg, #3cc29a 0%, #0e2b20 100%);"></div>
+            <div class="color-swatch-info">
+              <div class="color-swatch-name">Success</div>
+              <div class="color-swatch-value">border: #3cc29a<br>bg: #0e2b20</div>
+            </div>
+          </div>
+          <div class="color-swatch">
+            <div class="color-swatch-preview" style="background: linear-gradient(180deg, #f2990a 0%, #36220c 100%);"></div>
+            <div class="color-swatch-info">
+              <div class="color-swatch-name">Warning</div>
+              <div class="color-swatch-value">border: #f2990a<br>bg: #36220c</div>
+            </div>
+          </div>
+          <div class="color-swatch">
+            <div class="color-swatch-preview" style="background: linear-gradient(180deg, #fc8b98 0%, #4f0e10 100%);"></div>
+            <div class="color-swatch-info">
+              <div class="color-swatch-name">Error</div>
+              <div class="color-swatch-value">border: #fc8b98<br>bg: #4f0e10</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="subsection">
+        <h3 class="subsection-title">Label Chip Colors (Exact Figma)</h3>
+        <div class="grid grid-5">
+          <div class="color-swatch">
+            <div class="color-swatch-preview" style="background: linear-gradient(180deg, #b0b4d9 0%, #26262b 100%);"></div>
+            <div class="color-swatch-info">
+              <div class="color-swatch-name">Slate</div>
+              <div class="color-swatch-value">border: #b0b4d9<br>bg: #26262b</div>
+            </div>
+          </div>
+          <div class="color-swatch">
+            <div class="color-swatch-preview" style="background: linear-gradient(180deg, #5ebff7 0%, #12283d 100%);"></div>
+            <div class="color-swatch-info">
+              <div class="color-swatch-name">Cobalt</div>
+              <div class="color-swatch-value">border: #5ebff7<br>bg: #12283d</div>
+            </div>
+          </div>
+          <div class="color-swatch">
+            <div class="color-swatch-preview" style="background: linear-gradient(180deg, #c7a5fa 0%, #29223d 100%);"></div>
+            <div class="color-swatch-info">
+              <div class="color-swatch-name">Violet</div>
+              <div class="color-swatch-value">border: #c7a5fa<br>bg: #29223d</div>
+            </div>
+          </div>
+          <div class="color-swatch">
+            <div class="color-swatch-preview" style="background: linear-gradient(180deg, #f294f1 0%, #3b1840 100%);"></div>
+            <div class="color-swatch-info">
+              <div class="color-swatch-name">Purple</div>
+              <div class="color-swatch-value">border: #f294f1<br>bg: #3b1840</div>
+            </div>
+          </div>
+          <div class="color-swatch">
+            <div class="color-swatch-preview" style="background: linear-gradient(180deg, #fc97aa 0%, #3b1e21 100%);"></div>
+            <div class="color-swatch-info">
+              <div class="color-swatch-name">Pink</div>
+              <div class="color-swatch-value">border: #fc97aa<br>bg: #3b1e21</div>
+            </div>
+          </div>
+        </div>
+        <div class="grid grid-4" style="margin-top: 16px;">
+          <div class="color-swatch">
+            <div class="color-swatch-preview" style="background: linear-gradient(180deg, #fd884e 0%, #411b04 100%);"></div>
+            <div class="color-swatch-info">
+              <div class="color-swatch-name">Orange</div>
+              <div class="color-swatch-value">border: #fd884e<br>bg: #411b04</div>
+            </div>
+          </div>
+          <div class="color-swatch">
+            <div class="color-swatch-preview" style="background: linear-gradient(180deg, #d6b220 0%, #30240d 100%);"></div>
+            <div class="color-swatch-info">
+              <div class="color-swatch-name">Gold</div>
+              <div class="color-swatch-value">border: #d6b220<br>bg: #30240d</div>
+            </div>
+          </div>
+          <div class="color-swatch">
+            <div class="color-swatch-preview" style="background: linear-gradient(180deg, #93c437 0%, #1e2b10 100%);"></div>
+            <div class="color-swatch-info">
+              <div class="color-swatch-name">Lime</div>
+              <div class="color-swatch-value">border: #93c437<br>bg: #1e2b10</div>
+            </div>
+          </div>
+          <div class="color-swatch">
+            <div class="color-swatch-preview" style="background: linear-gradient(180deg, #30c9b0 0%, #102b2a 100%);"></div>
+            <div class="color-swatch-info">
+              <div class="color-swatch-name">Mint</div>
+              <div class="color-swatch-value">border: #30c9b0<br>bg: #102b2a</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="divider"></div>
+
+    <!-- Typography -->
+    <div class="section">
+      <h2 class="section-title">Typography</h2>
+      <p class="section-subtitle">Font styles and text hierarchy</p>
+
+      <div class="subsection">
+        <div class="type-sample">
+          <div class="type-label">Page Title - 24px / Bold</div>
+          <div style="font-size: 24px; font-weight: 700;">AI Agent Studio Dashboard</div>
+        </div>
+        <div class="type-sample">
+          <div class="type-label">Section Title - 18px / Semibold</div>
+          <div style="font-size: 18px; font-weight: 600;">Configuration Summary</div>
+        </div>
+        <div class="type-sample">
+          <div class="type-label">Card Title - 16px / Semibold</div>
+          <div style="font-size: 16px; font-weight: 600;">Quick Stats</div>
+        </div>
+        <div class="type-sample">
+          <div class="type-label">Body - 14px / Regular</div>
+          <div style="font-size: 14px;">This is standard body text used throughout the application for descriptions and content.</div>
+        </div>
+        <div class="type-sample">
+          <div class="type-label">Small - 13px / Regular</div>
+          <div style="font-size: 13px; color: var(--text-secondary);">Secondary text and metadata</div>
+        </div>
+        <div class="type-sample">
+          <div class="type-label">Caption - 11px / Semibold / Uppercase</div>
+          <div style="font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; color: var(--text-muted);">Label Text</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="divider"></div>
+
+    <!-- Brand logos (Figma Brand Visuals Library 421-2344) -->
+    <div class="section">
+      <h2 class="section-title">Brand logos</h2>
+      <p class="section-subtitle">
+        <a href="https://www.figma.com/design/V1fC9JCxKYJ5aFzC8pbKis/%F0%9F%96%BC-Brand-Visuals-Library?node-id=421-2344" target="_blank" rel="noopener noreferrer">Figma — Logos (421-2344)</a>.
+        App implementation: <code>web/src/components/brand/</code>. Replace geometry with exported SVG paths when available.
+      </p>
+
+      <div class="subsection">
+        <h3 class="subsection-title">On dark canvas</h3>
+        <div class="brand-strip brand-strip--dark">
+          <div class="brand-sample">
+            <div class="brand-sample-label">CiscoBridgeMark</div>
+            <svg width="48" height="33" viewBox="0 0 32 22" fill="none" aria-hidden="true">
+              <g fill="#ffffff">
+                <rect x="0" y="10" width="2.4" height="12" rx="0.4"></rect>
+                <rect x="4.2" y="7" width="2.4" height="15" rx="0.4"></rect>
+                <rect x="8.4" y="4.5" width="2.4" height="17.5" rx="0.4"></rect>
+                <rect x="12.6" y="2.5" width="2.4" height="19.5" rx="0.4"></rect>
+                <rect x="16.8" y="0" width="2.4" height="22" rx="0.4"></rect>
+                <rect x="21" y="2.5" width="2.4" height="19.5" rx="0.4"></rect>
+                <rect x="25.2" y="4.5" width="2.4" height="17.5" rx="0.4"></rect>
+                <rect x="29.4" y="7" width="2.4" height="15" rx="0.4"></rect>
+              </g>
+            </svg>
+          </div>
+          <div class="brand-sample">
+            <div class="brand-sample-label">WebexWordmark</div>
+            <span class="webex-text-demo" style="color:#fff;">webex</span>
+          </div>
+          <div class="brand-sample">
+            <div class="brand-sample-label">CiscoWebexLockup (horizontal)</div>
+            <span class="brand-lockup-h">
+              <svg width="40" height="28" viewBox="0 0 32 22" fill="none" aria-hidden="true">
+                <g fill="#ffffff">
+                  <rect x="0" y="10" width="2.4" height="12" rx="0.4"></rect>
+                  <rect x="4.2" y="7" width="2.4" height="15" rx="0.4"></rect>
+                  <rect x="8.4" y="4.5" width="2.4" height="17.5" rx="0.4"></rect>
+                  <rect x="12.6" y="2.5" width="2.4" height="19.5" rx="0.4"></rect>
+                  <rect x="16.8" y="0" width="2.4" height="22" rx="0.4"></rect>
+                  <rect x="21" y="2.5" width="2.4" height="19.5" rx="0.4"></rect>
+                  <rect x="25.2" y="4.5" width="2.4" height="17.5" rx="0.4"></rect>
+                  <rect x="29.4" y="7" width="2.4" height="15" rx="0.4"></rect>
+                </g>
+              </svg>
+              <span class="webex-text-demo" style="color:#fff;">webex</span>
+            </span>
+          </div>
+          <div class="brand-sample">
+            <div class="brand-sample-label">CiscoAiSymbolMark</div>
+            <svg viewBox="0 0 32 32" width="36" height="36" aria-hidden="true">
+              <circle cx="16" cy="16" r="14" fill="none" stroke="var(--accent-color)" stroke-width="2"></circle>
+              <circle cx="16" cy="12" r="4" fill="var(--accent-color)"></circle>
+              <path d="M10 22c0-3.3 2.7-6 6-6s6 2.7 6 6" fill="none" stroke="var(--accent-color)" stroke-width="2"></path>
+            </svg>
+          </div>
+        </div>
+      </div>
+
+      <div class="subsection">
+        <h3 class="subsection-title">On light canvas</h3>
+        <div class="brand-strip brand-strip--light">
+          <div class="brand-sample">
+            <div class="brand-sample-label">CiscoBridgeMark · onLight</div>
+            <svg width="48" height="33" viewBox="0 0 32 22" fill="none" aria-hidden="true">
+              <g fill="#000000">
+                <rect x="0" y="10" width="2.4" height="12" rx="0.4"></rect>
+                <rect x="4.2" y="7" width="2.4" height="15" rx="0.4"></rect>
+                <rect x="8.4" y="4.5" width="2.4" height="17.5" rx="0.4"></rect>
+                <rect x="12.6" y="2.5" width="2.4" height="19.5" rx="0.4"></rect>
+                <rect x="16.8" y="0" width="2.4" height="22" rx="0.4"></rect>
+                <rect x="21" y="2.5" width="2.4" height="19.5" rx="0.4"></rect>
+                <rect x="25.2" y="4.5" width="2.4" height="17.5" rx="0.4"></rect>
+                <rect x="29.4" y="7" width="2.4" height="15" rx="0.4"></rect>
+              </g>
+            </svg>
+          </div>
+          <div class="brand-sample">
+            <div class="brand-sample-label">WebexWordmark · onLight</div>
+            <span class="webex-text-demo" style="color:#000;">webex</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="subsection">
+        <h3 class="subsection-title">App shell lockup</h3>
+        <p class="section-subtitle" style="margin-bottom:16px;">Mirrors <code>WebexAgentStudioLockup</code> / header.</p>
+        <div class="brand-strip brand-strip--dark">
+          <span class="header-lockup-demo">
+            <span class="webex-text-demo" style="color:#fff;">webex</span>
+            <span class="header-divider-demo"></span>
+            <span style="font-size:14px;font-weight:500;color:#fff;">AI Agent Studio</span>
+          </span>
+        </div>
+      </div>
+    </div>
+
+    <div class="divider"></div>
+
+    <!-- Buttons -->
+    <div class="section">
+      <h2 class="section-title">Buttons</h2>
+      <p class="section-subtitle">Interactive button components</p>
+
+      <div class="subsection">
+        <h3 class="subsection-title">Primary Buttons</h3>
+        <div class="flex">
+          <button class="btn btn-primary">Primary Button</button>
+          <button class="btn btn-primary btn-sm">Small Primary</button>
+        </div>
+      </div>
+
+      <div class="subsection">
+        <h3 class="subsection-title">Secondary Buttons</h3>
+        <div class="flex">
+          <button class="btn btn-secondary">Secondary Button</button>
+          <button class="btn btn-secondary btn-sm">Small Secondary</button>
+        </div>
+      </div>
+
+      <div class="subsection">
+        <h3 class="subsection-title">Danger Button</h3>
+        <div class="flex">
+          <button class="btn btn-danger">Delete</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="divider"></div>
+
+    <!-- Form Inputs -->
+    <div class="section">
+      <h2 class="section-title">Form Inputs</h2>
+      <p class="section-subtitle">Input fields and form controls - Momentum Design style with focus ring</p>
+
+      <div class="subsection">
+        <h3 class="subsection-title">Text Inputs</h3>
+        <div class="grid grid-2">
+          <div class="demo-box">
+            <div class="form-group">
+              <label class="form-label">Label <span class="required">*</span></label>
+              <input type="text" class="form-input" placeholder="Placeholder text">
+              <span class="form-hint">Helper text</span>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Disabled Input</label>
+              <input type="text" class="form-input" placeholder="Disabled" disabled>
+            </div>
+          </div>
+          <div class="demo-box">
+            <div class="form-group">
+              <label class="form-label">Error State</label>
+              <input type="text" class="form-input error" value="Invalid input">
+              <span class="form-hint error">This field has an error</span>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Select</label>
+              <select class="form-input">
+                <option>Select an option</option>
+                <option>Option 1</option>
+                <option>Option 2</option>
+              </select>
+              <span class="form-hint">Helper text</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="subsection">
+        <h3 class="subsection-title">Textarea</h3>
+        <div class="demo-box" style="max-width: 500px;">
+          <div class="form-group">
+            <label class="form-label">Description <span class="required">*</span></label>
+            <textarea class="form-input" placeholder="Enter description..."></textarea>
+            <div class="form-helper-row" style="display: flex; justify-content: space-between;">
+              <span class="form-hint">Helper text</span>
+              <span class="form-hint">0/500</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="subsection">
+        <h3 class="subsection-title">Search Field</h3>
+        <div class="grid grid-2">
+          <div class="demo-box">
+            <p style="font-size: 12px; color: rgba(255,255,255,0.5); margin-bottom: 12px;">Default</p>
+            <div class="search-field" style="max-width: 400px;">
+              <svg class="search-field-icon" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5">
+                <circle cx="7" cy="7" r="5"/>
+                <path d="M11 11l3.5 3.5"/>
+              </svg>
+              <input type="text" class="search-field-input" placeholder="Placeholder text">
+              <button class="search-field-clear">
+                <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.5">
+                  <path d="M3 3l6 6M9 3l-6 6"/>
+                </svg>
+              </button>
+            </div>
+          </div>
+          <div class="demo-box">
+            <p style="font-size: 12px; color: rgba(255,255,255,0.5); margin-bottom: 12px;">With Typed Text</p>
+            <div class="search-field" style="max-width: 400px;">
+              <svg class="search-field-icon" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5">
+                <circle cx="7" cy="7" r="5"/>
+                <path d="M11 11l3.5 3.5"/>
+              </svg>
+              <input type="text" class="search-field-input" value="Typed text">
+              <button class="search-field-clear" style="opacity: 1; visibility: visible;">
+                <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.5">
+                  <path d="M3 3l6 6M9 3l-6 6"/>
+                </svg>
+              </button>
+            </div>
+          </div>
+        </div>
+        <div class="grid grid-2" style="margin-top: 16px;">
+          <div class="demo-box">
+            <p style="font-size: 12px; color: rgba(255,255,255,0.5); margin-bottom: 12px;">With Label</p>
+            <div class="search-field-wrapper" style="max-width: 400px;">
+              <label class="search-field-label">Label</label>
+              <div class="search-field">
+                <svg class="search-field-icon" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5">
+                  <circle cx="7" cy="7" r="5"/>
+                  <path d="M11 11l3.5 3.5"/>
+                </svg>
+                <input type="text" class="search-field-input" placeholder="Placeholder text">
+                <button class="search-field-clear">
+                  <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.5">
+                    <path d="M3 3l6 6M9 3l-6 6"/>
+                  </svg>
+                </button>
+              </div>
+            </div>
+          </div>
+          <div class="demo-box">
+            <p style="font-size: 12px; color: rgba(255,255,255,0.5); margin-bottom: 12px;">With Filter Chip</p>
+            <div class="search-field" style="max-width: 400px;">
+              <svg class="search-field-icon" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5">
+                <circle cx="7" cy="7" r="5"/>
+                <path d="M11 11l3.5 3.5"/>
+              </svg>
+              <input type="text" class="search-field-input" placeholder="Search..." style="padding-left: 100px;">
+              <span class="search-chip" style="position: absolute; left: 40px; top: 50%; transform: translateY(-50%);">
+                Query: value
+                <button class="search-chip-remove">
+                  <svg width="10" height="10" viewBox="0 0 10 10" fill="none" stroke="currentColor" stroke-width="1.5">
+                    <path d="M2.5 2.5l5 5M7.5 2.5l-5 5"/>
+                  </svg>
+                </button>
+              </span>
+              <button class="search-field-clear" style="opacity: 1; visibility: visible;">
+                <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.5">
+                  <path d="M3 3l6 6M9 3l-6 6"/>
+                </svg>
+              </button>
+            </div>
+          </div>
+        </div>
+        <div class="demo-box" style="margin-top: 16px;">
+          <p style="font-size: 12px; color: rgba(255,255,255,0.5); margin-bottom: 12px;">Disabled</p>
+          <div class="search-field" style="max-width: 400px;">
+            <svg class="search-field-icon" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5">
+              <circle cx="7" cy="7" r="5"/>
+              <path d="M11 11l3.5 3.5"/>
+            </svg>
+            <input type="text" class="search-field-input" placeholder="Placeholder text" disabled>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="divider"></div>
+
+    <!-- Cards -->
+    <div class="section">
+      <h2 class="section-title">Cards</h2>
+      <p class="section-subtitle">Container components</p>
+
+      <div class="grid grid-3">
+        <div class="stat-card">
+          <div class="stat-label">Total Sessions</div>
+          <div class="stat-value">5,234</div>
+          <div class="stat-change positive">↑ 12% vs last week</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">Success Rate</div>
+          <div class="stat-value">94.2%</div>
+          <div class="stat-change positive">↑ 2.1%</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">Avg Response Time</div>
+          <div class="stat-value">1.2s</div>
+          <div class="stat-change negative">↓ 0.3s</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="divider"></div>
+
+    <!-- Badges -->
+    <div class="section">
+      <h2 class="section-title">Badges</h2>
+      <p class="section-subtitle">Status indicators - Momentum Design style with colored borders</p>
+
+      <div class="flex">
+        <span class="badge badge-default">Default</span>
+        <span class="badge badge-success">Published</span>
+        <span class="badge badge-warning">Draft</span>
+        <span class="badge badge-danger">Error</span>
+        <span class="badge badge-info">Info</span>
+      </div>
+    </div>
+
+    <div class="divider"></div>
+
+    <!-- Label Chips -->
+    <div class="section">
+      <h2 class="section-title">Label Chips</h2>
+      <p class="section-subtitle">Color-coded labels - Exact Momentum Design colors from Figma</p>
+
+      <div class="flex">
+        <span class="label-chip label-chip-slate">Slate</span>
+        <span class="label-chip label-chip-cobalt">Cobalt</span>
+        <span class="label-chip label-chip-violet">Violet</span>
+        <span class="label-chip label-chip-purple">Purple</span>
+        <span class="label-chip label-chip-pink">Pink</span>
+      </div>
+      <div class="flex" style="margin-top: 12px;">
+        <span class="label-chip label-chip-orange">Orange</span>
+        <span class="label-chip label-chip-gold">Gold</span>
+        <span class="label-chip label-chip-lime">Lime</span>
+        <span class="label-chip label-chip-mint">Mint</span>
+      </div>
+    </div>
+
+    <div class="divider"></div>
+
+    <!-- Alert Chips -->
+    <div class="section">
+      <h2 class="section-title">Alert Chips</h2>
+      <p class="section-subtitle">Semantic status chips with icons - Momentum Design style</p>
+
+      <div class="flex">
+        <span class="alert-chip alert-chip-default">
+          <span class="alert-icon">○</span>
+          Default
+        </span>
+        <span class="alert-chip alert-chip-error">
+          <span class="alert-icon">✕</span>
+          Error
+        </span>
+        <span class="alert-chip alert-chip-warning">
+          <span class="alert-icon">⚠</span>
+          Warning
+        </span>
+        <span class="alert-chip alert-chip-success">
+          <span class="alert-icon">✓</span>
+          Success
+        </span>
+        <span class="alert-chip alert-chip-info">
+          <span class="alert-icon">ⓘ</span>
+          Info
+        </span>
+      </div>
+    </div>
+
+    <div class="divider"></div>
+
+    <!-- Capability Chips -->
+    <div class="section">
+      <h2 class="section-title">Capability Chips</h2>
+      <p class="section-subtitle">Capability type indicators - Momentum Design style</p>
+
+      <div class="flex">
+        <span class="chip chip-mcp">
+          <span class="chip-icon">⚡</span>
+          Customer Data Lookup
+        </span>
+        <span class="chip chip-action">
+          <span class="chip-icon">⚡</span>
+          Ticket Creation
+        </span>
+        <span class="chip chip-handoff">
+          <span class="chip-icon">⚡</span>
+          Transfer to Agent
+        </span>
+      </div>
+    </div>
+
+    <div class="divider"></div>
+
+    <!-- Filter Dropdowns -->
+    <div class="section">
+      <h2 class="section-title">Filter Dropdowns</h2>
+      <p class="section-subtitle">Dropdown filter controls - Momentum Design style</p>
+
+      <div class="grid grid-3" style="gap: 24px;">
+        <div class="demo-box">
+          <p style="font-size: 12px; color: rgba(255,255,255,0.5); margin-bottom: 12px;">Default with Label</p>
+          <div class="filter-dropdown">
+            <label class="filter-dropdown-label">Label</label>
+            <select class="filter-dropdown-select">
+              <option value="">Placeholder text</option>
+              <option value="1">Option 1</option>
+              <option value="2">Option 2</option>
+              <option value="3">Option 3</option>
+            </select>
+            <span class="filter-dropdown-hint">Helper text</span>
+          </div>
+        </div>
+        <div class="demo-box">
+          <p style="font-size: 12px; color: rgba(255,255,255,0.5); margin-bottom: 12px;">With Selected Value</p>
+          <div class="filter-dropdown">
+            <label class="filter-dropdown-label">Status</label>
+            <select class="filter-dropdown-select has-value">
+              <option value="">Select status</option>
+              <option value="active" selected>Active</option>
+              <option value="inactive">Inactive</option>
+            </select>
+          </div>
+        </div>
+        <div class="demo-box">
+          <p style="font-size: 12px; color: rgba(255,255,255,0.5); margin-bottom: 12px;">Disabled</p>
+          <div class="filter-dropdown">
+            <label class="filter-dropdown-label">Category</label>
+            <select class="filter-dropdown-select" disabled>
+              <option value="">Select category</option>
+            </select>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="divider"></div>
+
+    <!-- Custom Dropdown Component -->
+    <div class="section">
+      <h2 class="section-title">Custom Dropdown Component</h2>
+      <p class="section-subtitle">Fully styleable dropdown menus - Momentum Design style (React component required for full functionality)</p>
+
+      <div class="subsection">
+        <h3 class="subsection-title">Trigger Button States</h3>
+        <div class="grid grid-3" style="gap: 24px;">
+          <div class="demo-box">
+            <p style="font-size: 12px; color: rgba(255,255,255,0.5); margin-bottom: 12px;">Default (Placeholder)</p>
+            <div class="custom-dropdown">
+              <label class="custom-dropdown-label">Label</label>
+              <button type="button" class="custom-dropdown-trigger">
+                <span class="custom-dropdown-value placeholder">Select an option</span>
+                <svg class="custom-dropdown-arrow" width="16" height="16" viewBox="0 0 16 16" fill="none">
+                  <path d="M4 6L8 10L12 6" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+                </svg>
+              </button>
+              <span class="custom-dropdown-hint">Helper text</span>
+            </div>
+          </div>
+          <div class="demo-box">
+            <p style="font-size: 12px; color: rgba(255,255,255,0.5); margin-bottom: 12px;">With Value</p>
+            <div class="custom-dropdown">
+              <label class="custom-dropdown-label">Status</label>
+              <button type="button" class="custom-dropdown-trigger has-value">
+                <span class="custom-dropdown-value">All Status</span>
+                <svg class="custom-dropdown-arrow" width="16" height="16" viewBox="0 0 16 16" fill="none">
+                  <path d="M4 6L8 10L12 6" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+                </svg>
+              </button>
+            </div>
+          </div>
+          <div class="demo-box">
+            <p style="font-size: 12px; color: rgba(255,255,255,0.5); margin-bottom: 12px;">Open State</p>
+            <div class="custom-dropdown">
+              <label class="custom-dropdown-label">Category</label>
+              <button type="button" class="custom-dropdown-trigger open">
+                <span class="custom-dropdown-value">Active</span>
+                <svg class="custom-dropdown-arrow" width="16" height="16" viewBox="0 0 16 16" fill="none">
+                  <path d="M4 6L8 10L12 6" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+                </svg>
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="subsection">
+        <h3 class="subsection-title">Dropdown Menu with Items</h3>
+        <div class="grid grid-2" style="gap: 24px;">
+          <div class="demo-box">
+            <p style="font-size: 12px; color: rgba(255,255,255,0.5); margin-bottom: 12px;">Menu with Selected Item</p>
+            <div class="custom-dropdown-menu" style="position: relative;">
+              <button type="button" class="custom-dropdown-item">
+                <span class="custom-dropdown-item-label">All Status</span>
+              </button>
+              <button type="button" class="custom-dropdown-item selected">
+                <span class="custom-dropdown-item-label">Active</span>
+                <svg class="custom-dropdown-check" width="16" height="16" viewBox="0 0 16 16" fill="none">
+                  <path d="M13.5 4.5L6 12L2.5 8.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+                </svg>
+              </button>
+              <button type="button" class="custom-dropdown-item">
+                <span class="custom-dropdown-item-label">Inactive</span>
+              </button>
+              <button type="button" class="custom-dropdown-item disabled" disabled>
+                <span class="custom-dropdown-item-label">Disabled Option</span>
+              </button>
+            </div>
+          </div>
+          <div class="demo-box">
+            <p style="font-size: 12px; color: rgba(255,255,255,0.5); margin-bottom: 12px;">Menu Item States</p>
+            <div class="custom-dropdown-menu" style="position: relative;">
+              <button type="button" class="custom-dropdown-item">
+                <span class="custom-dropdown-item-label">Rest State</span>
+              </button>
+              <button type="button" class="custom-dropdown-item highlighted">
+                <span class="custom-dropdown-item-label">Hover / Highlighted</span>
+              </button>
+              <button type="button" class="custom-dropdown-item selected">
+                <span class="custom-dropdown-item-label">Selected</span>
+                <svg class="custom-dropdown-check" width="16" height="16" viewBox="0 0 16 16" fill="none">
+                  <path d="M13.5 4.5L6 12L2.5 8.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+                </svg>
+              </button>
+              <button type="button" class="custom-dropdown-item disabled" disabled>
+                <span class="custom-dropdown-item-label">Disabled</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="subsection">
+        <h3 class="subsection-title">Usage Notes</h3>
+        <div class="demo-box" style="max-width: 600px;">
+          <ul style="padding-left: 20px; color: rgba(255,255,255,0.7); font-size: 14px; line-height: 1.8;">
+            <li>This component is a React component that replaces native &lt;select&gt; elements</li>
+            <li>The dropdown menu is rendered via React Portal for proper z-index handling</li>
+            <li>Supports keyboard navigation: ArrowUp, ArrowDown, Enter, Escape</li>
+            <li>Click outside closes the dropdown</li>
+            <li>Menu position is calculated dynamically to avoid clipping</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+
+    <div class="divider"></div>
+
+    <!-- Filter Chips -->
+    <div class="section">
+      <h2 class="section-title">Filter Chips</h2>
+      <p class="section-subtitle">Selectable filter options - Momentum Design style</p>
+
+      <div class="flex">
+        <span class="filter-chip">All</span>
+        <span class="filter-chip selected">Active</span>
+        <span class="filter-chip">Inactive</span>
+        <span class="filter-chip">Pending</span>
+      </div>
+    </div>
+
+    <div class="divider"></div>
+
+    <!-- Input Chips -->
+    <div class="section">
+      <h2 class="section-title">Input Chips</h2>
+      <p class="section-subtitle">Removable input tags - Momentum Design style</p>
+
+      <div class="flex">
+        <span class="input-chip">
+          Customer Support
+          <span class="chip-remove">×</span>
+        </span>
+        <span class="input-chip">
+          Sales
+          <span class="chip-remove">×</span>
+        </span>
+        <span class="input-chip">
+          Technical
+          <span class="chip-remove">×</span>
+        </span>
+      </div>
+    </div>
+
+    <div class="divider"></div>
+
+    <!-- Toggle -->
+    <div class="section">
+      <h2 class="section-title">Toggle Switch</h2>
+      <p class="section-subtitle">On/off toggle controls</p>
+
+      <div class="flex">
+        <label class="toggle-wrapper">
+          <div class="toggle-track">
+            <div class="toggle-thumb"></div>
+          </div>
+          <span>Disabled</span>
+        </label>
+        <label class="toggle-wrapper">
+          <div class="toggle-track active">
+            <div class="toggle-thumb"></div>
+          </div>
+          <span>Enabled</span>
+        </label>
+      </div>
+    </div>
+
+    <div class="divider"></div>
+
+    <!-- Tabs -->
+    <div class="section">
+      <h2 class="section-title">Tabs</h2>
+      <p class="section-subtitle">Navigation tabs with pill and line styles</p>
+
+      <h3 style="font-size: 14px; color: rgba(255,255,255,0.7); margin-bottom: 12px;">Pill Tabs</h3>
+      <div class="tabs">
+        <div class="tab active">Overview</div>
+        <div class="tab">Configure</div>
+        <div class="tab">Monitor</div>
+        <div class="tab">Changelog</div>
+      </div>
+
+      <h3 style="font-size: 14px; color: rgba(255,255,255,0.7); margin-bottom: 12px; margin-top: 24px;">Pill Tabs with Badge & Chip</h3>
+      <div class="tabs">
+        <div class="tab active">Messages <span class="tab-badge">5</span></div>
+        <div class="tab">Notifications <span class="tab-badge">12</span></div>
+        <div class="tab">Settings <span class="tab-chip">Beta</span></div>
+      </div>
+
+      <h3 style="font-size: 14px; color: rgba(255,255,255,0.7); margin-bottom: 12px; margin-top: 24px;">Glass Tabs</h3>
+      <div class="tabs tabs-glass">
+        <div class="tab active">Overview</div>
+        <div class="tab">Configure</div>
+        <div class="tab">Monitor</div>
+        <div class="tab disabled">Disabled</div>
+      </div>
+
+      <h3 style="font-size: 14px; color: rgba(255,255,255,0.7); margin-bottom: 12px; margin-top: 24px;">Line Tabs (Subtabs)</h3>
+      <div class="subtabs">
+        <div class="subtab active">Overview</div>
+        <div class="subtab">Configure</div>
+        <div class="subtab">Monitor</div>
+        <div class="subtab">Changelog</div>
+      </div>
+
+      <h3 style="font-size: 14px; color: rgba(255,255,255,0.7); margin-bottom: 12px; margin-top: 24px;">Tab States</h3>
+      <div class="tabs" style="gap: 16px;">
+        <div class="tab">Rest</div>
+        <div class="tab active">Active</div>
+        <div class="tab disabled">Disabled</div>
+      </div>
+    </div>
+
+    <div class="divider"></div>
+
+    <!-- Avatars -->
+    <div class="section">
+      <h2 class="section-title">Avatars</h2>
+      <p class="section-subtitle">User and agent avatars</p>
+
+      <div class="flex">
+        <div class="avatar avatar-sm" style="background: linear-gradient(135deg, #667eea, #764ba2);">CS</div>
+        <div class="avatar" style="background: linear-gradient(135deg, #11998e, #38ef7d);">SA</div>
+        <div class="avatar avatar-lg" style="background: linear-gradient(135deg, #4facfe, #00f2fe);">TH</div>
+      </div>
+    </div>
+
+    <div class="divider"></div>
+
+    <!-- Toolbar -->
+    <div class="section">
+      <h2 class="section-title">Toolbar</h2>
+      <p class="section-subtitle">Formatting toolbar - Momentum Design (Exact Figma)</p>
+
+      <div class="toolbar" style="max-width: 760px;">
+        <div class="toolbar-left">
+          <div class="toolbar-group">
+            <button class="toolbar-btn" title="Bold">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                <path d="M6 4h8a4 4 0 0 1 4 4 4 4 0 0 1-4 4H6z"/><path d="M6 12h9a4 4 0 0 1 4 4 4 4 0 0 1-4 4H6z"/>
+              </svg>
+            </button>
+            <button class="toolbar-btn" title="Italic">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <line x1="19" y1="4" x2="10" y2="4"/><line x1="14" y1="20" x2="5" y2="20"/><line x1="15" y1="4" x2="9" y2="20"/>
+              </svg>
+            </button>
+            <button class="toolbar-btn" title="Underline">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M6 3v7a6 6 0 0 0 6 6 6 6 0 0 0 6-6V3"/><line x1="4" y1="21" x2="20" y2="21"/>
+              </svg>
+            </button>
+          </div>
+          <div class="toolbar-divider"></div>
+          <button class="toolbar-btn" title="Link">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/>
+              <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/>
+            </svg>
+          </button>
+          <div class="toolbar-divider"></div>
+          <button class="toolbar-btn" title="Markdown">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <rect x="3" y="3" width="18" height="18" rx="2" ry="2"/>
+              <path d="M7 15V9l2.5 3L12 9v6"/>
+              <path d="M17 12l-2 3h4l-2-3z"/>
+            </svg>
+          </button>
+          <div class="toolbar-divider"></div>
+          <button class="toolbar-btn toolbar-btn-example" style="display: flex; align-items: center; gap: 6px;">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width: 16px; height: 16px;">
+              <rect x="3" y="3" width="18" height="18" rx="2" ry="2"/>
+              <line x1="7" y1="7" x2="7" y2="7"/><line x1="17" y1="7" x2="17" y2="7"/>
+              <line x1="7" y1="12" x2="17" y2="12"/>
+              <line x1="7" y1="17" x2="13" y2="17"/>
+            </svg>
+            Example
+          </button>
+        </div>
+        <button class="toolbar-btn toolbar-btn-optimize" style="display: flex; align-items: center; gap: 4px;">
+          <svg viewBox="0 0 24 24" fill="currentColor" style="width: 16px; height: 16px;">
+            <path d="M12 2L9.19 8.63L2 9.24L7.46 13.97L5.82 21L12 17.27L18.18 21L16.54 13.97L22 9.24L14.81 8.63L12 2Z"/>
+          </svg>
+          Optimize instructions
+        </button>
+      </div>
+    </div>
+
+    <div class="divider"></div>
+
+    <!-- Dropdown Menu -->
+    <div class="section">
+      <h2 class="section-title">Dropdown Menu</h2>
+      <p class="section-subtitle">Contextual action menus - Momentum Design style with item states</p>
+
+      <div class="grid grid-2" style="gap: 32px;">
+        <div>
+          <h3 style="font-size: 14px; color: rgba(255,255,255,0.7); margin-bottom: 12px;">Basic Menu</h3>
+          <div class="dropdown-menu" style="display: inline-block;">
+            <button class="dropdown-item">
+              <span class="dropdown-icon">✉️</span>
+              Add welcome message
+            </button>
+            <button class="dropdown-item">
+              <span class="dropdown-icon">📄</span>
+              View and add example
+            </button>
+            <button class="dropdown-item">
+              <span class="dropdown-icon">✨</span>
+              Optimize my instruction
+            </button>
+            <button class="dropdown-item">
+              <span class="dropdown-icon">⚡</span>
+              Add capability
+            </button>
+          </div>
+        </div>
+
+        <div>
+          <h3 style="font-size: 14px; color: rgba(255,255,255,0.7); margin-bottom: 12px;">Menu Item States</h3>
+          <div class="dropdown-menu" style="display: inline-block;">
+            <button class="dropdown-item">
+              <span class="dropdown-icon">📋</span>
+              Rest state
+            </button>
+            <button class="dropdown-item" style="background: rgba(255, 255, 255, 0.07);">
+              <span class="dropdown-icon">👆</span>
+              Hover state
+            </button>
+            <button class="dropdown-item" style="background: rgba(255, 255, 255, 0.11);">
+              <span class="dropdown-icon">✋</span>
+              Pressed state
+            </button>
+            <button class="dropdown-item selected">
+              <span class="dropdown-icon">✓</span>
+              Selected state
+            </button>
+            <button class="dropdown-item disabled">
+              <span class="dropdown-icon">🚫</span>
+              Disabled state
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <h3 style="font-size: 14px; color: rgba(255,255,255,0.7); margin-top: 32px; margin-bottom: 12px;">With Sections & Dividers</h3>
+      <div class="dropdown-menu" style="display: inline-block; min-width: 240px;">
+        <div class="dropdown-section-header">Actions</div>
+        <button class="dropdown-item">
+          <span class="dropdown-icon">📝</span>
+          Edit
+        </button>
+        <button class="dropdown-item">
+          <span class="dropdown-icon">📋</span>
+          Duplicate
+        </button>
+        <div class="dropdown-divider"></div>
+        <div class="dropdown-section-header">Status</div>
+        <button class="dropdown-item selected">
+          <span class="dropdown-icon">✓</span>
+          Active
+        </button>
+        <button class="dropdown-item">
+          <span class="dropdown-icon">⏸️</span>
+          Paused
+        </button>
+        <div class="dropdown-divider"></div>
+        <button class="dropdown-item" style="color: #fc8b98;">
+          <span class="dropdown-icon">🗑️</span>
+          Delete
+        </button>
+      </div>
+    </div>
+
+    <div class="divider"></div>
+
+    <!-- Table -->
+    <div class="section">
+      <h2 class="section-title">Table</h2>
+      <p class="section-subtitle">Data tables with Momentum-style badges</p>
+
+      <div class="demo-box">
+        <table class="table">
+          <thead>
+            <tr>
+              <th>Agent</th>
+              <th>Status</th>
+              <th>Sessions</th>
+              <th>Success Rate</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>Customer Support Bot</td>
+              <td><span class="alert-chip alert-chip-success"><span class="alert-icon">✓</span>Published</span></td>
+              <td>5,234</td>
+              <td>94.2%</td>
+            </tr>
+            <tr>
+              <td>Sales Assistant</td>
+              <td><span class="alert-chip alert-chip-warning"><span class="alert-icon">⚠</span>Draft</span></td>
+              <td>-</td>
+              <td>-</td>
+            </tr>
+            <tr>
+              <td>Technical Help Agent</td>
+              <td><span class="alert-chip alert-chip-success"><span class="alert-icon">✓</span>Published</span></td>
+              <td>2,891</td>
+              <td>91.8%</td>
+            </tr>
+            <tr>
+              <td>Billing Bot</td>
+              <td><span class="alert-chip alert-chip-error"><span class="alert-icon">✕</span>Error</span></td>
+              <td>0</td>
+              <td>-</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="divider"></div>
+
+    <!-- Toast -->
+    <div class="section">
+      <h2 class="section-title">Toast Notifications</h2>
+      <p class="section-subtitle">Feedback messages - Momentum Design</p>
+
+      <div style="display: flex; flex-direction: column; gap: 16px;">
+        <!-- Success Toast -->
+        <div class="toast toast-success">
+          <div class="toast-content">
+            <div class="toast-icon toast-icon-success">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/>
+                <polyline points="22 4 12 14.01 9 11.01"/>
+              </svg>
+            </div>
+            <div class="toast-body">
+              <div class="toast-header">All set!</div>
+              <div class="toast-message">Your changes are saved and ready to go.</div>
+            </div>
+            <button class="toast-close">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+              </svg>
+            </button>
+          </div>
+        </div>
+
+        <!-- Error Toast with Actions -->
+        <div class="toast toast-error">
+          <div class="toast-content">
+            <div class="toast-icon toast-icon-error">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/>
+              </svg>
+            </div>
+            <div class="toast-body">
+              <div class="toast-header">Something went wrong</div>
+              <div class="toast-message">We couldn't save your changes. <a href="#">Get help</a> troubleshooting.</div>
+            </div>
+            <button class="toast-close">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+              </svg>
+            </button>
+          </div>
+          <div class="toast-actions">
+            <button class="toast-btn toast-btn-secondary">Dismiss</button>
+            <button class="toast-btn toast-btn-primary">Retry</button>
+          </div>
+        </div>
+
+        <!-- Warning Toast -->
+        <div class="toast toast-warning">
+          <div class="toast-content">
+            <div class="toast-icon toast-icon-warning">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/>
+                <line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/>
+              </svg>
+            </div>
+            <div class="toast-body">
+              <div class="toast-header">Heads up</div>
+              <div class="toast-message">You're about to remove this integration. This could affect connected workflows.</div>
+            </div>
+            <button class="toast-close">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+              </svg>
+            </button>
+          </div>
+        </div>
+
+        <!-- Info Toast -->
+        <div class="toast toast-info">
+          <div class="toast-content">
+            <div class="toast-icon toast-icon-info">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/>
+              </svg>
+            </div>
+            <div class="toast-body">
+              <div class="toast-header">Username</div>
+              <div class="toast-message">New message received.</div>
+            </div>
+            <button class="toast-close">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+              </svg>
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="divider"></div>
+
+    <!-- Spacing -->
+    <div class="section">
+      <h2 class="section-title">Spacing Scale</h2>
+      <p class="section-subtitle">Consistent spacing values</p>
+
+      <div class="demo-box">
+        <div style="display: flex; gap: 24px; align-items: flex-end;">
+          <div style="text-align: center;">
+            <div style="width: 4px; height: 4px; background: var(--accent-color); margin: 0 auto 8px;"></div>
+            <code>4px</code>
+          </div>
+          <div style="text-align: center;">
+            <div style="width: 8px; height: 8px; background: var(--accent-color); margin: 0 auto 8px;"></div>
+            <code>8px</code>
+          </div>
+          <div style="text-align: center;">
+            <div style="width: 12px; height: 12px; background: var(--accent-color); margin: 0 auto 8px;"></div>
+            <code>12px</code>
+          </div>
+          <div style="text-align: center;">
+            <div style="width: 16px; height: 16px; background: var(--accent-color); margin: 0 auto 8px;"></div>
+            <code>16px</code>
+          </div>
+          <div style="text-align: center;">
+            <div style="width: 20px; height: 20px; background: var(--accent-color); margin: 0 auto 8px;"></div>
+            <code>20px</code>
+          </div>
+          <div style="text-align: center;">
+            <div style="width: 24px; height: 24px; background: var(--accent-color); margin: 0 auto 8px;"></div>
+            <code>24px</code>
+          </div>
+          <div style="text-align: center;">
+            <div style="width: 32px; height: 32px; background: var(--accent-color); margin: 0 auto 8px;"></div>
+            <code>32px</code>
+          </div>
+          <div style="text-align: center;">
+            <div style="width: 40px; height: 40px; background: var(--accent-color); margin: 0 auto 8px;"></div>
+            <code>40px</code>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="divider"></div>
+
+    <!-- Border Radius -->
+    <div class="section">
+      <h2 class="section-title">Border Radius</h2>
+      <p class="section-subtitle">Rounded corner values</p>
+
+      <div class="demo-box">
+        <div style="display: flex; gap: 24px; align-items: center;">
+          <div style="text-align: center;">
+            <div style="width: 60px; height: 60px; background: var(--accent-color); border-radius: 4px; margin: 0 auto 8px;"></div>
+            <code>4px</code>
+          </div>
+          <div style="text-align: center;">
+            <div style="width: 60px; height: 60px; background: var(--accent-color); border-radius: 8px; margin: 0 auto 8px;"></div>
+            <code>8px</code>
+          </div>
+          <div style="text-align: center;">
+            <div style="width: 60px; height: 60px; background: var(--accent-color); border-radius: 12px; margin: 0 auto 8px;"></div>
+            <code>12px</code>
+          </div>
+          <div style="text-align: center;">
+            <div style="width: 60px; height: 60px; background: var(--accent-color); border-radius: 16px; margin: 0 auto 8px;"></div>
+            <code>16px</code>
+          </div>
+          <div style="text-align: center;">
+            <div style="width: 60px; height: 60px; background: var(--accent-color); border-radius: 24px; margin: 0 auto 8px;"></div>
+            <code>24px</code>
+          </div>
+          <div style="text-align: center;">
+            <div style="width: 60px; height: 60px; background: var(--accent-color); border-radius: 50%; margin: 0 auto 8px;"></div>
+            <code>50%</code>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div style="height: 60px;"></div>
+  </div>
+</body>
+</html>
