@@ -15309,25 +15309,14 @@ img.app-header__wordmark-logo {
   color: var(--accent-color);
 }
 
-/* Live recording state — used while MediaRecorder is capturing audio. The
-   green accent + slow pulse make it clear the user is actively talking. */
+/* Live recording state — check icon to complete voice input (no pulse). */
 .ai-footer__voice-btn--recording:not(:disabled) {
   background: var(--mds-color-theme-button-join-normal, var(--success-color));
   color: var(--mds-color-theme-common-text-primary-normal, #ffffff);
-  animation: ai-footer-mic-pulse 1.4s ease-in-out infinite;
 }
 
 .ai-footer__voice-btn--recording:not(:disabled):hover {
   background: var(--mds-color-theme-button-join-hover, var(--success-color));
-}
-
-@keyframes ai-footer-mic-pulse {
-  0%, 100% {
-    box-shadow: 0 0 0 0 color-mix(in srgb, var(--mds-color-theme-button-join-normal, var(--success-color)) 60%, transparent);
-  }
-  50% {
-    box-shadow: 0 0 0 6px color-mix(in srgb, var(--mds-color-theme-button-join-normal, var(--success-color)) 0%, transparent);
-  }
 }
 
 /* Transcribing state — the mic upload is in flight to /api/transcribe.
