@@ -158,6 +158,9 @@ npx wrangler secret put DEEPGRAM_API_KEY
 npx wrangler secret put ELEVENLABS_API_KEY
 ```
 
+When prompted for `DEEPGRAM_API_KEY`, paste only the key value. Do not paste the
+whole `.env` line (`DEEPGRAM_API_KEY=...`), quotes, or extra whitespace.
+
 ## Deployment
 
 The app is configured for deployment on **Vercel** (see `web/vercel.json`). An alternative GitHub Pages deploy is also available via `npm run deploy`.
