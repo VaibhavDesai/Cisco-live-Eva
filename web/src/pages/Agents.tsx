@@ -18,7 +18,7 @@ export default function Agents() {
   } else if (variation === 'form-bases') {
     variationView = <EvaFormBuilder />;
   } else {
-    variationView = <EvaChatExperience />;
+    variationView = <EvaChatExperience voiceTranscribePath="/elevenlabs/transcribe" />;
   }
 
   return (

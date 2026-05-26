@@ -845,8 +845,10 @@ function getReadinessRecommendationFixMeta(recommendation: string): {
 
 export default function EvaChatExperience({
   resetSessionOnInitialMount = false,
+  voiceTranscribePath = '/transcribe',
 }: {
   resetSessionOnInitialMount?: boolean;
+  voiceTranscribePath?: string;
 } = {}) {
   const navigate = useNavigate();
   const location = useLocation();
@@ -3123,6 +3125,7 @@ Simulation rules:
         if (voiceWsRef.current !== ws) return;
         if (voiceConnectionTimerRef.current) {
           window.clearTimeout(voiceConnectionTimerRef.current);
+          voiceConnectionTimerRef.current = null;
         }
         voiceConnectionTimerRef.current = window.setTimeout(() => {
           if (
@@ -3487,6 +3490,7 @@ Simulation rules:
         suggestions={[]}
         voiceActive={voiceActive}
         onVoiceToggle={() => setVoiceActive(prev => !prev)}
+        transcribePath={voiceTranscribePath}
       />
       <div className="eva-preview-session__actions">
         <Button variant="secondary" size="sm" onClick={() => setPreviewMessages([])} disabled={previewMessages.length === 0 || previewThinking}>
@@ -4735,6 +4739,7 @@ ${previewTranscript}`,
               suggestions={[]}
               voiceActive={voiceActive}
               onVoiceToggle={() => setVoiceActive(prev => !prev)}
+              transcribePath={voiceTranscribePath}
               showDisclaimer={false}
             />
           </div>
@@ -6941,6 +6946,7 @@ ${previewTranscript}`,
                       suggestions={[]}
                       voiceActive={voiceActive}
                       onVoiceToggle={() => setVoiceActive(prev => !prev)}
+                      transcribePath={voiceTranscribePath}
                       cornerAction={!generatedComposerCollapsed ? (
                         <button
                           type="button"
@@ -7179,6 +7185,7 @@ ${previewTranscript}`,
               suggestions={[]}
               voiceActive={voiceActive}
               onVoiceToggle={() => setVoiceActive(prev => !prev)}
+              transcribePath={voiceTranscribePath}
             />
           </section>
         )}
