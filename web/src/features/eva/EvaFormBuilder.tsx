@@ -1609,7 +1609,7 @@ export default function EvaFormBuilder() {
                     type="text"
                     value={digitalChannelAddress}
                     onChange={event => setDigitalChannelAddress(event.target.value)}
-                    placeholder="support-chat, support@example.com, or +1 415 555 0198"
+                    placeholder="support-chat, support@example.com, or +1 629 263 5773"
                     hint="Use a queue, inbox, SMS-capable number, or Webex Connect asset for the selected digital channels."
                   />
                 </div>

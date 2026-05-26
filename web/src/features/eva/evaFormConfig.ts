@@ -105,7 +105,7 @@ export const PROFILE_VOICE_OPTIONS = [
 ];
 
 export const CHANNEL_PHONE_NUMBER_OPTIONS = [
-  { value: '+1 415 555 0198', label: '+1 415 555 0198' },
+  { value: '+1 629 263 5773', label: '+1 629 263 5773' },
   { value: '+1 512 555 0142', label: '+1 512 555 0142' },
   { value: '+44 20 7946 0958', label: '+44 20 7946 0958' },
 ];
@@ -192,7 +192,7 @@ export const DIGITAL_CHANNEL_DETAILS: Record<
   },
   sms: {
     label: 'SMS number',
-    placeholder: '+1 415 555 0198',
+    placeholder: '+1 629 263 5773',
     hint: 'Use the SMS-capable number for inbound customer messages.',
     inputType: 'tel',
   },

@@ -307,11 +307,11 @@ const STUDIO_TRANSITION_MS = 420;
 
 const RETAIL_PHONE_NUMBER_OPTIONS = [
   {
-    value: '+1 415 555 0198',
+    value: '+1 629 263 5773',
     countryCode: '+1',
     flag: '🇺🇸',
-    localNumber: '415 555 0198',
-    label: '+1 415 555 0198',
+    localNumber: '629 263 5773',
+    label: '+1 629 263 5773',
     meta: 'San Francisco store',
   },
   {
@@ -5578,7 +5578,7 @@ ${previewTranscript}`,
                           type="text"
                           value={digitalChannelAddress}
                           onChange={event => setDigitalChannelAddress(event.target.value)}
-                          placeholder="support-chat, support@example.com, or +1 415 555 0198"
+                          placeholder="support-chat, support@example.com, or +1 629 263 5773"
                           hint="Use a queue, inbox, SMS-capable number, or Webex Connect asset for the selected digital channels."
                         />
                       </div>

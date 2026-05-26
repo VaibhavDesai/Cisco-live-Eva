@@ -108,7 +108,7 @@ function getConfiguredSummary(agent: Agent) {
 
   return {
     channel: isRetailReceptionist ? 'Voice channel connected' : 'Primary channel ready to review',
-    endpoint: '+1 415 555 0198',
+    endpoint: '+1 629 263 5773',
     aiEngine: 'Webex AI Pro 1.0',
     handoff: isRetailReceptionist ? 'Manager escalation to Matt' : 'Escalation behavior ready to review',
     actions: isRetailReceptionist

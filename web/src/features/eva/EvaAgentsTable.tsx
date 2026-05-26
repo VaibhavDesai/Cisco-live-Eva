@@ -150,7 +150,7 @@ function buildPreviewSession(agent: Agent): EvaSessionState {
     channelType: 'voice',
     digitalChannel: 'chat',
     digitalChannelAddress: 'acme-electronics-chat',
-    channelPhoneNumber: '+1 415 555 0198',
+    channelPhoneNumber: '+1 629 263 5773',
     standardGuardrails: EVA_STANDARD_GUARDRAILS,
     advancedGuardrails: EVA_ADVANCED_GUARDRAIL_GROUPS,
     customRules: [],
