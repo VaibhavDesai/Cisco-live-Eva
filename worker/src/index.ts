@@ -220,6 +220,10 @@ function normalizeDeepgramApiKey(configuredKey: string): string {
     .trim()
     .replace(/^Authorization:\s*/i, '')
     .replace(/^Token\s+/i, '')
+    .replace(/^Bearer\s+/i, '')
+    .replace(/^DEEPGRAM_API_KEY\s*=\s*/i, '')
+    .replace(/^['"]|['"]$/g, '')
+    .replace(/[\u0000-\u001F\u007F\s]+/g, '')
     .trim();
 }
 
