@@ -9534,6 +9534,7 @@ button.eva-retail-preview-card::before {
   padding: 6px;
   border-radius: var(--border-radius-pill);
   color: color-mix(in srgb, var(--text-primary) 70%, transparent);
+  opacity: calc(0.62 + (0.38 * var(--voice-output-level, 0)));
 }
 
 .ai-footer__voice-listening span {
@@ -9541,28 +9542,30 @@ button.eva-retail-preview-card::before {
   width: 3px;
   border-radius: var(--border-radius-pill);
   background: currentColor;
+  transform-origin: center bottom;
+  transition: height 80ms ease-out, opacity 80ms ease-out;
 }
 
 .ai-footer__voice-listening span:nth-child(1),
 .ai-footer__voice-listening span:nth-child(5) {
-  height: calc(6px + (8px * var(--voice-bar-0, 0.18)));
+  height: calc(4px + (5px * var(--voice-bar-0, 0.18)));
 }
 
 .ai-footer__voice-listening span:nth-child(2),
 .ai-footer__voice-listening span:nth-child(4) {
-  height: calc(8px + (14px * var(--voice-bar-1, 0.18)));
+  height: calc(5px + (8px * var(--voice-bar-1, 0.18)));
 }
 
 .ai-footer__voice-listening span:nth-child(3) {
-  height: calc(10px + (18px * var(--voice-bar-2, 0.18)));
+  height: calc(6px + (10px * var(--voice-bar-2, 0.18)));
 }
 
 .ai-footer__voice-listening span:nth-child(4) {
-  height: calc(8px + (14px * var(--voice-bar-3, 0.18)));
+  height: calc(5px + (8px * var(--voice-bar-3, 0.18)));
 }
 
 .ai-footer__voice-listening span:nth-child(5) {
-  height: calc(6px + (8px * var(--voice-bar-4, 0.18)));
+  height: calc(4px + (5px * var(--voice-bar-4, 0.18)));
 }
 
 .ai-footer__send-btn,

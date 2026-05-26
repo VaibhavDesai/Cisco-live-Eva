@@ -15319,18 +15319,31 @@ img.app-header__wordmark-logo {
   background: var(--mds-color-theme-button-join-hover, var(--success-color));
 }
 
-/* Transcribing state — the mic upload is in flight to /api/transcribe.
-   Subtle spin on the icon signals progress without taking visual weight. */
+/* Transcribing state — the mic upload is in flight to /api/transcribe. */
 .ai-footer__voice-btn--transcribing:not(:disabled) {
   color: var(--accent-color);
 }
 
-.ai-footer__voice-btn--transcribing .icon,
-.ai-footer__voice-btn--transcribing svg {
-  animation: ai-footer-mic-spin 1s linear infinite;
+.ai-footer__voice-spinner {
+  display: inline-flex;
+  width: 16px;
+  height: 16px;
+  color: currentColor;
 }
 
-@keyframes ai-footer-mic-spin {
+.ai-footer__voice-spinner svg {
+  width: 16px;
+  height: 16px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 3;
+  stroke-linecap: round;
+  stroke-dasharray: 14 40;
+  transform-origin: center;
+  animation: ai-footer-spinner-spin 0.9s linear infinite;
+}
+
+@keyframes ai-footer-spinner-spin {
   from { transform: rotate(0deg); }
   to { transform: rotate(360deg); }
 }
@@ -19079,4 +19092,3 @@ img.app-header__wordmark-logo {
     grid-template-columns: 1fr;
   }
 }
-
