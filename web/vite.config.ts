@@ -6,36 +6,57 @@ import tls from 'node:tls'
 import dotenv from 'dotenv'
 
 dotenv.config({ path: path.resolve(__dirname, '..', '.env') })
+dotenv.config({ path: path.resolve(__dirname, '.env.local') })
 
-// Merge the OS-level CA store (e.g. macOS Keychain — which on Cisco machines
-// includes the Cisco / Zscaler root that intercepts outbound TLS) into Node's
-// bundled CA list. Without this, server-side `fetch` calls to third-party
-// APIs (e.g. ElevenLabs) fail with `UNABLE_TO_GET_ISSUER_CERT_LOCALLY` because
-// Node ships its own Mozilla CA bundle and ignores the OS keychain.
+// Optionally merge the OS-level CA store (e.g. macOS Keychain — which on
+// some corporate machines includes an intercepting root CA) into Node's
+// bundled CA list. This is opt-in because some macOS/Node combinations can
+// crash while reading Keychain certificates.
 // `tls.setDefaultCACertificates` (Node 22.10+) replaces the default bundle —
 // we explicitly merge bundled + system so we don't accidentally drop public
 // CAs like ISRG Root X1 / DigiCert.
-try {
-  const bundled = tls.rootCertificates ?? []
-  const system: readonly string[] =
-    typeof tls.getCACertificates === 'function' ? tls.getCACertificates('system') : []
-  if (typeof tls.setDefaultCACertificates === 'function' && system.length > 0) {
-    const merged = Array.from(new Set([...bundled, ...system]))
-    tls.setDefaultCACertificates(merged)
+if (process.env.NODE_ENV !== 'production' && process.env.MERGE_SYSTEM_CAS === '1') {
+  try {
+    const bundled = tls.rootCertificates ?? []
+    const system: readonly string[] =
+      typeof tls.getCACertificates === 'function' ? tls.getCACertificates('system') : []
+    if (typeof tls.setDefaultCACertificates === 'function' && system.length > 0) {
+      const merged = Array.from(new Set([...bundled, ...system]))
+      tls.setDefaultCACertificates(merged)
+      // eslint-disable-next-line no-console
+      console.log(
+        `◇ TLS CAs: bundled=${bundled.length}, system=${system.length}, merged=${merged.length}`,
+      )
+    }
+  } catch (err) {
     // eslint-disable-next-line no-console
-    console.log(
-      `◇ TLS CAs: bundled=${bundled.length}, system=${system.length}, merged=${merged.length}`,
-    )
+    console.warn('Could not merge system CAs into Node default trust store:', err)
   }
-} catch (err) {
-  // eslint-disable-next-line no-console
-  console.warn('Could not merge system CAs into Node default trust store:', err)
 }
 
 const iconsDir = path.resolve(
   __dirname,
   'node_modules/@momentum-design/icons/dist/svg'
 )
+
+function normalizeDeepgramApiKey(configuredKey: string): string {
+  return configuredKey
+    .trim()
+    .replace(/^DEEPGRAM_API_KEY\s*=\s*/i, '')
+    .replace(/^Authorization:\s*/i, '')
+    .replace(/^Token\s+/i, '')
+    .replace(/^['"]|['"]$/g, '')
+    .replace(/\s+/g, '')
+    .trim()
+}
+
+function getDeepgramAuthorization(): string | null {
+  const apiKey = process.env.DEEPGRAM_API_KEY
+  if (!apiKey) return null
+
+  const normalized = normalizeDeepgramApiKey(apiKey)
+  return normalized ? `Token ${normalized}` : null
+}
 
 /* ── Cisco EGAI token cache ── */
 let cachedToken: string | null = null
@@ -94,9 +115,8 @@ export default defineConfig({
       },
     },
     {
-      // Dev-only signed URL proxy for ElevenLabs Conversational AI. The
-      // browser never receives ELEVENLABS_API_KEY; it only receives the
-      // short-lived WebSocket URL returned by ElevenLabs.
+      // Dev-only signed URL proxy for ElevenLabs Conversational AI. Used by
+      // the voice preview call flow.
       name: 'elevenlabs-convai-signed-url-proxy',
       configureServer(server) {
         server.middlewares.use('/api/convai/signed-url', async (req, res) => {
@@ -111,7 +131,7 @@ export default defineConfig({
           if (!apiKey) {
             res.statusCode = 500
             res.setHeader('Content-Type', 'application/json')
-            res.end(JSON.stringify({ error: 'ELEVENLABS_API_KEY not configured in .env' }))
+            res.end(JSON.stringify({ error: 'ELEVENLABS_API_KEY not configured in .env or web/.env.local' }))
             return
           }
 
@@ -119,7 +139,7 @@ export default defineConfig({
           if (!agentId) {
             res.statusCode = 500
             res.setHeader('Content-Type', 'application/json')
-            res.end(JSON.stringify({ error: 'ELEVENLABS_AGENT_ID not configured in .env' }))
+            res.end(JSON.stringify({ error: 'ELEVENLABS_AGENT_ID not configured in .env or web/.env.local' }))
             return
           }
 
@@ -160,21 +180,20 @@ export default defineConfig({
             res.end(JSON.stringify({ error: message }))
           }
         })
-
       },
     },
     {
-      // Proxy for ElevenLabs Speech-to-Text (Scribe). Keeps the API key on
-      // the dev server side so it never ships in the client bundle. The
-      // browser POSTs the recorded audio as a raw binary blob with its
-      // own Content-Type (e.g. audio/webm); this middleware wraps it in a
-      // multipart form for ElevenLabs and returns `{ text }`.
+      // Proxy for Deepgram Speech-to-Text. Keeps the API key on the dev
+      // server side so it never ships in the client bundle. The browser
+      // POSTs the recorded audio as a raw binary blob with its own
+      // Content-Type (e.g. audio/webm); this middleware forwards it to
+      // Deepgram and returns `{ text }`.
       // NOTE: This is a dev-only proxy. For production deployment the
       // same endpoint needs to be re-implemented in whatever runtime
       // serves the app (Edge Function, Node server, etc.) — the client
       // calls `/api/transcribe` so the proxy can be swapped without
       // touching the React code.
-      name: 'elevenlabs-stt-proxy',
+      name: 'deepgram-stt-proxy',
       configureServer(server) {
         server.middlewares.use('/api/transcribe', async (req, res) => {
           if (req.method !== 'POST') {
@@ -184,11 +203,11 @@ export default defineConfig({
             return
           }
 
-          const apiKey = process.env.ELEVENLABS_API_KEY
-          if (!apiKey) {
+          const authorization = getDeepgramAuthorization()
+          if (!authorization) {
             res.statusCode = 500
             res.setHeader('Content-Type', 'application/json')
-            res.end(JSON.stringify({ error: 'ELEVENLABS_API_KEY not configured in .env' }))
+            res.end(JSON.stringify({ error: 'DEEPGRAM_API_KEY not configured in .env or web/.env.local' }))
             return
           }
 
@@ -204,9 +223,9 @@ export default defineConfig({
               return
             }
 
-            // Cap incoming clip size to avoid runaway uploads. ElevenLabs
-            // Scribe accepts up to ~1GB but for a chat composer mic any
-            // single utterance over ~25MB is almost certainly accidental.
+            // Cap incoming clip size to avoid runaway uploads. For a chat
+            // composer mic, a single utterance over ~25MB is almost
+            // certainly accidental.
             const MAX_BYTES = 25 * 1024 * 1024
             if (audioBuffer.length > MAX_BYTES) {
               res.statusCode = 413
@@ -216,8 +235,134 @@ export default defineConfig({
             }
 
             const incomingType = (req.headers['content-type'] as string) || 'audio/webm'
-            // Pick a sensible filename extension from the incoming MIME so
-            // ElevenLabs can dispatch to the right decoder.
+            const deepgramUrl = new URL('https://api.deepgram.com/v1/listen')
+            deepgramUrl.searchParams.set('model', 'nova-3')
+            deepgramUrl.searchParams.set('smart_format', 'true')
+            deepgramUrl.searchParams.set('detect_language', 'true')
+
+            const sttRes = await fetch(deepgramUrl.toString(), {
+              method: 'POST',
+              headers: {
+                Authorization: authorization,
+                'Content-Type': incomingType,
+                Accept: 'application/json',
+              },
+              body: audioBuffer,
+            })
+
+            if (!sttRes.ok) {
+              const errText = await sttRes.text()
+              res.statusCode = sttRes.status
+              res.setHeader('Content-Type', 'application/json')
+              res.end(
+                JSON.stringify({
+                  error: `Deepgram STT error (${sttRes.status})`,
+                  details: errText,
+                }),
+              )
+              return
+            }
+
+            const data = (await sttRes.json()) as {
+              results?: {
+                channels?: Array<{
+                  detected_language?: string
+                  alternatives?: Array<{
+                    transcript?: string
+                    languages?: string[]
+                  }>
+                }>
+              }
+            }
+            const channel = data.results?.channels?.[0]
+            const alternative = channel?.alternatives?.[0]
+            res.setHeader('Content-Type', 'application/json')
+            res.end(
+              JSON.stringify({
+                text: (alternative?.transcript ?? '').trim(),
+                language: channel?.detected_language ?? alternative?.languages?.[0] ?? null,
+              }),
+            )
+          } catch (err: unknown) {
+            // Surface the underlying network/fetch error too. Node's
+            // undici throws a generic "fetch failed" with the actual
+            // diagnostic (DNS / TLS / abort / etc.) tucked into `cause`,
+            // so we unwrap it here for the client and log the full chain
+            // to the dev server console for easier debugging.
+            const baseMessage = err instanceof Error ? err.message : 'Unknown error'
+            const cause =
+              err && typeof err === 'object' && 'cause' in err
+                ? (err as { cause?: unknown }).cause
+                : undefined
+            const causeMessage =
+              cause instanceof Error
+                ? cause.message
+                : typeof cause === 'string'
+                ? cause
+                : undefined
+            const causeCode =
+              cause && typeof cause === 'object' && 'code' in cause
+                ? (cause as { code?: unknown }).code
+                : undefined
+            const fullMessage = causeMessage ? `${baseMessage}: ${causeMessage}` : baseMessage
+
+            // eslint-disable-next-line no-console
+            console.error('[deepgram-stt-proxy] error:', err, 'cause:', cause)
+
+            res.statusCode = 502
+            res.setHeader('Content-Type', 'application/json')
+            res.end(
+              JSON.stringify({
+                error: fullMessage,
+                code: causeCode ?? null,
+              }),
+            )
+          }
+        })
+      },
+    },
+    {
+      // Proxy for ElevenLabs Speech-to-Text. Used by the Agents build-flow
+      // mic so that path behaves like the original demo.
+      name: 'elevenlabs-stt-proxy',
+      configureServer(server) {
+        server.middlewares.use('/api/elevenlabs/transcribe', async (req, res) => {
+          if (req.method !== 'POST') {
+            res.statusCode = 405
+            res.setHeader('Content-Type', 'application/json')
+            res.end(JSON.stringify({ error: 'Method not allowed' }))
+            return
+          }
+
+          const apiKey = process.env.ELEVENLABS_API_KEY
+          if (!apiKey) {
+            res.statusCode = 500
+            res.setHeader('Content-Type', 'application/json')
+            res.end(JSON.stringify({ error: 'ELEVENLABS_API_KEY not configured in .env or web/.env.local' }))
+            return
+          }
+
+          try {
+            const chunks: Buffer[] = []
+            for await (const chunk of req) chunks.push(chunk as Buffer)
+            const audioBuffer = Buffer.concat(chunks)
+
+            if (audioBuffer.length === 0) {
+              res.statusCode = 400
+              res.setHeader('Content-Type', 'application/json')
+              res.end(JSON.stringify({ error: 'Empty audio body' }))
+              return
+            }
+
+            const MAX_BYTES = 25 * 1024 * 1024
+            if (audioBuffer.length > MAX_BYTES) {
+              res.statusCode = 413
+              res.setHeader('Content-Type', 'application/json')
+              res.end(JSON.stringify({ error: 'Audio too large (>25MB)' }))
+              return
+            }
+
+            const incomingType = (req.headers['content-type'] as string) || 'audio/webm'
             const ext = incomingType.includes('mp4')
               ? 'mp4'
               : incomingType.includes('ogg')
@@ -265,11 +410,6 @@ export default defineConfig({
               }),
             )
           } catch (err: unknown) {
-            // Surface the underlying network/fetch error too. Node's
-            // undici throws a generic "fetch failed" with the actual
-            // diagnostic (DNS / TLS / abort / etc.) tucked into `cause`,
-            // so we unwrap it here for the client and log the full chain
-            // to the dev server console for easier debugging.
             const baseMessage = err instanceof Error ? err.message : 'Unknown error'
             const cause =
               err && typeof err === 'object' && 'cause' in err

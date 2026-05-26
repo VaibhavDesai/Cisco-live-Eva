@@ -28,37 +28,118 @@ import {
 import { EVA_TEMPLATES } from './evaTemplates';
 import type { EvaAgentDraft, EvaKnowledgeRecommendation } from './types';
 
-type AgentTileType = 'Autonomous agent' | 'Scripted agent';
+type AgentTileType = 'scripted' | 'autonomous' | 'receptionist';
 
 const TYPE_OPTIONS = [
-  { value: 'all', label: 'All types' },
-  { value: 'Autonomous agent', label: 'Autonomous agent' },
-  { value: 'Scripted agent', label: 'Scripted agent' },
+  { value: 'All types', label: 'All types' },
+  { value: 'Specialist', label: 'Specialist' },
+  { value: 'CX Concierge', label: 'CX Concierge' },
+  { value: 'Receptionist', label: 'Receptionist' },
 ];
 
 type Phase = 'landing' | 'table';
 
-const AGENT_TILE_META: Record<string, { type: AgentTileType; updatedOn: string; updatedBy: string }> = {
-  cs: { type: 'Autonomous agent', updatedOn: '17 Apr, 26', updatedBy: 'newstartup_imi' },
-  sa: { type: 'Autonomous agent', updatedOn: '12 Apr, 26', updatedBy: 'Team Alpha' },
-  it: { type: 'Scripted agent', updatedOn: '15 Apr, 26', updatedBy: 'svc-bot-builder' },
-  'webex-elec': { type: 'Autonomous agent', updatedOn: 'Just now', updatedBy: 'Matt' },
+type AgentTile = {
+  id: string;
+  name: string;
+  type: AgentTileType;
+  updatedOn: string;
+  updatedBy: string;
+  description: string;
+  editable?: boolean;
 };
 
-const INITIAL_AGENT_IDS = new Set(['cs', 'sa', 'it']);
+const REFERENCE_AGENT_TILES: AgentTile[] = [
+  {
+    id: 'billing-support',
+    name: 'Webex Bank Support',
+    type: 'scripted',
+    updatedOn: '17 Apr 26',
+    updatedBy: 'Austen Jones',
+    description: 'Handles billing and account inquiries.',
+    editable: true,
+  },
+  {
+    id: 'reenergize-healthcare-concierge',
+    name: 'Reenergize Healthcare Concierge',
+    type: 'scripted',
+    updatedOn: '17 Apr 26',
+    updatedBy: 'Austen Jones',
+    description: 'Guides patients through care navigation, appointment support, and safe clinical handoffs.',
+    editable: true,
+  },
+  {
+    id: 'front-door',
+    name: 'Front door',
+    type: 'scripted',
+    updatedOn: '17 Apr 26',
+    updatedBy: 'Clarissa Smith',
+    description: 'Routes finance customers to the right specialist.',
+    editable: true,
+  },
+  {
+    id: 'webex-finance-concierge',
+    name: 'Webex Finance Concierge',
+    type: 'scripted',
+    updatedOn: '22 May 26',
+    updatedBy: 'You',
+    description: 'Coordinates high-value banking requests, account servicing, and compliant handoffs.',
+    editable: true,
+  },
+  {
+    id: 'payment-dispute',
+    name: 'Payment dispute specialist',
+    type: 'receptionist',
+    updatedOn: '15 Apr 26',
+    updatedBy: 'Darren Owens',
+    description: 'Triages charge disputes and duplicate payment requests.',
+  },
+  {
+    id: 'claims-routing',
+    name: 'Claims intake agent',
+    type: 'autonomous',
+    updatedOn: '12 Apr 26',
+    updatedBy: 'Isabelle Brennan',
+    description: 'Collects initial claim details and determines next steps.',
+  },
+  {
+    id: 'mortgage-servicing',
+    name: 'Mortgage servicing agent',
+    type: 'autonomous',
+    updatedOn: '11 Apr 26',
+    updatedBy: 'Kevin Woo',
+    description: 'Supports mortgage servicing requests and account changes.',
+  },
+  {
+    id: 'advisor-scheduling',
+    name: 'Advisor scheduling assistant',
+    type: 'autonomous',
+    updatedOn: '10 Apr 26',
+    updatedBy: 'Austen Jones',
+    description: 'Schedules advisor callbacks and branch appointments.',
+  },
+  {
+    id: 'finance-faq',
+    name: 'Finance FAQ agent',
+    type: 'receptionist',
+    updatedOn: '8 Apr 26',
+    updatedBy: 'Clarissa Smith',
+    description: 'Answers frequently asked finance questions.',
+  },
+  {
+    id: 'fraud-escalation',
+    name: 'Fraud escalation handoff',
+    type: 'autonomous',
+    updatedOn: '5 Apr 26',
+    updatedBy: 'Darren Owens',
+    description: 'Escalates suspected fraud cases to the right team.',
+  },
+];
 
-function formatAgentTimestamp(timestamp?: string) {
-  if (!timestamp) return undefined;
-  const date = new Date(timestamp);
-  if (Number.isNaN(date.getTime())) return undefined;
-
-  return date.toLocaleString('en-US', {
-    month: 'short',
-    day: 'numeric',
-    year: 'numeric',
-    hour: 'numeric',
-    minute: '2-digit',
-  });
+function getAgentTypeLabel(type: AgentTileType) {
+  if (type === 'autonomous') return 'Specialist';
+  if (type === 'receptionist') return 'Receptionist';
+  return 'CX Concierge';
 }
 
 const RETAIL_AGENT_PREVIEW_DETAILS = {
@@ -157,39 +238,13 @@ function buildPreviewSession(agent: Agent): EvaSessionState {
   };
 }
 
-function getAgentTileMeta(agent: Agent, index: number) {
-  const fallback = AGENT_TILE_META[agent.id];
-  const updatedOn = formatAgentTimestamp(agent.updatedAt ?? agent.createdAt);
-
-  if (agent.createdAt || agent.updatedAt || agent.agentType || !INITIAL_AGENT_IDS.has(agent.id)) {
-    return {
-      type: agent.agentType ?? 'Autonomous agent',
-      updatedOn: updatedOn ?? fallback?.updatedOn ?? formatAgentTimestamp(new Date().toISOString()) ?? 'Just now',
-      updatedBy: fallback?.updatedBy ?? 'Matt',
-    };
-  }
-
-  return AGENT_TILE_META[agent.id] ?? {
-    type: agent.status === 'Published' ? 'Autonomous agent' : 'Scripted agent',
-    updatedOn: ['17 Apr, 26', '15 Apr, 26', '14 Apr, 26', '12 Apr, 26'][index % 4],
-    updatedBy: ['newstartup_imi', 'svc-bot-builder', 'Team Alpha', 'Ayesh Reddy'][index % 4],
-  };
-}
-
-function getAgentSortTime(agent: Agent) {
-  const timestamp = agent.updatedAt ?? agent.createdAt;
-  if (!timestamp) return INITIAL_AGENT_IDS.has(agent.id) ? 0 : Date.now();
-  const time = new Date(timestamp).getTime();
-  return Number.isNaN(time) ? 0 : time;
-}
-
 export default function EvaAgentsTable() {
   const navigate = useNavigate();
   const { agents, selectAgent, setIsCreateModalOpen, showToast } = useApp();
   const { setVariation } = useDesignVariation();
   const [searchQuery, setSearchQuery] = useState('');
-  const [typeFilter, setTypeFilter] = useState('all');
-  const [creatorFilter, setCreatorFilter] = useState('all');
+  const [typeFilter, setTypeFilter] = useState('All types');
+  const [creatorFilter, setCreatorFilter] = useState('All creators');
   /* The Dashboard variation uses the Dashboard route itself as the Eva
      landing experience. The sidebar "AI Agents" destination should
      therefore always open to the existing-agents table, not remember a
@@ -198,17 +253,49 @@ export default function EvaAgentsTable() {
   const [phase, setPhase] = useState<Phase>('table');
   const [voiceActive, setVoiceActive] = useState(false);
 
-  const handleAgentClick = (agentId: string) => {
-    selectAgent(agentId);
-    navigate(`/agents/${agentId}`);
+  const tileToAgent = (tile: AgentTile): Agent => ({
+    id: tile.id,
+    name: tile.name,
+    initials: tile.name
+      .split(/\s+/)
+      .filter(Boolean)
+      .slice(0, 2)
+      .map(part => part[0]?.toUpperCase())
+      .join('') || 'AI',
+    description: tile.description,
+    gradient: 'linear-gradient(135deg, var(--accent-bg), var(--bg-glass-light))',
+    status: 'Published',
+    statusClass: 'badge-success',
+    sessions: '—',
+    successRate: '—',
+    messages: '—',
+    avgResponse: '—',
+    meta: `${tile.description} • Last updated ${tile.updatedOn}`,
+    agentType: tile.type === 'scripted' ? 'Scripted agent' : 'Autonomous agent',
+  });
+
+  const handleAgentClick = (tile: AgentTile) => {
+    if (agents[tile.id]) {
+      selectAgent(tile.id);
+      navigate(`/agents/${tile.id}`);
+      return;
+    }
+
+    handlePreviewClick(tile);
   };
 
-  const handleConfigureClick = (agentId: string) => {
-    selectAgent(agentId);
-    navigate(`/agents/${agentId}/studio`);
+  const handleConfigureClick = (tile: AgentTile) => {
+    if (agents[tile.id]) {
+      selectAgent(tile.id);
+      navigate(`/agents/${tile.id}/studio`);
+      return;
+    }
+
+    handlePreviewClick(tile);
   };
 
-  const handlePreviewClick = (agent: Agent) => {
+  const handlePreviewClick = (tile: AgentTile) => {
+    const agent = agents[tile.id] ?? tileToAgent(tile);
     selectAgent(agent.id);
 
     try {
@@ -252,26 +339,11 @@ export default function EvaAgentsTable() {
     setIsCreateModalOpen(true);
   };
 
-  const agentTiles = useMemo(
-    () =>
-      Object.values(agents)
-        .map((agent, index) => ({
-          agent,
-          ...getAgentTileMeta(agent, index),
-        }))
-        .sort((a, b) => {
-          const byTime = getAgentSortTime(b.agent) - getAgentSortTime(a.agent);
-          if (byTime !== 0) return byTime;
-          if (a.agent.id === 'webex-elec') return -1;
-          if (b.agent.id === 'webex-elec') return 1;
-          return a.agent.name.localeCompare(b.agent.name);
-        }),
-    [agents],
-  );
+  const agentTiles = useMemo(() => REFERENCE_AGENT_TILES, []);
 
   const creatorOptions = useMemo(
     () => [
-      { value: 'all', label: 'All creators' },
+      { value: 'All creators', label: 'All creators' },
       ...Array.from(new Set(agentTiles.map(tile => tile.updatedBy))).map(creator => ({
         value: creator,
         label: creator,
@@ -280,14 +352,15 @@ export default function EvaAgentsTable() {
     [agentTiles],
   );
 
-  const filteredAgents = agentTiles.filter(({ agent, type, updatedBy }) => {
+  const filteredAgents = agentTiles.filter(({ name, type, updatedBy }) => {
     const normalizedSearch = searchQuery.trim().toLowerCase();
+    const typeLabel = getAgentTypeLabel(type);
     const matchesSearch =
       normalizedSearch.length === 0 ||
-      agent.name.toLowerCase().includes(normalizedSearch) ||
+      name.toLowerCase().includes(normalizedSearch) ||
       updatedBy.toLowerCase().includes(normalizedSearch);
-    const matchesType = typeFilter === 'all' || type === typeFilter;
-    const matchesCreator = creatorFilter === 'all' || updatedBy === creatorFilter;
+    const matchesType = typeFilter === 'All types' || typeLabel === typeFilter;
+    const matchesCreator = creatorFilter === 'All creators' || updatedBy === creatorFilter;
     return matchesSearch && matchesType && matchesCreator;
   });
 
@@ -379,7 +452,16 @@ export default function EvaAgentsTable() {
       <div className="page-header ai-agents-header">
         <div>
           <h1 className="page-title">AI Agents</h1>
-          <p className="page-subtitle">Manage and preview your AI agents</p>
+        </div>
+        <div className="eva-form-builder__compact-header-actions ai-agents-header-actions">
+          <Button variant="secondary" onClick={() => showToast('Agent import is not available in this demo.', 'info')}>
+            <Icon name="download" weight="bold" size="sm" />
+            Import agent
+          </Button>
+          <Button onClick={() => setIsCreateModalOpen(true)}>
+            <Icon name="plus" weight="bold" size="sm" />
+            Create agent
+          </Button>
         </div>
       </div>
 
@@ -404,30 +486,37 @@ export default function EvaAgentsTable() {
             value={creatorFilter}
             onChange={setCreatorFilter}
           />
-          <div className="eva-form-builder__compact-header-actions ai-agents-header-actions ai-agents-toolbar-actions">
-            <Button onClick={() => setIsCreateModalOpen(true)}>+ Create Agent</Button>
-          </div>
         </div>
 
         {filteredAgents.length > 0 ? (
           <div className="ai-agents-grid">
-            {filteredAgents.map(({ agent, type, updatedOn, updatedBy }) => (
-              <Card key={agent.id} className="ai-agents-agent-card ai-agents-agent-card--clickable">
+            {filteredAgents.map(tile => {
+              const typeLabel = getAgentTypeLabel(tile.type);
+              return (
+              <Card key={tile.id} className="ai-agents-agent-card ai-agents-agent-card--clickable">
                 <button
                   type="button"
                   className="ai-agents-agent-card__hit-area"
-                  onClick={() => handleAgentClick(agent.id)}
-                  aria-label={`Open ${agent.name}`}
+                  onClick={() => handleAgentClick(tile)}
+                  aria-label={`Open ${tile.name}`}
                 />
                 <div className="ai-agents-agent-card-slot">
                   <div className="ai-agents-agent-card-head">
                     <span
-                      className={`ai-agents-agent-avatar ${
-                        type === 'Autonomous agent' ? 'ai-agents-agent-avatar--purple' : 'ai-agents-agent-avatar--teal'
-                      }`}
+                      className={`ai-agents-agent-avatar ai-agents-agent-avatar--${tile.type}`}
                       aria-hidden="true"
                     >
-                      <Icon name={type === 'Autonomous agent' ? 'sparkle' : 'ucm-cloud'} weight="bold" size="md" />
+                      <Icon
+                        name={
+                          tile.type === 'autonomous'
+                            ? 'bot-customer-assistant'
+                            : tile.type === 'receptionist'
+                              ? 'desk-phone'
+                              : 'workflow-deployments'
+                        }
+                        weight="bold"
+                        size="md"
+                      />
                     </span>
                     <div className="ai-agents-agent-card-head-text">
                       <div className="ai-agents-agent-title-row">
@@ -436,23 +525,31 @@ export default function EvaAgentsTable() {
                           className="ai-agents-agent-name-button"
                           onClick={(event) => {
                             event.stopPropagation();
-                            handleConfigureClick(agent.id);
+                            handleConfigureClick(tile);
                           }}
                         >
-                          {agent.name}
+                          {tile.name}
                         </button>
-                        <AgentCardActions agent={agent} onNotify={showToast} />
+                        <AgentCardActions agent={tileToAgent(tile)} onNotify={showToast} />
                       </div>
-                      <Badge variant={type === 'Autonomous agent' ? 'success' : 'info'}>
-                        {type}
+                      <Badge
+                        variant={
+                          tile.type === 'autonomous'
+                            ? 'success'
+                            : tile.type === 'receptionist'
+                              ? 'warning'
+                              : 'info'
+                        }
+                      >
+                        {typeLabel}
                       </Badge>
                     </div>
                   </div>
                   <div className="ai-agents-agent-content">
                     <p className="ai-agents-agent-meta">
-                      Updated on {updatedOn}
+                      Updated on {tile.updatedOn}
                       <br />
-                      by {updatedBy}
+                      by {tile.updatedBy}
                     </p>
                   </div>
                   <div className="ai-agents-agent-footer">
@@ -462,7 +559,7 @@ export default function EvaAgentsTable() {
                       size="sm"
                       onClick={(event) => {
                         event.stopPropagation();
-                        handlePreviewClick(agent);
+                        handlePreviewClick(tile);
                       }}
                     >
                       Preview
@@ -470,7 +567,8 @@ export default function EvaAgentsTable() {
                   </div>
                 </div>
               </Card>
-            ))}
+              );
+            })}
           </div>
         ) : (
           <Card className="ai-agents-empty-card">

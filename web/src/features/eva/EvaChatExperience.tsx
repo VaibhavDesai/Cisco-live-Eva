@@ -47,6 +47,7 @@ import {
   buildGuidanceMessage,
   buildInstructionPrompt,
   buildWelcomeMessage,
+  getVoiceAgentWorkflowIntent,
   isOrchestrationIntent,
   normalizeEvaChannelSelections,
   normalizeEvaDigitalChannelSelections,
@@ -66,6 +67,7 @@ import {
   type EvaSensitivity,
   type EvaSessionState,
   type EvaThread,
+  type EvaVoiceAgentWorkflowIntent,
 } from './evaFormConfig';
 
 const gradient = 'linear-gradient(135deg, var(--accent-bg), var(--bg-glass-light))';
@@ -289,7 +291,6 @@ const RETAIL_VOICE_LABEL = 'Voice';
 const RETAIL_DIGITAL_LABEL = 'Digital';
 const RETAIL_VIDEO_LABEL = 'Video';
 const RETAIL_CONFIRM_CHANNELS_LABEL = 'Continue to agent details';
-const RETAIL_AGENT_NAME_LABEL = 'Acme Electronics agent';
 const RETAIL_CUSTOM_AGENT_NAME_LABEL = 'Type a different name';
 const RETAIL_AGENT_NAME_CUSTOM_LABEL = 'Use typed name';
 const RETAIL_EDIT_WELCOME_LABEL = 'Edit welcome message';
@@ -367,18 +368,79 @@ const RETAIL_RECOMMENDED_WELCOME_MESSAGES = [
     text: 'Thanks for contacting Acme Electronics. I can help with today’s inventory, store hours, warranty questions, and escalation to Matt for manager support.',
   },
 ];
+
+type RetailWorkflowContext = {
+  targetDescription: string;
+  agentName: string;
+  description: string;
+  welcomeMessage: string;
+  knowledgeBases: string[];
+  customRule: string;
+  escalationSummary: string;
+  discoveryAssistantName: string;
+  discoveryContent: string;
+  discoveryCompleteText: string;
+};
+
+const DEFAULT_RETAIL_WORKFLOW_CONTEXT: RetailWorkflowContext = {
+  targetDescription: 'Acme Electronics in San Jose',
+  agentName: RETAIL_RECEPTIONIST_AGENT_NAME,
+  description: RETAIL_RECEPTIONIST_DESCRIPTION,
+  welcomeMessage: RETAIL_RECOMMENDED_WELCOME_MESSAGES[0].text,
+  knowledgeBases: ['Acme Electronics Store FAQ', 'San Jose Store Policies'],
+  customRule: 'Escalate urgent customer, warranty, and store-manager requests to Matt.',
+  escalationSummary: 'escalation to Matt',
+  discoveryAssistantName: 'AI Assistant is checking Matt’s store context...',
+  discoveryContent: 'I’m checking the store details and connected systems before asking Matt to choose setup options.',
+  discoveryCompleteText: 'I found Acme Electronics in San Jose from your organization profile and connected store systems. Voice is selected. Choose any additional channels for this agent.',
+};
+
+const titleCaseShortBusinessName = (value: string) => value
+  .replace(/^(an?|the)\s+/i, '')
+  .replace(/\bthat\b.*$/i, '')
+  .replace(/\s+/g, ' ')
+  .trim()
+  .split(' ')
+  .slice(0, 4)
+  .map(word => word ? `${word.charAt(0).toUpperCase()}${word.slice(1)}` : word)
+  .join(' ');
+
+const buildRetailWorkflowContext = (intent?: EvaVoiceAgentWorkflowIntent): RetailWorkflowContext => {
+  const target = intent?.targetDescription?.trim();
+  if (!target || /^acme(?:\s+electronics)?(?:\s+in\s+san\s+jose)?$/i.test(target)) {
+    return DEFAULT_RETAIL_WORKFLOW_CONTEXT;
+  }
+
+  const shortName = titleCaseShortBusinessName(target);
+  const agentName = shortName && shortName.toLowerCase() !== 'this business'
+    ? `${shortName} voice receptionist`
+    : 'Voice receptionist agent';
+  return {
+    targetDescription: target,
+    agentName,
+    description: `Voice receptionist for ${target}`,
+    welcomeMessage: `Hi, thanks for calling. I can help with common questions, product or service information, and routing requests to the right person. How can I help?`,
+    knowledgeBases: ['Business FAQ', 'Product and service information'],
+    customRule: 'Escalate urgent, complex, or manager-level requests to the right human owner.',
+    escalationSummary: 'human escalation rules',
+    discoveryAssistantName: 'AI Assistant is checking business context...',
+    discoveryContent: 'I’m checking the business details and connected systems before asking you to choose setup options.',
+    discoveryCompleteText: `I found a starting business profile for ${target} from your request and connected systems. Voice is selected. Choose any additional channels for this agent.`,
+  };
+};
+
 const RETAIL_DISCOVERY_ROWS = [
   {
-    title: 'Store website',
-    detail: 'Found San Jose hours, location, parking details, FAQs, warranty policy, and escalation rules.',
+    title: 'Business website',
+    detail: 'Found hours, location, FAQs, policy details, and escalation rules.',
   },
   {
     title: 'Inventory system',
-    detail: 'Connected and checked inventory for laptops, monitors, routers, headsets, and accessories.',
+    detail: 'Connected and checked product, service, and availability data.',
   },
   {
     title: 'Organization profile',
-    detail: 'Confirmed Matt’s store details, Pacific time zone, English support language, and manager escalation path.',
+    detail: 'Confirmed business details, time zone, support language, and escalation path.',
   },
 ];
 
@@ -438,6 +500,76 @@ const RETAIL_CHANNEL_OPTIONS = [
     description: 'Support video conversations with product guidance and store answers.',
   },
 ];
+
+const VOICE_AGENT_INTENT_CLASSIFIER_PROMPT = `You are an intent router inside Webex AI Agent Studio.
+
+Map the user's message to a business or service concept for the guided voice receptionist / phone assistant workflow.
+
+Always start the workflow. Even when the user only mentions a hobby, activity, object, vague idea, or unrelated phrase, infer a plausible business/service associated with those words and frame it as needing a voice receptionist or customer-facing phone assistant.
+
+Return only strict JSON:
+{
+  "shouldStartWorkflow": true,
+  "targetDescription": "short noun phrase for the business or service",
+  "acknowledgement": "one concise sentence acknowledging the user's requested business and that you will start a voice receptionist workflow"
+}
+
+Examples:
+User: Create a voice receptionist agent for Acme electrons
+{"shouldStartWorkflow":true,"targetDescription":"Acme Electronics","acknowledgement":"I understand that you want to create a voice receptionist for Acme Electronics. I’ll start the guided voice-agent workflow and use the connected business context to shape the first draft."}
+
+User: I'm looking into open a business in electronics
+{"shouldStartWorkflow":true,"targetDescription":"an electronics business","acknowledgement":"I understand that you are exploring an electronics business and need a voice receptionist to provide service for that store. I’ll start the guided voice-agent workflow and shape the first draft around that."}
+
+User: I want to create a voice banana split
+{"shouldStartWorkflow":true,"targetDescription":"an ice cream shop that sells banana splits","acknowledgement":"I understand that you want to create a voice receptionist for an ice cream shop that sells banana splits. I’ll start the guided voice-agent workflow and shape the first draft around that."}
+
+User: I would like to go running
+{"shouldStartWorkflow":true,"targetDescription":"a sports company focused on running","acknowledgement":"I understand that you want an agent for a sports company focused on running. I’ll start the guided voice-agent workflow and shape the first draft around that."}
+
+User: What is an electronics business?
+{"shouldStartWorkflow":true,"targetDescription":"an electronics business","acknowledgement":"I understand that you need a voice receptionist for an electronics business. I’ll start the guided voice-agent workflow and shape the first draft around that."}`;
+
+function parseJsonObject(content: string): Record<string, unknown> | null {
+  const fenced = content.match(/```json\s*([\s\S]*?)```/i);
+  const raw = (fenced?.[1] ?? content).trim();
+  try {
+    const parsed = JSON.parse(raw);
+    return parsed && typeof parsed === 'object' && !Array.isArray(parsed)
+      ? parsed as Record<string, unknown>
+      : null;
+  } catch {
+    const objectMatch = raw.match(/\{[\s\S]*\}/);
+    if (!objectMatch) return null;
+    try {
+      const parsed = JSON.parse(objectMatch[0]);
+      return parsed && typeof parsed === 'object' && !Array.isArray(parsed)
+        ? parsed as Record<string, unknown>
+        : null;
+    } catch {
+      return null;
+    }
+  }
+}
+
+const buildFallbackVoiceAgentWorkflowIntent = (text: string): EvaVoiceAgentWorkflowIntent => {
+  const cleaned = text
+    .replace(/\s+/g, ' ')
+    .replace(/[.?!,;:]+$/g, '')
+    .trim();
+  const normalized = cleaned.toLowerCase();
+  const targetDescription =
+    /\brunn?ing\b/.test(normalized) || /\brun\b/.test(normalized)
+      ? 'a sports company focused on running'
+      : cleaned
+        ? `a business related to "${cleaned.slice(0, 80)}"`
+        : 'this business';
+
+  return {
+    targetDescription,
+    acknowledgement: `I understand that you need a voice receptionist for ${targetDescription}. I’ll start the guided voice-agent workflow and shape the first draft around that.`,
+  };
+};
 
 const matchEvaTemplateFromText = (text: string): typeof EVA_TEMPLATES[number] | null => {
   const normalized = text.trim().toLowerCase();
@@ -845,8 +977,10 @@ function getReadinessRecommendationFixMeta(recommendation: string): {
 
 export default function EvaChatExperience({
   resetSessionOnInitialMount = false,
+  voiceTranscribePath = '/transcribe',
 }: {
   resetSessionOnInitialMount?: boolean;
+  voiceTranscribePath?: string;
 } = {}) {
   const navigate = useNavigate();
   const location = useLocation();
@@ -900,6 +1034,7 @@ export default function EvaChatExperience({
   const [retailSelectedPhoneNumber, setRetailSelectedPhoneNumber] = useState<string | null>(null);
   const [phoneNumberDeferred, setPhoneNumberDeferred] = useState(restoredEvaSession?.phoneNumberDeferred ?? false);
   const [retailDiscoveryProgress, setRetailDiscoveryProgress] = useState(0);
+  const [retailWorkflowContext, setRetailWorkflowContext] = useState<RetailWorkflowContext>(DEFAULT_RETAIL_WORKFLOW_CONTEXT);
   const [retailAgentNameInput, setRetailAgentNameInput] = useState(RETAIL_RECEPTIONIST_AGENT_NAME);
   const [retailAgentNameInputVisible, setRetailAgentNameInputVisible] = useState(false);
   const [retailWelcomeInput, setRetailWelcomeInput] = useState(RETAIL_RECOMMENDED_WELCOME_MESSAGES[0].text);
@@ -1374,18 +1509,6 @@ export default function EvaChatExperience({
     navigate('/agents');
   };
 
-  const isRetailReceptionistStoryIntent = (normalized: string) => {
-    const mentionsAcme = /\bacme\b/.test(normalized) || normalized.includes('acme electronics');
-    const mentionsRetailAgent =
-      /\bagents?\b/.test(normalized) ||
-      /\bassistant\b/.test(normalized) ||
-      /\breceptionist\b/.test(normalized) ||
-      /\bvoice\b/.test(normalized) ||
-      /\bstore\b/.test(normalized);
-
-    return mentionsAcme && mentionsRetailAgent;
-  };
-
   const addOnboardingAssistantMessage = (text: string, followups?: string[], originStep?: string) => {
     if (onboardingResponseTimerRef.current) {
       window.clearTimeout(onboardingResponseTimerRef.current);
@@ -1405,27 +1528,29 @@ export default function EvaChatExperience({
     }));
   };
 
-  const seedRetailReceptionistDraft = () => {
+  const seedRetailReceptionistDraft = (intent?: EvaVoiceAgentWorkflowIntent) => {
+    const context = buildRetailWorkflowContext(intent);
     const baseDraft = EVA_TEMPLATES.find(template => template.id === 'customer-support')?.draft ?? EVA_TEMPLATES[0].draft;
     const nextDraft: EvaAgentDraft = {
       ...baseDraft,
-      name: RETAIL_RECEPTIONIST_AGENT_NAME,
-      description: RETAIL_RECEPTIONIST_DESCRIPTION,
+      name: context.agentName,
+      description: context.description,
       goals: [
-        'Answer store hours, location, parking, and FAQ questions',
-        'Check product availability from the inventory manager integration',
-        'Escalate VIP customers, complex warranty issues, and manager requests to Matt',
+        'Answer common questions with clear, approved business information',
+        'Check product or service details from connected systems',
+        'Escalate urgent, complex, or manager-level requests to the right person',
       ],
     };
 
+    setRetailWorkflowContext(context);
     setLandingMode('build');
     setSelectedTemplateId('customer-support');
     setDraft(nextDraft);
-    setAgentName(RETAIL_RECEPTIONIST_AGENT_NAME);
-    setAgentDescription(RETAIL_RECEPTIONIST_DESCRIPTION);
+    setAgentName(context.agentName);
+    setAgentDescription(context.description);
     setTimezone('America/Los_Angeles');
     setAiEngine('Webex AI Pro 1.0');
-    setWelcomeMessage('Hi, thanks for calling Acme Electronics in San Jose. I can help with store hours, directions, product availability, and common questions. How can I help?');
+    setWelcomeMessage(context.welcomeMessage);
     setInstructionPrompt(buildInstructionPrompt(nextDraft));
     setPersonality(prev => ({
       ...prev,
@@ -1438,18 +1563,19 @@ export default function EvaChatExperience({
     setSelectedDigitalChannels(['chat']);
     setChannelPhoneNumber(CHANNEL_PHONE_NUMBER_OPTIONS[0].value);
     setPhoneNumberDeferred(false);
-    setSelectedKnowledgeBases(['Acme Electronics Store FAQ', 'San Jose Store Policies']);
+    setSelectedKnowledgeBases(context.knowledgeBases);
     setSelectedActions(['Inventory lookup', 'Create support case']);
-    setCustomRules(['Escalate urgent customer, warranty, and store-manager requests to Matt.']);
-    setRetailAgentNameInput(RETAIL_RECEPTIONIST_AGENT_NAME);
+    setCustomRules([context.customRule]);
+    setRetailAgentNameInput(context.agentName);
     setRetailAgentNameInputVisible(false);
-    setRetailWelcomeInput(RETAIL_RECOMMENDED_WELCOME_MESSAGES[0].text);
+    setRetailWelcomeInput(context.welcomeMessage);
     setRetailWelcomeInputVisible(false);
     setRetailSelectedChannels([RETAIL_VOICE_LABEL]);
+    return context;
   };
 
-  const beginRetailReceptionistStory = () => {
-    seedRetailReceptionistDraft();
+  const beginRetailReceptionistStory = (intent?: EvaVoiceAgentWorkflowIntent) => {
+    const context = seedRetailReceptionistDraft(intent);
     setGuidanceVisible(false);
     setEvaThinking(false);
     setFreeChatActive(true);
@@ -1464,6 +1590,9 @@ export default function EvaChatExperience({
     if (retailDiscoveryTimerRef.current) {
       window.clearInterval(retailDiscoveryTimerRef.current);
     }
+    if (intent?.acknowledgement) {
+      setMessages(prev => [...prev, { role: 'assistant', text: intent.acknowledgement }]);
+    }
     retailDiscoveryTimerRef.current = window.setInterval(() => {
       setRetailDiscoveryProgress(prev => {
         const next = Math.min(prev + 1, RETAIL_DISCOVERY_ROWS.length);
@@ -1473,7 +1602,7 @@ export default function EvaChatExperience({
           window.setTimeout(() => {
             setRetailPrototypeStep('channel');
             addOnboardingAssistantMessage(
-              'I found Acme Electronics in San Jose from your organization profile and connected store systems. Voice is selected. Choose any additional channels for this agent.',
+              context.discoveryCompleteText,
               undefined,
               'retail-channel-choice',
             );
@@ -1494,7 +1623,7 @@ export default function EvaChatExperience({
       onboardingResponseTimerRef.current = null;
     }
 
-    seedRetailReceptionistDraft();
+    const context = seedRetailReceptionistDraft();
     setGuidanceVisible(false);
     setEvaThinking(false);
     setFreeChatActive(true);
@@ -1519,20 +1648,21 @@ export default function EvaChatExperience({
       },
       {
         role: 'assistant',
-        text: `Great. ${RETAIL_RECEPTIONIST_AGENT_NAME} is ready with the connected knowledge bases, recommended actions, voice channel, escalation to Matt, and your selected greeting. Choose the connected phone number next, then preview the agent before creation.`,
+        text: `Great. ${context.agentName} is ready with the connected knowledge bases, recommended actions, voice channel, ${context.escalationSummary}, and your selected greeting. Choose the connected phone number next, then preview the agent before creation.`,
         originStep: 'retail-final-actions',
       },
     ]);
   };
 
   const completeRetailReceptionistAgent = () => {
+    const nextAgentName = agentName.trim() || retailWorkflowContext.agentName;
     const agent = addAgent({
-      name: RETAIL_RECEPTIONIST_AGENT_NAME,
-      description: RETAIL_RECEPTIONIST_DESCRIPTION,
+      name: nextAgentName,
+      description: agentDescription.trim() || retailWorkflowContext.description,
       gradient: 'linear-gradient(135deg, #0051af, #00bceb)',
       status: 'Ready to Publish',
       statusClass: 'badge-warning',
-      knowledgeBases: ['Acme Electronics Store FAQ', 'San Jose Store Policies'],
+      knowledgeBases: selectedKnowledgeBases.length > 0 ? selectedKnowledgeBases : retailWorkflowContext.knowledgeBases,
     });
     selectAgent(agent.id);
     showToast(`Successfully created "${agent.name}".`, 'success');
@@ -1613,7 +1743,7 @@ export default function EvaChatExperience({
     }
     addOnboardingAssistantMessage(
       `${channelCopy} ${channels.length === 1 ? 'is' : 'are'} selected for this agent. What should we name the agent?`,
-      [RETAIL_AGENT_NAME_LABEL],
+      [retailWorkflowContext.agentName],
       'retail-agent-name',
     );
   };
@@ -1645,7 +1775,7 @@ export default function EvaChatExperience({
         setPhoneNumberDeferred(true);
         setRetailPrototypeStep('ready-to-preview');
         addOnboardingAssistantMessage(
-          `No problem. ${agentName} is ready with the connected knowledge bases, recommended actions, voice channel, escalation to Matt, and your selected greeting. I will flag the phone number connection as a go-live step. Preview the agent next or skip to creation.`,
+          `No problem. ${agentName} is ready with the connected knowledge bases, recommended actions, voice channel, ${retailWorkflowContext.escalationSummary}, and your selected greeting. I will flag the phone number connection as a go-live step. Preview the agent next or skip to creation.`,
           undefined,
           'retail-final-actions',
         );
@@ -1659,7 +1789,7 @@ export default function EvaChatExperience({
       setPhoneNumberDeferred(false);
       setRetailPrototypeStep('ready-to-preview');
       addOnboardingAssistantMessage(
-        `Perfect. ${agentName} is ready with the connected knowledge bases, recommended actions, voice channel, ${nextPhoneNumber}, escalation to Matt, and your selected greeting. Preview the agent next or skip to creation.`,
+        `Perfect. ${agentName} is ready with the connected knowledge bases, recommended actions, voice channel, ${nextPhoneNumber}, ${retailWorkflowContext.escalationSummary}, and your selected greeting. Preview the agent next or skip to creation.`,
         undefined,
         'retail-final-actions',
       );
@@ -1671,11 +1801,11 @@ export default function EvaChatExperience({
         answer.trim() === RETAIL_AGENT_NAME_CUSTOM_LABEL
           ? retailAgentNameInput.trim()
           : answer.trim()
-      ) || RETAIL_RECEPTIONIST_AGENT_NAME;
+      ) || retailWorkflowContext.agentName;
       setAgentName(nextName);
       setDraft(prev => ({ ...prev, name: nextName }));
       setRetailPrototypeStep('welcome');
-      setRetailWelcomeInput(RETAIL_RECOMMENDED_WELCOME_MESSAGES[0].text);
+      setRetailWelcomeInput(retailWorkflowContext.welcomeMessage);
       setRetailWelcomeInputVisible(false);
       addOnboardingAssistantMessage(
         'Here’s a suggested welcome message. Use it as is or edit it before continuing.',
@@ -1686,7 +1816,7 @@ export default function EvaChatExperience({
     }
 
     if (retailPrototypeStep === 'welcome') {
-      const nextWelcome = answer.trim() || RETAIL_RECOMMENDED_WELCOME_MESSAGES[0].text;
+      const nextWelcome = answer.trim() || retailWorkflowContext.welcomeMessage;
       setWelcomeMessage(nextWelcome);
       setRetailPrototypeStep('knowledge');
       addOnboardingAssistantMessage(
@@ -1754,7 +1884,7 @@ export default function EvaChatExperience({
       if (normalized.includes('skip')) {
         setRetailPrototypeStep('ready-to-create');
         addOnboardingAssistantMessage(
-          `No problem. ${agentName} is ready with the connected knowledge bases, recommended actions, voice channel, escalation to Matt, and your selected greeting. You can complete creation now or continue into AI Agent Studio for advanced configuration.`,
+          `No problem. ${agentName} is ready with the connected knowledge bases, recommended actions, voice channel, ${retailWorkflowContext.escalationSummary}, and your selected greeting. You can complete creation now or continue into AI Agent Studio for advanced configuration.`,
           undefined,
           'retail-complete-actions',
         );
@@ -1884,12 +2014,12 @@ export default function EvaChatExperience({
 
   const enterRetailAgentStudio = () => {
     const agent = createOrSelectDraftAgent({
-      name: RETAIL_RECEPTIONIST_AGENT_NAME,
-      description: RETAIL_RECEPTIONIST_DESCRIPTION,
+      name: agentName.trim() || retailWorkflowContext.agentName,
+      description: agentDescription.trim() || retailWorkflowContext.description,
       gradient,
       status: 'Ready to Publish',
       statusClass: 'badge-warning',
-      knowledgeBases: selectedKnowledgeBases,
+      knowledgeBases: selectedKnowledgeBases.length > 0 ? selectedKnowledgeBases : retailWorkflowContext.knowledgeBases,
     });
     setConversationalOnboardingStep('idle');
     setEvaThinking(false);
@@ -2220,8 +2350,9 @@ export default function EvaChatExperience({
       return;
     }
 
-    if (isRetailReceptionistStoryIntent(normalized)) {
-      beginRetailReceptionistStory();
+    const voiceAgentIntent = getVoiceAgentWorkflowIntent(text);
+    if (voiceAgentIntent) {
+      beginRetailReceptionistStory(voiceAgentIntent);
       return;
     }
 
@@ -2254,16 +2385,10 @@ export default function EvaChatExperience({
       return;
     }
 
-    /* Free-typed text never auto-launches a template anymore. Earlier
-       versions matched substrings like "reception" or "support" against
-       the user's message and immediately spun up the guided build
-       (Progress + Summary side panel), which collapsed the landing into
-       a build flow before the user had selected anything. The user-
-       facing rule is now: type → chat with the LLM only; the guided
-       build only starts when the user explicitly clicks one of the
-       starter cards or a template-suggestion chip the LLM emitted. The
-       chip path is handled by `handleLlmFollowupClick` below. */
-    void runLlmReply(text);
+    /* Any remaining free-typed text is treated as source material for
+       the demo voice-agent workflow. The AI router infers the business
+       category from the user's words before we start the guided flow. */
+    void routeVoiceAgentIntentOrReply(text);
   };
 
   /* Resolve a follow-up chip's text against the starter-template
@@ -2273,6 +2398,46 @@ export default function EvaChatExperience({
      if the chip is just a free-chat continuation. */
   const matchTemplateFromText = (text: string): typeof EVA_TEMPLATES[number] | null => {
     return matchEvaTemplateFromText(text);
+  };
+
+  const inferVoiceAgentWorkflowIntent = async (text: string): Promise<EvaVoiceAgentWorkflowIntent | null> => {
+    const reply = await sendEvaChat([
+      { role: 'system', content: VOICE_AGENT_INTENT_CLASSIFIER_PROMPT },
+      { role: 'user', content: text },
+    ]);
+    const parsed = parseJsonObject(reply);
+    if (parsed?.shouldStartWorkflow !== true) return buildFallbackVoiceAgentWorkflowIntent(text);
+
+    const targetDescription =
+      typeof parsed.targetDescription === 'string' && parsed.targetDescription.trim()
+        ? parsed.targetDescription.trim()
+        : buildFallbackVoiceAgentWorkflowIntent(text).targetDescription;
+    const acknowledgement =
+      typeof parsed.acknowledgement === 'string' && parsed.acknowledgement.trim()
+        ? parsed.acknowledgement.trim()
+        : getVoiceAgentWorkflowIntent(`create a voice receptionist for ${targetDescription}`)?.acknowledgement ??
+          `I understand that you want to create a voice receptionist for ${targetDescription}. I’ll start the guided voice-agent workflow and use the connected business context to shape the first draft.`;
+
+    return { targetDescription, acknowledgement };
+  };
+
+  const routeVoiceAgentIntentOrReply = async (text: string) => {
+    setEvaThinking(true);
+    try {
+      const aiIntent = await inferVoiceAgentWorkflowIntent(text);
+      if (aiIntent) {
+        setEvaThinking(false);
+        beginRetailReceptionistStory(aiIntent);
+        return;
+      }
+    } catch {
+      setEvaThinking(false);
+      beginRetailReceptionistStory(buildFallbackVoiceAgentWorkflowIntent(text));
+      return;
+    }
+
+    setEvaThinking(false);
+    beginRetailReceptionistStory(buildFallbackVoiceAgentWorkflowIntent(text));
   };
 
   /* Label and sentinel for the extra chip we append after Eva's
@@ -2350,11 +2515,12 @@ export default function EvaChatExperience({
       trimmed === RETAIL_VOICE_LABEL ||
       trimmed === RETAIL_DIGITAL_LABEL ||
       trimmed === RETAIL_VIDEO_LABEL ||
-      trimmed === RETAIL_AGENT_NAME_LABEL ||
+      trimmed === retailWorkflowContext.agentName ||
       trimmed === RETAIL_AGENT_NAME_CUSTOM_LABEL ||
       trimmed === RETAIL_WELCOME_CUSTOM_LABEL ||
       trimmed === CONNECT_RETAIL_PHONE_LATER_LABEL ||
       CHANNEL_PHONE_NUMBER_OPTIONS.some(option => option.label === trimmed || option.value === trimmed) ||
+      trimmed === retailWelcomeInput ||
       RETAIL_RECOMMENDED_WELCOME_MESSAGES.some(option => option.text === trimmed)
     ) {
       const submittedText = trimmed === RETAIL_WELCOME_CUSTOM_LABEL ? retailWelcomeInput.trim() : trimmed;
@@ -2389,9 +2555,10 @@ export default function EvaChatExperience({
       completeConversationalOnboarding();
       return;
     }
-    if (isRetailReceptionistStoryIntent(trimmed.toLowerCase())) {
+    const voiceAgentIntent = getVoiceAgentWorkflowIntent(trimmed);
+    if (voiceAgentIntent) {
       setMessages(prev => [...prev, { role: 'user', text: trimmed }]);
-      beginRetailReceptionistStory();
+      beginRetailReceptionistStory(voiceAgentIntent);
       return;
     }
     const matched = matchTemplateFromText(trimmed);
@@ -3123,6 +3290,7 @@ Simulation rules:
         if (voiceWsRef.current !== ws) return;
         if (voiceConnectionTimerRef.current) {
           window.clearTimeout(voiceConnectionTimerRef.current);
+          voiceConnectionTimerRef.current = null;
         }
         voiceConnectionTimerRef.current = window.setTimeout(() => {
           if (
@@ -3487,6 +3655,7 @@ Simulation rules:
         suggestions={[]}
         voiceActive={voiceActive}
         onVoiceToggle={() => setVoiceActive(prev => !prev)}
+        transcribePath={voiceTranscribePath}
       />
       <div className="eva-preview-session__actions">
         <Button variant="secondary" size="sm" onClick={() => setPreviewMessages([])} disabled={previewMessages.length === 0 || previewThinking}>
@@ -4162,9 +4331,9 @@ ${previewTranscript}`,
     <AiResponseMessage
       className="eva-ai-response"
       showActions={false}
-      assistantName="AI Assistant is checking Matt’s store context..."
+      assistantName={retailWorkflowContext.discoveryAssistantName}
       assistantState="processing"
-      content="I’m checking the store details and connected systems before asking Matt to choose setup options."
+      content={retailWorkflowContext.discoveryContent}
     >
       <div className="eva-waterfall-card eva-waterfall-status eva-waterfall-status--planning eva-waterfall-status--dynamic" aria-label="AI Assistant discovery process">
         {RETAIL_DISCOVERY_ROWS.map((row, index) => {
@@ -4207,7 +4376,7 @@ ${previewTranscript}`,
       title={(
         <span className="eva-retail-discovery-trace__title">
           <Icon name="sparkle" weight="bold" size="sm" />
-          Checked store website, inventory system, and organization profile
+          Checked business website, inventory system, and organization profile
         </span>
       )}
       className="eva-retail-discovery-trace"
@@ -4735,6 +4904,7 @@ ${previewTranscript}`,
               suggestions={[]}
               voiceActive={voiceActive}
               onVoiceToggle={() => setVoiceActive(prev => !prev)}
+              transcribePath={voiceTranscribePath}
               showDisclaimer={false}
             />
           </div>
@@ -4888,7 +5058,8 @@ ${previewTranscript}`,
                 baseFollowups.includes(RETAIL_VIDEO_LABEL) ||
                 baseFollowups.some(option => CHANNEL_PHONE_NUMBER_OPTIONS.some(phone => phone.label === option || phone.value === option)) ||
                 baseFollowups.includes(CONNECT_RETAIL_PHONE_LATER_LABEL) ||
-                baseFollowups.includes(RETAIL_AGENT_NAME_LABEL) ||
+                baseFollowups.includes(retailWorkflowContext.agentName) ||
+                baseFollowups.includes(retailWelcomeInput) ||
                 baseFollowups.some(option => RETAIL_RECOMMENDED_WELCOME_MESSAGES.some(welcome => welcome.text === option)) ||
                 baseFollowups.includes(COMPLETE_RETAIL_AGENT_LABEL);
               const followups = baseFollowups.length > 0 && !isControlledPrototypePrompt
@@ -4911,7 +5082,7 @@ ${previewTranscript}`,
                       <div className="eva-retail-final-heading__header">
                         <strong>{`Your ${agentName} draft is ready.`}</strong>
                         <span>
-                          I saved the voice channel, selected knowledge sources, selected actions, escalation contact, and greeting.
+                          I saved the voice channel, selected knowledge sources, selected actions, escalation rules, and greeting.
                         </span>
                       </div>
                       <div className="eva-retail-final-heading__body">
@@ -5036,9 +5207,9 @@ ${previewTranscript}`,
                           <button
                             type="button"
                             className="ai-footer__suggestion"
-                            onClick={() => handleLlmFollowupClick(RETAIL_AGENT_NAME_LABEL)}
+                            onClick={() => handleLlmFollowupClick(retailWorkflowContext.agentName)}
                           >
-                            {RETAIL_AGENT_NAME_LABEL}
+                            {retailWorkflowContext.agentName}
                           </button>
                           <Button
                             size="sm"
@@ -6941,6 +7112,7 @@ ${previewTranscript}`,
                       suggestions={[]}
                       voiceActive={voiceActive}
                       onVoiceToggle={() => setVoiceActive(prev => !prev)}
+                      transcribePath={voiceTranscribePath}
                       cornerAction={!generatedComposerCollapsed ? (
                         <button
                           type="button"
@@ -7179,6 +7351,7 @@ ${previewTranscript}`,
               suggestions={[]}
               voiceActive={voiceActive}
               onVoiceToggle={() => setVoiceActive(prev => !prev)}
+              transcribePath={voiceTranscribePath}
             />
           </section>
         )}

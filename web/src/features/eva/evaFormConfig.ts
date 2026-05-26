@@ -80,6 +80,101 @@ export const isOrchestrationIntent = (normalized: string) =>
       normalized.includes('flow'))) ||
   normalized.includes('multi-agent');
 
+export type EvaVoiceAgentWorkflowIntent = {
+  acknowledgement: string;
+  targetDescription: string;
+};
+
+const normalizeVoiceAgentIntentText = (value: string) =>
+  value
+    .toLowerCase()
+    .replace(/[^a-z0-9\s']/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+
+const cleanVoiceAgentTarget = (value: string) => {
+  const cleaned = value
+    .replace(/\s+/g, ' ')
+    .replace(/^(an?|the|my)\s+/i, '')
+    .replace(/\b(that)\s+will\s+sell\b/i, '$1 sells')
+    .replace(/\b(that)\s+will\s+offer\b/i, '$1 offers')
+    .replace(/\b(that)\s+will\s+provide\b/i, '$1 provides')
+    .replace(/\s+(please|pls)$/i, '')
+    .replace(/[.?!,;:]+$/g, '')
+    .trim();
+
+  if (!cleaned) return '';
+  if (/\bacme\b/i.test(cleaned) && /\belectrons?\b/i.test(cleaned)) return 'Acme Electronics';
+  if (/^company that /i.test(cleaned)) return `a ${cleaned}`;
+  if (/^(business|store|shop|restaurant|clinic|hotel|company)\b/i.test(cleaned)) return `a ${cleaned}`;
+  return cleaned;
+};
+
+const extractVoiceAgentTargetDescription = (text: string, normalized: string) => {
+  if (/\bbanana\s+splits?\b/.test(normalized)) {
+    return 'an ice cream shop that sells banana splits';
+  }
+
+  const acmeElectronicsLike =
+    /\bacme\b/.test(normalized) &&
+    (/\belectronics?\b/.test(normalized) || /\belectrons?\b/.test(normalized));
+  if (acmeElectronicsLike) return 'Acme Electronics';
+
+  const directTargetPatterns = [
+    /\bfor\s+(.+?)(?:[.?!]|$)/i,
+    /\bat\s+(.+?)(?:[.?!]|$)/i,
+  ];
+
+  for (const pattern of directTargetPatterns) {
+    const match = text.match(pattern);
+    const target = match?.[1] ? cleanVoiceAgentTarget(match[1]) : '';
+    if (target) return target;
+  }
+
+  if (/\bcar\s+batter(?:y|ies)\b/.test(normalized)) {
+    return 'a company that sells car batteries';
+  }
+
+  if (/\b(acme)\b/.test(normalized)) return 'Acme';
+  if (/\b(store|shop|retail)\b/.test(normalized)) return 'a retail store';
+  return 'this business';
+};
+
+export const getVoiceAgentWorkflowIntent = (text: string): EvaVoiceAgentWorkflowIntent | null => {
+  const normalized = normalizeVoiceAgentIntentText(text);
+  if (!normalized) return null;
+
+  const hasBuildIntent =
+    /\b(create|build|make|design|configure|launch|need|want|setup)\b/.test(normalized) ||
+    /\bset\s+up\b/.test(normalized) ||
+    /\bwould\s+like\b/.test(normalized) ||
+    /\blooking\s+for\b/.test(normalized) ||
+    /\bhelp\s+me\b/.test(normalized);
+  const hasVoiceSignal = /\b(voice|phone|call|calls|calling|receptionist|front\s+desk)\b/.test(normalized);
+  const hasAgentSignal = /\bagents?\b/.test(normalized);
+  const hasAssistantSignal = /\b(assistant|bot)\b/.test(normalized);
+  const hasStoreSignal = /\b(store|shop|retail)\b/.test(normalized);
+  const hasAcmeRetailSignal =
+    /\bacme\b/.test(normalized) &&
+    (/\belectronics?\b/.test(normalized) || /\belectrons?\b/.test(normalized));
+  const asksGeneralQuestion = /^(what|how|why|when|where|can|could|should|do|does|is|are)\b/.test(normalized);
+  const hasExplicitVoiceAgentPhrase =
+    hasVoiceSignal &&
+    (hasAgentSignal || hasAssistantSignal || hasStoreSignal || hasAcmeRetailSignal);
+  const hasRequestIntent = hasBuildIntent || (!asksGeneralQuestion && hasExplicitVoiceAgentPhrase);
+
+  if (!hasRequestIntent || !(hasVoiceSignal || hasAssistantSignal || hasStoreSignal || hasAcmeRetailSignal)) {
+    return null;
+  }
+
+  const targetDescription = extractVoiceAgentTargetDescription(text, normalized);
+  const targetClause = targetDescription === 'this business' ? '' : ` for ${targetDescription}`;
+  return {
+    targetDescription,
+    acknowledgement: `I understand that you want to create a voice receptionist${targetClause}. I’ll start the guided voice-agent workflow and use the connected business context to shape the first draft.`,
+  };
+};
+
 export const PROFILE_TIMEZONE_OPTIONS = [
   { value: 'Europe/London', label: 'Europe/London' },
   { value: 'America/New_York', label: 'America/New_York' },

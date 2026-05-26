@@ -1,6 +1,7 @@
 interface Env {
   CISCO_AI_AUTH: string;
   CISCO_AI_APPKEY: string;
+  DEEPGRAM_API_KEY?: string;
   ELEVENLABS_API_KEY?: string;
   ELEVENLABS_AGENT_ID?: string;
   ALLOWED_ORIGIN: string;
@@ -89,6 +90,10 @@ export default {
     try {
       if (url.pathname === '/convai/signed-url') {
         return await handleElevenLabsSignedUrl(env, cors);
+      }
+
+      if (url.pathname === '/elevenlabs/transcribe') {
+        return await handleElevenLabsTranscribe(request, env, cors);
       }
 
       if (url.pathname === '/transcribe') {
@@ -210,7 +215,26 @@ async function handleElevenLabsSignedUrl(
   });
 }
 
-async function handleTranscribe(
+function normalizeDeepgramApiKey(configuredKey: string): string {
+  return configuredKey
+    .trim()
+    .replace(/^['"]|['"]$/g, '')
+    .trim()
+    .replace(/^DEEPGRAM_API_KEY\s*=\s*/i, '')
+    .replace(/^Authorization:\s*/i, '')
+    .replace(/^(Token|Bearer)\s+/i, '')
+    .replace(/^['"]|['"]$/g, '')
+    .replace(/[\u0000-\u001F\u007F\s]+/g, '')
+    .trim();
+}
+
+function getDeepgramAuthorization(env: Env): string | null {
+  if (!env.DEEPGRAM_API_KEY) return null;
+  const apiKey = normalizeDeepgramApiKey(env.DEEPGRAM_API_KEY);
+  return apiKey ? `Token ${apiKey}` : null;
+}
+
+async function handleElevenLabsTranscribe(
   request: Request,
   env: Env,
   cors: Record<string, string>,
@@ -283,6 +307,89 @@ async function handleTranscribe(
     JSON.stringify({
       text: (data.text ?? '').trim(),
       language: data.language_code ?? null,
+    }),
+    {
+      headers: { 'Content-Type': 'application/json', ...cors },
+    },
+  );
+}
+
+async function handleTranscribe(
+  request: Request,
+  env: Env,
+  cors: Record<string, string>,
+): Promise<Response> {
+  const authorization = getDeepgramAuthorization(env);
+  if (!authorization) {
+    return new Response(JSON.stringify({ error: 'DEEPGRAM_API_KEY not configured' }), {
+      status: 500,
+      headers: { 'Content-Type': 'application/json', ...cors },
+    });
+  }
+
+  const audioBuffer = await request.arrayBuffer();
+  if (audioBuffer.byteLength === 0) {
+    return new Response(JSON.stringify({ error: 'Empty audio body' }), {
+      status: 400,
+      headers: { 'Content-Type': 'application/json', ...cors },
+    });
+  }
+
+  const maxBytes = 25 * 1024 * 1024;
+  if (audioBuffer.byteLength > maxBytes) {
+    return new Response(JSON.stringify({ error: 'Audio too large (>25MB)' }), {
+      status: 413,
+      headers: { 'Content-Type': 'application/json', ...cors },
+    });
+  }
+
+  const incomingType = request.headers.get('Content-Type') || 'audio/webm';
+  const deepgramUrl = new URL('https://api.deepgram.com/v1/listen');
+  deepgramUrl.searchParams.set('model', 'nova-3');
+  deepgramUrl.searchParams.set('smart_format', 'true');
+  deepgramUrl.searchParams.set('detect_language', 'true');
+
+  const sttRes = await fetch(deepgramUrl.toString(), {
+    method: 'POST',
+    headers: {
+      Authorization: authorization,
+      'Content-Type': incomingType,
+      Accept: 'application/json',
+    },
+    body: audioBuffer,
+  });
+
+  if (!sttRes.ok) {
+    const details = await sttRes.text();
+    return new Response(
+      JSON.stringify({
+        error: `Deepgram STT error (${sttRes.status})`,
+        details,
+      }),
+      {
+        status: sttRes.status,
+        headers: { 'Content-Type': 'application/json', ...cors },
+      },
+    );
+  }
+
+  const data: {
+    results?: {
+      channels?: Array<{
+        detected_language?: string;
+        alternatives?: Array<{
+          transcript?: string;
+          languages?: string[];
+        }>;
+      }>;
+    };
+  } = await sttRes.json();
+  const channel = data.results?.channels?.[0];
+  const alternative = channel?.alternatives?.[0];
+  return new Response(
+    JSON.stringify({
+      text: (alternative?.transcript ?? '').trim(),
+      language: channel?.detected_language ?? alternative?.languages?.[0] ?? null,
     }),
     {
       headers: { 'Content-Type': 'application/json', ...cors },

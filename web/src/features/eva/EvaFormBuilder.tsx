@@ -58,6 +58,7 @@ import {
   STARTER_PROMPTS,
   buildInstructionPrompt,
   buildWelcomeMessage,
+  getVoiceAgentWorkflowIntent,
   normalizeEvaChannelSelections,
   normalizeEvaDigitalChannelSelections,
   readEvaSessionState,
@@ -675,6 +676,9 @@ export default function EvaFormBuilder() {
 
     const normalized = trimmed.toLowerCase();
     const matched = EVA_TEMPLATES.find(template => {
+      if (getVoiceAgentWorkflowIntent(trimmed)) {
+        return template.id === 'customer-support';
+      }
       if (
         (normalized.includes('acme') || normalized.includes('acme electronics')) &&
         (normalized.includes('agent') ||
