@@ -9524,6 +9524,47 @@ button.eva-retail-preview-card::before {
   margin-left: auto;
 }
 
+.ai-footer__voice-listening {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+  width: 32px;
+  height: 32px;
+  padding: 6px;
+  border-radius: var(--border-radius-pill);
+  color: color-mix(in srgb, var(--text-primary) 70%, transparent);
+}
+
+.ai-footer__voice-listening span {
+  display: block;
+  width: 3px;
+  border-radius: var(--border-radius-pill);
+  background: currentColor;
+}
+
+.ai-footer__voice-listening span:nth-child(1),
+.ai-footer__voice-listening span:nth-child(5) {
+  height: calc(6px + (8px * var(--voice-bar-0, 0.18)));
+}
+
+.ai-footer__voice-listening span:nth-child(2),
+.ai-footer__voice-listening span:nth-child(4) {
+  height: calc(8px + (14px * var(--voice-bar-1, 0.18)));
+}
+
+.ai-footer__voice-listening span:nth-child(3) {
+  height: calc(10px + (18px * var(--voice-bar-2, 0.18)));
+}
+
+.ai-footer__voice-listening span:nth-child(4) {
+  height: calc(8px + (14px * var(--voice-bar-3, 0.18)));
+}
+
+.ai-footer__voice-listening span:nth-child(5) {
+  height: calc(6px + (8px * var(--voice-bar-4, 0.18)));
+}
+
 .ai-footer__send-btn,
 .ai-footer__voice-btn,
 .ai-footer__utility-btn,
@@ -9568,6 +9609,15 @@ button.eva-retail-preview-card::before {
 .ai-footer__utility-btn:hover:not(:disabled),
 .ai-chat-textarea__sources-btn:hover:not(:disabled) {
   background: var(--button-secondary-hover);
+}
+
+.ai-footer__voice-btn--recording:not(:disabled) {
+  background: var(--mds-color-theme-background-primary-hover, var(--button-secondary-hover));
+  color: var(--text-primary);
+}
+
+.ai-footer__voice-btn--recording:hover:not(:disabled) {
+  background: var(--mds-color-theme-background-primary-active, var(--button-secondary-active));
 }
 
 .ai-footer__send-btn:not(:disabled),
