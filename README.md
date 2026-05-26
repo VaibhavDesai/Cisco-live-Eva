@@ -137,6 +137,27 @@ Append `?review=1` to any URL, e.g. `https://your-site.example/agents?review=1`.
 
 The anon key ships in the client bundle and the RLS policies allow public read/write — fine for a PM-review prototype, not for production. Treat the link itself as the access control. To harden, put writes behind a serverless function with auth.
 
+## Voice / ASR API
+
+The dashboard mic uses Deepgram for speech-to-text. The Agents build-flow mic
+and voice preview call use ElevenLabs, matching the original demo behavior.
+Keep all provider keys server-side:
+
+```
+DEEPGRAM_API_KEY=<your Deepgram API key or "Token ..." header value>
+ELEVENLABS_API_KEY=<your ElevenLabs API key>
+ELEVENLABS_AGENT_ID=<your ElevenLabs conversational agent id>
+```
+
+For local Vite proxy runs, put them in repo-root `.env` or `web/.env.local`.
+For the deployed Cloudflare Worker, run:
+
+```
+cd worker
+npx wrangler secret put DEEPGRAM_API_KEY
+npx wrangler secret put ELEVENLABS_API_KEY
+```
+
 ## Deployment
 
 The app is configured for deployment on **Vercel** (see `web/vercel.json`). An alternative GitHub Pages deploy is also available via `npm run deploy`.
