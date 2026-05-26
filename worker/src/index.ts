@@ -218,10 +218,11 @@ async function handleElevenLabsSignedUrl(
 function normalizeDeepgramApiKey(configuredKey: string): string {
   return configuredKey
     .trim()
-    .replace(/^Authorization:\s*/i, '')
-    .replace(/^Token\s+/i, '')
-    .replace(/^Bearer\s+/i, '')
+    .replace(/^['"]|['"]$/g, '')
+    .trim()
     .replace(/^DEEPGRAM_API_KEY\s*=\s*/i, '')
+    .replace(/^Authorization:\s*/i, '')
+    .replace(/^(Token|Bearer)\s+/i, '')
     .replace(/^['"]|['"]$/g, '')
     .replace(/[\u0000-\u001F\u007F\s]+/g, '')
     .trim();
