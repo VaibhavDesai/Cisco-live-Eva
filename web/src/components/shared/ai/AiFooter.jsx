@@ -6,7 +6,7 @@ import AiSymbol from './AiSymbol'
  * Chat composer strip with optional quick suggestions, send control, sources affordance, and privacy disclaimer.
  *
  * When `onVoiceToggle` is provided, the mic button records short audio chunks
- * and progressively dictates them into the textarea through `/api/transcribe`.
+ * and progressively dictates them into the textarea through `transcribePath`.
  * Browser SpeechRecognition is only used as a fallback when MediaRecorder is
  * unavailable. Click the mic to start recording, click again to stop; dictated
  * text remains editable before sending. `voiceActive` / `onVoiceToggle` are kept
@@ -28,6 +28,7 @@ import AiSymbol from './AiSymbol'
  * @param {import('react').ReactNode} [props.cornerAction] - Optional control rendered inside the composer group's top-right corner.
  * @param {string} [props.initialText] - Optional value pushed into the textarea whenever `prefillKey` changes. Use together with a parent-controlled key bump (e.g. an incrementing counter) to drop a fresh prompt into the composer without hijacking the user's in-progress edits.
  * @param {string|number} [props.prefillKey] - Sentinel that tells the composer to replace its current text with `initialText`. Each unique value triggers exactly one prefill, so parents can re-trigger the same prompt by bumping the key.
+ * @param {string} [props.transcribePath='/transcribe'] - Companion API path used by the mic recorder. Local dev prefixes it with `/api`.
  * @example
  * <AiFooter onSend={(msg) => console.log(msg)} suggestions={['Summarize', 'Next steps']} />
  */
@@ -45,6 +46,7 @@ function AiFooter({
   cornerAction,
   initialText = '',
   prefillKey,
+  transcribePath = '/transcribe',
 }) {
   const [text, setText] = useState(initialText)
   const textareaRef = useRef(null)
@@ -189,16 +191,18 @@ function AiFooter({
 
   const transcribeBlob = useCallback(async (blob) => {
     const chatApiUrl = import.meta.env.VITE_CHAT_API_URL
+    const normalizedTranscribePath = transcribePath.startsWith('/') ? transcribePath : `/${transcribePath}`
     const companionApiUrl = chatApiUrl
-      ? `${chatApiUrl.replace(/\/chat\/?$/, '').replace(/\/$/, '')}/transcribe`
-      : '/api/transcribe'
+      ? `${chatApiUrl.replace(/\/chat\/?$/, '').replace(/\/$/, '')}${normalizedTranscribePath}`
+      : `/api${normalizedTranscribePath}`
     const configuredTranscribeUrl = import.meta.env.VITE_TRANSCRIBE_API_URL
+    const escapedPath = normalizedTranscribePath.replace(/\//g, '\\/')
     const transcribeApiUrl =
       (configuredTranscribeUrl
         ? `${configuredTranscribeUrl
             .replace(/\/chat\/?$/, '')
-            .replace(/\/transcribe\/?$/, '')
-            .replace(/\/$/, '')}/transcribe`
+            .replace(new RegExp(`${escapedPath}/?$`), '')
+            .replace(/\/$/, '')}${normalizedTranscribePath}`
         : '') ||
       companionApiUrl
 
@@ -230,7 +234,7 @@ function AiFooter({
     }
 
     return typeof data.text === 'string' ? data.text.trim() : ''
-  }, [getEndpointPath, getFriendlyVoiceError])
+  }, [getEndpointPath, getFriendlyVoiceError, transcribePath])
 
   const appendTranscript = useCallback((transcript) => {
     const cleanTranscript = transcript.trim()
