@@ -251,7 +251,9 @@ async function handleTranscribe(
 
   const form = new FormData();
   form.append('file', new Blob([audioBuffer], { type: incomingType }), `audio.${ext}`);
-  form.append('model_id', 'scribe_v1');
+  form.append('model_id', 'scribe_v2');
+  form.append('tag_audio_events', 'false');
+  form.append('no_verbatim', 'true');
 
   const sttRes = await fetch('https://api.elevenlabs.io/v1/speech-to-text', {
     method: 'POST',
