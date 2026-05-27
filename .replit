@@ -14,7 +14,7 @@ expertMode = true
 [deployment]
 deploymentTarget = "autoscale"
 run = ["node", "server.js"]
-build = ["bash", "-c", "cd web && npm install && npm run build"]
+build = ["bash", "-c", "npm install && cd web && npm install && npm run build"]
 
 [workflows]
 runButton = "Project"

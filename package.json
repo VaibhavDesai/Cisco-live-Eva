@@ -11,6 +11,7 @@
   "license": "ISC",
   "type": "commonjs",
   "dependencies": {
+    "express": "^4.21.2",
     "@momentum-design/animations": "^0.4.3",
     "@momentum-design/brand-visuals": "^0.28.0",
     "@momentum-design/components": "^0.129.51",
