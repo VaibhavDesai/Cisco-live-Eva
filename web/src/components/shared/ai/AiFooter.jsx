@@ -76,6 +76,10 @@ function AiFooter({
   const speechRecognitionRef = useRef(null)
   const speechBaseTextRef = useRef('')
   const audioStreamRef = useRef(null)
+  const audioContextRef = useRef(null)
+  const audioAnalyserRef = useRef(null)
+  const voiceMeterFrameRef = useRef(null)
+  const voiceMeterRef = useRef(null)
   const recorderChunksRef = useRef([])
   const recorderRestartTimerRef = useRef(null)
   const recordingSessionActiveRef = useRef(false)
@@ -132,6 +136,13 @@ function AiFooter({
         recorderRestartTimerRef.current = null
       }
       recordingSessionActiveRef.current = false
+      if (voiceMeterFrameRef.current) {
+        window.cancelAnimationFrame(voiceMeterFrameRef.current)
+        voiceMeterFrameRef.current = null
+      }
+      audioContextRef.current?.close?.()
+      audioContextRef.current = null
+      audioAnalyserRef.current = null
       audioStreamRef.current?.getTracks().forEach((t) => t.stop())
       audioStreamRef.current = null
     }
@@ -169,10 +180,70 @@ function AiFooter({
     return ''
   }, [])
 
+  const stopVoiceLevelMeter = useCallback(() => {
+    if (voiceMeterFrameRef.current) {
+      window.cancelAnimationFrame(voiceMeterFrameRef.current)
+      voiceMeterFrameRef.current = null
+    }
+    audioContextRef.current?.close?.()
+    audioContextRef.current = null
+    audioAnalyserRef.current = null
+  }, [])
+
+  const startVoiceLevelMeter = useCallback((stream) => {
+    const AudioContextCtor = window.AudioContext || window.webkitAudioContext
+    if (!AudioContextCtor || !voiceMeterRef.current) return
+
+    stopVoiceLevelMeter()
+
+    const audioContext = new AudioContextCtor()
+    const analyser = audioContext.createAnalyser()
+    analyser.fftSize = 256
+    analyser.smoothingTimeConstant = 0.78
+
+    const source = audioContext.createMediaStreamSource(stream)
+    source.connect(analyser)
+
+    audioContextRef.current = audioContext
+    audioAnalyserRef.current = analyser
+
+    const samples = new Uint8Array(analyser.fftSize)
+    const ratios = [0.42, 0.72, 1, 0.76, 0.48]
+    const phases = [0.2, 1.7, 2.9, 4.4, 5.8]
+
+    const tick = (timestamp) => {
+      if (!recordingSessionActiveRef.current || !voiceMeterRef.current || audioAnalyserRef.current !== analyser) {
+        return
+      }
+
+      analyser.getByteTimeDomainData(samples)
+      let sum = 0
+      for (const value of samples) {
+        const centered = (value - 128) / 128
+        sum += centered * centered
+      }
+
+      const rms = Math.sqrt(sum / samples.length)
+      const level = Math.min(1, rms * 5.5)
+
+      ratios.forEach((ratio, index) => {
+        const wobble = 0.84 + Math.sin(timestamp / (135 + index * 27) + phases[index]) * 0.16
+        const barLevel = Math.max(0.18, Math.min(1, level * ratio * wobble))
+        voiceMeterRef.current.style.setProperty(`--voice-bar-${index}`, barLevel.toFixed(3))
+      })
+
+      voiceMeterFrameRef.current = window.requestAnimationFrame(tick)
+    }
+
+    voiceMeterFrameRef.current = window.requestAnimationFrame(tick)
+  }, [stopVoiceLevelMeter])
+
   const stopMicTracks = useCallback(() => {
+    stopVoiceLevelMeter()
     audioStreamRef.current?.getTracks().forEach((t) => t.stop())
     audioStreamRef.current = null
-  }, [])
+  }, [stopVoiceLevelMeter])
+
 
   const stopRecordingSession = useCallback(() => {
     recordingSessionActiveRef.current = false
@@ -266,6 +337,7 @@ function AiFooter({
     audioStreamRef.current = stream
     recordingSessionActiveRef.current = true
     recorderChunksRef.current = []
+    startVoiceLevelMeter(stream)
 
     const mimeType = pickRecorderMimeType()
 
@@ -371,7 +443,15 @@ function AiFooter({
     setIsRecording(true)
     onVoiceToggle?.(true)
     return true
-  }, [appendTranscript, getFriendlyVoiceError, onVoiceToggle, pickRecorderMimeType, stopMicTracks, transcribeBlob])
+  }, [
+    appendTranscript,
+    getFriendlyVoiceError,
+    onVoiceToggle,
+    pickRecorderMimeType,
+    startVoiceLevelMeter,
+    stopMicTracks,
+    transcribeBlob,
+  ])
 
   const startBrowserSpeechRecognition = useCallback(() => {
     const SpeechRecognition =
@@ -491,12 +571,12 @@ function AiFooter({
   const showActive = !showRecording && !showTranscribing && voiceActive
 
   let micIcon = 'microphone-bold'
-  if (showRecording) micIcon = 'stop-circle-bold'
+  if (showRecording) micIcon = 'check-bold'
   else if (showTranscribing) micIcon = 'microphone-bold'
   else if (showActive) micIcon = 'microphone-on-bold'
 
   let micAria = 'Start voice input'
-  if (showRecording) micAria = 'Stop recording'
+  if (showRecording) micAria = 'Complete voice input'
   else if (showTranscribing) micAria = 'Transcribing\u2026'
   else if (showActive) micAria = 'Turn voice input off'
 
@@ -575,16 +655,27 @@ function AiFooter({
                     </span>
                   )}
                   {onVoiceToggle && (
-                <button
-                  type="button"
-                  className={micClassName}
-                  aria-label={micAria}
-                  aria-pressed={showRecording || showActive}
-                  disabled={disabled || (isTranscribing && !isRecording)}
-                  onClick={handleMicClick}
-                >
-                  <Icon name={micIcon} size={16} />
-                </button>
+                    <>
+                      {showRecording && (
+                        <span ref={voiceMeterRef} className="ai-footer__voice-listening" aria-hidden="true">
+                          <span />
+                          <span />
+                          <span />
+                          <span />
+                          <span />
+                        </span>
+                      )}
+                      <button
+                        type="button"
+                        className={micClassName}
+                        aria-label={micAria}
+                        aria-pressed={showRecording || showActive}
+                        disabled={disabled || (isTranscribing && !isRecording)}
+                        onClick={handleMicClick}
+                      >
+                        <Icon name={micIcon} size={16} />
+                      </button>
+                    </>
                   )}
                   <button
                     type="button"
