@@ -40,6 +40,6 @@ externalPort = 3001
 
 [deployment]
 deploymentTarget = "autoscale"
-build = ["bash", "-c", "cd web && npm install && npm run build"]
+build = ["bash", "-c", "npm install && cd web && npm install && npm run build"]
 publicDir = "web/dist"
 run = ["node", "server.js"]
