@@ -32,8 +32,9 @@ export default function Header({ onAiClick, onMenuClick, centerContent }: Studio
   return (
     <AppHeader
       fixed
+      className="app-header--agent-studio-brand"
       wordmarkSvg={webexAiAgentStudioWordmark}
-      wordmarkAlt="Webex AI Agent Studio"
+      wordmarkAlt="AI Agent Studio"
       showSearch={false}
       centerContent={centerContent}
       alertCount={0}

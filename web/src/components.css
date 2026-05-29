@@ -11542,6 +11542,14 @@ mdc-icon {
   mask-position: center left;
 }
 
+.app-header--agent-studio-brand .app-header__wordmark-logo {
+  aspect-ratio: 131 / 25;
+  -webkit-mask-size: auto 100%;
+  mask-size: auto 100%;
+  -webkit-mask-position: right center;
+  mask-position: right center;
+}
+
 img.app-header__wordmark-logo {
   background-color: transparent;
   -webkit-mask-image: none;
