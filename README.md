@@ -1,4 +1,4 @@
-# Webex AI Agent Studio
+# AI Agent Studio
 
 A front-end prototype for designing, configuring, and managing AI agents within the Cisco Webex ecosystem. Built with React 19, TypeScript, and the [Momentum Design System](https://momentum.design).
 

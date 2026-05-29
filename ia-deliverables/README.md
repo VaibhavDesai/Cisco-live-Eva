@@ -1,6 +1,6 @@
-# Webex AI Agent Studio - Information Architecture Deliverables
+# AI Agent Studio - Information Architecture Deliverables
 
-This folder contains the IA deliverables for the Webex AI Agent Studio product design.
+This folder contains the IA deliverables for the AI Agent Studio product design.
 
 ## Deliverables Overview
 

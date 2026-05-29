@@ -1,6 +1,6 @@
 # Architecture Overview
 
-This document describes the high-level architecture of the Webex AI Agent Studio front-end application.
+This document describes the high-level architecture of the AI Agent Studio front-end application.
 
 ## System Diagram
 

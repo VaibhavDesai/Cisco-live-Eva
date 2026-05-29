@@ -24,7 +24,7 @@ export default function ComingSoonModal({ sourceLabel, onClose }: ComingSoonModa
         <p style={{ margin: 0, color: 'var(--text-secondary)', fontSize: 'var(--font-size-body-midsize)' }}>
           We&apos;re actively building support for this source type. In the
           meantime, SharePoint is the fastest way to bring external content into
-          Webex AI Agent Studio.
+          AI Agent Studio.
         </p>
       </ModalBody>
       <ModalFooter>

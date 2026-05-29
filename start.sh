@@ -5,7 +5,7 @@ ROOT_DIR="$(cd "$(dirname "$0")" && pwd)"
 WEB_DIR="$ROOT_DIR/web"
 
 echo "================================================"
-echo "  Webex AI Agent Studio — Quick Start"
+echo "  AI Agent Studio — Quick Start"
 echo "================================================"
 echo ""
 

@@ -165,7 +165,7 @@ function float32ToPcm16Base64(input: Float32Array): string {
    contain a template trigger keyword so a click trips the deterministic
    template router in `handleLlmFollowupClick` and launches the guided
    build flow. The keyword list mirrors the matcher in that handler. */
-const EVA_SYSTEM_PROMPT = `You are AI Assistant, a conversational AI assistant inside Webex AI Agent Studio. You help product designers and admins design AI agents — defining purpose, knowledge sources, available actions, security policies, voice, and language settings.
+const EVA_SYSTEM_PROMPT = `You are AI Assistant, a conversational AI assistant inside AI Agent Studio. You help product designers and admins design AI agents — defining purpose, knowledge sources, available actions, security policies, voice, and language settings.
 
 Available starter templates (and the trigger keywords that launch the guided build flow): Receptionist (keywords: "receptionist", "appointment", "reminder", "support"), Customer Concierge (keywords: "concierge", "customer", "request"), Help Desk (keywords: "help desk", "employee", "password", "PTO"), Order Management (keywords: "order", "tracking", "delivery", "returns"), Sales enablement (keyword: "sales").
 
@@ -224,7 +224,7 @@ function buildWaterfallSystemPrompt(args: {
     review: 'Review (final summary before the agent is created)',
   };
 
-  return `You are AI Assistant, a conversational AI assistant inside Webex AI Agent Studio. The user is in the middle of configuring an AI agent through a step-by-step build flow and has asked you a question or for help.
+  return `You are AI Assistant, a conversational AI assistant inside AI Agent Studio. The user is in the middle of configuring an AI agent through a step-by-step build flow and has asked you a question or for help.
 
 Current step: ${stepLabels[args.evaStep]}.
 
@@ -501,7 +501,7 @@ const RETAIL_CHANNEL_OPTIONS = [
   },
 ];
 
-const VOICE_AGENT_INTENT_CLASSIFIER_PROMPT = `You are an intent router inside Webex AI Agent Studio.
+const VOICE_AGENT_INTENT_CLASSIFIER_PROMPT = `You are an intent router inside AI Agent Studio.
 
 Map the user's message to a business or service concept for the guided voice receptionist / phone assistant workflow.
 

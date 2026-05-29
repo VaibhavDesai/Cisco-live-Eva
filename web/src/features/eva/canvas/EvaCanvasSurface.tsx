@@ -65,7 +65,7 @@ const MAIN_TAB_ID = 'main';
    in `handleCanvasEvaSend`). The current canvas state is appended at
    request time by `buildCanvasEvaSystemPrompt` so Eva can reference
    real node IDs when emitting `add_node`/`connect` actions. */
-const CANVAS_EVA_SYSTEM_PROMPT_BASE = `You are AI Assistant, embedded inside the Webex AI Agent Studio canvas — a visual multi-agent orchestration map. The user is editing a canvas of nodes connected by labeled edges.
+const CANVAS_EVA_SYSTEM_PROMPT_BASE = `You are AI Assistant, embedded inside the AI Agent Studio canvas — a visual multi-agent orchestration map. The user is editing a canvas of nodes connected by labeled edges.
 
 Node types and what they mean:
 - agent: a conversational specialist (lead or secondary).

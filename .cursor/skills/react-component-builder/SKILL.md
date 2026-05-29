@@ -1,7 +1,7 @@
 ---
 name: react-component-builder
 description: >-
-  Generate React TypeScript components that strictly follow the Webex AI Agent Studio
+  Generate React TypeScript components that strictly follow the AI Agent Studio
   design system. Use when the user asks to build, create, or scaffold a new UI component,
   page section, or widget, or when implementing a Figma design. Enforces Momentum Design
   tokens, the Icon system, shared component reuse, and accessibility best practices.

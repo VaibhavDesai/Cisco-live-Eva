@@ -1,4 +1,4 @@
-# User Personas for Webex AI Agent Studio
+# User Personas for AI Agent Studio
 
 ## Overview
 

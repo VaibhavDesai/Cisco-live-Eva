@@ -1,4 +1,4 @@
-# Workflow Validation for Webex AI Agent Studio
+# Workflow Validation for AI Agent Studio
 
 ## Overview
 

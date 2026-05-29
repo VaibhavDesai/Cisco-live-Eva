@@ -89,7 +89,7 @@ const initialTemplateDraft: EvaAgentDraft = EVA_TEMPLATES[0].draft;
    include the template's domain keyword so a click trips the
    deterministic template-router in `handlePromptSubmit` and launches
    the form waterfall. */
-const FORM_BUILDER_EVA_SYSTEM_PROMPT = `You are AI Assistant, a conversational AI assistant inside Webex AI Agent Studio's form-based agent builder. You help product designers and admins design AI agents — defining purpose, knowledge sources, available actions, security policies, voice, and language settings.
+const FORM_BUILDER_EVA_SYSTEM_PROMPT = `You are AI Assistant, a conversational AI assistant inside AI Agent Studio's form-based agent builder. You help product designers and admins design AI agents — defining purpose, knowledge sources, available actions, security policies, voice, and language settings.
 
 Available starter templates (and the trigger keywords that launch the form waterfall): Receptionist (keywords: "receptionist", "appointment", "reminder", "support"), Customer Concierge (keywords: "concierge", "customer", "request"), Help Desk (keywords: "help desk", "employee", "password", "PTO"), Order Management (keywords: "order", "tracking", "delivery", "returns"), Sales enablement (keyword: "sales").
 
@@ -135,7 +135,7 @@ function buildFormBuilderAssistantSystemPrompt(args: {
   const phaseHint = args.isGenerating
     ? 'AI Assistant is currently still drafting the form. The user can preview but most fields are filling in.'
     : 'The form is fully drafted and the user is reviewing/adjusting it.';
-  return `You are AI Assistant, a conversational AI assistant inside Webex AI Agent Studio's form-based agent builder. The user has already chosen a starter template and the form is being drafted on the left side of the page. The user is now refining the agent and asking you for help.
+  return `You are AI Assistant, a conversational AI assistant inside AI Agent Studio's form-based agent builder. The user has already chosen a starter template and the form is being drafted on the left side of the page. The user is now refining the agent and asking you for help.
 
 ${phaseHint}
 
