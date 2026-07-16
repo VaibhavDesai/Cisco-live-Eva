@@ -493,7 +493,11 @@ html[data-product='ai-agent-studio'] .app-header__menu-row-hint {
 .eva-agents-landing .eva-first-interface--free-chat {
   height: 100%;
   min-height: 0;
-  overflow: hidden;
+  /* `hidden` still creates a programmatically scrollable container, so
+     scrollIntoView calls on new conversation steps shifted the absolutely
+     positioned composer upward. `clip` keeps the shell fixed while the
+     transcript remains the only scrolling region. */
+  overflow: clip;
 }
 
 .eva-first-interface--landing,
@@ -4085,6 +4089,25 @@ html[data-product='ai-agent-studio'] .app-header__menu-row-hint {
   max-width: none !important;
   margin-left: auto !important;
   margin-right: auto !important;
+}
+
+/* Keep the build-flow composer in one stable viewport position. Previously
+   the component only added `--sticky` while Eva was thinking or showing
+   guidance, so settled steps (knowledge, actions, phone, and final review)
+   dropped the composer back into normal document flow. Anchor the free-chat
+   composer to the padded bottom edge and reserve transcript space so content
+   can scroll behind neither the input nor its disclaimer. */
+.eva-agents-landing .eva-first-interface.eva-first-interface--free-chat .eva-first-interface__chat--sticky {
+  position: absolute;
+  left: var(--spacing-large);
+  right: var(--spacing-large);
+  bottom: var(--spacing-large);
+  z-index: 4;
+  width: min(calc(100% - (var(--spacing-large) * 2)), 960px) !important;
+}
+
+.eva-first-interface--free-chat .eva-first-interface__free-chat {
+  scroll-padding-bottom: calc(142px + var(--spacing-large));
 }
 
 .eva-first-interface.eva-first-interface--free-chat .eva-first-interface__chat {

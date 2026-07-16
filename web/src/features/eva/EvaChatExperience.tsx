@@ -7339,7 +7339,7 @@ ${previewTranscript}`,
             "build flow" once Eva is generating / has generated content
             — show it only when we're past the landing screen. */}
         {showBuildFlow && !showGeneratedSidePanel && !showLandingOptions && (
-          <section className={`eva-first-interface__chat${guidanceVisible || evaThinking || orchestrationSuggested ? ' eva-first-interface__chat--sticky' : ''}`} aria-label="Talk to AI Assistant">
+          <section className="eva-first-interface__chat eva-first-interface__chat--sticky" aria-label="Talk to AI Assistant">
             {!guidanceVisible && !evaThinking && <div className="eva-chat-spacer" aria-hidden />}
             <AiFooter
               className="eva-ai-footer"
