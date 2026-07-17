@@ -16,6 +16,8 @@ interface KPICardProps {
   data: KPIData;
   isActive: boolean;
   onClick: () => void;
+  ariaExpanded?: boolean;
+  ariaControls?: string;
   isPinned?: boolean;
   onPinToggle?: (e: React.MouseEvent) => void;
   dragIndex?: number;
@@ -120,6 +122,8 @@ function KPICardInner({
   data,
   isActive,
   onClick,
+  ariaExpanded,
+  ariaControls,
   isPinned,
   onPinToggle,
   cardRef,
@@ -136,7 +140,13 @@ function KPICardInner({
       ref={cardRef}
       className={`kpi-card ${isActive ? 'kpi-card--active' : 'kpi-card--glass'}`}
     >
-      <button type="button" className="kpi-card__primary" onClick={onClick}>
+      <button
+        type="button"
+        className="kpi-card__primary"
+        onClick={onClick}
+        aria-expanded={ariaExpanded}
+        aria-controls={ariaControls}
+      >
         <div className="kpi-card__inner">
           <div
             className={`kpi-card__header ${onPinToggle ? 'kpi-card__header--reserve-pin' : ''}`}
@@ -222,6 +232,8 @@ function KPICardWithDnd({
   data,
   isActive,
   onClick,
+  ariaExpanded,
+  ariaControls,
   isPinned,
   onPinToggle,
   dragIndex,
@@ -261,6 +273,8 @@ function KPICardWithDnd({
       data={data}
       isActive={isActive}
       onClick={onClick}
+      ariaExpanded={ariaExpanded}
+      ariaControls={ariaControls}
       isPinned={isPinned}
       onPinToggle={onPinToggle}
       cardRef={ref}

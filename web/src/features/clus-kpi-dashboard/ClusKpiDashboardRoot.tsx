@@ -5,6 +5,7 @@ import {
   useCallback,
   type MouseEvent,
 } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { DayPicker } from 'react-day-picker';
 import type { DateRange } from 'react-day-picker';
 import 'react-day-picker/style.css';
@@ -32,7 +33,11 @@ import {
   loadObservabilityConfiguration,
   OBSERVABILITY_CONFIGURATION_CHANGED_EVENT,
 } from './observabilityConfiguration';
-import { parseAgentPathFromHash } from './agentHashNavigation';
+import {
+  CLUS_KPI_AGENT_FILTER_PARAM,
+  parseAgentPathFromHash,
+  parseClusKpiDashboardAgentFilter,
+} from './agentHashNavigation';
 import type { KPIData } from './kpiTypes';
 import { parseKpiNumericValue } from './kpiThresholdPresentation';
 
@@ -134,12 +139,15 @@ function scopeKpiToAgent(kpi: KPIData, agentName: string): KPIData {
 }
 
 export function ClusKpiDashboardRoot() {
+  const [searchParams, setSearchParams] = useSearchParams();
   const [dateRange, setDateRange] = useState<'24h' | 'week' | 'month' | '90d' | 'custom'>('24h');
   const [customDateRange, setCustomDateRange] = useState<DateRange | undefined>(undefined);
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [showFilterBar, setShowFilterBar] = useState(false);
   const [selectedAgent, setSelectedAgent] = useState<string | null>(null);
-  const [dashboardAgentFilter, setDashboardAgentFilter] = useState<string | null>(null);
+  const [dashboardAgentFilter, setDashboardAgentFilter] = useState<string | null>(() =>
+    parseClusKpiDashboardAgentFilter(window.location.search),
+  );
   const [selectedInteraction, setSelectedInteraction] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState("dashboard");
   const [dateDialogOpen, setDateDialogOpen] = useState(false);
@@ -147,6 +155,21 @@ export function ClusKpiDashboardRoot() {
   const [activeCardId, setActiveCardId] = useState<string | null>(null);
 
   const [observabilityConfigVersion, setObservabilityConfigVersion] = useState(0);
+
+  useEffect(() => {
+    const agentName = parseClusKpiDashboardAgentFilter(searchParams.toString());
+    setDashboardAgentFilter(current => current === agentName ? current : agentName);
+  }, [searchParams]);
+
+  const applyDashboardAgentFilter = useCallback((agentName: string | null) => {
+    setDashboardAgentFilter(agentName);
+    setSearchParams(previous => {
+      const next = new URLSearchParams(previous);
+      if (agentName) next.set(CLUS_KPI_AGENT_FILTER_PARAM, agentName);
+      else next.delete(CLUS_KPI_AGENT_FILTER_PARAM);
+      return next;
+    }, { replace: true });
+  }, [setSearchParams]);
 
   useEffect(() => {
     const bump = () => setObservabilityConfigVersion((v) => v + 1);
@@ -325,7 +348,7 @@ export function ClusKpiDashboardRoot() {
             type="button"
             variant="tertiary"
             size="sm"
-            onClick={() => setDashboardAgentFilter(null)}
+            onClick={() => applyDashboardAgentFilter(null)}
           >
             <span className="btn-icon" aria-hidden>
               <Icon name="cancel" weight="bold" size={16} />
@@ -448,7 +471,7 @@ export function ClusKpiDashboardRoot() {
                     <FilterBar
                       agentNames={agentData.map((agent) => agent.agentName)}
                       onAgentClick={(agentName) => {
-                        setDashboardAgentFilter(agentName);
+                        applyDashboardAgentFilter(agentName);
                         setActiveTab('dashboard');
                       }}
                     />
@@ -479,7 +502,7 @@ export function ClusKpiDashboardRoot() {
                 </div>
                 <AgentTable
                   onViewAgent={(agentName) => {
-                    setDashboardAgentFilter(agentName);
+                    applyDashboardAgentFilter(agentName);
                     setActiveTab('dashboard');
                   }}
                 />

@@ -1,7 +1,12 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { AiFooter, AiResponseMessage, AiUserMessage, Badge, Button, Card, CardBody, CardHeader, CardTitle, Dropdown, Tab, Tabs } from '../../../components/shared';
+import { Badge, Button, Card, CardBody, CardHeader, CardTitle, Dropdown, Tab, Tabs } from '../../../components/shared';
 import { Icon } from '../../../icons';
 import { sendEvaChat } from '../../../api/ciscoAi';
+import {
+  CISCO_LIVE_AGENTS,
+  getCiscoLiveObservability,
+  type CiscoLiveAgentDefinition,
+} from '../../../demo/ciscoLiveDemo';
 import type { EvaCanvasConnection, EvaCanvasNode } from '../types';
 import {
   EVA_CANVAS_NODE_TYPES,
@@ -14,6 +19,7 @@ import {
   snapToEvaCanvasGrid,
 } from './evaCanvasData';
 import EvaFlowBox, { getEvaFlowBoxSize } from './EvaFlowBox';
+import EvaCollaborationCanvas from './EvaCollaborationCanvas';
 
 type Side = EvaCanvasConnection['fromSide'];
 
@@ -261,15 +267,133 @@ function getConnectionHandleAtPoint(clientX: number, clientY: number): { nodeId:
   return { nodeId, side: side as Side };
 }
 
+/* Turns the selected agent's saved configuration into the established
+   draggable Eva node design. This is intentionally a detail canvas rather
+   than a dashboard: every node can move freely, connections stay attached,
+   and the existing toolbar still controls zoom, layout, compact mode, JSON,
+   and additional cards. */
+function buildAgentDetailSnapshot(agent: CiscoLiveAgentDefinition): CanvasTabSnapshot {
+  const observability = getCiscoLiveObservability(agent.id);
+  const nodes: EvaCanvasNode[] = [
+    {
+      id: 'agent-1',
+      type: 'agent',
+      title: agent.name,
+      description: agent.description,
+      x: 420,
+      y: 220,
+    },
+    {
+      id: `agent-detail-knowledge-${agent.id}`,
+      type: 'knowledge',
+      title: 'Knowledge & memory',
+      description: `${agent.knowledgeSources.length} knowledge sources · ${agent.memorySources.length} memories`,
+      x: 80,
+      y: 80,
+    },
+    {
+      id: `agent-detail-actions-${agent.id}`,
+      type: 'mcp',
+      title: 'Agent actions',
+      description: agent.actions.join(' · '),
+      x: 80,
+      y: 440,
+    },
+    {
+      id: `agent-detail-voice-${agent.id}`,
+      type: 'voice',
+      title: 'Channel',
+      description: agent.selectedChannels.map(channel => channel === 'voice' ? 'Voice' : channel === 'video' ? 'Video' : 'Digital').join(' · '),
+      x: 780,
+      y: 80,
+    },
+    {
+      id: `agent-detail-orchestration-${agent.id}`,
+      type: 'decision',
+      title: 'Orchestration',
+      description: `${agent.orchestrationScenarios.length} configured collaboration scenarios`,
+      x: 780,
+      y: 420,
+    },
+    {
+      id: `agent-detail-metrics-${agent.id}`,
+      type: 'metrics',
+      title: 'Metrics',
+      description: `${agent.successRate} success · ${agent.sessions} sessions · ${agent.avgResponse} average response`,
+      x: 1120,
+      y: 260,
+    },
+  ];
+
+  const knowledgeId = nodes[1].id;
+  const actionsId = nodes[2].id;
+  const voiceId = nodes[3].id;
+  const orchestrationId = nodes[4].id;
+  const metricsId = nodes[5].id;
+  const guardrailNames = [
+    ...agent.customGuardrails.map(guardrail => guardrail.name),
+    ...agent.securityRules,
+  ];
+  const formData: Record<string, string> = {
+    'agent_agent-1_welcome': agent.welcomeMessage,
+    'agent_agent-1_overview': agent.description,
+    'agent_agent-1_tasks': agent.goals.join('\n'),
+    'agent_agent-1_guardrails': guardrailNames.join('\n'),
+    [`knowledge_${knowledgeId}_sources`]: [
+      ...agent.knowledgeSources.map(source => source.name),
+      ...agent.memorySources.map(source => `Memory: ${source.name}`),
+    ].join('\n'),
+    [`knowledge_${knowledgeId}_retrieval`]: agent.knowledgeSources.map(source => source.description).join('\n'),
+    [`mcp_${actionsId}_provider`]: agent.actions.join('\n'),
+    [`mcp_${actionsId}_confirmation`]: 'Use the approved action configuration and preserve the current conversation context.',
+    [`voice_${voiceId}_voiceName`]: agent.selectedChannels.includes('voice') ? 'Ava · Friendly and professional' : 'Not configured for voice',
+    [`voice_${voiceId}_dtmf`]: agent.digitalChannelAddress ?? 'Use the configured channel context.',
+    [`decision_${orchestrationId}_conditions`]: agent.orchestrationScenarios
+      .map(scenario => `${scenario.name}: ${scenario.description}`)
+      .join('\n'),
+    [`decision_${orchestrationId}_handoff`]: agent.orchestrationScenarios
+      .map(scenario => `${scenario.collaboration} · ${scenario.actions.join(', ')}`)
+      .join('\n'),
+    [`metrics_${metricsId}_success`]: [
+      `Sessions: ${agent.sessions}`,
+      `Success rate: ${agent.successRate}`,
+      `Messages: ${agent.messages}`,
+      `Average response: ${agent.avgResponse}`,
+    ].join('\n'),
+    [`metrics_${metricsId}_quality`]: observability.metrics
+      .map(metric => `${metric.metricId}: ${metric.value}${metric.unit ?? ''} (${metric.change})`)
+      .join('\n'),
+  };
+
+  return {
+    nodes,
+    connections: [
+      { id: `agent-detail-kb-${agent.id}`, from: knowledgeId, to: 'agent-1', fromSide: 'right', toSide: 'left', label: 'grounds' },
+      { id: `agent-detail-action-${agent.id}`, from: actionsId, to: 'agent-1', fromSide: 'right', toSide: 'left', label: 'executes' },
+      { id: `agent-detail-voice-link-${agent.id}`, from: 'agent-1', to: voiceId, fromSide: 'right', toSide: 'left', label: 'speaks' },
+      { id: `agent-detail-orchestration-link-${agent.id}`, from: 'agent-1', to: orchestrationId, fromSide: 'right', toSide: 'left', label: 'orchestrates' },
+      { id: `agent-detail-metrics-link-${agent.id}`, from: orchestrationId, to: metricsId, fromSide: 'right', toSide: 'left', label: 'measures' },
+    ],
+    selectedNodeId: 'agent-1',
+    formData,
+    pan: { x: 0, y: 0 },
+    zoom: 0.9,
+  };
+}
+
 export default function EvaCanvasSurface({
   onBack,
   onNewThread,
+  embedded = false,
+  agentDefinition,
 }: {
   onBack: () => void;
   /* Optional — when provided, navigates back to chat AND requests a new
      thread there. Wired through the EvaCanvas page so the canvas itself
      stays unaware of how the chat view stores threads. */
   onNewThread?: () => void;
+  embedded?: boolean;
+  agentDefinition?: CiscoLiveAgentDefinition;
 }) {
   /* Hydrate from sessionStorage on first render so a Chat ↔ Canvas round-trip
      restores the user's layout, zoom, pan, JSON pane, Eva window, and
@@ -319,10 +443,15 @@ export default function EvaCanvasSurface({
      button) are closeable. The active tab's working state lives in the
      individual slices above (`nodes`, `connections`, …) and gets cached
      into `tabs[activeTabId].snapshot` whenever the user switches tabs. */
-  const [tabs, setTabs] = useState<CanvasTab[]>(
-    restored?.tabs ?? [{ id: MAIN_TAB_ID, label: 'Canvas' }],
-  );
-  const [activeTabId, setActiveTabId] = useState<string>(restored?.activeTabId ?? MAIN_TAB_ID);
+  const [tabs, setTabs] = useState<CanvasTab[]>(() => {
+    const savedTabs = restored?.tabs ?? [{ id: MAIN_TAB_ID, label: 'Collaboration' }];
+    return savedTabs.map(tab => tab.id === MAIN_TAB_ID ? { ...tab, label: 'Collaboration' } : tab);
+  });
+  /* Opening Canvas view always starts with the configured collaboration
+     overview. Example tabs remain available, but a prior example selection
+     must not replace the default agent-level map on the next visit. */
+  const [activeTabId, setActiveTabId] = useState<string>(MAIN_TAB_ID);
+  const activeAgentDefinition = agentDefinition ?? CISCO_LIVE_AGENTS[0];
 
   /* Prefill plumbing for the floating Eva composer. `examplePrimed`
      marks that the user pulled in the Triage example via the
@@ -339,8 +468,8 @@ export default function EvaCanvasSurface({
   const connectingFromRef = useRef<{ nodeId: string; side: Side } | null>(null);
 
   /* Mirror every persistable state slice into sessionStorage on change so the
-     canvas survives a navigate-away (e.g. clicking "Chat view" then coming
-     back via the chat experience's "Canvas view" button). Transient
+     canvas survives switching back to Configuration and reopening
+     Orchestration. Transient
      drag/UI state — `connectingFrom`, `pendingConnectionEnd`, `panning`,
      `panStart`, `addValue`, `copied` — is intentionally excluded; it's
      ephemeral and would be confusing to restore mid-flight. */
@@ -670,12 +799,48 @@ export default function EvaCanvasSurface({
     setActiveTabId(newTabId);
   };
 
+  const openAgentDetailCanvas = (agent: CiscoLiveAgentDefinition) => {
+    const detailTabId = `agent-detail-${agent.id}`;
+    const detailSnapshot = buildAgentDetailSnapshot(agent);
+    const outgoing = captureActiveSnapshot();
+    setTabs(prev => {
+      const withOutgoingSaved = prev.map(tab => (
+        tab.id === activeTabId ? { ...tab, snapshot: outgoing } : tab
+      ));
+      const existingDetailTab = withOutgoingSaved.find(tab => tab.id === detailTabId);
+      if (existingDetailTab) {
+        return withOutgoingSaved.map(tab => tab.id === detailTabId
+          ? { ...tab, label: agent.name, snapshot: detailSnapshot }
+          : tab);
+      }
+      return [
+        ...withOutgoingSaved,
+        {
+          id: detailTabId,
+          label: agent.name,
+          closable: true,
+          snapshot: detailSnapshot,
+        },
+      ];
+    });
+    applySnapshot(detailSnapshot);
+    setCompactMode(false);
+    setShowJson(false);
+    setActiveTabId(detailTabId);
+  };
+
   const handleLoadExample = () => {
     setPrefillText(EVA_CANVAS_TRIAGE_EXAMPLE_PROMPT);
     setPrefillKey(prev => prev + 1);
     setExamplePrimed(true);
     setEvaWindowCollapsed(false);
   };
+
+  useEffect(() => {
+    const loadExampleFromChatRail = () => spawnExampleTab();
+    window.addEventListener('eva-canvas-load-example', loadExampleFromChatRail);
+    return () => window.removeEventListener('eva-canvas-load-example', loadExampleFromChatRail);
+  });
 
   /* Refs that mirror the latest nodes/connections so `applyCanvasActions`
      (called from the async LLM callback) sees up-to-date state without
@@ -890,37 +1055,23 @@ export default function EvaCanvasSurface({
   };
 
   return (
-    <div className="eva-canvas-workspace">
-      <header className="eva-canvas-workspace__header">
+    <div className={`eva-canvas-workspace${embedded ? ' eva-canvas-workspace--embedded' : ''}`}>
+      {!embedded && <header className="eva-canvas-workspace__header">
         <div>
           <span className="eva-shell__eyebrow">
             <Icon name="sparkle" weight="bold" size="sm" />
             AI Assistant canvas
           </span>
-          <h1>Multi-agent collaboration map</h1>
+          <h1>Orchestration</h1>
           <p>Pan, zoom, connect nodes, switch compact mode, and inspect the operation JSON.</p>
         </div>
-        {/* Mirror the 3-button action cluster from the chat view so the
-            canvas header has the same affordances in the same place.
-            The middle button flips Canvas view ⇄ Chat view, the side-panel
-            icon collapses/expands the floating Eva assistant (the only
-            "panel" the canvas surfaces), and "New thread" hands off to
-            the parent which navigates back to chat and starts a thread. */}
+        {/* Standalone variations retain their own compact header controls.
+            The embedded chat-based experience uses the shared agent header
+            above this surface instead. */}
         <div className="eva-view-actions__controls">
-          <Button
-            variant="secondary"
-            size="sm"
-            className="eva-view-actions__icon-btn"
-            onClick={() => setEvaWindowCollapsed(prev => !prev)}
-            aria-label={evaWindowCollapsed ? 'Expand AI Assistant' : 'Collapse AI Assistant'}
-            aria-pressed={!evaWindowCollapsed}
-            title={evaWindowCollapsed ? 'Expand AI Assistant' : 'Collapse AI Assistant'}
-          >
-            <Icon name="side-panel" weight="bold" size="sm" />
-          </Button>
           <Button variant="secondary" size="sm" onClick={onBack}>
             <Icon name="start-chat" weight="bold" size="sm" />
-            Chat view
+            Configuration
           </Button>
           <Button
             variant="secondary"
@@ -931,7 +1082,7 @@ export default function EvaCanvasSurface({
             Create new agent
           </Button>
         </div>
-      </header>
+      </header>}
 
       <div className="eva-canvas-workspace__body">
         {/* Tab strip for switching between the user's working canvas and any
@@ -959,6 +1110,12 @@ export default function EvaCanvasSurface({
             </div>
           ))}
         </Tabs>
+        {activeTabId === MAIN_TAB_ID ? (
+          <EvaCollaborationCanvas
+            agent={activeAgentDefinition}
+            onInspectAgent={openAgentDetailCanvas}
+          />
+        ) : (
         <section
           ref={surfaceRef}
           className="eva-canvas-stage"
@@ -1014,77 +1171,6 @@ export default function EvaCanvasSurface({
               </CardBody>
             </Card>
           )}
-
-          <aside
-            className={`eva-mini-assistant eva-mini-assistant--floating${
-              evaWindowCollapsed ? ' eva-mini-assistant--collapsed' : ''
-            }`}
-            aria-label="AI Assistant canvas assistant"
-          >
-            <div className="eva-mini-assistant__header">
-              <span>
-                <Icon name="sparkle" weight="bold" size="sm" />
-                AI Assistant
-              </span>
-              <div className="eva-mini-assistant__controls">
-                <button
-                  type="button"
-                  className="eva-mini-assistant__control"
-                  aria-label={evaWindowCollapsed ? 'Expand AI Assistant' : 'Collapse AI Assistant'}
-                  onClick={() => setEvaWindowCollapsed(prev => !prev)}
-                >
-                  <Icon name={evaWindowCollapsed ? 'maximize' : 'minimize'} weight="bold" size="sm" />
-                </button>
-                <button
-                  type="button"
-                  className="eva-mini-assistant__control"
-                  aria-label="Back to full AI Assistant page"
-                  onClick={onBack}
-                >
-                  <Icon name="pop-out" weight="bold" size="sm" />
-                </button>
-              </div>
-            </div>
-            {!evaWindowCollapsed && (
-              <>
-                <div className="eva-mini-assistant__thread">
-                  {canvasEvaMessages.map((message, index) => (
-                    message.role === 'user'
-                      ? <AiUserMessage key={`${message.role}-${index}`} text={message.text} className="eva-mini-assistant__user-message" />
-                      : (
-                          <AiResponseMessage
-                            key={`${message.role}-${index}`}
-                            className="eva-mini-assistant__response"
-                            assistantName="AI Assistant"
-                            content={message.text}
-                          />
-                        )
-                  ))}
-                </div>
-                {/* One-click prefill of a canned demo prompt. Drops the
-                    Triage example text into the composer and arms the
-                    next send to spawn a matching example canvas tab — so
-                    the user gets to review/edit the prompt before they
-                    hit send, then sees the result materialize as a new
-                    tab on the canvas. */}
-                <div className="eva-mini-assistant__quick-actions">
-                  <Button variant="secondary" size="sm" onClick={handleLoadExample}>
-                    Load example
-                  </Button>
-                </div>
-                <AiFooter
-                  className="eva-mini-assistant__footer"
-                  onSend={handleCanvasEvaSend}
-                  placeholder="Ask AI Assistant about this canvas..."
-                  suggestions={[]}
-                  initialText={prefillText}
-                  prefillKey={prefillKey}
-                  processing={canvasThinking}
-                  disabled={canvasThinking}
-                />
-              </>
-            )}
-          </aside>
 
           <div
             className="eva-canvas-world"
@@ -1165,6 +1251,7 @@ export default function EvaCanvasSurface({
             })()}
           </div>
         </section>
+        )}
       </div>
     </div>
   );

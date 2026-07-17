@@ -1,4 +1,5 @@
 import { createContext, useContext, useState, useCallback, ReactNode } from 'react';
+import { CISCO_LIVE_AGENTS } from '../demo/ciscoLiveDemo';
 
 // Types
 export interface Agent {
@@ -15,6 +16,8 @@ export interface Agent {
   avgResponse: string;
   meta: string;
   knowledgeBases?: string[];
+  actions?: string[];
+  updatedBy?: string;
   createdAt?: string;
   updatedAt?: string;
   agentType?: 'Autonomous agent' | 'Scripted agent';
@@ -42,6 +45,7 @@ export interface AppContextValue {
   goToAgent: (agentId: string) => void;
   closeAgentNav: (agentId: string) => void;
   addAgent: (newAgent: Partial<Agent>) => Agent;
+  updateAgent: (agentId: string, updates: Partial<Agent>) => void;
   toggleAgentPublish: (agentId: string) => void;
   toast: { message: string; type?: 'default' | 'info' | 'success' | 'warning' | 'error' } | null;
   showToast: (message: string, type?: 'default' | 'info' | 'success' | 'warning' | 'error') => void;
@@ -54,50 +58,9 @@ export interface AppContextValue {
 }
 
 // Initial agents data
-const initialAgents: AgentsMap = {
-  'cs': {
-    id: 'cs',
-    name: 'Customer Support Bot',
-    initials: 'CS',
-    description: 'Handles customer inquiries',
-    gradient: 'linear-gradient(135deg, #667eea, #764ba2)',
-    status: 'Published',
-    statusClass: 'badge-success',
-    sessions: '5,234',
-    successRate: '94.2%',
-    messages: '18,921',
-    avgResponse: '1.2s',
-    meta: 'Handles customer inquiries • Last updated 2 hours ago'
-  },
-  'sa': {
-    id: 'sa',
-    name: 'Sales Assistant',
-    initials: 'SA',
-    description: 'Lead qualification',
-    gradient: 'linear-gradient(135deg, #11998e, #38ef7d)',
-    status: 'Published',
-    statusClass: 'badge-success',
-    sessions: '3,891',
-    successRate: '91.8%',
-    messages: '12,456',
-    avgResponse: '1.4s',
-    meta: 'Lead qualification • Last updated 5 hours ago'
-  },
-  'it': {
-    id: 'it',
-    name: 'IT Support Agent',
-    initials: 'IT',
-    description: 'Technical support',
-    gradient: 'linear-gradient(135deg, #4facfe, #00f2fe)',
-    status: 'Ready to Publish',
-    statusClass: 'badge-warning',
-    sessions: '—',
-    successRate: '—',
-    messages: '—',
-    avgResponse: '—',
-    meta: 'Technical support • Last updated 1 hour ago'
-  }
-};
+const initialAgents = Object.fromEntries(
+  CISCO_LIVE_AGENTS.map((definition) => [definition.id, definition]),
+) as AgentsMap;
 
 // Create context
 const AppContext = createContext<AppContextValue | null>(null);
@@ -257,6 +220,25 @@ export function AppProvider({ children }: AppProviderProps) {
     return agentWithId;
   }, []);
 
+  const updateAgent = useCallback((agentId: string, updates: Partial<Agent>) => {
+    setAgents(prev => {
+      const agent = prev[agentId];
+      if (!agent) return prev;
+
+      const updatedAgent: Agent = {
+        ...agent,
+        ...updates,
+        initials: updates.name
+          ? updates.name.split(' ').map(word => word[0]).join('').toUpperCase().slice(0, 2)
+          : agent.initials,
+        updatedAt: new Date().toISOString(),
+      };
+
+      setCurrentAgent(current => current?.id === agentId ? updatedAgent : current);
+      return { ...prev, [agentId]: updatedAgent };
+    });
+  }, []);
+
   // Toggle agent publish status
   const toggleAgentPublish = useCallback((agentId: string) => {
     setAgents(prev => {
@@ -291,6 +273,7 @@ export function AppProvider({ children }: AppProviderProps) {
     goToAgent,
     closeAgentNav,
     addAgent,
+    updateAgent,
     toggleAgentPublish,
     
     // Toast

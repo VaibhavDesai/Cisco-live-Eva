@@ -1,5 +1,6 @@
 import type { IconName } from '../../icons/types';
 import { CAPABILITIES } from '../../pages/agent/actionConfigShared';
+import { CISCO_LIVE_ACTION_CATALOG } from '../../demo/ciscoLiveDemo';
 import { EVA_TEMPLATES } from './evaTemplates';
 import type { EvaAgentDraft, EvaMessage, EvaTemplateId } from './types';
 
@@ -395,7 +396,19 @@ export const EVA_PLANNING_ROWS: Array<{
   },
 ];
 
-export const EVA_ACTION_ROWS = CAPABILITIES.map((capability, index) => ({
+const CISCO_LIVE_ACTION_ROWS = Object.entries(CISCO_LIVE_ACTION_CATALOG).map(([name, description], index) => ({
+  id: 100 + index,
+  name,
+  description,
+  actionType: name.startsWith('Transfer') ? 'Transfer' : 'MCP',
+  providerType: name.includes('ServiceNow') || name.includes('fulfillment') || name.includes('SLA')
+    ? 'ServiceNow'
+    : 'Gofie',
+  createdBy: 'System',
+  lastUpdated: '07/13/26, at 9:30 AM',
+}));
+
+export const EVA_ACTION_ROWS = [...CAPABILITIES.map((capability, index) => ({
   id: capability.id,
   name: capability.name,
   description:
@@ -406,7 +419,7 @@ export const EVA_ACTION_ROWS = CAPABILITIES.map((capability, index) => ({
   providerType: 'System',
   createdBy: index === 0 ? 'System' : 'Claire',
   lastUpdated: '02/28/25, at 1:08 AM',
-}));
+})), ...CISCO_LIVE_ACTION_ROWS];
 
 export const EVA_STANDARD_GUARDRAILS = [
   {
@@ -571,6 +584,7 @@ export const EVA_ADVANCED_GUARDRAIL_GROUPS: Array<{
 ];
 
 export interface EvaSessionState {
+  sourceAgentId?: string;
   landingMode: EvaLandingMode;
   selectedTemplateId: EvaTemplateId | null;
   draft: EvaAgentDraft;
@@ -583,6 +597,11 @@ export interface EvaSessionState {
   freeChatActive?: boolean;
   conversationalOnboardingStep?: EvaConversationalOnboardingStep;
   evaStep: EvaConversationStep;
+  /* The configuration step currently aligned with the scroll viewport.
+     This is separate from `evaStep`, which controls how much of the guided
+     setup has been revealed. Keeping both lets canvas/configuration switches
+     restore the exact section the Progress rail was showing. */
+  scrollFocusedStep?: EvaConversationStep;
   agentName: string;
   agentDescription: string;
   avatarUrl: string;
@@ -591,6 +610,8 @@ export interface EvaSessionState {
   welcomeMessage: string;
   instructionPrompt: string;
   selectedKnowledgeBases: string[];
+  selectedPreferenceMemories?: string[];
+  enabledOrchestrationScenarioIds?: string[];
   selectedActions: string[];
   optimizeAccepted: boolean;
   preOptimizeText: string;

@@ -1,7 +1,6 @@
 import { useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useApp, type Agent } from '../../contexts/AppContext';
-import { useDesignVariation } from '../../contexts/DesignVariationContext';
 import Button from '../../components/shared/Button';
 import {
   AiFooter,
@@ -14,25 +13,14 @@ import {
   useMenu,
 } from '../../components/shared';
 import { Icon } from '../../icons';
-import {
-  buildInstructionPrompt,
-  buildWelcomeMessage,
-  EVA_ACTION_ROWS,
-  EVA_ADVANCED_GUARDRAIL_GROUPS,
-  EVA_AUTO_START_VOICE_PREVIEW_KEY,
-  EVA_SESSION_STORAGE_KEY,
-  EVA_STANDARD_GUARDRAILS,
-  STARTER_PROMPTS,
-  type EvaSessionState,
-} from './evaFormConfig';
-import { EVA_TEMPLATES } from './evaTemplates';
-import type { EvaAgentDraft, EvaKnowledgeRecommendation } from './types';
+import { STARTER_PROMPTS } from './evaFormConfig';
+import { CISCO_LIVE_AGENTS } from '../../demo/ciscoLiveDemo';
 
 type AgentTileType = 'scripted' | 'autonomous' | 'receptionist';
 
 const TYPE_OPTIONS = [
   { value: 'All types', label: 'All types' },
-  { value: 'Specialist', label: 'Specialist' },
+  { value: 'Autonomous', label: 'Autonomous' },
   { value: 'CX Concierge', label: 'CX Concierge' },
   { value: 'Receptionist', label: 'Receptionist' },
 ];
@@ -49,199 +37,35 @@ type AgentTile = {
   editable?: boolean;
 };
 
-const REFERENCE_AGENT_TILES: AgentTile[] = [
-  {
-    id: 'billing-support',
-    name: 'Webex Bank Support',
-    type: 'scripted',
-    updatedOn: '17 Apr 26',
-    updatedBy: 'Austen Jones',
-    description: 'Handles billing and account inquiries.',
-    editable: true,
-  },
-  {
-    id: 'reenergize-healthcare-concierge',
-    name: 'Reenergize Healthcare Concierge',
-    type: 'scripted',
-    updatedOn: '17 Apr 26',
-    updatedBy: 'Austen Jones',
-    description: 'Guides patients through care navigation, appointment support, and safe clinical handoffs.',
-    editable: true,
-  },
-  {
-    id: 'front-door',
-    name: 'Front door',
-    type: 'scripted',
-    updatedOn: '17 Apr 26',
-    updatedBy: 'Clarissa Smith',
-    description: 'Routes finance customers to the right specialist.',
-    editable: true,
-  },
-  {
-    id: 'webex-finance-concierge',
-    name: 'Webex Finance Concierge',
-    type: 'scripted',
-    updatedOn: '22 May 26',
-    updatedBy: 'You',
-    description: 'Coordinates high-value banking requests, account servicing, and compliant handoffs.',
-    editable: true,
-  },
-  {
-    id: 'payment-dispute',
-    name: 'Payment dispute specialist',
-    type: 'receptionist',
-    updatedOn: '15 Apr 26',
-    updatedBy: 'Darren Owens',
-    description: 'Triages charge disputes and duplicate payment requests.',
-  },
-  {
-    id: 'claims-routing',
-    name: 'Claims intake agent',
-    type: 'autonomous',
-    updatedOn: '12 Apr 26',
-    updatedBy: 'Isabelle Brennan',
-    description: 'Collects initial claim details and determines next steps.',
-  },
-  {
-    id: 'mortgage-servicing',
-    name: 'Mortgage servicing agent',
-    type: 'autonomous',
-    updatedOn: '11 Apr 26',
-    updatedBy: 'Kevin Woo',
-    description: 'Supports mortgage servicing requests and account changes.',
-  },
-  {
-    id: 'advisor-scheduling',
-    name: 'Advisor scheduling assistant',
-    type: 'autonomous',
-    updatedOn: '10 Apr 26',
-    updatedBy: 'Austen Jones',
-    description: 'Schedules advisor callbacks and branch appointments.',
-  },
-  {
-    id: 'finance-faq',
-    name: 'Finance FAQ agent',
-    type: 'receptionist',
-    updatedOn: '8 Apr 26',
-    updatedBy: 'Clarissa Smith',
-    description: 'Answers frequently asked finance questions.',
-  },
-  {
-    id: 'fraud-escalation',
-    name: 'Fraud escalation handoff',
-    type: 'autonomous',
-    updatedOn: '5 Apr 26',
-    updatedBy: 'Darren Owens',
-    description: 'Escalates suspected fraud cases to the right team.',
-  },
-];
+const REFERENCE_AGENT_TILES: AgentTile[] = CISCO_LIVE_AGENTS.map((agent) => ({
+  id: agent.id,
+  name: agent.name,
+  type: agent.tileType,
+  updatedOn: agent.updatedOn,
+  updatedBy: agent.updatedBy,
+  description: agent.description,
+  editable: true,
+}));
 
 function getAgentTypeLabel(type: AgentTileType) {
-  if (type === 'autonomous') return 'Specialist';
+  if (type === 'autonomous') return 'Autonomous';
   if (type === 'receptionist') return 'Receptionist';
   return 'CX Concierge';
 }
 
-const RETAIL_AGENT_PREVIEW_DETAILS = {
-  description: 'Answers store calls for Acme Electronics in San Jose, checks product availability, handles FAQs, and escalates to Matt when needed.',
-  welcomeMessage: 'Hi, thanks for calling Acme Electronics in San Jose. I can help with store hours, directions, product availability, common questions, or connect you with Matt when needed.',
-  knowledgeBases: [
-    {
-      name: 'Acme Electronics store profile',
-      description: 'Store hours, address, parking, warranty policy, escalation rules, and local FAQs.',
-      sources: 26,
-      usedBy: 1,
-      lastUpdatedAt: new Date().toISOString(),
-    },
-    {
-      name: 'Inventory Manager integration',
-      description: 'Live product availability and hold-for-pickup status for the San Jose location.',
-      sources: 84,
-      usedBy: 1,
-      lastUpdatedAt: new Date().toISOString(),
-    },
-  ] satisfies EvaKnowledgeRecommendation[],
-  actions: ['Check product availability', 'Route manager escalation', 'Create follow-up task'],
-};
-
-function buildPreviewDraft(agent: Agent): EvaAgentDraft {
-  const baseDraft = EVA_TEMPLATES.find(template => template.id === 'customer-support')?.draft ?? EVA_TEMPLATES[0].draft;
-  const isRetailAgent = agent.id === 'webex-elec';
-
-  return {
-    ...baseDraft,
-    name: agent.name,
-    description: isRetailAgent ? RETAIL_AGENT_PREVIEW_DETAILS.description : agent.description,
-    goals: isRetailAgent
-      ? [
-          'Answer incoming calls with a warm receptionist experience',
-          'Confirm store hours, directions, FAQs, and current inventory status',
-          'Escalate urgent or manager-specific requests to Matt',
-        ]
-      : baseDraft.goals,
-    knowledgeBases: isRetailAgent
-      ? RETAIL_AGENT_PREVIEW_DETAILS.knowledgeBases
-      : baseDraft.knowledgeBases,
-    actions: isRetailAgent
-      ? RETAIL_AGENT_PREVIEW_DETAILS.actions
-      : baseDraft.actions,
-    language: 'English (US)',
-    voiceName: 'Ava',
-  };
+function getAgentTypeIcon(type: AgentTileType) {
+  if (type === 'autonomous') return 'automation' as const;
+  if (type === 'receptionist') return 'desk-phone' as const;
+  return 'headset' as const;
 }
 
-function buildPreviewSession(agent: Agent): EvaSessionState {
-  const draft = buildPreviewDraft(agent);
-  const welcomeMessage = agent.id === 'webex-elec'
-    ? RETAIL_AGENT_PREVIEW_DETAILS.welcomeMessage
-    : buildWelcomeMessage(draft);
-
-  return {
-    landingMode: 'build',
-    selectedTemplateId: 'customer-support',
-    draft,
-    messages: [
-      {
-        role: 'assistant',
-        text: `I opened the live preview for ${agent.name}. The voice preview is starting now so you can hear how the agent greets callers.`,
-        originStep: 'preview',
-      },
-    ],
-    guidanceVisible: true,
-    orchestrationSuggested: false,
-    freeChatActive: false,
-    conversationalOnboardingStep: 'idle',
-    evaStep: 'preview',
-    agentName: draft.name,
-    agentDescription: draft.description,
-    avatarUrl: 'https://us.webexbotbuilder.com/static/assets/images/agent-avatar-eva.png',
-    timezone: agent.id === 'webex-elec' ? 'America/Los_Angeles' : 'Europe/London',
-    aiEngine: 'Webex AI Pro 1.0',
-    welcomeMessage,
-    instructionPrompt: buildInstructionPrompt(draft),
-    selectedKnowledgeBases: draft.knowledgeBases.map(kb => kb.name),
-    selectedActions: draft.actions.filter(action => EVA_ACTION_ROWS.some(row => row.name === action)),
-    optimizeAccepted: true,
-    preOptimizeText: '',
-    optimizeSummary: {
-      changes: ['Preview session loaded from the published agent card.'],
-      reasoning: ['This reuses the same generated preview panel and voice runtime used in AI Assistant Studio.'],
-    },
-    securityTier: 'standard',
-    channelType: 'voice',
-    digitalChannel: 'chat',
-    digitalChannelAddress: 'acme-electronics-chat',
-    channelPhoneNumber: '+1 415 555 0198',
-    standardGuardrails: EVA_STANDARD_GUARDRAILS,
-    advancedGuardrails: EVA_ADVANCED_GUARDRAIL_GROUPS,
-    customRules: [],
-  };
+function getAgentStatusLabel(status: string) {
+  return status === 'Published' ? 'Published' : 'Draft';
 }
 
 export default function EvaAgentsTable() {
   const navigate = useNavigate();
   const { agents, selectAgent, setIsCreateModalOpen, showToast } = useApp();
-  const { setVariation } = useDesignVariation();
   const [searchQuery, setSearchQuery] = useState('');
   const [typeFilter, setTypeFilter] = useState('All types');
   const [creatorFilter, setCreatorFilter] = useState('All creators');
@@ -274,39 +98,22 @@ export default function EvaAgentsTable() {
     agentType: tile.type === 'scripted' ? 'Scripted agent' : 'Autonomous agent',
   });
 
-  const handleAgentClick = (tile: AgentTile) => {
-    if (agents[tile.id]) {
-      selectAgent(tile.id);
-      navigate(`/agents/${tile.id}`);
-      return;
-    }
+  const openAgentSummary = (tile: AgentTile) => {
+    const agent = agents[tile.id] ?? tileToAgent(tile);
+    selectAgent(agent.id);
+    navigate(`/agents/${agent.id}/studio`);
+  };
 
-    handlePreviewClick(tile);
+  const handleAgentClick = (tile: AgentTile) => {
+    openAgentSummary(tile);
   };
 
   const handleConfigureClick = (tile: AgentTile) => {
-    if (agents[tile.id]) {
-      selectAgent(tile.id);
-      navigate(`/agents/${tile.id}/studio`);
-      return;
-    }
-
-    handlePreviewClick(tile);
+    openAgentSummary(tile);
   };
 
   const handlePreviewClick = (tile: AgentTile) => {
-    const agent = agents[tile.id] ?? tileToAgent(tile);
-    selectAgent(agent.id);
-
-    try {
-      window.sessionStorage.setItem(EVA_SESSION_STORAGE_KEY, JSON.stringify(buildPreviewSession(agent)));
-      window.sessionStorage.setItem(EVA_AUTO_START_VOICE_PREVIEW_KEY, '1');
-    } catch {
-      /* If storage is blocked, still switch the user into Eva's preview surface. */
-    }
-
-    setVariation('landing');
-    navigate('/agents');
+    openAgentSummary(tile);
   };
 
   /* Both landing entry points (free-text composer + template card click)
@@ -448,7 +255,7 @@ export default function EvaAgentsTable() {
   }
 
   return (
-    <div className="primary-content">
+    <div className="primary-content ai-agents-page">
       <div className="page-header ai-agents-header">
         <div>
           <h1 className="page-title">AI Agents</h1>
@@ -492,6 +299,9 @@ export default function EvaAgentsTable() {
           <div className="ai-agents-grid">
             {filteredAgents.map(tile => {
               const typeLabel = getAgentTypeLabel(tile.type);
+              const typeIcon = getAgentTypeIcon(tile.type);
+              const agentRecord = agents[tile.id] ?? tileToAgent(tile);
+              const statusLabel = getAgentStatusLabel(agentRecord.status);
               return (
               <Card key={tile.id} className="ai-agents-agent-card ai-agents-agent-card--clickable">
                 <button
@@ -530,22 +340,21 @@ export default function EvaAgentsTable() {
                         >
                           {tile.name}
                         </button>
-                        <AgentCardActions agent={tileToAgent(tile)} onNotify={showToast} />
+                        <AgentCardActions agent={agentRecord} onNotify={showToast} />
                       </div>
-                      <Badge
-                        variant={
-                          tile.type === 'autonomous'
-                            ? 'success'
-                            : tile.type === 'receptionist'
-                              ? 'warning'
-                              : 'info'
-                        }
-                      >
-                        {typeLabel}
-                      </Badge>
+                      <div className="ai-agents-agent-metadata" aria-label={`${statusLabel}, ${typeLabel}`}>
+                        <Badge variant={statusLabel === 'Published' ? 'success' : 'warning'}>
+                          {statusLabel}
+                        </Badge>
+                        <span className="ai-agents-agent-type">
+                          <Icon name={typeIcon} weight="regular" size={14} />
+                          {typeLabel}
+                        </span>
+                      </div>
                     </div>
                   </div>
                   <div className="ai-agents-agent-content">
+                    <p className="ai-agents-agent-description">{tile.description}</p>
                     <p className="ai-agents-agent-meta">
                       Updated on {tile.updatedOn}
                       <br />
@@ -562,7 +371,7 @@ export default function EvaAgentsTable() {
                         handlePreviewClick(tile);
                       }}
                     >
-                      Preview
+                      View
                     </Button>
                   </div>
                 </div>
