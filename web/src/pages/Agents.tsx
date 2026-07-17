@@ -7,11 +7,9 @@ import EvaFormBuilder from '../features/eva/EvaFormBuilder';
 export default function Agents() {
   const { variation } = useDesignVariation();
 
-  /* Pick the underlying view by variation, then layer the canvas overlay on
-     top of it. The overlay is route-driven (`/agents/eva-canvas` opens,
-     `/agents` closes) and slides in from the right, so the variation view
-     stays mounted underneath and the slide animation has a stable
-     background to reveal/cover. */
+  /* The chat-based experience owns its orchestration canvas so switching
+     routes replaces only the working zone and keeps the conversation rail
+     mounted. Legacy table/form variations still use the standalone overlay. */
   let variationView;
   if (variation === 'dashboard') {
     variationView = <EvaAgentsTable />;
@@ -24,7 +22,7 @@ export default function Agents() {
   return (
     <>
       {variationView}
-      <EvaCanvasOverlay />
+      {(variation === 'dashboard' || variation === 'form-bases') && <EvaCanvasOverlay />}
     </>
   );
 }

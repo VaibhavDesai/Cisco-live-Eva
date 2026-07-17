@@ -41,6 +41,11 @@ import {
   buildSeededVersionCache,
   resolveVersionMetaFromCache,
 } from './actionConfigShared';
+import {
+  CISCO_LIVE_ACTION_CATALOG,
+  CISCO_LIVE_AGENTS,
+  type CiscoLiveAgentDefinition,
+} from '../../demo/ciscoLiveDemo';
 
 function ClampedDesc({ text, expanded, onToggle }: { text: string; expanded: boolean; onToggle: () => void }) {
   const ref = useRef<HTMLParagraphElement>(null);
@@ -186,6 +191,28 @@ interface CustomGuardrailItem {
   versions: PolicyVersion[];
 }
 
+const buildCiscoLiveInstructions = (agent: CiscoLiveAgentDefinition) => `#### Role and identity
+You are ${agent.name}, a ${agent.agentType.toLowerCase()} for Gofie.
+
+#### Purpose
+${agent.description}
+
+#### Primary goals
+${agent.goals.map(goal => `- ${goal}`).join('\n')}
+
+#### Guardrails
+${agent.securityRules.map(rule => `- ${rule}`).join('\n')}
+
+#### Output rules
+Use concise, professional language. State the action taken, the responsible owner, and the next step. Preserve approved context during every handoff.`;
+
+const buildCiscoLiveCustomGuardrails = (agent: CiscoLiveAgentDefinition): CustomGuardrailItem[] =>
+  agent.customGuardrails.map(guardrail => ({
+    ...guardrail,
+    enabled: true,
+    versions: [],
+  }));
+
 const DEFAULT_ADVANCED_GROUPS: AdvancedGuardrailGroup[] = [
   {
     id: 'security', label: 'Security guardrails', icon: 'shield',
@@ -231,6 +258,8 @@ export default function ActionConfigureV2() {
   const { agentId } = useParams();
   const { agents, currentAgent, selectAgent, showToast, aiEngines, addAiEngine } = useApp();
   const [searchParams] = useSearchParams();
+  const routedAgent = agentId ? agents[agentId] : undefined;
+  const ciscoLiveAgent = CISCO_LIVE_AGENTS.find(agent => agent.id === agentId);
   // Allow deep-linking to a specific section via ?section=Security (etc.).
   // Only the first render reads the param; user navigation takes over after that.
   const initialSection = (() => {
@@ -247,16 +276,16 @@ export default function ActionConfigureV2() {
 
   // Profile form state
   const [profileForm, setProfileForm] = useState({
-    agentName: 'Acme Bank Credit Card Assistant',
-    systemId: 'AcmeBankCreditCardAssistant-uah13as',
+    agentName: routedAgent?.name ?? 'AI agent',
+    systemId: ciscoLiveAgent ? `${ciscoLiveAgent.name.replace(/[^a-z0-9]+/gi, '')}-gsx26` : `${agentId ?? 'agent'}-system`,
     avatarUrl: 'https://us.webexbotbuilder.com/static/assets/i...',
-    timezone: 'Europe/London',
+    timezone: 'America/Los_Angeles',
     language: 'en-US',
     voiceName: 'ava',
     aiEngine: 'Webex AI Pro 1.0',
-    welcomeMessage: '',
-    agentGoal: '',
-    instructions: '',
+    welcomeMessage: ciscoLiveAgent?.welcomeMessage ?? '',
+    agentGoal: routedAgent?.description ?? '',
+    instructions: ciscoLiveAgent ? buildCiscoLiveInstructions(ciscoLiveAgent) : '',
   });
 
   const updateProfileField = (field: string, value: string) => {
@@ -283,9 +312,34 @@ export default function ActionConfigureV2() {
   const [securityTier, setSecurityTier] = useState<'standard' | 'advanced'>(initialTier);
   const [showObsBanner, setShowObsBanner] = useState(true);
   const isPaidUser = true;
-  const [standardGuardrails, setStandardGuardrails] = useState<StandardGuardrail[]>(DEFAULT_STANDARD_GUARDRAILS);
-  const [advancedDefaultGroups, setAdvancedDefaultGroups] = useState<AdvancedGuardrailGroup[]>(DEFAULT_ADVANCED_GROUPS);
-  const [advancedCustomItems, setAdvancedCustomItems] = useState<CustomGuardrailItem[]>([]);
+  const [standardGuardrails, setStandardGuardrails] = useState<StandardGuardrail[]>(() =>
+    DEFAULT_STANDARD_GUARDRAILS.map(guardrail => ({
+      ...guardrail,
+      enabled: ciscoLiveAgent ? ciscoLiveAgent.prebuiltGuardrailIds.includes(guardrail.id) : guardrail.enabled,
+    })),
+  );
+  const [advancedDefaultGroups, setAdvancedDefaultGroups] = useState<AdvancedGuardrailGroup[]>(() =>
+    DEFAULT_ADVANCED_GROUPS.map(group => ({
+      ...group,
+      items: group.items.map(guardrail => ({
+        ...guardrail,
+        enabled: ciscoLiveAgent ? ciscoLiveAgent.prebuiltGuardrailIds.includes(guardrail.id) : guardrail.enabled,
+      })),
+    })),
+  );
+  const [advancedCustomItems, setAdvancedCustomItems] = useState<CustomGuardrailItem[]>(
+    () => ciscoLiveAgent
+      ? buildCiscoLiveCustomGuardrails(ciscoLiveAgent).map((guardrail) => ({
+          ...guardrail,
+          overview: {
+            blocked: [...guardrail.overview.blocked],
+            allowed: [...guardrail.overview.allowed],
+            edgeCases: [...guardrail.overview.edgeCases],
+          },
+          versions: [...guardrail.versions],
+        }))
+      : [],
+  );
   const [confirmDisableJailbreak, setConfirmDisableJailbreak] = useState(false);
   const [pendingAdvancedEnable, setPendingAdvancedEnable] = useState<{ groupId: string; itemId: string } | null>(null);
   const [hasAcknowledgedAdvancedPricing, setHasAcknowledgedAdvancedPricing] = useState(false);
@@ -322,17 +376,27 @@ export default function ActionConfigureV2() {
     }
   }, [profileForm.instructions, showToast]);
 
-  const [capabilities, setCapabilities] = useState<CapabilityRecord[]>(CAPABILITIES);
+  const ciscoLiveCapabilities: CapabilityRecord[] = ciscoLiveAgent
+    ? ciscoLiveAgent.actions.map((name, index) => ({
+        id: 100 + index,
+        name,
+        type: name.startsWith('Transfer') ? 'Handoff' : 'MCP',
+        enabled: true,
+        description: CISCO_LIVE_ACTION_CATALOG[name],
+      }))
+    : [];
+  const seededCapabilities = ciscoLiveAgent ? ciscoLiveCapabilities : CAPABILITIES;
+  const [capabilities, setCapabilities] = useState<CapabilityRecord[]>(seededCapabilities);
   const [rows, setRows] = useState<ActionRow[]>(
-    CAPABILITIES.map((cap, idx) => ({
+    seededCapabilities.map((cap, idx) => ({
       id: cap.id,
       name: cap.name,
       description: cap.description || 'Escalate the conversation to a human agent based on general rules and conditions',
-      enabled: idx < 2,
-      actionType: idx === 0 ? 'Transfer' : 'MCP',
-      providerType: 'System',
-      createdBy: idx === 0 ? 'System' : 'Claire',
-      lastUpdated: '02/28/25, at 1:08 AM',
+      enabled: ciscoLiveAgent ? true : idx < 2,
+      actionType: cap.type === 'Handoff' ? 'Transfer' : cap.type,
+      providerType: ciscoLiveAgent ? (/(ServiceNow|fulfillment|SLA)/i.test(cap.name) ? 'ServiceNow' : 'Gofie') : 'System',
+      createdBy: ciscoLiveAgent ? ciscoLiveAgent.updatedBy : idx === 0 ? 'System' : 'Claire',
+      lastUpdated: ciscoLiveAgent ? '07/13/26, at 9:30 AM' : '02/28/25, at 1:08 AM',
     })),
   );
 
@@ -603,16 +667,13 @@ export default function ActionConfigureV2() {
     }).length;
   }, [capabilities, resolveVersionMeta]);
 
-  if (!currentAgent || currentAgent.id !== agentId) {
-    const nextAgent = agents[agentId];
-    if (nextAgent) {
-      selectAgent(agentId);
-    } else {
-      return <Navigate to="/agents" replace />;
+  useEffect(() => {
+    if (routedAgent && currentAgent?.id !== routedAgent.id) {
+      selectAgent(routedAgent.id);
     }
-  }
+  }, [routedAgent, currentAgent?.id, selectAgent]);
 
-  const agent = currentAgent || agents[agentId];
+  const agent = routedAgent;
   if (!agent) return <Navigate to="/agents" replace />;
 
   const toggleAction = (id: number) => {
@@ -1022,8 +1083,8 @@ export default function ActionConfigureV2() {
               {showObsBanner && (
                 <Banner
                   type="info"
-                  title="Observability & Logging"
-                  subtitle={<>All triggered rails are logged in the Sessions view. If a rail is set to &ldquo;Monitor&rdquo;, the interaction continues but the violation is logged for admin review. If set to &ldquo;Block&rdquo;, the individual prompt is rejected but the conversation remains active. This allows you to fine-tune confidence settings based on real-world data. <a href="/docs/guardrails" target="_blank" rel="noopener noreferrer" className="banner-link">Learn more</a></>}
+                  title="Observability and logging"
+                  subtitle={<>Triggered guardrails appear in Sessions with the policy, detected condition, and action taken. Monitor logs the event and continues the interaction. Block stops only the violating prompt, so the conversation can continue or transfer safely. <a href={`/agents/${agent.id}/sessions`} className="banner-link">Open sessions</a></>}
                   dismissable
                   onDismiss={() => setShowObsBanner(false)}
                 />
@@ -1333,18 +1394,57 @@ export default function ActionConfigureV2() {
           )}
 
           {activeSection === 'Knowledge' && (
-            <EmptyState
-              global
-              illustration="message-activity"
-              title="No knowledge bases"
-              description="Connect knowledge bases to give your agent access to relevant information and documents."
-              actions={
-                <Button variant="secondary">
-                  <Icon name="plus" weight="bold" size={20} />
-                  Add knowledge
-                </Button>
-              }
-            />
+            ciscoLiveAgent ? (
+              <section className="action-config-v2-knowledge" aria-labelledby="connected-knowledge-title">
+                <div className="action-config-v2-knowledge__header">
+                  <div>
+                    <h2 id="connected-knowledge-title">Connected knowledge</h2>
+                    <p>Approved sources that ground {ciscoLiveAgent.name} in the Cisco Live storyline.</p>
+                  </div>
+                  <Badge variant="success">{ciscoLiveAgent.knowledgeSources.length} connected</Badge>
+                </div>
+                <div className="kb-grid">
+                  {ciscoLiveAgent.knowledgeSources.map(source => (
+                    <article key={source.name} className="kb-card">
+                      <div className="kb-card-header">
+                        <div className="kb-icon"><Icon name="files" weight="bold" size={22} /></div>
+                        <div className="kb-info">
+                          <h3 className="kb-name">{source.name}</h3>
+                          <p className="kb-description">{source.description}</p>
+                        </div>
+                      </div>
+                      <div className="kb-stats">
+                        <div className="kb-stat">
+                          <span className="kb-stat-value">{source.sources}</span>
+                          <span className="kb-stat-label">Sources</span>
+                        </div>
+                        <div className="kb-stat">
+                          <span className="kb-stat-value">1</span>
+                          <span className="kb-stat-label">Agent</span>
+                        </div>
+                      </div>
+                      <div className="kb-footer">
+                        <span className="kb-updated">Updated for GSX 2026</span>
+                        <Badge variant="success">Connected</Badge>
+                      </div>
+                    </article>
+                  ))}
+                </div>
+              </section>
+            ) : (
+              <EmptyState
+                global
+                illustration="message-activity"
+                title="No knowledge bases"
+                description="Connect knowledge bases to give your agent access to relevant information and documents."
+                actions={
+                  <Button variant="secondary">
+                    <Icon name="plus" weight="bold" size={20} />
+                    Add knowledge
+                  </Button>
+                }
+              />
+            )
           )}
 
           {activeSection === 'Language' && (

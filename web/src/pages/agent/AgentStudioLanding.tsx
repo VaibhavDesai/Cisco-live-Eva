@@ -1,7 +1,9 @@
 import { useEffect, useRef, useState } from 'react';
 import { Navigate, useNavigate, useParams } from 'react-router-dom';
 import { AgentHeader } from '../../components/agents';
-import { Badge, Button, Card, CardBody, CardHeader, Divider, Modal, ModalBody, ModalHeader, TextLink } from '../../components/shared';
+import { ThemeModeProvider } from '../../app/ThemeContext';
+import { Badge, Banner, Button, Card, CardBody, CardHeader, Divider, Modal, ModalBody, ModalHeader, TextLink, Tooltip } from '../../components/shared';
+import ConfigurationCategoryIcon from '../../components/shared/ConfigurationCategoryIcon';
 import { useApp, type Agent } from '../../contexts/AppContext';
 import { useDesignVariation } from '../../contexts/DesignVariationContext';
 import { getElevenLabsConversationSignedUrl, getVoicePreviewErrorMessage } from '../../api/ciscoAi';
@@ -14,11 +16,36 @@ import {
   EVA_STANDARD_GUARDRAILS,
   readEvaSessionState,
   type EvaConversationStep,
+  type EvaSessionState,
 } from '../../features/eva/evaFormConfig';
 import { EVA_TEMPLATES } from '../../features/eva/evaTemplates';
+import {
+  buildCiscoLiveEvaSession,
+  getCiscoLiveAgentDefinition,
+} from '../../features/eva/ciscoLiveEvaSession';
+import { buildClusKpiDashboardAgentFilterSearch } from '../../features/clus-kpi-dashboard/agentHashNavigation';
+import { KPICard } from '../../features/clus-kpi-dashboard/components/KPICard';
+import { KPIChart } from '../../features/clus-kpi-dashboard/components/KPIChart';
+import {
+  kpiDataWithSparklinesForRange,
+  type KPIData,
+} from '../../features/clus-kpi-dashboard/components/kpiData';
+import { kpiExpandedChartAxisProps } from '../../features/clus-kpi-dashboard/kpiChartAxis';
 import { Icon } from '../../icons';
+import {
+  getCiscoLiveObservability,
+} from '../../demo/ciscoLiveDemo';
 
 type PreviewCallStatus = 'idle' | 'connecting' | 'listening' | 'speaking' | 'paused' | 'ended' | 'error';
+
+const OBSERVABILITY_KPI_CATALOG = kpiDataWithSparklinesForRange('24h');
+
+const GUARDRAIL_TRIGGER_CHART_LABELS = [
+  '1 PM', '2 PM', '3 PM', '4 PM', '5 PM', '6 PM', '7 PM', '8 PM', '9 PM', '10 PM', '11 PM',
+  '12 AM', '1 AM', '2 AM', '3 AM', '4 AM', '5 AM', '6 AM', '7 AM', '8 AM', '9:42 AM', '10 AM', '11 AM', '12 PM',
+];
+
+const GUARDRAIL_TRIGGER_CHART_DATA = GUARDRAIL_TRIGGER_CHART_LABELS.map(label => label === '9:42 AM' ? 5 : 0);
 
 type PreviewTranscriptEntry = {
   id: string;
@@ -100,21 +127,82 @@ const studioSteps: StudioStep[] = [
   },
 ];
 
-function getConfiguredSummary(agent: Agent) {
-  const knowledgeBases = agent.knowledgeBases?.length
-    ? agent.knowledgeBases
-    : ['Starter knowledge sources'];
-  const isRetailReceptionist = agent.name.toLowerCase().includes('acme electronics');
+const CONNECTED_CHIP_LABELS: Record<string, string> = {
+  'Gofie locations and availability': 'Locations & availability',
+  'VIP customer profiles': 'VIP profiles',
+  'Event booking policy': 'Booking policy',
+  'Communication preferences': 'Contact preferences',
+  'Secure payment assistance': 'Secure payment',
+  'VIP event handoff': 'Event handoff',
+  'Check bay availability': 'Check availability',
+  'Send secure payment link': 'Send payment link',
+  'Transfer to VIP event concierge': 'Transfer to concierge',
+  'Large reservation approval': 'Large booking approval',
+  'Payment data protection': 'Payment protection',
+  'Credit card redaction': 'Card redaction',
+};
+
+function getConnectedChipLabel(label: string) {
+  return CONNECTED_CHIP_LABELS[label] ?? label;
+}
+
+function getConfiguredSummary(agent: Agent, evaSession?: EvaSessionState | null) {
+  const ciscoLiveAgent = getCiscoLiveAgentDefinition(agent.id, agent.name);
+  const matchesSession = Boolean(
+    evaSession && (evaSession.sourceAgentId === agent.id || evaSession.agentName === agent.name),
+  );
+  const knowledgeBases = matchesSession
+    ? evaSession?.selectedKnowledgeBases ?? []
+    : ciscoLiveAgent?.knowledgeSources.map(source => source.name)
+      ?? (agent.knowledgeBases?.length ? agent.knowledgeBases : ['Starter knowledge sources']);
+  const actions = matchesSession
+    ? evaSession?.selectedActions ?? []
+    : ciscoLiveAgent?.actions ?? (agent.actions?.length ? agent.actions : ['Starter action set']);
+  const memories = matchesSession
+    ? evaSession?.selectedPreferenceMemories ?? []
+    : ciscoLiveAgent?.memorySources.map(memory => memory.name) ?? [];
+  const enabledScenarioIds = matchesSession
+    ? new Set(evaSession?.enabledOrchestrationScenarioIds ?? [])
+    : null;
+  const orchestrationScenarios = ciscoLiveAgent?.orchestrationScenarios
+    .filter(scenario => enabledScenarioIds === null || enabledScenarioIds.has(scenario.id))
+    .map(scenario => scenario.name) ?? [];
+  const guardrailCatalog = [
+    ...EVA_STANDARD_GUARDRAILS,
+    ...EVA_ADVANCED_GUARDRAIL_GROUPS.flatMap(group => group.items),
+  ];
+  const prebuiltGuardrails = matchesSession
+    ? [
+        ...(evaSession?.standardGuardrails ?? []),
+        ...(evaSession?.advancedGuardrailGroups ?? []).flatMap(group => group.items),
+      ].filter(guardrail => guardrail.enabled).map(guardrail => guardrail.name)
+    : ciscoLiveAgent?.prebuiltGuardrailIds
+      .map(id => guardrailCatalog.find(guardrail => guardrail.id === id)?.name)
+      .filter((name): name is string => Boolean(name)) ?? [];
+  const customGuardrails = matchesSession
+    ? (evaSession?.customRules ?? []).map(rule => (
+        ciscoLiveAgent?.customGuardrails.find(guardrail => guardrail.description === rule)?.name ?? rule
+      ))
+    : ciscoLiveAgent?.customGuardrails.map(guardrail => guardrail.name) ?? [];
+  const guardrails = Array.from(new Set([...customGuardrails, ...prebuiltGuardrails]));
+  const channel = ciscoLiveAgent?.selectedChannels.includes('voice')
+    ? 'Voice channel connected'
+    : ciscoLiveAgent?.selectedChannels.includes('digital')
+      ? 'Digital workflow connected'
+      : 'Primary channel ready to review';
 
   return {
-    channel: isRetailReceptionist ? 'Voice channel connected' : 'Primary channel ready to review',
-    endpoint: '+1 415 555 0198',
+    channel,
+    endpoint: ciscoLiveAgent?.selectedChannels.includes('digital')
+      ? ciscoLiveAgent.digitalChannelAddress ?? 'Digital channel connected'
+      : '+1 415 555 0198',
     aiEngine: 'Webex AI Pro 1.0',
-    handoff: isRetailReceptionist ? 'Manager escalation to Matt' : 'Escalation behavior ready to review',
-    actions: isRetailReceptionist
-      ? ['Inventory lookup', 'Create support case']
-      : ['Starter action set'],
+    handoff: ciscoLiveAgent?.customGuardrails[0]?.name ?? 'Escalation behavior ready to review',
+    actions,
     knowledgeBases,
+    memories,
+    orchestrationScenarios,
+    guardrails,
   };
 }
 
@@ -185,6 +273,8 @@ export default function AgentStudioLanding() {
   const [previewSessionId, setPreviewSessionId] = useState('');
   const [previewTranscript, setPreviewTranscript] = useState<PreviewTranscriptEntry[]>([]);
   const [previewPaused, setPreviewPaused] = useState(false);
+  const [activeObservabilityKpiId, setActiveObservabilityKpiId] = useState<string | null>(null);
+  const [guardrailsTriggerPinned, setGuardrailsTriggerPinned] = useState(false);
   const previewCallStatusRef = useRef<PreviewCallStatus>('idle');
   const previewWsRef = useRef<WebSocket | null>(null);
   const previewAudioContextRef = useRef<AudioContext | null>(null);
@@ -208,14 +298,44 @@ export default function AgentStudioLanding() {
     return <Navigate to="/agents" replace />;
   }
 
-  const summary = getConfiguredSummary(agent);
+  const ciscoLiveAgent = getCiscoLiveAgentDefinition(agent.id, agent.name);
+  const storedEvaSession = readEvaSessionState();
+  const summary = getConfiguredSummary(agent, storedEvaSession);
+  const observability = getCiscoLiveObservability(agent.id);
+  const observabilityKpis = observability.metrics.flatMap((metric): KPIData[] => {
+    const dashboardMetric = OBSERVABILITY_KPI_CATALOG.find(item => item.id === metric.metricId);
+    if (!dashboardMetric) return [];
+
+    return [{
+      ...dashboardMetric,
+      value: metric.value,
+      unit: metric.unit ?? dashboardMetric.unit,
+      change: metric.change,
+      isPositive: metric.isPositive,
+      thresholdStatus: metric.thresholdStatus,
+      sparklineData: metric.metricId === 'sec-guardrails-trigger-flag'
+        ? GUARDRAIL_TRIGGER_CHART_DATA
+        : dashboardMetric.sparklineData,
+    }];
+  });
+  const activeObservabilityKpi = observabilityKpis.find(
+    metric => metric.id === activeObservabilityKpiId,
+  );
+  const activeObservabilityChartId = activeObservabilityKpi
+    ? `agent-studio-observability-chart-${activeObservabilityKpi.id}`
+    : undefined;
   const existingEvaSession = readEvaSessionState();
   const phoneNumberDeferred = Boolean(
     existingEvaSession?.phoneNumberDeferred && existingEvaSession.agentName === agent.name,
   );
+  const showOperationalStatus = agent.status === 'Published';
   const goToSection = (section: string) => {
     selectAgent(agent.id);
     navigate(`/agents/${agent.id}/configure?section=${section}`);
+  };
+
+  const openObservabilityDashboard = () => {
+    navigate(`/observability${buildClusKpiDashboardAgentFilterSearch(agent.name)}`);
   };
 
   const openGuidedSetup = (targetStep?: EvaConversationStep, options: { autoStartPreview?: boolean } = {}) => {
@@ -227,50 +347,61 @@ export default function AgentStudioLanding() {
       goals: [agent.description || `Help customers with ${agent.name.toLowerCase()}`],
     };
     const existing = readEvaSessionState();
+    const sessionState = ciscoLiveAgent
+      ? buildCiscoLiveEvaSession({
+          ...ciscoLiveAgent,
+          name: agent.name,
+          description: agent.description,
+          actions: agent.actions ?? ciscoLiveAgent.actions,
+          knowledgeSources: agent.knowledgeBases
+            ? ciscoLiveAgent.knowledgeSources.filter(source => agent.knowledgeBases?.includes(source.name))
+            : ciscoLiveAgent.knowledgeSources,
+        }, targetStep ?? 'review')
+      : {
+          ...existing,
+          landingMode: 'build' as const,
+          selectedTemplateId: existing?.selectedTemplateId ?? 'customer-support' as const,
+          draft: existing?.draft?.name === agent.name ? existing.draft : nextDraft,
+          messages: existing?.messages ?? [],
+          guidanceVisible: true,
+          orchestrationSuggested: false,
+          freeChatActive: false,
+          conversationalOnboardingStep: 'idle' as const,
+          evaStep: targetStep ?? (existing?.agentName === agent.name ? existing.evaStep : 'profile'),
+          agentName: agent.name,
+          agentDescription: agent.description,
+          avatarUrl: existing?.avatarUrl ?? 'https://us.webexbotbuilder.com/static/assets/i...',
+          timezone: existing?.timezone ?? 'America/Los_Angeles',
+          aiEngine: existing?.aiEngine ?? 'Webex AI Pro 1.0',
+          welcomeMessage: existing?.agentName === agent.name ? existing.welcomeMessage : buildWelcomeMessage(nextDraft),
+          instructionPrompt: existing?.agentName === agent.name ? existing.instructionPrompt : buildInstructionPrompt(nextDraft),
+          selectedKnowledgeBases: agent.knowledgeBases ?? existing?.selectedKnowledgeBases ?? nextDraft.knowledgeBases.slice(0, 2).map(kb => kb.name),
+          selectedActions: existing?.selectedActions ?? getConfiguredSummary(agent).actions,
+          optimizeAccepted: existing?.optimizeAccepted ?? false,
+          preOptimizeText: existing?.preOptimizeText ?? '',
+          optimizeSummary: existing?.optimizeSummary ?? { changes: [], reasoning: [] },
+          securityTier: existing?.securityTier ?? 'standard' as const,
+          channelType: existing?.channelType ?? 'voice' as const,
+          selectedChannels: existing?.agentName === agent.name ? existing?.selectedChannels ?? ['voice'] : ['voice'],
+          digitalChannel: existing?.digitalChannel ?? 'chat' as const,
+          selectedDigitalChannels: existing?.selectedDigitalChannels ?? ['chat'],
+          digitalChannelAddress: existing?.digitalChannelAddress ?? '',
+          channelPhoneNumber: existing?.channelPhoneNumber ?? getConfiguredSummary(agent).endpoint,
+          phoneNumberDeferred,
+          standardGuardrails: existing?.standardGuardrails ?? EVA_STANDARD_GUARDRAILS,
+          advancedGuardrailGroups: existing?.advancedGuardrailGroups ?? EVA_ADVANCED_GUARDRAIL_GROUPS,
+          expandedAdvancedGroups: existing?.expandedAdvancedGroups ?? EVA_ADVANCED_GUARDRAIL_GROUPS.map(group => group.id),
+          personality: existing?.personality ?? {
+            llm: 'Webex AI Pro 1.0',
+            voice: 'ava',
+            language: 'en-US',
+            gender: 'neutral',
+          },
+          customRules: existing?.customRules ?? [],
+        };
 
     try {
-      window.sessionStorage.setItem(EVA_SESSION_STORAGE_KEY, JSON.stringify({
-        ...existing,
-        landingMode: 'build',
-        selectedTemplateId: existing?.selectedTemplateId ?? 'customer-support',
-        draft: existing?.draft?.name === agent.name ? existing.draft : nextDraft,
-        messages: existing?.messages ?? [],
-        guidanceVisible: true,
-        orchestrationSuggested: false,
-        freeChatActive: false,
-        conversationalOnboardingStep: 'idle',
-        evaStep: targetStep ?? (existing?.agentName === agent.name ? existing.evaStep : 'profile'),
-        agentName: agent.name,
-        agentDescription: agent.description,
-        avatarUrl: existing?.avatarUrl ?? 'https://us.webexbotbuilder.com/static/assets/i...',
-        timezone: existing?.timezone ?? 'America/Los_Angeles',
-        aiEngine: existing?.aiEngine ?? 'Webex AI Pro 1.0',
-        welcomeMessage: existing?.agentName === agent.name ? existing.welcomeMessage : buildWelcomeMessage(nextDraft),
-        instructionPrompt: existing?.agentName === agent.name ? existing.instructionPrompt : buildInstructionPrompt(nextDraft),
-        selectedKnowledgeBases: agent.knowledgeBases ?? existing?.selectedKnowledgeBases ?? nextDraft.knowledgeBases.slice(0, 2).map(kb => kb.name),
-        selectedActions: existing?.selectedActions ?? getConfiguredSummary(agent).actions,
-        optimizeAccepted: existing?.optimizeAccepted ?? false,
-        preOptimizeText: existing?.preOptimizeText ?? '',
-        optimizeSummary: existing?.optimizeSummary ?? { changes: [], reasoning: [] },
-        securityTier: existing?.securityTier ?? 'standard',
-        channelType: existing?.channelType ?? 'voice',
-        selectedChannels: existing?.agentName === agent.name ? existing?.selectedChannels ?? ['voice'] : ['voice'],
-        digitalChannel: existing?.digitalChannel ?? 'chat',
-        selectedDigitalChannels: existing?.selectedDigitalChannels ?? ['chat'],
-        digitalChannelAddress: existing?.digitalChannelAddress ?? '',
-        channelPhoneNumber: existing?.channelPhoneNumber ?? getConfiguredSummary(agent).endpoint,
-        phoneNumberDeferred,
-        standardGuardrails: existing?.standardGuardrails ?? EVA_STANDARD_GUARDRAILS,
-        advancedGuardrailGroups: existing?.advancedGuardrailGroups ?? EVA_ADVANCED_GUARDRAIL_GROUPS,
-        expandedAdvancedGroups: existing?.expandedAdvancedGroups ?? EVA_ADVANCED_GUARDRAIL_GROUPS.map(group => group.id),
-        personality: existing?.personality ?? {
-          llm: 'Webex AI Pro 1.0',
-          voice: 'ava',
-          language: 'en-US',
-          gender: 'neutral',
-        },
-        customRules: existing?.customRules ?? [],
-      }));
+      window.sessionStorage.setItem(EVA_SESSION_STORAGE_KEY, JSON.stringify(sessionState));
       if (options.autoStartPreview) {
         window.sessionStorage.setItem(EVA_AUTO_START_VOICE_PREVIEW_KEY, '1');
       }
@@ -623,14 +754,17 @@ export default function AgentStudioLanding() {
     transcriptNode.scrollTop = transcriptNode.scrollHeight;
   }, [previewExpanded, previewTranscript]);
 
+  const continueSetupTarget: EvaConversationStep = agent.status.toLowerCase() === 'published'
+    ? 'review'
+    : 'instructions';
   const headerActions = (
     <div className="agent-studio-header-actions">
       <Button variant="secondary" onClick={completeCreating}>
         Create agent
       </Button>
-      <Button onClick={() => openGuidedSetup('instructions')}>
+      <Button onClick={() => openGuidedSetup(continueSetupTarget)}>
         <Icon name="sparkle" weight="bold" size="sm" />
-        Continue setup
+        View configurations
       </Button>
     </div>
   );
@@ -638,6 +772,7 @@ export default function AgentStudioLanding() {
     ? `/agents/${agent.id}/sessions?sessionId=${encodeURIComponent(previewSessionId)}&source=preview`
     : `/agents/${agent.id}/sessions?source=preview`;
   const showPreviewSessionLink = previewInteractionEnded && (previewCallStatus === 'ended' || previewCallStatus === 'error');
+  const observabilitySessionLink = `/agents/${agent.id}/sessions?sessionId=${encodeURIComponent(observability.sessionId)}&source=observability`;
 
   return (
     <div className="primary-content agent-studio-landing">
@@ -647,7 +782,7 @@ export default function AgentStudioLanding() {
         <div className="agent-studio-hero__header">
           <div className="agent-studio-hero__main">
             <div className="agent-studio-hero__content">
-              <h1 id="agent-studio-title">Review what's configured</h1>
+              <h1 id="agent-studio-title">Overview</h1>
               <p>
                 Your conversational setup is saved. This checkpoint shows what is already configured
                 before you continue into guided setup.
@@ -674,12 +809,14 @@ export default function AgentStudioLanding() {
             </CardHeader>
             <CardBody>
               <div className="agent-studio-summary-list">
-                {!phoneNumberDeferred && (
+                {(!phoneNumberDeferred || ciscoLiveAgent?.selectedChannels.includes('digital')) && (
                   <span>
-                    <strong>Phone</strong>
+                    <strong>{ciscoLiveAgent?.selectedChannels.includes('digital') ? 'Channel' : 'Phone'}</strong>
                     <span className="agent-studio-summary-value">
                       {summary.endpoint}
-                      <Badge variant="info" className="agent-studio-service-badge">Voice</Badge>
+                      <Badge variant="info" className="agent-studio-service-badge">
+                        {ciscoLiveAgent?.selectedChannels.includes('digital') ? 'Digital' : 'Voice'}
+                      </Badge>
                     </span>
                   </span>
                 )}
@@ -687,10 +824,97 @@ export default function AgentStudioLanding() {
                 <span><strong>Language</strong>English (US)</span>
                 <span><strong>Timezone</strong>America/Los_Angeles</span>
               </div>
+              <div className="agent-studio-profile-preview" aria-labelledby="agent-studio-profile-preview-title">
+                <div className="agent-studio-profile-preview__header">
+                  <div>
+                    <strong id="agent-studio-profile-preview-title">Preview</strong>
+                    <small>Try what is already configured</small>
+                  </div>
+                  {previewTranscript.length > 0 && (
+                    <Button
+                      type="button"
+                      variant={previewExpanded ? 'secondary' : 'tertiary'}
+                      size="sm"
+                      className="agent-studio-preview-expand-btn"
+                      aria-expanded={previewExpanded}
+                      aria-pressed={previewExpanded}
+                      aria-haspopup="dialog"
+                      onClick={() => setPreviewExpanded(true)}
+                    >
+                      <Icon name="transcript" weight="bold" size="sm" />
+                      Text transcript
+                    </Button>
+                  )}
+                </div>
+                <div
+                  className={`agent-studio-preview-soundbar${previewCallStatus === 'connecting' || previewCallStatus === 'listening' || previewCallStatus === 'speaking' ? ' agent-studio-preview-soundbar--active' : ''}`}
+                  aria-label="Preview configured greeting"
+                >
+                  <div className="eva-voice-preview__visualizer" aria-hidden="true">
+                    {Array.from({ length: 18 }).map((_, index) => (
+                      <span key={index} style={{ animationDelay: `${index * 55}ms` }} />
+                    ))}
+                  </div>
+                  {previewCallStatus === 'error' && (
+                    <span>{previewCallError || 'Voice preview failed.'}</span>
+                  )}
+                  {previewCallStatus === 'connecting' && (
+                    <span>Connecting voice preview...</span>
+                  )}
+                  {previewCallStatus === 'listening' && (
+                    <span>Listening...</span>
+                  )}
+                  {previewCallStatus === 'speaking' && (
+                    <span>Agent is speaking...</span>
+                  )}
+                  {previewCallStatus === 'paused' && (
+                    <span>Call paused. Resume to continue sending caller audio.</span>
+                  )}
+                  <div className="agent-studio-preview-actions">
+                    <Button
+                      type="button"
+                      size="sm"
+                      disabled={previewCallStatus === 'connecting' || previewCallStatus === 'listening' || previewCallStatus === 'speaking' || previewCallStatus === 'paused'}
+                      onClick={() => { void startPreviewCall(); }}
+                    >
+                      <Icon name="phone" weight="bold" size="sm" />
+                      {previewCallStatus === 'ended' ? 'Restart call' : 'Start Call'}
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="secondary"
+                      size="sm"
+                      disabled={previewCallStatus !== 'connecting' && previewCallStatus !== 'listening' && previewCallStatus !== 'speaking' && previewCallStatus !== 'paused'}
+                      onClick={() => stopPreviewCall('ended')}
+                    >
+                      End Call
+                    </Button>
+                  </div>
+                  {showPreviewSessionLink && (
+                    <div className="agent-studio-preview-session-link">
+                      <Icon name="transcript" weight="regular" size="sm" />
+                      <span>
+                        Preview ended.{' '}
+                        <TextLink
+                          variant="inline"
+                          size="sm"
+                          href={sessionsDeepLink}
+                          onClick={event => {
+                            event.preventDefault();
+                            navigate(sessionsDeepLink);
+                          }}
+                        >
+                          Open this interaction in Sessions
+                        </TextLink>
+                      </span>
+                    </div>
+                  )}
+                </div>
+              </div>
             </CardBody>
           </Card>
 
-          <Card className="agent-studio-card agent-studio-card--summary">
+          <Card className="agent-studio-card agent-studio-card--summary agent-studio-card--connected">
             <CardHeader>
               <div className="agent-studio-card-heading">
                 <span className="agent-studio-card-heading__icon">
@@ -698,7 +922,7 @@ export default function AgentStudioLanding() {
                 </span>
                 <span>
                   <strong>Connected</strong>
-                  <small>Knowledge and actions the agent can use</small>
+                  <small>Knowledge, memory, orchestration, actions, and guardrails</small>
                 </span>
               </div>
               <Button variant="secondary" size="sm" onClick={() => goToSection('Knowledge')}>
@@ -706,115 +930,78 @@ export default function AgentStudioLanding() {
               </Button>
             </CardHeader>
             <CardBody>
-              <div className="agent-studio-chip-group" aria-label="Connected knowledge bases">
-                {summary.knowledgeBases.map(item => (
-                  <Badge key={item} variant="default" className="agent-studio-service-badge">
-                    <Icon name="files" weight="regular" size="xs" />
-                    {item}
-                  </Badge>
-                ))}
-              </div>
-              <div className="agent-studio-chip-group" aria-label="Connected actions">
-                {summary.actions.map(item => (
-                  <Badge key={item} variant="default" className="agent-studio-service-badge">
-                    <Icon name="tools" weight="regular" size="xs" />
-                    {item}
-                  </Badge>
-                ))}
-              </div>
-            </CardBody>
-          </Card>
-
-          <Card className="agent-studio-card agent-studio-card--summary agent-studio-card--preview">
-            <CardHeader>
-              <div className="agent-studio-card-heading">
-                <span className="agent-studio-card-heading__icon">
-                  <Icon name="play" weight="bold" size="sm" />
-                </span>
-                <span>
-                  <strong>Preview</strong>
-                  <small>Try what is already configured</small>
-                </span>
-              </div>
-              <Button
-                type="button"
-                variant={previewExpanded ? 'secondary' : 'tertiary'}
-                size="sm"
-                className="agent-studio-preview-expand-btn"
-                aria-expanded={previewExpanded}
-                aria-pressed={previewExpanded}
-                aria-haspopup="dialog"
-                onClick={() => setPreviewExpanded(true)}
-              >
-                <Icon name="transcript" weight="bold" size="sm" />
-                Text transcript
-              </Button>
-            </CardHeader>
-            <CardBody>
-              <div
-                className={`agent-studio-preview-soundbar${previewCallStatus === 'connecting' || previewCallStatus === 'listening' || previewCallStatus === 'speaking' ? ' agent-studio-preview-soundbar--active' : ''}`}
-                aria-label="Preview configured greeting"
-              >
-                <div className="eva-voice-preview__visualizer" aria-hidden="true">
-                  {Array.from({ length: 18 }).map((_, index) => (
-                    <span key={index} style={{ animationDelay: `${index * 55}ms` }} />
+              <div className="agent-studio-connected-group">
+                <strong className="agent-studio-connected-group__label">Knowledge</strong>
+                <div className="agent-studio-chip-group" aria-label="Connected knowledge bases">
+                  {summary.knowledgeBases.map(item => (
+                    <Badge key={item} variant="default" className="agent-studio-service-badge agent-studio-service-badge--knowledge">
+                      <ConfigurationCategoryIcon type="knowledge" />
+                      {getConnectedChipLabel(item)}
+                    </Badge>
                   ))}
                 </div>
-                {previewCallStatus === 'error' && (
-                  <span>{previewCallError || 'Voice preview failed.'}</span>
-                )}
-                {previewCallStatus === 'connecting' && (
-                  <span>Connecting voice preview...</span>
-                )}
-                {previewCallStatus === 'listening' && (
-                  <span>Listening...</span>
-                )}
-                {previewCallStatus === 'speaking' && (
-                  <span>Agent is speaking...</span>
-                )}
-                {previewCallStatus === 'paused' && (
-                  <span>Call paused. Resume to continue sending caller audio.</span>
-                )}
-                <div className="agent-studio-preview-actions">
-                  <Button
-                    type="button"
-                    size="sm"
-                    disabled={previewCallStatus === 'connecting' || previewCallStatus === 'listening' || previewCallStatus === 'speaking' || previewCallStatus === 'paused'}
-                    onClick={() => { void startPreviewCall(); }}
-                  >
-                    <Icon name="phone" weight="bold" size="sm" />
-                    {previewCallStatus === 'ended' ? 'Restart call' : 'Start Call'}
-                  </Button>
-                  <Button
-                    type="button"
-                    variant="secondary"
-                    size="sm"
-                    disabled={previewCallStatus !== 'connecting' && previewCallStatus !== 'listening' && previewCallStatus !== 'speaking' && previewCallStatus !== 'paused'}
-                    onClick={() => stopPreviewCall('ended')}
-                  >
-                    End Call
-                  </Button>
-                </div>
-                {showPreviewSessionLink && (
-                  <div className="agent-studio-preview-session-link">
-                    <Icon name="transcript" weight="regular" size="sm" />
-                    <span>
-                      Preview ended.{' '}
-                      <TextLink
-                        variant="inline"
-                        size="sm"
-                        href={sessionsDeepLink}
-                        onClick={event => {
-                          event.preventDefault();
-                          navigate(sessionsDeepLink);
-                        }}
-                      >
-                        Open this interaction in Sessions
-                      </TextLink>
-                    </span>
-                  </div>
-                )}
               </div>
+              {summary.memories.length > 0 && (
+                <div className="agent-studio-connected-group">
+                  <strong className="agent-studio-connected-group__label">AI Memory</strong>
+                  <div className="agent-studio-chip-group" aria-label="Enabled AI memory">
+                    {summary.memories.map(item => (
+                      <Badge key={item} variant="default" className="agent-studio-service-badge agent-studio-service-badge--memory">
+                        <ConfigurationCategoryIcon type="memory" />
+                        {getConnectedChipLabel(item)}
+                      </Badge>
+                    ))}
+                  </div>
+                </div>
+              )}
+              {(summary.orchestrationScenarios.length > 0 || summary.actions.length > 0) && (
+                <div className="agent-studio-connected-group">
+                  <strong className="agent-studio-connected-group__label">Orchestration &amp; actions</strong>
+                  <div className="agent-studio-chip-group" aria-label="Enabled orchestration scenarios and connected agent actions">
+                    {summary.orchestrationScenarios.map(item => (
+                      <Badge key={item} variant="default" className="agent-studio-service-badge agent-studio-service-badge--scenario">
+                        <ConfigurationCategoryIcon type="orchestration" />
+                        {getConnectedChipLabel(item)}
+                      </Badge>
+                    ))}
+                    {summary.actions.map(item => (
+                      <Badge key={item} variant="default" className="agent-studio-service-badge agent-studio-service-badge--action">
+                        <ConfigurationCategoryIcon type="action" />
+                        {getConnectedChipLabel(item)}
+                      </Badge>
+                    ))}
+                  </div>
+                </div>
+              )}
+              {summary.guardrails.length > 0 && (
+                <div className="agent-studio-connected-group">
+                  <strong className="agent-studio-connected-group__label">Guardrails</strong>
+                  <div className="agent-studio-chip-group" aria-label="Enabled guardrails">
+                    {summary.guardrails.slice(0, 4).map(item => (
+                      <Badge key={item} variant="default" className="agent-studio-service-badge agent-studio-service-badge--guardrail">
+                        <ConfigurationCategoryIcon type="guardrail" />
+                        {getConnectedChipLabel(item)}
+                      </Badge>
+                    ))}
+                    {summary.guardrails.length > 4 && (
+                      <Tooltip
+                        content={`All guardrails: ${summary.guardrails.map(getConnectedChipLabel).join(', ')}`}
+                        placement="top"
+                      >
+                        <span
+                          className="agent-studio-guardrail-overflow"
+                          tabIndex={0}
+                          aria-label={`${summary.guardrails.length - 4} more guardrails. Focus or hover to view the complete list.`}
+                        >
+                          <Badge variant="default" className="agent-studio-service-badge agent-studio-service-badge--guardrail">
+                            +{summary.guardrails.length - 4} more
+                          </Badge>
+                        </span>
+                      </Tooltip>
+                    )}
+                  </div>
+                </div>
+              )}
             </CardBody>
           </Card>
         </div>
@@ -886,7 +1073,101 @@ export default function AgentStudioLanding() {
         </Modal>
       )}
 
+      {showOperationalStatus && (
+        <>
+      <section className="agent-studio-observability" aria-labelledby="agent-studio-observability-title">
+        <div className="agent-studio-observability__header">
+          <div>
+            <h2 id="agent-studio-observability-title">Operational status</h2>
+            <p>Review outcomes, fulfilment, escalations, and guardrail activity before changing the agent.</p>
+          </div>
+          <div className="agent-studio-observability__actions">
+            <Badge variant="default">{observability.timeframe}</Badge>
+            <Button variant="secondary" size="sm" onClick={() => navigate(`/agents/${agent.id}/sessions`)}>
+              <Icon name="transcript" weight="bold" size="sm" />
+              Open sessions
+            </Button>
+            <Button variant="secondary" size="sm" onClick={openObservabilityDashboard}>
+              <Icon name="multiline-chart" weight="bold" size="sm" />
+              View observability dashboard
+            </Button>
+          </div>
+        </div>
+
+        <div className="agent-studio-observability__metrics">
+          {observabilityKpis.map((metric) => (
+            <KPICard
+              key={metric.id}
+              data={metric}
+              isActive={activeObservabilityKpiId === metric.id}
+              onClick={() => {
+                setActiveObservabilityKpiId(currentId => currentId === metric.id ? null : metric.id);
+              }}
+              ariaExpanded={activeObservabilityKpiId === metric.id}
+              ariaControls={activeObservabilityKpiId === metric.id ? activeObservabilityChartId : undefined}
+              isPinned={metric.id === 'sec-guardrails-trigger-flag' ? guardrailsTriggerPinned : undefined}
+              onPinToggle={metric.id === 'sec-guardrails-trigger-flag' ? (event) => {
+                event.stopPropagation();
+                setGuardrailsTriggerPinned(pinned => !pinned);
+              } : undefined}
+            />
+          ))}
+        </div>
+
+        {activeObservabilityKpi && activeObservabilityChartId && (
+          <div
+            id={activeObservabilityChartId}
+            className="agent-studio-observability__expanded-chart"
+            role="region"
+            aria-label={`${activeObservabilityKpi.heading} trend details`}
+          >
+            <ThemeModeProvider>
+              <KPIChart
+                key={activeObservabilityKpi.id}
+                heading={activeObservabilityKpi.heading}
+                description={activeObservabilityKpi.description}
+                chartType={activeObservabilityKpi.chartType}
+                dateRange="24h"
+                sparklineData={activeObservabilityKpi.sparklineData}
+                unit={activeObservabilityKpi.unit}
+                value={activeObservabilityKpi.value}
+                {...kpiExpandedChartAxisProps(activeObservabilityKpi)}
+                curveType={activeObservabilityKpi.curveType}
+                categoricalXLabels={activeObservabilityKpi.id === 'sec-guardrails-trigger-flag'
+                  ? GUARDRAIL_TRIGGER_CHART_LABELS
+                  : undefined}
+              />
+            </ThemeModeProvider>
+          </div>
+        )}
+
+        {agent.id === 'golftop-vip-reservations' && (
+          <Banner
+            type="success"
+            icon="shield"
+            className="agent-studio-observability__event-banner"
+            title={observability.eventTitle}
+            subtitle={(
+              <>
+                <span className="agent-studio-observability__event-meta">
+                  {observability.eventMeta}
+                </span>
+                <span>{observability.eventDescription}</span>
+              </>
+            )}
+            actions={[{
+              label: 'View session →',
+              onClick: () => navigate(observabilitySessionLink),
+              variant: 'outline',
+            }]}
+            dismissable={false}
+          />
+        )}
+      </section>
+
       <Divider variant="gradient" aria-hidden="true" />
+        </>
+      )}
 
       <div className="agent-studio-next__header">
         <div className="agent-studio-section-heading">
