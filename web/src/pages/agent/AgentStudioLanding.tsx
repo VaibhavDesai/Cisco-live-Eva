@@ -256,7 +256,7 @@ function getPreviewTimeLabel() {
 export default function AgentStudioLanding() {
   const { agentId } = useParams();
   const navigate = useNavigate();
-  const { agents, selectAgent, showToast } = useApp();
+  const { agents, selectAgent } = useApp();
   const { setVariation } = useDesignVariation();
   const agent = agentId ? agents[agentId] : null;
   const [previewCallStatus, setPreviewCallStatus] = useState<PreviewCallStatus>('idle');
@@ -401,13 +401,6 @@ export default function AgentStudioLanding() {
 
     selectAgent(agent.id);
     setVariation('landing');
-    navigate('/agents');
-  };
-
-  const completeCreating = () => {
-    selectAgent(agent.id);
-    showToast(`Agent "${agent.name}" created successfully!`, 'success');
-    setVariation('dashboard');
     navigate('/agents');
   };
 
@@ -749,9 +742,6 @@ export default function AgentStudioLanding() {
     : 'instructions';
   const headerActions = (
     <div className="agent-studio-header-actions">
-      <Button variant="secondary" onClick={completeCreating}>
-        Create agent
-      </Button>
       <Button onClick={() => openGuidedSetup(continueSetupTarget)}>
         <Icon name="sparkle" weight="bold" size="sm" />
         View configurations
