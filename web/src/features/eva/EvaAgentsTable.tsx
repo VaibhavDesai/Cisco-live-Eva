@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState, type CSSProperties } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useApp, type Agent } from '../../contexts/AppContext';
 import Button from '../../components/shared/Button';
@@ -76,6 +76,10 @@ export default function EvaAgentsTable() {
      local "Start with Eva" escape hatch, but route entry starts here. */
   const [phase, setPhase] = useState<Phase>('table');
   const [voiceActive, setVoiceActive] = useState(false);
+  const [previewTile, setPreviewTile] = useState<AgentTile | null>(null);
+  const [previewCallActive, setPreviewCallActive] = useState(false);
+  const previewCloseRef = useRef<HTMLButtonElement>(null);
+  const previewReturnFocusRef = useRef<HTMLButtonElement | null>(null);
 
   const tileToAgent = (tile: AgentTile): Agent => ({
     id: tile.id,
@@ -113,8 +117,29 @@ export default function EvaAgentsTable() {
   };
 
   const handlePreviewClick = (tile: AgentTile) => {
-    openAgentSummary(tile);
+    previewReturnFocusRef.current = document.activeElement instanceof HTMLButtonElement
+      ? document.activeElement
+      : null;
+    setPreviewTile(tile);
+    setPreviewCallActive(false);
   };
+
+  const closePreview = () => {
+    const returnFocusTarget = previewReturnFocusRef.current;
+    setPreviewTile(null);
+    setPreviewCallActive(false);
+    window.requestAnimationFrame(() => returnFocusTarget?.focus());
+  };
+
+  useEffect(() => {
+    if (!previewTile) return;
+    previewCloseRef.current?.focus();
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') closePreview();
+    };
+    document.addEventListener('keydown', handleKeyDown);
+    return () => document.removeEventListener('keydown', handleKeyDown);
+  }, [previewTile]);
 
   /* Both landing entry points (free-text composer + template card click)
      drop the user into the table view. From there, the standard
@@ -366,9 +391,22 @@ export default function EvaAgentsTable() {
                       type="button"
                       variant="secondary"
                       size="sm"
+                      className="ai-agents-agent-preview-button"
+                      aria-label={`Preview ${tile.name}`}
                       onClick={(event) => {
                         event.stopPropagation();
                         handlePreviewClick(tile);
+                      }}
+                    >
+                      <Icon name="play" weight="bold" size={16} />
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="secondary"
+                      size="sm"
+                      onClick={(event) => {
+                        event.stopPropagation();
+                        handleAgentClick(tile);
                       }}
                     >
                       View
@@ -386,6 +424,85 @@ export default function EvaAgentsTable() {
           </Card>
         )}
       </div>
+
+      {previewTile && (() => {
+        const previewAgent = agents[previewTile.id] ?? tileToAgent(previewTile);
+        const typeLabel = getAgentTypeLabel(previewTile.type);
+        const statusLabel = getAgentStatusLabel(previewAgent.status);
+        return (
+          <aside
+            className="ai-agents-preview-panel"
+            aria-labelledby="ai-agents-preview-title"
+          >
+            <header className="ai-agents-preview-panel__header">
+              <div>
+                <span className="ai-agents-preview-panel__eyebrow">Preview</span>
+                <h2 id="ai-agents-preview-title">{previewTile.name}</h2>
+              </div>
+              <button
+                ref={previewCloseRef}
+                type="button"
+                className="ai-agents-preview-panel__close"
+                aria-label="Close preview"
+                onClick={closePreview}
+              >
+                <Icon name="cancel" weight="bold" size={16} />
+              </button>
+            </header>
+
+            <div className="ai-agents-preview-panel__agent">
+              <span className={`ai-agents-agent-avatar ai-agents-agent-avatar--${previewTile.type}`} aria-hidden="true">
+                <Icon
+                  name={previewTile.type === 'autonomous' ? 'bot-customer-assistant' : previewTile.type === 'receptionist' ? 'desk-phone' : 'workflow-deployments'}
+                  weight="bold"
+                  size="md"
+                />
+              </span>
+              <div>
+                <div className="ai-agents-preview-panel__metadata">
+                  <Badge variant={statusLabel === 'Published' ? 'success' : 'warning'}>{statusLabel}</Badge>
+                  <span>{typeLabel}</span>
+                </div>
+                <p>{previewTile.description}</p>
+              </div>
+            </div>
+
+            <section className="ai-agents-preview-panel__call" aria-label="Voice preview">
+              <div className="ai-agents-preview-panel__call-heading">
+                <div>
+                  <strong>Voice preview</strong>
+                  <span>Ava · Friendly and professional</span>
+                </div>
+                <span className={`ai-agents-preview-panel__status${previewCallActive ? ' is-active' : ''}`}>
+                  {previewCallActive ? 'Call in progress' : 'Ready'}
+                </span>
+              </div>
+              <div className={`ai-agents-preview-panel__waveform${previewCallActive ? ' is-active' : ''}`} aria-hidden="true">
+                {Array.from({ length: 22 }, (_, index) => (
+                  <span
+                    key={index}
+                    style={{ '--wave-index': index, height: `${8 + (index % 6) * 4}px` } as CSSProperties}
+                  />
+                ))}
+              </div>
+              <p className="ai-agents-preview-panel__welcome">
+                “Welcome to Gofie. I can help with availability, VIP reservations, and secure payment updates. How can I help today?”
+              </p>
+              <Button
+                type="button"
+                className="ai-agents-preview-panel__call-button"
+                variant={previewCallActive ? 'secondary' : 'primary'}
+                onClick={() => setPreviewCallActive(active => !active)}
+              >
+                <Icon name={previewCallActive ? 'cancel' : 'play'} weight="bold" size={16} />
+                {previewCallActive ? 'End call' : 'Start call'}
+              </Button>
+            </section>
+
+            <p className="ai-agents-preview-panel__hint">This preview stays with the agent list, so you can compare agents without losing your place.</p>
+          </aside>
+        );
+      })()}
     </div>
   );
 }

@@ -528,10 +528,10 @@ const OBSERVABILITY_BY_AGENT: Record<string, CiscoLiveObservabilitySnapshot> = {
   [CISCO_LIVE_PRIMARY_AGENT_ID]: {
     timeframe: 'Last 24 hours',
     metrics: [
+      { metricId: 'ap-intent-success-rate', value: '98.1', unit: '%', change: '+2%', isPositive: true, thresholdStatus: 'good' },
       { metricId: 'aq-goal-completion-rate', value: '96', unit: '%', change: '+4%', isPositive: true, thresholdStatus: 'good' },
-      { metricId: 'ap-fulfilment-success-rate', value: '98.1', unit: '%', change: '+2%', isPositive: true, thresholdStatus: 'good' },
-      { metricId: 'ce-transfer-escalation-rate', value: '0.4', unit: '%', change: '-0.1%', isPositive: true, thresholdStatus: 'good' },
-      { metricId: 'sec-guardrails-trigger-flag', value: '5.00', unit: '%', change: '+0.03%', isPositive: false, thresholdStatus: 'good' },
+      { metricId: 'sec-policy-violation-guardrail-block-rate', value: '0.4', unit: '%', change: '-0.1%', isPositive: true, thresholdStatus: 'good' },
+      { metricId: 'bi-autocsat-improvement', value: '5.00', unit: '%', change: '+0.03%', isPositive: true, thresholdStatus: 'good' },
     ],
     eventLabel: 'Guardrail working as designed',
     eventTitle: '1,000-person reservation routed to a human',

@@ -9452,6 +9452,10 @@ html[data-product='ai-agent-studio']:has(.eva-form-builder.primary-content) .app
   color: var(--text-primary);
 }
 
+.eva-side-edit-btn--bare {
+  border-color: transparent;
+}
+
 .eva-side-context__section p {
   overflow-wrap: anywhere;
 }
@@ -9504,6 +9508,35 @@ html[data-product='ai-agent-studio']:has(.eva-form-builder.primary-content) .app
 
 .eva-side-preview-card .eva-voice-preview__transcript {
   max-height: 220px;
+}
+
+.eva-guided-add-actions {
+  margin-left: 0;
+}
+
+.eva-guided-add-actions .add-action-menu--guided {
+  inset: auto auto calc(100% + var(--spacing-xx-small)) 0;
+}
+
+.eva-guided-add-action-item {
+  width: 100%;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+}
+
+.eva-guided-add-action-item:focus-visible,
+.eva-guided-add-actions .add-action-menu-item:focus-visible {
+  outline: 2px solid var(--focus-ring-color, var(--accent-color));
+  outline-offset: 2px;
+}
+
+.eva-guided-add-actions-modal .add-capability-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-xxx-small);
 }
 
 .eva-form-builder__sections {
@@ -12587,7 +12620,7 @@ button.eva-retail-preview-card::before {
   }
 
   .eva-first-interface--generated .eva-generated-layout--chat-collapsed {
-    grid-template-columns: 48px minmax(0, 1fr);
+    grid-template-columns: minmax(0, 1fr);
   }
 
   .eva-first-interface--generated .eva-generated-layout--chat-expanded {
