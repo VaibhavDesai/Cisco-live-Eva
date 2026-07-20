@@ -12074,22 +12074,22 @@ button.eva-retail-preview-card::before {
 }
 
 /* Generated agent workspace -------------------------------------------------
-   The AI conversation is primary product navigation for this workspace, so it
-   sits flush against the global left rail and spans the full page height. The
-   agent header belongs to the workspace beside it, above canvas + summary. */
+   The AI conversation stays available as a dedicated rail on the right side
+   of the workspace and spans the full page height. The agent header belongs
+   to the workspace beside it, above canvas + summary. */
 .eva-first-interface--generated {
-  padding: 0 var(--spacing-large) 0 0;
+  padding: 0 0 0 var(--spacing-large);
 }
 
 .eva-first-interface--generated .eva-generated-layout {
   grid-template-columns:
-    var(--eva-chat-panel-width, 304px)
-    minmax(0, 1fr);
+    minmax(0, 1fr)
+    var(--eva-chat-panel-width, 304px);
   gap: var(--spacing-small);
 }
 
 .eva-first-interface--generated .eva-generated-layout--side-collapsed {
-  grid-template-columns: minmax(264px, 304px) minmax(0, 1fr);
+  grid-template-columns: minmax(0, 1fr) minmax(264px, 304px);
 }
 
 .eva-first-interface--generated .eva-generated-layout--chat-collapsed {
@@ -12107,7 +12107,7 @@ button.eva-retail-preview-card::before {
 }
 
 .eva-first-interface--generated:has(.eva-generated-layout--chat-expanded) {
-  padding-right: 0;
+  padding-left: 0;
 }
 
 .eva-generated-layout--side-collapsed .eva-generated-side-panel {
@@ -12128,12 +12128,14 @@ button.eva-retail-preview-card::before {
 
 .eva-generated-chat-panel {
   position: relative;
+  grid-column: 2;
+  grid-row: 1;
   display: flex;
   flex-direction: column;
   align-self: stretch;
   overflow: hidden;
   border: 0;
-  border-right: var(--border-width-small) solid color-mix(in srgb, var(--border-color) 56%, transparent);
+  border-left: var(--border-width-small) solid color-mix(in srgb, var(--border-color) 56%, transparent);
   border-radius: 0;
   background: transparent;
   backdrop-filter: none;
@@ -12145,7 +12147,7 @@ button.eva-retail-preview-card::before {
   position: absolute;
   z-index: 14;
   top: 0;
-  right: 0;
+  left: 0;
   bottom: 0;
   width: 10px;
   border: 0;
@@ -12157,7 +12159,7 @@ button.eva-retail-preview-card::before {
 .eva-generated-chat-panel__resize-handle::after {
   position: absolute;
   top: 0;
-  right: 0;
+  left: 0;
   bottom: 0;
   width: 2px;
   background: transparent;
@@ -12173,7 +12175,7 @@ button.eva-retail-preview-card::before {
 
 .eva-generated-chat-panel__resize-handle:focus-visible {
   outline: none;
-  box-shadow: inset -2px 0 0 var(--focus-ring-1);
+  box-shadow: inset 2px 0 0 var(--focus-ring-1);
 }
 
 .eva-generated-layout__main {
@@ -12183,6 +12185,11 @@ button.eva-retail-preview-card::before {
   backdrop-filter: none;
   -webkit-backdrop-filter: none;
   box-shadow: none;
+}
+
+.eva-generated-workspace {
+  grid-column: 1;
+  grid-row: 1;
 }
 
 .eva-generated-chat-panel__view-controls {
@@ -12231,7 +12238,7 @@ button.eva-retail-preview-card::before {
 .eva-generated-layout--chat-collapsed .eva-generated-chat-panel {
   position: absolute;
   top: 0;
-  left: 0;
+  right: 0;
   width: 0;
   height: 0;
   min-height: 0;
@@ -12244,7 +12251,7 @@ button.eva-retail-preview-card::before {
   position: fixed;
   z-index: 100;
   top: 50%;
-  left: var(--spacing-small);
+  right: var(--spacing-small);
   display: flex;
   transform: translateY(-50%);
 }
@@ -12272,7 +12279,8 @@ button.eva-retail-preview-card::before {
 }
 
 .eva-generated-layout--chat-expanded .eva-generated-chat-panel {
-  border-right: 0;
+  grid-column: 1;
+  border-left: 0;
 }
 
 .eva-generated-canvas-header {
@@ -12481,7 +12489,22 @@ button.eva-retail-preview-card::before {
 
 .eva-generated-layout--chat-rail .eva-generated-chat-panel .eva-generated-composer__surface {
   box-sizing: border-box;
-  padding-right: var(--spacing-small);
+  padding-inline: var(--spacing-small);
+}
+
+/* Keep the empty rail composer visually quiet: the long prompt hint stays on
+   one clipped line instead of increasing the textarea's scroll height and
+   showing a scrollbar. Once the user types, AiFooter's normal auto-growing
+   textarea behavior takes over again. */
+.eva-generated-layout--chat-rail .eva-generated-chat-panel .ai-footer__textarea:placeholder-shown {
+  height: calc(
+    var(--font-lineheight-body-midsize)
+    + var(--spacing-x-small)
+    + var(--spacing-x-small)
+  ) !important;
+  overflow: hidden;
+  text-overflow: clip;
+  white-space: nowrap;
 }
 
 .eva-generated-chat-panel .eva-ai-footer .ai-footer__group {
@@ -12631,7 +12654,7 @@ button.eva-retail-preview-card::before {
 
 @media (max-width: 1180px) {
   .eva-first-interface--generated .eva-generated-layout {
-    grid-template-columns: 248px minmax(0, 1fr);
+    grid-template-columns: minmax(0, 1fr) 248px;
   }
 
   .eva-generated-chat-panel__resize-handle {
@@ -12639,7 +12662,7 @@ button.eva-retail-preview-card::before {
   }
 
   .eva-first-interface--generated .eva-generated-layout--side-collapsed {
-    grid-template-columns: 248px minmax(0, 1fr);
+    grid-template-columns: minmax(0, 1fr) 248px;
   }
 
   .eva-first-interface--generated .eva-generated-layout--chat-collapsed {
@@ -12668,6 +12691,11 @@ button.eva-retail-preview-card::before {
     grid-template-rows: auto;
     height: auto;
     overflow: visible;
+  }
+
+  .eva-generated-chat-panel,
+  .eva-generated-workspace {
+    grid-column: 1;
   }
 
   .eva-generated-chat-panel {

@@ -4879,7 +4879,7 @@ ${previewTranscript}`,
     document.body.style.userSelect = 'none';
 
     const handlePointerMove = (moveEvent: globalThis.PointerEvent) => {
-      resizeGeneratedChatPanel(startWidth + moveEvent.clientX - startX);
+      resizeGeneratedChatPanel(startWidth + startX - moveEvent.clientX);
     };
     const finishResize = () => {
       handle.removeEventListener('pointermove', handlePointerMove);
@@ -4898,10 +4898,10 @@ ${previewTranscript}`,
     const keyboardStep = event.shiftKey ? 32 : 8;
     if (event.key === 'ArrowLeft') {
       event.preventDefault();
-      resizeGeneratedChatPanel(generatedChatPanelWidth - keyboardStep);
+      resizeGeneratedChatPanel(generatedChatPanelWidth + keyboardStep);
     } else if (event.key === 'ArrowRight') {
       event.preventDefault();
-      resizeGeneratedChatPanel(generatedChatPanelWidth + keyboardStep);
+      resizeGeneratedChatPanel(generatedChatPanelWidth - keyboardStep);
     } else if (event.key === 'Home') {
       event.preventDefault();
       resizeGeneratedChatPanel(GENERATED_CHAT_PANEL_MIN_WIDTH);
@@ -6125,7 +6125,7 @@ ${previewTranscript}`,
                   aria-label="Open conversation panel"
                   title="Open conversation panel"
                 >
-                  <Icon name="arrow-right" weight="bold" size="sm" />
+                  <Icon name="arrow-left" weight="bold" size="sm" />
                 </Button>
               </div>,
               document.body,
@@ -6147,7 +6147,7 @@ ${previewTranscript}`,
                     aria-label="Collapse conversation panel"
                     title="Collapse conversation panel"
                   >
-                    <Icon name="arrow-left" weight="bold" size="sm" />
+                    <Icon name="arrow-right" weight="bold" size="sm" />
                   </Button>
                   <Button
                     type="button"
