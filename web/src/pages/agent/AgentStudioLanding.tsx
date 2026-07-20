@@ -40,13 +40,6 @@ type PreviewCallStatus = 'idle' | 'connecting' | 'listening' | 'speaking' | 'pau
 
 const OBSERVABILITY_KPI_CATALOG = kpiDataWithSparklinesForRange('24h');
 
-const GUARDRAIL_TRIGGER_CHART_LABELS = [
-  '1 PM', '2 PM', '3 PM', '4 PM', '5 PM', '6 PM', '7 PM', '8 PM', '9 PM', '10 PM', '11 PM',
-  '12 AM', '1 AM', '2 AM', '3 AM', '4 AM', '5 AM', '6 AM', '7 AM', '8 AM', '9:42 AM', '10 AM', '11 AM', '12 PM',
-];
-
-const GUARDRAIL_TRIGGER_CHART_DATA = GUARDRAIL_TRIGGER_CHART_LABELS.map(label => label === '9:42 AM' ? 5 : 0);
-
 type PreviewTranscriptEntry = {
   id: string;
   role: 'customer' | 'agent';
@@ -274,7 +267,6 @@ export default function AgentStudioLanding() {
   const [previewTranscript, setPreviewTranscript] = useState<PreviewTranscriptEntry[]>([]);
   const [previewPaused, setPreviewPaused] = useState(false);
   const [activeObservabilityKpiId, setActiveObservabilityKpiId] = useState<string | null>(null);
-  const [guardrailsTriggerPinned, setGuardrailsTriggerPinned] = useState(false);
   const previewCallStatusRef = useRef<PreviewCallStatus>('idle');
   const previewWsRef = useRef<WebSocket | null>(null);
   const previewAudioContextRef = useRef<AudioContext | null>(null);
@@ -313,9 +305,7 @@ export default function AgentStudioLanding() {
       change: metric.change,
       isPositive: metric.isPositive,
       thresholdStatus: metric.thresholdStatus,
-      sparklineData: metric.metricId === 'sec-guardrails-trigger-flag'
-        ? GUARDRAIL_TRIGGER_CHART_DATA
-        : dashboardMetric.sparklineData,
+      sparklineData: dashboardMetric.sparklineData,
     }];
   });
   const activeObservabilityKpi = observabilityKpis.find(
@@ -783,10 +773,7 @@ export default function AgentStudioLanding() {
           <div className="agent-studio-hero__main">
             <div className="agent-studio-hero__content">
               <h1 id="agent-studio-title">Overview</h1>
-              <p>
-                Your conversational setup is saved. This checkpoint shows what is already configured
-                before you continue into guided setup.
-              </p>
+              <p>{agent.description}</p>
             </div>
           </div>
         </div>
@@ -1105,11 +1092,6 @@ export default function AgentStudioLanding() {
               }}
               ariaExpanded={activeObservabilityKpiId === metric.id}
               ariaControls={activeObservabilityKpiId === metric.id ? activeObservabilityChartId : undefined}
-              isPinned={metric.id === 'sec-guardrails-trigger-flag' ? guardrailsTriggerPinned : undefined}
-              onPinToggle={metric.id === 'sec-guardrails-trigger-flag' ? (event) => {
-                event.stopPropagation();
-                setGuardrailsTriggerPinned(pinned => !pinned);
-              } : undefined}
             />
           ))}
         </div>
@@ -1133,9 +1115,6 @@ export default function AgentStudioLanding() {
                 value={activeObservabilityKpi.value}
                 {...kpiExpandedChartAxisProps(activeObservabilityKpi)}
                 curveType={activeObservabilityKpi.curveType}
-                categoricalXLabels={activeObservabilityKpi.id === 'sec-guardrails-trigger-flag'
-                  ? GUARDRAIL_TRIGGER_CHART_LABELS
-                  : undefined}
               />
             </ThemeModeProvider>
           </div>

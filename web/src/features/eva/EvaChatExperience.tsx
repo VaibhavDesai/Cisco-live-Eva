@@ -16,6 +16,9 @@ import {
   EVA_CANVAS_PATHS,
 } from './EvaCanvasOverlay';
 import EvaCanvasSurface from './canvas/EvaCanvasSurface';
+import SecurityUIPolicyStudio from '../../pages/agent/SecurityUIPolicyStudio';
+import CreateFulfillmentModal from '../../pages/agent/CreateFulfillmentModal';
+import { AVAILABLE_ACTIONS, INTEGRATIONS, MCP_SERVERS } from '../../pages/agent/actionConfigShared';
 import { EVA_TEMPLATES } from './evaTemplates';
 import type { EvaAgentDraft, EvaFieldSuggestion, EvaMessage, EvaTemplateId } from './types';
 import { formatRelative } from '../../pages/knowledge/utils';
@@ -81,10 +84,329 @@ const gradient = 'linear-gradient(135deg, var(--accent-bg), var(--bg-glass-light
 
 type EvaVoiceCallStatus = 'idle' | 'connecting' | 'listening' | 'speaking' | 'ended' | 'error';
 type GeneratedChatPanelMode = 'collapsed' | 'rail' | 'expanded';
+type GuidedAddActionTab = 'all' | 'integration' | 'mcp';
 
 const GENERATED_CHAT_PANEL_DEFAULT_WIDTH = 304;
 const GENERATED_CHAT_PANEL_MIN_WIDTH = 248;
 const GENERATED_CHAT_PANEL_MAX_WIDTH = 480;
+
+type GuidedAddActionsProps = {
+  selectedActions: string[];
+  onAdd: (actions: string[]) => void;
+  onNotify: (message: string, type?: 'default' | 'info' | 'success' | 'warning' | 'error') => void;
+};
+
+function GuidedAddActions({ selectedActions, onAdd, onNotify }: GuidedAddActionsProps) {
+  const [menuOpen, setMenuOpen] = useState(false);
+  const [browserOpen, setBrowserOpen] = useState(false);
+  const [fulfillmentOpen, setFulfillmentOpen] = useState(false);
+  const [activeTab, setActiveTab] = useState<GuidedAddActionTab>('all');
+  const [search, setSearch] = useState('');
+  const [selectedIntegration, setSelectedIntegration] = useState<string | null>(null);
+  const [pendingActions, setPendingActions] = useState<string[]>([]);
+  const menuRef = useRef<HTMLDivElement>(null);
+
+  const closeBrowser = () => {
+    setBrowserOpen(false);
+    setSearch('');
+    setActiveTab('all');
+    setSelectedIntegration(null);
+    setPendingActions([]);
+  };
+
+  useEffect(() => {
+    if (!menuOpen) return;
+    const handlePointerDown = (event: MouseEvent) => {
+      if (!menuRef.current?.contains(event.target as Node)) setMenuOpen(false);
+    };
+    const handleKeyDown = (event: globalThis.KeyboardEvent) => {
+      if (event.key === 'Escape') setMenuOpen(false);
+    };
+    document.addEventListener('mousedown', handlePointerDown);
+    document.addEventListener('keydown', handleKeyDown);
+    return () => {
+      document.removeEventListener('mousedown', handlePointerDown);
+      document.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [menuOpen]);
+
+  useEffect(() => {
+    if (!browserOpen) return;
+    const handleKeyDown = (event: globalThis.KeyboardEvent) => {
+      if (event.key === 'Escape') closeBrowser();
+    };
+    document.addEventListener('keydown', handleKeyDown);
+    return () => document.removeEventListener('keydown', handleKeyDown);
+  }, [browserOpen]);
+
+  const togglePendingAction = (name: string) => {
+    if (selectedActions.includes(name)) return;
+    setPendingActions(current => current.includes(name)
+      ? current.filter(action => action !== name)
+      : [...current, name]);
+  };
+
+  const normalizedSearch = search.trim().toLowerCase();
+  const allItems = activeTab === 'mcp' ? MCP_SERVERS : AVAILABLE_ACTIONS;
+  const filteredItems = allItems.filter(item => (
+    !normalizedSearch
+    || item.name.toLowerCase().includes(normalizedSearch)
+    || item.source.toLowerCase().includes(normalizedSearch)
+    || item.description.toLowerCase().includes(normalizedSearch)
+  ));
+  const integration = INTEGRATIONS.find(item => item.id === selectedIntegration);
+
+  return (
+    <>
+      <div className="add-action-menu-wrapper eva-guided-add-actions" ref={menuRef}>
+        <Button
+          variant="secondary"
+          aria-haspopup="menu"
+          aria-expanded={menuOpen}
+          onClick={() => setMenuOpen(open => !open)}
+        >
+          <Icon name="plus" weight="bold" size={16} />
+          Add new
+        </Button>
+        {menuOpen && (
+          <div className="add-action-menu add-action-menu--guided" role="menu" aria-label="Add actions options">
+            <div className="add-action-menu-section">
+              <div className="add-action-menu-header">Browse actions</div>
+              <button
+                type="button"
+                className="add-action-menu-item"
+                role="menuitem"
+                onClick={() => {
+                  setMenuOpen(false);
+                  setBrowserOpen(true);
+                }}
+              >
+                <Icon name="extension-mobility" weight="bold" size={20} />
+                Select available
+              </button>
+            </div>
+            <div className="add-action-menu-divider" />
+            <div className="add-action-menu-section">
+              <div className="add-action-menu-header">Create new action</div>
+              <button
+                type="button"
+                className="add-action-menu-item"
+                role="menuitem"
+                onClick={() => {
+                  setMenuOpen(false);
+                  onNotify('Transfer action creation is ready for the next prototype step.', 'info');
+                }}
+              >
+                <Icon name="next" weight="bold" size={20} />
+                Transfer
+              </button>
+              <button
+                type="button"
+                className="add-action-menu-item"
+                role="menuitem"
+                onClick={() => {
+                  setMenuOpen(false);
+                  setFulfillmentOpen(true);
+                }}
+              >
+                <Icon name="automation" weight="bold" size={20} />
+                Fulfillment
+              </button>
+            </div>
+          </div>
+        )}
+      </div>
+
+      {browserOpen && createPortal(
+        <div className="add-capability-overlay" onClick={closeBrowser}>
+          <div
+            className="add-capability-modal eva-guided-add-actions-modal"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="eva-add-actions-title"
+            onClick={event => event.stopPropagation()}
+          >
+            <div className="add-capability-header">
+              <div className="add-capability-header-content">
+                <h2 className="add-capability-title" id="eva-add-actions-title">
+                  {integration ? `${integration.name}: select an action` : 'Add actions'}
+                </h2>
+                {integration && <p className="add-capability-subtitle">Find an action you need to instruct your AI agent.</p>}
+              </div>
+              <button type="button" className="add-capability-close" onClick={closeBrowser} aria-label="Close Add actions">
+                <Icon name="cancel" weight="bold" size="md" />
+              </button>
+            </div>
+
+            <div className="add-capability-search-row">
+              <div className="add-capability-search">
+                <Icon name="search" weight="bold" size="sm" className="add-capability-search-icon" />
+                <input
+                  type="search"
+                  aria-label="Search actions"
+                  placeholder={integration ? `Search ${integration.name} actions` : 'Search by action name, description, or provider name'}
+                  value={search}
+                  onChange={event => setSearch(event.target.value)}
+                  autoFocus
+                />
+              </div>
+            </div>
+
+            {!integration && (
+              <div className="add-capability-tabs" role="tablist" aria-label="Action sources">
+                {(['all', 'integration', 'mcp'] as GuidedAddActionTab[]).map(tab => (
+                  <button
+                    key={tab}
+                    type="button"
+                    role="tab"
+                    aria-selected={activeTab === tab}
+                    className={`add-capability-tab${activeTab === tab ? ' active' : ''}`}
+                    onClick={() => {
+                      setActiveTab(tab);
+                      setSearch('');
+                    }}
+                  >
+                    {tab === 'all' ? 'All' : tab === 'integration' ? 'Integration' : 'MCP'}
+                  </button>
+                ))}
+              </div>
+            )}
+
+            <div className="add-capability-list">
+              {integration ? integration.actions
+                .filter(action => !normalizedSearch || action.name.toLowerCase().includes(normalizedSearch) || action.description.toLowerCase().includes(normalizedSearch))
+                .map(action => {
+                  const alreadyAdded = selectedActions.includes(action.name);
+                  const selected = pendingActions.includes(action.name);
+                  return (
+                    <button
+                      type="button"
+                      key={action.id}
+                      className={`add-capability-item eva-guided-add-action-item${selected ? ' selected' : ''}${alreadyAdded ? ' disabled' : ''}`}
+                      aria-pressed={selected}
+                      disabled={alreadyAdded}
+                      onClick={() => togglePendingAction(action.name)}
+                    >
+                      <span className={`add-capability-item-checkbox${selected || alreadyAdded ? ' checked' : ''}`} aria-hidden="true">
+                        {(selected || alreadyAdded) && <Icon name="check" weight="bold" size="xs" />}
+                      </span>
+                      <span className="add-capability-item-info">
+                        <span className="add-capability-item-name">{action.name}</span>
+                        <span className="add-capability-item-meta">From {integration.name} · Action</span>
+                      </span>
+                    </button>
+                  );
+                }) : activeTab === 'integration' ? INTEGRATIONS
+                .filter(item => !normalizedSearch || item.name.toLowerCase().includes(normalizedSearch))
+                .map(item => (
+                  <button
+                    type="button"
+                    key={item.id}
+                    className="add-capability-item add-capability-item-clickable eva-guided-add-action-item"
+                    onClick={() => {
+                      setSelectedIntegration(item.id);
+                      setSearch('');
+                    }}
+                  >
+                    <span className={`add-capability-item-logo logo-${item.logo}`} aria-hidden="true">
+                      <Icon name="extension-mobility" weight="bold" size="md" />
+                    </span>
+                    <span className="add-capability-item-info">
+                      <span className="add-capability-item-name">{item.name}</span>
+                      <span className="add-capability-item-meta">{item.description}</span>
+                    </span>
+                    <Icon name="arrow-right" weight="bold" size="sm" className="add-capability-item-arrow" />
+                  </button>
+                )) : filteredItems.map(item => {
+                  const alreadyAdded = selectedActions.includes(item.name);
+                  const selected = pendingActions.includes(item.name);
+                  return (
+                    <button
+                      type="button"
+                      key={item.id}
+                      className={`add-capability-item eva-guided-add-action-item${selected ? ' selected' : ''}${alreadyAdded ? ' disabled' : ''}`}
+                      aria-pressed={selected}
+                      disabled={alreadyAdded}
+                      onClick={() => togglePendingAction(item.name)}
+                    >
+                      <span className={`add-capability-item-checkbox${selected || alreadyAdded ? ' checked' : ''}`} aria-hidden="true">
+                        {(selected || alreadyAdded) && <Icon name="check" weight="bold" size="xs" />}
+                      </span>
+                      <span className={`add-capability-item-logo logo-${item.logo}`} aria-hidden="true">
+                        <Icon name={item.logo === 'servicenow' ? 'bot-customer-assistant' : 'extension-mobility'} weight="bold" size="md" />
+                      </span>
+                      <span className="add-capability-item-info">
+                        <span className="add-capability-item-name">{item.name}</span>
+                        <span className="add-capability-item-meta">From {item.source}{'type' in item ? ` · ${item.type}` : ''}</span>
+                      </span>
+                    </button>
+                  );
+                })}
+            </div>
+
+            <div className="add-capability-selected-section">
+              <div className="add-capability-selected">
+                <span className="add-capability-selected-label">Selected ({pendingActions.length}/9)</span>
+              </div>
+              {pendingActions.length > 0 && (
+                <div className="add-capability-chips">
+                  {pendingActions.map(action => (
+                    <span className="add-capability-chip" key={action}>
+                      {action}
+                      <button type="button" className="add-capability-chip-close" onClick={() => togglePendingAction(action)} aria-label={`Remove ${action}`}>
+                        <Icon name="cancel" weight="bold" size={12} />
+                      </button>
+                    </span>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            <div className="add-capability-footer">
+              {integration && (
+                <button
+                  type="button"
+                  className="add-capability-back-btn"
+                  onClick={() => {
+                    setSelectedIntegration(null);
+                    setSearch('');
+                  }}
+                >
+                  Back
+                </button>
+              )}
+              <div className="add-capability-footer-actions">
+                <Button variant="secondary" onClick={closeBrowser}>Cancel</Button>
+                <Button
+                  disabled={pendingActions.length === 0}
+                  onClick={() => {
+                    onAdd(pendingActions);
+                    onNotify(`${pendingActions.length} action${pendingActions.length === 1 ? '' : 's'} added.`, 'success');
+                    closeBrowser();
+                  }}
+                >
+                  Add
+                </Button>
+              </div>
+            </div>
+          </div>
+        </div>,
+        document.body,
+      )}
+
+      {fulfillmentOpen && (
+        <CreateFulfillmentModal
+          onClose={() => setFulfillmentOpen(false)}
+          onSave={data => {
+            onAdd([data.name]);
+            onNotify(`Action "${data.name}" added.`, 'success');
+            setFulfillmentOpen(false);
+          }}
+        />
+      )}
+    </>
+  );
+}
 
 const DEFAULT_MEMORY_SOURCES = [
   {
@@ -952,12 +1274,6 @@ const ciscoLiveGuidedProfiles: GuidedCustomProfile[] = CISCO_LIVE_ALL_GUARDRAILS
 }));
 
 const guidedCustomProfileLimit = 3;
-const guidedCustomProfileDescriptions = [
-  ...ciscoLiveGuidedProfiles.map(profile => profile.description),
-  defaultGuidedCustomProfile.description,
-  'Detects escalation-specific requests and ensures urgent customer issues follow approved handoff rules.',
-  'Detects policy exception requests and keeps agent responses aligned to approved business workflows.',
-];
 
 const summarizeGuardrailChipLabel = (label: string) => {
   const ciscoLiveProfile = ciscoLiveGuidedProfiles.find(profile => profile.description === label);
@@ -1178,12 +1494,27 @@ export default function EvaChatExperience({
   const [digitalChannel, setDigitalChannel] = useState<EvaDigitalChannel>(restoredEvaSession?.digitalChannel ?? 'chat');
   const [digitalChannelAddress, setDigitalChannelAddress] = useState(restoredEvaSession?.digitalChannelAddress ?? '');
   const [channelPhoneNumber, setChannelPhoneNumber] = useState(restoredEvaSession?.channelPhoneNumber ?? CHANNEL_PHONE_NUMBER_OPTIONS[0].value);
-  const [standardGuardrails, setStandardGuardrails] = useState(restoredEvaSession?.standardGuardrails ?? EVA_STANDARD_GUARDRAILS);
-  const [advancedGuardrailGroups, setAdvancedGuardrailGroups] = useState(restoredEvaSession?.advancedGuardrailGroups ?? EVA_ADVANCED_GUARDRAIL_GROUPS);
+  const initialStandardGuardrails = restoredEvaSession?.standardGuardrails ?? EVA_STANDARD_GUARDRAILS;
+  const initialAdvancedGuardrailGroups = restoredEvaSession?.advancedGuardrailGroups ?? EVA_ADVANCED_GUARDRAIL_GROUPS;
+  const [standardGuardrails, setStandardGuardrails] = useState(initialStandardGuardrails);
+  const [advancedGuardrailGroups, setAdvancedGuardrailGroups] = useState(initialAdvancedGuardrailGroups);
   const [expandedAdvancedGroups, setExpandedAdvancedGroups] = useState<Set<string>>(
     () => new Set(restoredEvaSession?.expandedAdvancedGroups ?? EVA_ADVANCED_GUARDRAIL_GROUPS.map(group => group.id)),
   );
-  const [expandedPrebuiltGuardrailGroups, setExpandedPrebuiltGuardrailGroups] = useState<Set<string>>(() => new Set());
+  const [expandedPrebuiltGuardrailGroups, setExpandedPrebuiltGuardrailGroups] = useState<Set<string>>(() => new Set(
+    initialAdvancedGuardrailGroups
+      .filter(group => {
+        const hasEnabledCoreRule = initialStandardGuardrails.some(item => {
+          if (!item.enabled) return false;
+          if (group.id === 'security') return item.id.includes('jailbreak');
+          if (group.id === 'safety') return !item.id.includes('jailbreak');
+          return false;
+        });
+
+        return hasEnabledCoreRule || group.items.some(item => item.enabled);
+      })
+      .map(group => group.id),
+  ));
   const [personality, setPersonality] = useState(restoredEvaSession?.personality ?? {
     llm: 'Webex AI Pro 1.0',
     voice: 'ava',
@@ -1198,6 +1529,8 @@ export default function EvaChatExperience({
     );
     return ciscoLiveAgent?.customGuardrails.map(guardrail => guardrail.description) ?? [];
   });
+  const [showGuidedPolicyStudio, setShowGuidedPolicyStudio] = useState(false);
+  const [policyStudioGuidedProfiles, setPolicyStudioGuidedProfiles] = useState<GuidedCustomProfile[]>([]);
   const [disabledCustomRules, setDisabledCustomRules] = useState<Set<string>>(() => new Set());
   const [expandedProfileDescs, setExpandedProfileDescs] = useState<Set<string>>(() => new Set());
   const [previewMessages, setPreviewMessages] = useState<EvaMessage[]>([]);
@@ -1214,8 +1547,9 @@ export default function EvaChatExperience({
   const [testingScenarioStep, setTestingScenarioStep] = useState<EvaTestingScenarioStep>('choose-method');
   const [testingScenarioDraft, setTestingScenarioDraft] = useState<EvaTestingScenarioDraft>(emptyTestingScenarioDraft);
   const [showEvaGeneratedSidePanel, setShowEvaGeneratedSidePanel] = useState(true);
-  const [generatedChatPanelMode, setGeneratedChatPanelMode] = useState<GeneratedChatPanelMode>('rail');
+  const [generatedChatPanelMode, setGeneratedChatPanelMode] = useState<GeneratedChatPanelMode>('collapsed');
   const [generatedChatPanelWidth, setGeneratedChatPanelWidth] = useState(GENERATED_CHAT_PANEL_DEFAULT_WIDTH);
+  const [sideProgressExpanded, setSideProgressExpanded] = useState(true);
   const [sideContextExpanded, setSideContextExpanded] = useState(false);
   const [showEvaThreadPanel, setShowEvaThreadPanel] = useState(false);
   const [activeEvaThreadId, setActiveEvaThreadId] = useState('eva-thread-current');
@@ -4146,6 +4480,14 @@ ${previewTranscript}`,
   };
 
   const getGuidedCustomProfile = (rule: string, index: number): GuidedCustomProfile => {
+    const policyStudioProfile = policyStudioGuidedProfiles.find(profile => profile.description === rule);
+    if (policyStudioProfile) {
+      return {
+        ...policyStudioProfile,
+        enabled: !disabledCustomRules.has(rule),
+      };
+    }
+
     const ciscoLiveProfile = ciscoLiveGuidedProfiles.find(profile => profile.description === rule);
     if (ciscoLiveProfile) {
       return {
@@ -4191,24 +4533,6 @@ ${previewTranscript}`,
     setDisabledCustomRules(prev => {
       const next = new Set(prev);
       next.delete(rule);
-      return next;
-    });
-  };
-
-  const addGuidedCustomProfile = () => {
-    const nextRule = customRules.length < guidedCustomProfileLimit
-      ? guidedCustomProfileDescriptions.find(rule => !customRules.includes(rule))
-      : undefined;
-    if (!nextRule) return;
-
-    setCustomRules(prev => {
-      if (prev.length >= guidedCustomProfileLimit) return prev;
-      if (prev.includes(nextRule)) return prev;
-      return [...prev, nextRule];
-    });
-    setDisabledCustomRules(prev => {
-      const next = new Set(prev);
-      next.delete(nextRule);
       return next;
     });
   };
@@ -4588,7 +4912,18 @@ ${previewTranscript}`,
   };
   const selectedActionSet = new Set(selectedActions);
   const selectedKnowledgeBaseSet = new Set(selectedKnowledgeBases);
-  const visibleActionRows = EVA_ACTION_ROWS.filter(action =>
+  const guidedCatalogActionRows = AVAILABLE_ACTIONS
+    .filter(action => selectedActionSet.has(action.name))
+    .map(action => ({
+      id: `guided-${action.id}`,
+      name: action.name,
+      description: action.description,
+      actionType: action.type,
+      providerType: action.source,
+      createdBy: action.source,
+      lastUpdated: 'Just now',
+    }));
+  const visibleActionRows = [...EVA_ACTION_ROWS, ...guidedCatalogActionRows].filter(action =>
     !isPublishedDemoAgent || selectedActionSet.has(action.name),
   );
   const sidePanelActions = visibleActionRows.map(action => ({
@@ -6060,6 +6395,20 @@ ${previewTranscript}`,
                     >
                       <Icon name={isEvaCanvasView ? 'tools' : 'workflow-deployments'} weight="bold" size={18} />
                     </Button>
+                    {!isEvaCanvasView && (
+                      <Button
+                        type="button"
+                        variant="secondary"
+                        size="sm"
+                        className="eva-view-actions__icon-btn"
+                        onClick={() => setShowEvaGeneratedSidePanel(prev => !prev)}
+                        aria-label={showEvaGeneratedSidePanel ? 'Expand canvas' : 'Show summary'}
+                        title={showEvaGeneratedSidePanel ? 'Expand' : 'Show summary'}
+                        aria-pressed={!showEvaGeneratedSidePanel}
+                      >
+                        <Icon name="side-panel" weight="bold" size={18} />
+                      </Button>
+                    )}
                     <Button variant="primary" size="sm" onClick={handleSaveConfigurations}>
                       Update configurations
                     </Button>
@@ -6087,23 +6436,6 @@ ${previewTranscript}`,
                 </>
               ) : (
                 <>
-              <header className="eva-generated-canvas-header">
-                <div>
-                  <small>Working zone</small>
-                  <h2>Configuration canvas</h2>
-                  <p>{activeCanvasStep.label.replace(/^\d+\.\s*/, '')} · {activeCanvasStep.detail}</p>
-                </div>
-                <Button
-                  type="button"
-                  variant="secondary"
-                  size="sm"
-                  onClick={() => setShowEvaGeneratedSidePanel(prev => !prev)}
-                  aria-pressed={!showEvaGeneratedSidePanel}
-                >
-                  <Icon name="side-panel" weight="bold" size="sm" />
-                  {showEvaGeneratedSidePanel ? 'Expand' : 'Show summary'}
-                </Button>
-              </header>
         {orchestrationSuggested && !guidanceVisible && !evaThinking && (
           <section className="eva-dialogue" aria-label="Orchestration configuration">
             <section className="eva-workspace-section" aria-labelledby="eva-orchestration-section-title">
@@ -6722,10 +7054,11 @@ ${previewTranscript}`,
                     </section>
                     {evaStep === 'actions' && (
                       <div className="eva-dialogue__actions">
-                        <Button variant="secondary" onClick={() => navigate('/assistant-skills')}>
-                          <Icon name="plus" weight="bold" size={16} />
-                          Add new
-                        </Button>
+                        <GuidedAddActions
+                          selectedActions={selectedActions}
+                          onAdd={actions => setSelectedActions(current => Array.from(new Set([...current, ...actions])))}
+                          onNotify={showToast}
+                        />
                         <Button onClick={() => setEvaStep('security')}>Continue to security</Button>
                       </div>
                     )}
@@ -6824,7 +7157,7 @@ ${previewTranscript}`,
                         size="sm"
                         className="security-custom-profiles-create-button"
                         disabled={customRules.length >= customProfileLimit}
-                        onClick={addGuidedCustomProfile}
+                        onClick={() => setShowGuidedPolicyStudio(true)}
                       >
                         <Icon name="plus" weight="bold" size={16} />
                         Create custom profile
@@ -6843,7 +7176,7 @@ ${previewTranscript}`,
                             </div>
                           </div>
                           <p className="security-prebuilt-desc">
-                            Add broad protections that complement custom profiles. Categories stay collapsed so custom profiles stay easy to scan.
+                            Add broad protections that complement custom profiles. Enabled categories open by default so active protections are easy to review.
                           </p>
                         </div>
                       </div>
@@ -6881,7 +7214,6 @@ ${previewTranscript}`,
                                         <h4>Core coverage</h4>
                                         <p>Always-available protections for common risks in this category.</p>
                                       </div>
-                                      <Badge variant="default">{standardItems.filter(item => item.enabled).length} out of {standardItems.length} rules enabled</Badge>
                                     </div>
                                     <AccordionGroup type="borderless" className="security-prebuilt-rail-list">
                                       {standardItems.map(renderStandardPrebuiltGuardrail)}
@@ -6895,7 +7227,6 @@ ${previewTranscript}`,
                                       <h4>AI Defense rules</h4>
                                       <p>Advanced protections powered by Cisco AI Defense.</p>
                                     </div>
-                                    <Badge variant="default">{group.items.filter(item => item.enabled).length} out of {group.items.length} rules enabled</Badge>
                                   </div>
                                   <AccordionGroup type="borderless" className="security-prebuilt-rail-list">
                                     {group.items.map(item => renderAdvancedPrebuiltGuardrail(group, item))}
@@ -7705,44 +8036,23 @@ ${previewTranscript}`,
             >
               {showEvaGeneratedSidePanel && (
                 <>
-              <section className="eva-side-card eva-side-card--agent-summary">
-                <div className="eva-side-card__header">
-                  <Icon name="bot" weight="bold" size="sm" />
-                  <h2>Summary of the Agent</h2>
-                </div>
-                {evaThinking ? (
-                  <div
-                    className="eva-side-card-skeleton"
-                    role="status"
-                    aria-label="Generating agent summary"
-                  >
-                    <div className="eva-side-card-skeleton__bar eva-side-card-skeleton__bar--medium" />
-                    <div className="eva-side-card-skeleton__bar eva-side-card-skeleton__bar--long" />
-                    <div className="eva-side-card-skeleton__bar eva-side-card-skeleton__bar--long" />
-                    <div className="eva-side-card-skeleton__bar eva-side-card-skeleton__bar--short" />
-                  </div>
-                ) : (
-                  <div className="eva-side-summary">
-                    <strong>{agentName}</strong>
-                    <p>{agentDescription}</p>
-                    <span>{agentCharacterSummary}</span>
-                  </div>
-                )}
-              </section>
-
               <section className="eva-side-card">
-                <div className="eva-side-card__header">
+                <div className="eva-side-card__header eva-side-card__header--action">
+                  <span className="eva-side-card__title">
+                    <Icon name="list-menu" weight="bold" size="sm" />
+                    <h2>Progress</h2>
+                  </span>
                   <button
                     type="button"
-                    className="eva-side-card__icon-btn"
-                    aria-label="Collapse side panel"
-                    onClick={() => setShowEvaGeneratedSidePanel(false)}
+                    className="eva-side-edit-btn eva-side-edit-btn--bare"
+                    aria-label={sideProgressExpanded ? 'Collapse progress' : 'Expand progress'}
+                    aria-expanded={sideProgressExpanded}
+                    onClick={() => setSideProgressExpanded(prev => !prev)}
                   >
-                    <Icon name="list-menu" weight="bold" size="sm" />
+                    <Icon name={sideProgressExpanded ? 'arrow-up' : 'arrow-down'} weight="bold" size="sm" />
                   </button>
-                  <h2>Progress</h2>
                 </div>
-                <div className="eva-generation-progress-groups">
+                {sideProgressExpanded && <div className="eva-generation-progress-groups">
                   {groupedProgressSections.map(section => (
                     <section key={section.title} className="eva-generation-progress-group">
                       <h3>{section.title}</h3>
@@ -7775,7 +8085,32 @@ ${previewTranscript}`,
                       </ol>
                     </section>
                   ))}
+                </div>}
+              </section>
+
+              <section className="eva-side-card eva-side-card--agent-summary">
+                <div className="eva-side-card__header">
+                  <Icon name="bot" weight="bold" size="sm" />
+                  <h2>Summary of the Agent</h2>
                 </div>
+                {evaThinking ? (
+                  <div
+                    className="eva-side-card-skeleton"
+                    role="status"
+                    aria-label="Generating agent summary"
+                  >
+                    <div className="eva-side-card-skeleton__bar eva-side-card-skeleton__bar--medium" />
+                    <div className="eva-side-card-skeleton__bar eva-side-card-skeleton__bar--long" />
+                    <div className="eva-side-card-skeleton__bar eva-side-card-skeleton__bar--long" />
+                    <div className="eva-side-card-skeleton__bar eva-side-card-skeleton__bar--short" />
+                  </div>
+                ) : (
+                  <div className="eva-side-summary">
+                    <strong>{agentName}</strong>
+                    <p>{agentDescription}</p>
+                    <span>{agentCharacterSummary}</span>
+                  </div>
+                )}
               </section>
 
               <section className="eva-side-card">
@@ -7786,7 +8121,7 @@ ${previewTranscript}`,
                   </span>
                   <button
                     type="button"
-                    className="eva-side-edit-btn"
+                    className="eva-side-edit-btn eva-side-edit-btn--bare"
                     aria-label={sideContextExpanded ? 'Collapse context' : 'Expand context'}
                     aria-expanded={sideContextExpanded}
                     onClick={() => setSideContextExpanded(prev => !prev)}
@@ -7912,6 +8247,43 @@ ${previewTranscript}`,
               transcribePath={voiceTranscribePath}
             />
           </section>
+        )}
+        {showGuidedPolicyStudio && (
+          <SecurityUIPolicyStudio
+            key="new-guided-custom-guardrail"
+            initialBasicStep
+            onClose={() => setShowGuidedPolicyStudio(false)}
+            onPublish={(result) => {
+              const description = result.description.trim()
+                || `Business-specific policy for ${result.name}.`;
+              const createdAt = new Date().toLocaleDateString('en-US', {
+                month: 'short',
+                day: 'numeric',
+                year: 'numeric',
+              });
+              const profile: GuidedCustomProfile = {
+                id: `custom-policy-${Date.now()}`,
+                name: result.name,
+                description,
+                enabled: true,
+                createdBy: 'You',
+                createdAt,
+                overview: result.overview,
+              };
+
+              setPolicyStudioGuidedProfiles(prev => [...prev, profile]);
+              setCustomRules(prev => prev.length >= guidedCustomProfileLimit
+                ? prev
+                : [...prev, description]);
+              setDisabledCustomRules(prev => {
+                const next = new Set(prev);
+                next.delete(description);
+                return next;
+              });
+              setShowGuidedPolicyStudio(false);
+              showToast(`Guardrail "${result.name}" published`, 'success');
+            }}
+          />
         )}
       </div>
     </div>
