@@ -1,5 +1,5 @@
 export const CISCO_LIVE_PRIMARY_AGENT_ID = 'golftop-vip-reservations';
-export const CISCO_LIVE_PRIMARY_AGENT_NAME = 'Gofie VIP Reservations';
+export const CISCO_LIVE_PRIMARY_AGENT_NAME = 'EAGLE GREEN VIP Reservations';
 
 export interface CiscoLiveGuardrailDefinition {
   id: string;
@@ -193,7 +193,7 @@ export const CISCO_LIVE_AGENTS: CiscoLiveAgentDefinition[] = [
   {
     id: CISCO_LIVE_PRIMARY_AGENT_ID,
     name: CISCO_LIVE_PRIMARY_AGENT_NAME,
-    initials: 'GV',
+    initials: 'EG',
     description: 'Recognizes VIP callers, books visits, sends secure payment links, and transfers large event requests for approval.',
     gradient: 'linear-gradient(135deg, #6c5ce7 0%, #1677c8 100%)',
     status: 'Published',
@@ -244,7 +244,7 @@ export const CISCO_LIVE_AGENTS: CiscoLiveAgentDefinition[] = [
         actions: ['Send secure payment link'],
         collaborator: {
           id: 'gofie-secure-payments',
-          name: 'Gofie Secure Payments',
+          name: 'EAGLE GREEN Secure Payments',
           initials: 'SP',
           description: 'Provides the approved PCI-compliant payment flow without exposing card data.',
           gradient: 'linear-gradient(135deg, #f08b43 0%, #c5548d 100%)',
@@ -259,7 +259,7 @@ export const CISCO_LIVE_AGENTS: CiscoLiveAgentDefinition[] = [
         collaborator: {
           id: 'golftop-event-operations',
           agentId: 'golftop-event-operations',
-          name: 'Gofie Event Operations',
+          name: 'EAGLE GREEN Event Operations',
           initials: 'EO',
           description: 'Coordinates venue, staffing, catering, and facilities work after approval.',
           gradient: 'linear-gradient(135deg, #13a88a 0%, #1677c8 100%)',
@@ -291,7 +291,7 @@ export const CISCO_LIVE_AGENTS: CiscoLiveAgentDefinition[] = [
   },
   {
     id: 'golftop-event-operations',
-    name: 'Gofie Event Operations',
+    name: 'EAGLE GREEN Event Operations',
     initials: 'EO',
     description: 'Coordinates bay capacity, catering, staffing, and facilities work when a large reservation is approved.',
     gradient: 'linear-gradient(135deg, #13a88a 0%, #1677c8 100%)',
@@ -343,7 +343,7 @@ export const CISCO_LIVE_AGENTS: CiscoLiveAgentDefinition[] = [
         actions: ['Coordinate staffing'],
         collaborator: {
           id: 'gofie-staffing-catering',
-          name: 'Gofie Staffing & Catering',
+          name: 'EAGLE GREEN Staffing & Catering',
           initials: 'SC',
           description: 'Coordinates staffing ratios, menus, beverage inventory, and service ownership.',
           gradient: 'linear-gradient(135deg, #bf6ad8 0%, #5d6adf 100%)',
@@ -358,7 +358,7 @@ export const CISCO_LIVE_AGENTS: CiscoLiveAgentDefinition[] = [
         collaborator: {
           id: 'golftop-servicenow-coordinator',
           agentId: 'golftop-servicenow-coordinator',
-          name: 'Gofie ServiceNow Coordinator',
+          name: 'EAGLE GREEN ServiceNow Coordinator',
           initials: 'SN',
           description: 'Creates and routes approved facilities work, then tracks ownership and SLA risk.',
           gradient: 'linear-gradient(135deg, #1677c8 0%, #6547d5 100%)',
@@ -391,7 +391,7 @@ export const CISCO_LIVE_AGENTS: CiscoLiveAgentDefinition[] = [
   },
   {
     id: 'golftop-servicenow-coordinator',
-    name: 'Gofie ServiceNow Coordinator',
+    name: 'EAGLE GREEN ServiceNow Coordinator',
     initials: 'SN',
     description: 'Creates and routes ServiceNow work without manual entry, then tracks ownership and fulfillment risk.',
     gradient: 'linear-gradient(135deg, #1677c8 0%, #6547d5 100%)',
@@ -444,7 +444,7 @@ export const CISCO_LIVE_AGENTS: CiscoLiveAgentDefinition[] = [
         collaborator: {
           id: 'golftop-event-operations',
           agentId: 'golftop-event-operations',
-          name: 'Gofie Event Operations',
+          name: 'EAGLE GREEN Event Operations',
           initials: 'EO',
           description: 'Supplies the approved event plan and the operational context required for fulfillment.',
           gradient: 'linear-gradient(135deg, #13a88a 0%, #1677c8 100%)',
@@ -458,7 +458,7 @@ export const CISCO_LIVE_AGENTS: CiscoLiveAgentDefinition[] = [
         actions: ['Assign fulfillment team'],
         collaborator: {
           id: 'gofie-support-routing',
-          name: 'Gofie Support Routing',
+          name: 'EAGLE GREEN Support Routing',
           initials: 'SR',
           description: 'Resolves the responsible support team and named owner for each approved work item.',
           gradient: 'linear-gradient(135deg, #cf6c4a 0%, #7f58d6 100%)',
@@ -472,7 +472,7 @@ export const CISCO_LIVE_AGENTS: CiscoLiveAgentDefinition[] = [
         actions: ['Track SLA risk'],
         collaborator: {
           id: 'gofie-fulfillment-owner',
-          name: 'Gofie Fulfillment Owner',
+          name: 'EAGLE GREEN Fulfillment Owner',
           initials: 'FO',
           description: 'Accepts at-risk work, resolves blockers, and owns the fulfillment commitment.',
           gradient: 'linear-gradient(135deg, #e06d89 0%, #8a60d4 100%)',
@@ -646,7 +646,7 @@ export const CISCO_LIVE_SESSIONS_BY_AGENT: Record<string, CiscoLiveSession[]> = 
         {
           id: 'evt-2',
           kind: 'agent',
-          speaker: 'Gofie VIP Reservations',
+          speaker: 'EAGLE GREEN VIP Reservations',
           text: 'Hello Kristin. Thank you for being a Super Uber Diamond Elite Golfer. How can we help you today?',
           time: '9:39 AM',
         },
@@ -660,7 +660,7 @@ export const CISCO_LIVE_SESSIONS_BY_AGENT: Record<string, CiscoLiveSession[]> = 
         {
           id: 'evt-4',
           kind: 'agent',
-          speaker: 'Gofie VIP Reservations',
+          speaker: 'EAGLE GREEN VIP Reservations',
           text: 'I found availability. Your card on file has expired, so I will send a secure link to update it.',
           time: '9:41 AM',
         },
@@ -683,7 +683,7 @@ export const CISCO_LIVE_SESSIONS_BY_AGENT: Record<string, CiscoLiveSession[]> = 
         {
           id: 'evt-7',
           kind: 'agent',
-          speaker: 'Gofie VIP Reservations',
+          speaker: 'EAGLE GREEN VIP Reservations',
           text: 'A reservation of that size needs approval from our VIP event team. I am connecting you to another agent now. They will already have the details.',
           time: '9:42 AM',
         },
@@ -782,7 +782,7 @@ export const CISCO_LIVE_SESSIONS_BY_AGENT: Record<string, CiscoLiveSession[]> = 
     {
       id: 'SES-SN-3214',
       consumerId: 'EVENT-GSX-1000',
-      customer: 'Gofie Event Operations',
+      customer: 'EAGLE GREEN Event Operations',
       channel: 'API',
       topic: 'Facilities capacity ticket',
       updated: 'Just now',
@@ -793,12 +793,12 @@ export const CISCO_LIVE_SESSIONS_BY_AGENT: Record<string, CiscoLiveSession[]> = 
       guardrailTriggered: false,
       transferred: false,
       summary: 'Created ServiceNow ticket FAC-3214 for the approved 1,000-person GSX reservation and assigned the Las Vegas operations queue.',
-      connectedSystems: ['Gofie Event Operations', 'ServiceNow', 'Las Vegas operations queue'],
+      connectedSystems: ['EAGLE GREEN Event Operations', 'ServiceNow', 'Las Vegas operations queue'],
       transcript: [
         {
           id: 'sn-evt-1',
           kind: 'system',
-          speaker: 'Gofie Event Operations',
+          speaker: 'EAGLE GREEN Event Operations',
           title: 'Approved fulfillment request received',
           text: 'Event EVENT-GSX-1000 needs facilities capacity and fire-code review for an approved 1,000-person reservation at the Las Vegas venue.',
           time: '9:46:00 AM',
@@ -806,7 +806,7 @@ export const CISCO_LIVE_SESSIONS_BY_AGENT: Record<string, CiscoLiveSession[]> = 
         {
           id: 'sn-evt-2',
           kind: 'agent',
-          speaker: 'Gofie ServiceNow Coordinator',
+          speaker: 'EAGLE GREEN ServiceNow Coordinator',
           text: 'I verified the human approval and matched the request to the Facilities capacity review item in the ServiceNow fulfillment catalog.',
           time: '9:46:06 AM',
         },
@@ -821,7 +821,7 @@ export const CISCO_LIVE_SESSIONS_BY_AGENT: Record<string, CiscoLiveSession[]> = 
         {
           id: 'sn-evt-4',
           kind: 'agent',
-          speaker: 'Gofie ServiceNow Coordinator',
+          speaker: 'EAGLE GREEN ServiceNow Coordinator',
           text: 'I am creating the facilities capacity review and routing it to the Las Vegas operations queue with the event response SLA.',
           time: '9:46:20 AM',
         },
@@ -836,8 +836,8 @@ export const CISCO_LIVE_SESSIONS_BY_AGENT: Record<string, CiscoLiveSession[]> = 
         {
           id: 'sn-evt-6',
           kind: 'agent',
-          speaker: 'Gofie ServiceNow Coordinator',
-          text: 'FAC-3214 is assigned. I returned the ticket number, owner, and SLA to Gofie Event Operations so the fulfillment plan can continue.',
+          speaker: 'EAGLE GREEN ServiceNow Coordinator',
+          text: 'FAC-3214 is assigned. I returned the ticket number, owner, and SLA to EAGLE GREEN Event Operations so the fulfillment plan can continue.',
           time: '9:46:38 AM',
         },
       ],
