@@ -52,7 +52,8 @@
 
 /* Builder typography token aliases for this app's local token names. */
 .agent-testing-page--builder,
-.clus-kpi-dashboard-root {
+.clus-kpi-dashboard-root,
+.agent-studio-operational-kpi-grid {
   --mds-font-family-primary: var(--font-family-primary);
   --mds-font-size-body-small: var(--font-size-body-small, 12px);
   --mds-font-size-body-midsize: var(--font-size-body-midsize, 14px);
@@ -1341,4 +1342,3 @@ button.clus-kpi-eval-id-link:focus-visible {
   outline: 2px solid var(--mds-color-theme-text-accent-normal);
   outline-offset: 2px;
 }
-

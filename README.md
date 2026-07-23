@@ -56,6 +56,7 @@ npm run preview
 | ------------- | ------------------------------------------- |
 | `npm run dev` | Start Vite dev server with HMR              |
 | `npm run build` | Type-check and build for production       |
+| `npm test` | Run AI agent creation model and journey tests |
 | `npm run preview` | Preview the production build locally    |
 | `npm run lint` | Run ESLint                                 |
 | `npm run deploy` | Build and deploy to GitHub Pages         |
@@ -73,6 +74,8 @@ ai-agent-studio/
 │   │   │   ├── shared/     # Design system primitives (Button, Modal, Table, etc.)
 │   │   │   └── agents/     # Agent-specific components
 │   │   ├── contexts/       # React context (AppContext)
+│   │   ├── features/       # Feature-owned experiences and state adapters
+│   │   │   └── agent-creation/ # Three-family quick creation and synchronized configuration
 │   │   ├── icons/          # Momentum icon loader and catalog
 │   │   ├── pages/          # Route-level page components
 │   │   │   └── agent/      # Agent configuration, sessions, history, analytics
@@ -102,6 +105,12 @@ The app uses the **Momentum Design System** (dark Webex theme):
 - **Icons**: SVGs from `@momentum-design/icons`, loaded at runtime via a custom `<Icon>` component (avoids Lit web components in React 19).
 - **Fonts**: CiscoSans via `@momentum-design/fonts`.
 - **Components**: Custom React components in `src/components/shared/` built on top of Momentum tokens.
+
+## AI agent creation architecture
+
+The shared AI Agents experience supports Calling, Contact Center, and Internal AI Assistant as mutually exclusive families. New users begin with a conversational minimum profile—licensed family, name, purpose, applied instructions, and one default language—then may publish a reusable configuration version or continue into the synchronized configuration workspace.
+
+Rich per-agent drafts are persisted through `AppContext`. Chat history, recommendations, preview state, active section, capability requirement and progress, lifecycle, and deployment references stay synchronized across the overview and configuration routes. Publishing and deployment are intentionally separate lifecycle steps.
 
 ## Review Mode (inline PM comments)
 

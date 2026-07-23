@@ -27,6 +27,11 @@ import PolicyStudio from './PolicyStudio';
 import { optimizeInstructions } from '../../api/ciscoAi';
 import { Icon } from '../../icons';
 import {
+  FAMILY_METADATA,
+  type AgentFamily,
+  type AgentLifecycle,
+} from '../../features/agent-creation/agentCreationModel';
+import {
   type UpdateStatus,
   type RiskLevel,
   CAPABILITIES,
@@ -74,7 +79,29 @@ type ActionRow = {
   lastUpdated: string;
 };
 
-const ACTION_SECTIONS = ['Profile', 'Instructions', 'Knowledge', 'Action', 'Security', 'Language'];
+type ConfigurationSection = 'Profile' | 'Instructions' | 'Knowledge' | 'Action' | 'Security' | 'Language';
+
+const ACTION_SECTIONS: ConfigurationSection[] = ['Profile', 'Instructions', 'Knowledge', 'Action', 'Security', 'Language'];
+
+const FAMILY_SECTIONS: Record<AgentFamily, ConfigurationSection[]> = {
+  calling: ['Profile', 'Instructions', 'Knowledge', 'Language'],
+  contact_center: ACTION_SECTIONS,
+  internal_assistant: ACTION_SECTIONS,
+};
+
+const FAMILY_SECTION_LABELS: Record<AgentFamily, Partial<Record<ConfigurationSection, string>>> = {
+  calling: {
+    Knowledge: 'Basic knowledge',
+  },
+  contact_center: {
+    Action: 'Actions / MCP',
+  },
+  internal_assistant: {
+    Knowledge: 'Internal knowledge',
+    Action: 'Actions and skills',
+    Security: 'Security and audit',
+  },
+};
 
 const PROFILE_LANGUAGE_OPTIONS = [
   { value: 'en-US', label: 'English (US)' },
@@ -83,6 +110,15 @@ const PROFILE_LANGUAGE_OPTIONS = [
   { value: 'fr-FR', label: 'French' },
   { value: 'de-DE', label: 'German' },
 ];
+
+const profileLanguageValue = (language: string | undefined) =>
+  PROFILE_LANGUAGE_OPTIONS.find(option => option.value === language || option.label === language)?.value ?? 'en-US';
+
+const draftLanguageLabel = (language: string) =>
+  PROFILE_LANGUAGE_OPTIONS.find(option => option.value === language)?.label ?? language;
+
+const lifecycleLabel = (lifecycle: AgentLifecycle) =>
+  lifecycle.charAt(0).toUpperCase() + lifecycle.slice(1);
 
 const PROFILE_VOICE_OPTIONS = [
   { value: 'ava', label: 'Ava' },
@@ -229,38 +265,73 @@ const DEFAULT_ADVANCED_GROUPS: AdvancedGuardrailGroup[] = [
 
 export default function ActionConfigureV2() {
   const { agentId } = useParams();
-  const { agents, currentAgent, selectAgent, showToast, aiEngines, addAiEngine } = useApp();
+  const {
+    agents,
+    agentDrafts,
+    currentAgent,
+    selectAgent,
+    updateAgentDraft,
+    showToast,
+    aiEngines,
+    addAiEngine,
+  } = useApp();
+  const agentDraft = agentId ? agentDrafts[agentId] : undefined;
+  const agentFamily = agentDraft?.family;
+  const availableSections = useMemo(
+    () => agentFamily ? FAMILY_SECTIONS[agentFamily] : ACTION_SECTIONS,
+    [agentFamily],
+  );
   const [searchParams] = useSearchParams();
   // Allow deep-linking to a specific section via ?section=Security (etc.).
   // Only the first render reads the param; user navigation takes over after that.
-  const initialSection = (() => {
+  const initialSection: ConfigurationSection = (() => {
     const raw = searchParams.get('section');
     if (!raw) return 'Profile';
-    const allowed = ['Profile', 'Instructions', 'Knowledge', 'Action', 'Security', 'Language'];
-    return allowed.includes(raw) ? raw : 'Profile';
+    return ACTION_SECTIONS.includes(raw as ConfigurationSection)
+      ? raw as ConfigurationSection
+      : 'Profile';
   })();
   const initialTier: 'standard' | 'advanced' = (() => {
     const raw = searchParams.get('tier');
     return raw === 'advanced' ? 'advanced' : 'standard';
   })();
-  const [activeSection, setActiveSection] = useState<string>(initialSection);
+  const [selectedSection, setSelectedSection] = useState<ConfigurationSection>(initialSection);
+  const activeSection = availableSections.includes(selectedSection) ? selectedSection : 'Profile';
 
   // Profile form state
-  const [profileForm, setProfileForm] = useState({
-    agentName: 'Acme Bank Credit Card Assistant',
+  const [profileForm, setProfileForm] = useState(() => ({
+    agentName: agentDraft?.basics.name ?? (agentId ? agents[agentId]?.name : undefined) ?? 'Acme Bank Credit Card Assistant',
     systemId: 'AcmeBankCreditCardAssistant-uah13as',
     avatarUrl: 'https://us.webexbotbuilder.com/static/assets/i...',
     timezone: 'Europe/London',
-    language: 'en-US',
+    language: profileLanguageValue(agentDraft?.language.defaultLanguage),
     voiceName: 'ava',
     aiEngine: 'Webex AI Pro 1.0',
     welcomeMessage: '',
-    agentGoal: '',
-    instructions: '',
-  });
+    agentGoal: agentDraft?.basics.purpose ?? '',
+    instructions: agentDraft?.instructions.content ?? '',
+  }));
 
-  const updateProfileField = (field: string, value: string) => {
+  const updateProfileField = (field: keyof typeof profileForm, value: string) => {
     setProfileForm(prev => ({ ...prev, [field]: value }));
+
+    if (!agentId || !agentDraft) return;
+    if (field === 'agentName') {
+      updateAgentDraft(agentId, draft => ({
+        ...draft,
+        basics: { ...draft.basics, name: value },
+      }));
+    } else if (field === 'instructions') {
+      updateAgentDraft(agentId, draft => ({
+        ...draft,
+        instructions: { ...draft.instructions, content: value },
+      }));
+    } else if (field === 'language') {
+      updateAgentDraft(agentId, draft => ({
+        ...draft,
+        language: { ...draft.language, defaultLanguage: draftLanguageLabel(value) },
+      }));
+    }
   };
 
   // Instructions tab state
@@ -626,6 +697,16 @@ export default function ActionConfigureV2() {
 
   const headerActions = (
     <div className="action-config-v2-header-actions">
+      {agentFamily && agentDraft && (
+        <>
+          <Badge variant={agentFamily === 'calling' ? 'warning' : agentFamily === 'contact_center' ? 'success' : 'info'}>
+            {FAMILY_METADATA[agentFamily].label}
+          </Badge>
+          <Badge variant={agentDraft.lifecycle === 'draft' ? 'warning' : 'success'}>
+            {lifecycleLabel(agentDraft.lifecycle)}
+          </Badge>
+        </>
+      )}
       <button type="button" className="action-config-v2-preview-btn">
         <Icon name="chat" weight="bold" size={20} />
         Preview
@@ -641,13 +722,13 @@ export default function ActionConfigureV2() {
       <AgentHeader agent={agent} activeTab="configure" showPublishButton={false} headerRight={headerActions}>
         <div className="action-config-v2-title-row">
           <Tabs variant="line" aria-label="Agent configuration sections">
-            {ACTION_SECTIONS.map((section) => (
+            {availableSections.map((section) => (
               <Tab
                 key={section}
                 active={section === activeSection}
-                onClick={() => setActiveSection(section)}
+                onClick={() => setSelectedSection(section)}
               >
-                {section}
+                {agentFamily ? FAMILY_SECTION_LABELS[agentFamily][section] ?? section : section}
               </Tab>
             ))}
           </Tabs>

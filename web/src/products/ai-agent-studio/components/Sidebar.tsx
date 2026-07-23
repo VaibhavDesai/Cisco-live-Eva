@@ -13,7 +13,6 @@ const navItems: NavItem[] = [
   { path: '/', label: 'Dashboard', icon: 'home-bold' },
   { path: '/agents', label: 'AI Agents', icon: 'bot-bold' },
   { path: '/observability', label: 'Observability', icon: 'multiline-chart-regular' },
-  { path: '/assistant-skills', label: 'AI Assistant Skills', icon: 'setup-assistant-bold' },
   { path: '/knowledge', label: 'Knowledge', icon: 'apps-bold' },
   { path: '/settings', label: 'AI Engine', icon: 'tools-bold' },
 ];

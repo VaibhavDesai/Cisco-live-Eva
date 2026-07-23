@@ -21,6 +21,8 @@ export interface BannerAction {
 export interface BannerProps {
   /** Banner tone (icon and color treatment) */
   type?: BannerType;
+  /** Optional icon override */
+  icon?: IconName;
   /** Primary heading text */
   title: string;
   /** Supporting content below the title */
@@ -49,6 +51,7 @@ const TYPE_CONFIG: Record<BannerType, { icon: IconName; className: string }> = {
  */
 export function Banner({
   type = 'info',
+  icon,
   title,
   subtitle,
   actions,
@@ -65,7 +68,7 @@ export function Banner({
     >
       <div className="banner-content">
         <span className="banner-icon">
-          <Icon name={config.icon} weight="bold" size={20} />
+          <Icon name={icon ?? config.icon} weight="bold" size={20} />
         </span>
         <div className="banner-text">
           <span className="banner-title">{title}</span>

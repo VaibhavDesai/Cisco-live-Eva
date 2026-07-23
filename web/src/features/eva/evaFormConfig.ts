@@ -2,6 +2,7 @@ import type { IconName } from '../../icons/types';
 import { CAPABILITIES } from '../../pages/agent/actionConfigShared';
 import { EVA_TEMPLATES } from './evaTemplates';
 import type { EvaAgentDraft, EvaMessage, EvaTemplateId } from './types';
+import type { AgentFamily, StarterProposal } from '../agent-creation/agentCreationModel';
 
 export type EvaConversationStep =
   | 'profile'
@@ -571,6 +572,8 @@ export const EVA_ADVANCED_GUARDRAIL_GROUPS: Array<{
 ];
 
 export interface EvaSessionState {
+  /** Distinguishes first-time creation from editing an agent opened from All Agents. */
+  configurationMode?: 'create' | 'edit';
   landingMode: EvaLandingMode;
   selectedTemplateId: EvaTemplateId | null;
   draft: EvaAgentDraft;
@@ -608,6 +611,21 @@ export interface EvaSessionState {
   expandedAdvancedGroups: string[];
   personality: { llm: string; voice: string; language: string; gender: string };
   customRules: string[];
+  /** Three-family creation state. Optional for compatibility with older sessions. */
+  selectedAgentFamily?: AgentFamily | null;
+  familyIntakeAnswers?: Record<string, string>;
+  familyProposal?: StarterProposal | null;
+  familyProposalApplied?: boolean;
+  activeDraftAgentId?: string | null;
+  /** Keeps the current ranked recommendation journey stable while the user works through it. */
+  recommendationJourneyAgentId?: string | null;
+  recommendationJourneyIds?: string[];
+  /** Places the remaining recommendation cards directly after the section opened from Set up. */
+  recommendationAnchorStep?: EvaConversationStep;
+  /** Hides the dock while the selected recommendation's section is still being configured. */
+  recommendationPendingId?: string | null;
+  /** Routes the final navigator-recommended task to Review instead of the normal section sequence. */
+  recommendationReviewStep?: EvaConversationStep | null;
 }
 
 const replacePersistedEvaCopy = (value: string) => value

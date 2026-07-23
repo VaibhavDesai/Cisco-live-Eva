@@ -4637,7 +4637,6 @@ button.view-btn.active {
   position: relative;
   min-width: 0;
   width: 100%;
-  max-width: 415px;
   height: 100%;
   box-sizing: border-box;
   padding: 0;
@@ -4723,6 +4722,39 @@ button.view-btn.active {
   flex-direction: column;
   align-items: flex-start;
   gap: var(--spacing-xxx-small);
+}
+
+.ai-agents-agent-labels {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--spacing-xx-small);
+}
+
+.ai-agents-agent-lifecycle {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--spacing-xxx-small);
+  color: var(--text-secondary);
+  font-size: var(--font-size-body-small);
+  line-height: 1.25;
+  white-space: nowrap;
+}
+
+.ai-agents-agent-lifecycle-dot {
+  width: var(--spacing-xx-small);
+  height: var(--spacing-xx-small);
+  flex: 0 0 auto;
+  border-radius: var(--border-radius-half-height);
+  background: var(--accent-color);
+}
+
+.ai-agents-agent-lifecycle--draft .ai-agents-agent-lifecycle-dot {
+  background: var(--warning-color);
+}
+
+.ai-agents-agent-lifecycle--live .ai-agents-agent-lifecycle-dot {
+  background: var(--success-color);
 }
 
 .ai-agents-agent-title-row {
@@ -19098,4 +19130,3 @@ img.app-header__wordmark-logo {
     grid-template-columns: 1fr;
   }
 }
-

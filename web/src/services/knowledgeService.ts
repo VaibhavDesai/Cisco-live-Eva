@@ -500,6 +500,26 @@ export async function listAllSources(): Promise<KnowledgeSource[]> {
   return SOURCES.map((s) => ({ ...s }));
 }
 
+export function filterReadyCollections(
+  collections: Collection[],
+  sources: KnowledgeSource[],
+): Collection[] {
+  const readyCollectionIds = new Set(
+    sources
+      .filter(source => source.status === 'processed')
+      .map(source => source.collectionId),
+  );
+  return collections.filter(collection => readyCollectionIds.has(collection.id));
+}
+
+export async function listReadyCollections(): Promise<Collection[]> {
+  const [collections, sources] = await Promise.all([
+    listCollections(),
+    listAllSources(),
+  ]);
+  return filterReadyCollections(collections, sources);
+}
+
 /**
  * Validates and creates a SharePoint source. Returns the created source with
  * status='syncing' to simulate the first sync kicking off immediately.

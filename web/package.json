@@ -6,6 +6,7 @@
   "scripts": {
     "dev": "vite",
     "build": "vite build && cp dist/index.html dist/404.html && touch dist/.nojekyll",
+    "test": "node --test src/features/agent-creation/*.test.mjs",
     "lint": "eslint .",
     "preview": "vite preview",
     "predeploy:ghpages": "VITE_BASE_PATH=/pages/CBABU/Cisco-live-Eva/ VITE_CHAT_API_URL=https://ai-agent-studio-proxy.sisun-ai.workers.dev vite build && cp dist/index.html dist/404.html && touch dist/.nojekyll",

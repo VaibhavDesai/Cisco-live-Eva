@@ -5,7 +5,7 @@ import Button from '../shared/Button';
 import Tabs, { Tab } from '../shared/Tabs';
 import { useApp } from '../../contexts/AppContext';
 
-export default function AgentHeader({ agent, activeTab, showPublishButton = true, showTabs = true, headerRight = null, children = null }) {
+export default function AgentHeader({ agent, activeTab, showPublishButton = true, showTabs = true, headerRight = null, statusContent = null, children = null }) {
   const navigate = useNavigate();
   const { toggleAgentPublish, showToast } = useApp();
   const stickyRef = useRef(null);
@@ -63,9 +63,11 @@ export default function AgentHeader({ agent, activeTab, showPublishButton = true
         <div className="agent-info">
           <div className="agent-name-row">
             <span className="agent-name">{agent.name}</span>
-            <Badge variant={getBadgeVariant(agent.statusClass)}>
-              {agent.status}
-            </Badge>
+            {statusContent ?? (
+              <Badge variant={getBadgeVariant(agent.statusClass)}>
+                {agent.status}
+              </Badge>
+            )}
           </div>
           <div className="agent-meta">{agent.meta}</div>
         </div>

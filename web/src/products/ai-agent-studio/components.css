@@ -493,7 +493,11 @@ html[data-product='ai-agent-studio'] .app-header__menu-row-hint {
 .eva-agents-landing .eva-first-interface--free-chat {
   height: 100%;
   min-height: 0;
-  overflow: hidden;
+  /* `hidden` still creates a programmatically scrollable container, so
+     scrollIntoView calls on new conversation steps shifted the absolutely
+     positioned composer upward. `clip` keeps the shell fixed while the
+     transcript remains the only scrolling region. */
+  overflow: clip;
 }
 
 .eva-first-interface--landing,
@@ -1064,7 +1068,7 @@ html[data-product='ai-agent-studio'] .app-header__menu-row-hint {
   letter-spacing: -0.01em;
 }
 
-.agent-studio-hero p,
+.agent-studio-hero__content > p,
 .agent-studio-section-heading p,
 .agent-studio-step-card p {
   margin: 0;
@@ -1088,6 +1092,51 @@ html[data-product='ai-agent-studio'] .app-header__menu-row-hint {
   justify-content: flex-end;
   flex-wrap: wrap;
   gap: var(--spacing-xx-small);
+}
+
+.agent-studio-agent-metadata {
+  display: inline-flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--spacing-xx-small);
+  min-width: 0;
+}
+
+.agent-studio-lifecycle-status {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--spacing-xxx-small);
+  color: var(--text-primary);
+  font-size: var(--font-size-body-small);
+  line-height: var(--font-lineheight-body-small);
+  font-weight: var(--font-weight-medium);
+}
+
+.agent-studio-lifecycle-status__dot {
+  width: var(--spacing-xx-small);
+  height: var(--spacing-xx-small);
+  flex: 0 0 auto;
+  border-radius: var(--border-radius-pill);
+  background: var(--text-secondary);
+}
+
+.agent-studio-lifecycle-status--draft .agent-studio-lifecycle-status__dot {
+  background: var(--warning-color);
+}
+
+.agent-studio-lifecycle-status--published .agent-studio-lifecycle-status__dot,
+.agent-studio-lifecycle-status--live .agent-studio-lifecycle-status__dot {
+  background: var(--success-color);
+}
+
+.agent-studio-lifecycle-status--deployed .agent-studio-lifecycle-status__dot {
+  background: var(--accent-color);
+}
+
+.agent-studio-version-metadata {
+  color: var(--text-secondary);
+  font-size: var(--font-size-body-small);
+  line-height: var(--font-lineheight-body-small);
 }
 
 @keyframes agent-studio-surface-fade {
@@ -1114,6 +1163,10 @@ html[data-product='ai-agent-studio'] .app-header__menu-row-hint {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: var(--spacing-small);
+}
+
+.agent-studio-grid--published {
+  grid-template-columns: minmax(300px, 0.76fr) minmax(0, 1.64fr);
 }
 
 .agent-studio-step-grid {
@@ -1210,6 +1263,120 @@ html[data-product='ai-agent-studio'] .app-header__menu-row-hint {
   gap: 0;
 }
 
+.agent-studio-card--operational.card {
+  grid-column: 1 / -1;
+}
+
+.agent-studio-card--operational .card-header {
+  align-items: flex-start;
+  gap: var(--spacing-small);
+}
+
+.agent-studio-operational-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+  gap: var(--spacing-xx-small);
+}
+
+.agent-studio-operational-body {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-small) !important;
+}
+
+.agent-studio-operational-metrics-empty {
+  grid-column: 1 / -1;
+  margin: 0;
+  padding: var(--spacing-small);
+  border: var(--border-width-small) dashed color-mix(in srgb, var(--border-color) 72%, transparent);
+  border-radius: var(--border-radius-medium);
+  color: var(--text-secondary);
+  font-size: var(--font-size-body-small);
+  line-height: var(--font-lineheight-body-small);
+}
+
+.agent-studio-operational-event-banner {
+  align-items: center;
+  width: 100%;
+  margin-inline: 0;
+}
+
+.agent-studio-operational-event-banner .banner-subtitle {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-xxx-small);
+}
+
+.agent-studio-operational-event-banner .banner-action-outline {
+  height: 28px;
+  padding-inline: var(--spacing-x-small);
+  font-size: var(--font-size-body-small);
+  line-height: var(--font-lineheight-body-small);
+}
+
+.agent-studio-operational-event-meta {
+  color: var(--text-secondary);
+  font-size: var(--font-size-body-small);
+  line-height: var(--font-lineheight-body-small);
+}
+
+.agent-studio-operational-session {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: var(--spacing-x-small);
+  margin-left: var(--agent-studio-card-text-offset);
+  padding: var(--spacing-x-small) var(--spacing-small);
+  border: var(--border-width-small) solid color-mix(in srgb, var(--border-color) 72%, transparent);
+  border-radius: var(--border-radius-large);
+  background: color-mix(in srgb, var(--bg-secondary) 58%, transparent);
+}
+
+.agent-studio-operational-session--available {
+  border-color: color-mix(in srgb, var(--success-color) 62%, var(--border-color));
+  background: color-mix(in srgb, var(--success-color) 12%, var(--bg-secondary));
+}
+
+.agent-studio-operational-session__icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: var(--spacing-x-large);
+  height: var(--spacing-x-large);
+  border-radius: var(--border-radius-pill);
+  color: var(--success-color);
+  background: color-mix(in srgb, var(--success-color) 14%, transparent);
+}
+
+.agent-studio-operational-session__content {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-micro);
+  min-width: 0;
+}
+
+.agent-studio-operational-session__content strong {
+  color: var(--text-primary);
+  font-size: var(--font-size-body-midsize);
+  line-height: var(--font-lineheight-body-midsize);
+}
+
+.agent-studio-operational-session__content small {
+  color: var(--text-secondary);
+  font-size: var(--font-size-body-small);
+  line-height: var(--font-lineheight-body-small);
+}
+
+.agent-studio-operational-note {
+  margin: 0;
+  padding-left: var(--agent-studio-card-text-offset);
+  color: var(--text-secondary);
+  font-size: var(--font-size-body-small);
+  line-height: var(--font-lineheight-body-small);
+}
+
 .agent-studio-summary-list {
   display: grid;
   gap: var(--spacing-xx-small);
@@ -1226,6 +1393,12 @@ html[data-product='ai-agent-studio'] .app-header__menu-row-hint {
   line-height: var(--font-lineheight-body-small);
 }
 
+.agent-studio-grid--published .agent-studio-summary-list > span {
+  grid-template-columns: minmax(80px, 0.4fr) minmax(0, 1fr);
+  gap: var(--spacing-small);
+  overflow-wrap: anywhere;
+}
+
 .agent-studio-summary-list strong {
   color: var(--text-secondary);
   font-weight: 500;
@@ -1238,6 +1411,76 @@ html[data-product='ai-agent-studio'] .app-header__menu-row-hint {
   flex-wrap: wrap;
   gap: var(--spacing-xxx-small);
   min-width: 0;
+}
+
+.agent-studio-profile-preview {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-x-small);
+  margin-top: var(--spacing-small);
+}
+
+.agent-studio-profile-preview > .decorator-divider {
+  margin: 0;
+}
+
+.agent-studio-profile-preview__header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--spacing-x-small);
+  padding-left: var(--agent-studio-card-text-offset);
+}
+
+.agent-studio-profile-preview__header > div:first-child {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-micro);
+  min-width: 0;
+}
+
+.agent-studio-profile-preview__header strong {
+  color: var(--text-primary);
+  font-size: var(--font-size-body-large);
+  line-height: var(--font-lineheight-body-large);
+}
+
+.agent-studio-profile-preview__header small {
+  color: var(--text-secondary);
+  font-size: var(--font-size-body-small);
+  line-height: var(--font-lineheight-body-small);
+}
+
+.agent-studio-connected-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-x-small);
+  padding-left: var(--agent-studio-card-text-offset);
+}
+
+.agent-studio-connected-row {
+  display: grid;
+  grid-template-columns: minmax(150px, 0.34fr) minmax(0, 1fr);
+  align-items: start;
+  gap: var(--spacing-small);
+  min-width: 0;
+}
+
+.agent-studio-connected-row > strong {
+  color: var(--text-secondary);
+  font-size: var(--font-size-body-small);
+  line-height: var(--font-lineheight-body-small);
+  font-weight: var(--font-weight-medium);
+}
+
+.agent-studio-connected-row .agent-studio-chip-group {
+  padding-left: 0;
+}
+
+.agent-studio-connected-empty {
+  color: var(--text-secondary);
+  font-size: var(--font-size-body-small);
+  line-height: var(--font-lineheight-body-small);
 }
 
 .agent-studio-preview-soundbar {
@@ -1445,6 +1688,158 @@ html[data-product='ai-agent-studio'] .app-header__menu-row-hint {
   margin-bottom: var(--spacing-small);
 }
 
+.agent-session-detail-page {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-medium);
+}
+
+.agent-session-detail-topbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--spacing-small);
+  color: var(--text-secondary);
+  font-size: var(--font-size-body-small);
+  line-height: var(--font-lineheight-body-small);
+}
+
+.agent-session-detail-header h1,
+.agent-session-detail-header p,
+.agent-session-panel-heading h2,
+.agent-session-panel-heading p,
+.agent-session-transcript-event p {
+  margin: 0;
+}
+
+.agent-session-detail-title-row {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--spacing-x-small);
+}
+
+.agent-session-detail-title-row h1 {
+  color: var(--text-primary);
+  font-size: var(--font-size-heading-midsize);
+  line-height: var(--font-lineheight-heading-midsize);
+}
+
+.agent-session-detail-header p {
+  max-width: 880px;
+  margin-top: var(--spacing-xx-small);
+  color: var(--text-secondary);
+  font-size: var(--font-size-body-midsize);
+  line-height: var(--font-lineheight-body-midsize);
+}
+
+.agent-session-detail-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.75fr) minmax(280px, 0.75fr);
+  gap: var(--spacing-medium);
+  align-items: start;
+}
+
+.agent-session-detail-card.card {
+  padding: var(--spacing-medium);
+}
+
+.agent-session-panel-heading {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--spacing-small);
+  margin-bottom: var(--spacing-small);
+}
+
+.agent-session-panel-heading h2 {
+  color: var(--text-primary);
+  font-size: var(--font-size-heading-small);
+  line-height: var(--font-lineheight-heading-small);
+}
+
+.agent-session-panel-heading p {
+  margin-top: var(--spacing-xxx-small);
+  color: var(--text-secondary);
+  font-size: var(--font-size-body-small);
+  line-height: var(--font-lineheight-body-small);
+}
+
+.agent-session-transcript {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-x-small);
+}
+
+.agent-session-transcript-event {
+  padding: var(--spacing-small);
+  border: var(--border-width-small) solid var(--border-color);
+  border-radius: var(--border-radius-large);
+  background: color-mix(in srgb, var(--bg-secondary) 62%, transparent);
+}
+
+.agent-session-transcript-event--system {
+  border-color: color-mix(in srgb, var(--success-color) 56%, var(--border-color));
+  background: color-mix(in srgb, var(--success-color) 11%, var(--bg-secondary));
+}
+
+.agent-session-transcript-event > div {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--spacing-small);
+  margin-bottom: var(--spacing-xxx-small);
+}
+
+.agent-session-transcript-event strong,
+.agent-session-transcript-event time,
+.agent-session-transcript-event p {
+  font-size: var(--font-size-body-small);
+  line-height: var(--font-lineheight-body-small);
+}
+
+.agent-session-transcript-event time {
+  color: var(--text-secondary);
+}
+
+.agent-session-transcript-event p {
+  color: var(--text-primary);
+}
+
+.agent-session-metadata-list {
+  display: grid;
+  gap: var(--spacing-x-small);
+  margin: 0;
+}
+
+.agent-session-metadata-list > div {
+  display: grid;
+  grid-template-columns: minmax(84px, 0.65fr) minmax(0, 1fr);
+  gap: var(--spacing-small);
+}
+
+.agent-session-metadata-list dt,
+.agent-session-metadata-list dd {
+  margin: 0;
+  font-size: var(--font-size-body-small);
+  line-height: var(--font-lineheight-body-small);
+}
+
+.agent-session-metadata-list dt {
+  color: var(--text-secondary);
+  font-weight: var(--font-weight-medium);
+}
+
+.agent-session-metadata-list dd {
+  color: var(--text-primary);
+}
+
+@media (max-width: 900px) {
+  .agent-session-detail-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
 .agent-studio-chip-group {
   display: flex;
   flex-wrap: wrap;
@@ -1527,6 +1922,46 @@ html[data-product='ai-agent-studio'] .app-header__menu-row-hint {
   .agent-studio-next__actions {
     justify-content: flex-start;
   }
+
+  .agent-studio-operational-body {
+    gap: var(--spacing-small) !important;
+  }
+
+  .agent-studio-operational-toolbar {
+    justify-content: flex-start;
+  }
+
+  .agent-studio-operational-note {
+    padding-left: 0;
+  }
+
+  .agent-studio-operational-event-banner {
+    margin-left: 0;
+  }
+
+  .agent-studio-operational-session {
+    margin-left: 0;
+  }
+
+  .agent-studio-connected-row {
+    grid-template-columns: 1fr;
+    gap: var(--spacing-xxx-small);
+  }
+}
+
+@media (max-width: 620px) {
+  .agent-studio-operational-session {
+    grid-template-columns: auto minmax(0, 1fr);
+  }
+
+  .agent-studio-operational-session .btn {
+    grid-column: 1 / -1;
+    justify-self: stretch;
+  }
+
+  .agent-studio-profile-preview__header {
+    flex-direction: column;
+  }
 }
 
 .eva-side-icon-btn {
@@ -1603,6 +2038,13 @@ html[data-product='ai-agent-studio'] .app-header__menu-row-hint {
   margin-inline: auto;
   padding-left: 0;
   padding-right: 0;
+}
+
+.eva-first-interface--generated:not(.eva-first-interface--free-chat) .eva-dialogue > .eva-next-step-block,
+.eva-first-interface--generated:not(.eva-first-interface--free-chat) .eva-dialogue > .eva-recommendation-review-actions {
+  width: min(100%, 960px);
+  max-width: none;
+  margin-inline: auto;
 }
 
 .eva-first-interface--generated:not(.eva-first-interface--free-chat) .eva-dialogue > .eva-ai-response .ai-response__body {
@@ -3271,6 +3713,15 @@ html[data-product='ai-agent-studio'] .app-header__menu-row-hint {
   gap: var(--spacing-x-small);
 }
 
+.eva-config-summary--internal {
+  grid-template-areas:
+    "welcome profile"
+    "instructions placement"
+    "instructions knowledge"
+    "instructions actions"
+    "instructions guardrails";
+}
+
 .eva-config-summary__item {
   display: flex;
   flex-direction: column;
@@ -3340,6 +3791,7 @@ html[data-product='ai-agent-studio'] .app-header__menu-row-hint {
 .eva-config-summary__icon--knowledge { --eva-config-summary-icon: url('../../../node_modules/@momentum-design/icons/dist/svg/files-bold.svg'); }
 .eva-config-summary__icon--actions { --eva-config-summary-icon: url('../../../node_modules/@momentum-design/icons/dist/svg/workflow-deployments-bold.svg'); }
 .eva-config-summary__icon--guardrails { --eva-config-summary-icon: url('../../../node_modules/@momentum-design/icons/dist/svg/shield-bold.svg'); }
+.eva-config-summary__icon--placement { --eva-config-summary-icon: url('../../../node_modules/@momentum-design/icons/dist/svg/workflow-deployments-bold.svg'); }
 
 .eva-config-summary__item--welcome {
   grid-area: welcome;
@@ -3367,6 +3819,10 @@ html[data-product='ai-agent-studio'] .app-header__menu-row-hint {
 
 .eva-config-summary__item--guardrails {
   grid-area: guardrails;
+}
+
+.eva-config-summary__item--placement {
+  grid-area: placement;
 }
 
 .eva-ai-footer {
@@ -3948,6 +4404,296 @@ html[data-product='ai-agent-studio'] .app-header__menu-row-hint {
   padding: 0;
 }
 
+/* Three-family creation lives inside the established dashboard conversation.
+   These additions style only inline cards and configuration content; the
+   existing chat, generated layout, composer, and progress rail remain intact. */
+.eva-family-choice-thread {
+  width: min(100%, calc(720px + (var(--spacing-small) * 2)));
+  margin: 0 auto;
+}
+
+.app--ai .eva-family-choice-thread > .eva-ai-response.ai-response {
+  width: 100%;
+  max-width: none;
+  margin-inline: auto;
+  padding-left: 0;
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.app--ai .eva-family-choice-thread > .eva-ai-response .ai-response__body {
+  grid-column: 1;
+  width: 100%;
+}
+
+.eva-family-choice-thread > .eva-ai-response .ai-response__content {
+  text-align: center;
+}
+
+.eva-family-choice-grid {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  margin-top: 16px;
+}
+
+.eva-family-choice-card {
+  min-height: 210px;
+}
+
+.eva-family-choice-card .eva-prompt-card__icon {
+  border-radius: 50%;
+}
+
+.eva-family-choice-card--calling .eva-prompt-card__icon,
+.eva-family-chip--calling {
+  color: #7a4600;
+  background: #fff2d8;
+  border-color: #d18400;
+}
+
+.eva-family-choice-card--contact_center .eva-prompt-card__icon,
+.eva-family-chip--contact_center {
+  color: #00665c;
+  background: #dcf7f1;
+  border-color: #087f72;
+}
+
+.eva-family-choice-card--internal_assistant .eva-prompt-card__icon,
+.eva-family-chip--internal_assistant {
+  color: #09558f;
+  background: #e4f2ff;
+  border-color: #1769aa;
+}
+
+.eva-family-choice-help {
+  display: grid;
+  justify-items: center;
+  gap: 12px;
+  margin-top: 16px;
+}
+
+.eva-family-choice-actions {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: var(--spacing-xx-small);
+}
+
+.eva-family-choice-help__content {
+  width: 100%;
+  padding: 12px 16px;
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  background: var(--bg-secondary);
+  text-align: left;
+}
+
+.eva-family-choice-help__content p {
+  margin: 0 0 8px;
+}
+
+.eva-family-choice-help__content p:last-child {
+  margin-bottom: 0;
+}
+
+.eva-landing-template-options {
+  display: grid;
+  width: 100%;
+  gap: var(--spacing-small);
+  margin-top: var(--spacing-small);
+}
+
+.eva-landing-template-options > p {
+  margin: 0;
+  color: var(--text-secondary);
+  text-align: center;
+}
+
+.eva-landing-template-grid {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  text-align: left;
+}
+
+.eva-family-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  width: fit-content;
+  padding: 3px 8px;
+  border: 1px solid;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 18px;
+}
+
+.eva-family-proposal {
+  display: grid;
+  gap: 16px;
+  margin-top: 16px;
+  padding: 16px;
+  border: 1px solid var(--border-color);
+  border-radius: 10px;
+  background: var(--bg-primary);
+}
+
+.eva-family-proposal__header,
+.eva-family-recommendation__header,
+.eva-family-profile-settings__heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.eva-family-proposal__summary {
+  display: grid;
+  gap: 12px;
+  margin: 0;
+}
+
+.eva-family-proposal__summary > div {
+  display: grid;
+  grid-template-columns: 140px minmax(0, 1fr);
+  gap: 12px;
+}
+
+.eva-family-proposal__summary dt {
+  color: var(--text-secondary);
+  font-weight: 600;
+}
+
+.eva-family-proposal__summary dd {
+  min-width: 0;
+  margin: 0;
+}
+
+.eva-family-proposal__summary pre {
+  max-height: 260px;
+  margin: 0;
+  padding: 12px;
+  overflow: auto;
+  white-space: pre-wrap;
+  border-radius: 8px;
+  background: var(--bg-secondary);
+  color: inherit;
+  font: inherit;
+}
+
+.eva-family-proposal__editor,
+.eva-family-profile-settings {
+  display: grid;
+  gap: 14px;
+}
+
+.eva-family-proposal__notice {
+  margin: 0;
+  color: var(--text-secondary);
+  font-size: 13px;
+}
+
+.eva-family-proposal__actions,
+.eva-family-recommendation__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.eva-family-profile-settings {
+  padding: 16px;
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  background: var(--bg-secondary);
+}
+
+.eva-family-placement-options {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.eva-family-placement-options legend {
+  grid-column: 1 / -1;
+  margin-bottom: 4px;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.eva-family-recommendations {
+  display: grid;
+  gap: 10px;
+}
+
+.eva-family-recommendation {
+  display: grid;
+  gap: 8px;
+  padding: 12px;
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  background: var(--bg-primary);
+}
+
+.eva-family-recommendation p,
+.eva-family-external-group p,
+.eva-family-locked-group p {
+  margin: 0;
+  color: var(--text-secondary);
+  font-size: 12px;
+  line-height: 1.45;
+}
+
+.eva-family-external-group a {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 8px;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.eva-family-locked-group {
+  padding: 10px 0;
+  border-top: 1px solid var(--border-color);
+}
+
+.eva-family-locked-group summary {
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.eva-family-locked-group ul {
+  margin: 8px 0 0;
+  padding-left: 20px;
+  color: var(--text-secondary);
+  font-size: 12px;
+}
+
+@media (max-width: 860px) {
+  .eva-family-choice-grid,
+  .eva-family-placement-options {
+    grid-template-columns: 1fr;
+  }
+
+  .eva-landing-template-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .eva-family-proposal__summary > div {
+    grid-template-columns: 1fr;
+    gap: 4px;
+  }
+}
+
+@media (max-width: 560px) {
+  .eva-landing-template-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
 /* Encouragement nudge that appears above the inline starter cards
    when the user reveals them via the "View other options" chip in
    free-chat mode. Mirrors the form-builder's
@@ -3987,7 +4733,7 @@ html[data-product='ai-agent-studio'] .app-header__menu-row-hint {
   margin-left: auto;
   margin-right: auto;
   min-height: 0;
-  padding-bottom: var(--spacing-large);
+  padding-bottom: calc(142px + var(--spacing-large));
   overflow-y: auto;
 }
 
@@ -4004,7 +4750,7 @@ html[data-product='ai-agent-studio'] .app-header__menu-row-hint {
   margin-left: auto;
   margin-right: auto;
   min-height: 0;
-  padding-bottom: var(--spacing-large);
+  padding-bottom: calc(142px + var(--spacing-large));
   overflow-y: auto;
 }
 
@@ -4047,7 +4793,7 @@ html[data-product='ai-agent-studio'] .app-header__menu-row-hint {
 
 .eva-first-interface--free-chat .eva-first-interface__free-chat--dense-bottom,
 .eva-first-interface--generated.eva-first-interface--free-chat .eva-first-interface__free-chat--dense-bottom {
-  padding-bottom: clamp(72px, 14vh, 140px);
+  padding-bottom: max(calc(142px + var(--spacing-large)), clamp(72px, 14vh, 140px));
 }
 
 .eva-first-interface--free-chat .eva-first-interface__free-chat--phone-focus,
@@ -4085,6 +4831,25 @@ html[data-product='ai-agent-studio'] .app-header__menu-row-hint {
   max-width: none !important;
   margin-left: auto !important;
   margin-right: auto !important;
+}
+
+/* Keep the build-flow composer in one stable viewport position. Previously
+   the component only added `--sticky` while Eva was thinking or showing
+   guidance, so settled steps (knowledge, actions, phone, and final review)
+   dropped the composer back into normal document flow. Anchor the free-chat
+   composer to the padded bottom edge and reserve transcript space so content
+   can scroll behind neither the input nor its disclaimer. */
+.eva-agents-landing .eva-first-interface.eva-first-interface--free-chat .eva-first-interface__chat--sticky {
+  position: absolute;
+  left: var(--spacing-large);
+  right: var(--spacing-large);
+  bottom: var(--spacing-large);
+  z-index: 4;
+  width: min(calc(100% - (var(--spacing-large) * 2)), 960px) !important;
+}
+
+.eva-first-interface--free-chat .eva-first-interface__free-chat {
+  scroll-padding-bottom: calc(142px + var(--spacing-large));
 }
 
 .eva-first-interface.eva-first-interface--free-chat .eva-first-interface__chat {
@@ -7633,6 +8398,21 @@ html[data-product='ai-agent-studio']:has(.eva-form-builder.primary-content) .app
   color: var(--success-color);
 }
 
+.eva-generation-progress__item--skipped .eva-generation-progress__icon {
+  box-sizing: border-box;
+  width: 16px;
+  height: 16px;
+  align-items: center;
+  justify-content: center;
+  border: var(--border-width-small) solid var(--text-muted);
+  border-radius: 50%;
+  color: var(--text-muted);
+}
+
+.eva-generation-progress__item--blocked .eva-generation-progress__icon {
+  color: var(--warning-color, #d18400);
+}
+
 .eva-side-summary,
 .eva-side-context {
   display: flex;
@@ -8004,9 +8784,21 @@ html[data-product='ai-agent-studio']:has(.eva-form-builder.primary-content) .app
   padding-bottom: 0;
 }
 
-.eva-landing-shell:not(.eva-first-interface--generated) .eva-first-interface__hero {
+.eva-landing-shell:not(.eva-first-interface--generated) .eva-first-interface__hero,
+.eva-landing-shell:not(.eva-first-interface--generated) .eva-landing-composer,
+.eva-landing-shell:not(.eva-first-interface--generated) .eva-family-choice-thread {
   animation: evaLandingHeroSettle 3.7s cubic-bezier(0.22, 0.72, 0.18, 1) 0.35s both;
   will-change: opacity, transform;
+}
+
+/* The family prompt is one composition with the title. Keep the existing
+   cards and actions, but let their shared parent carry the entrance motion
+   so they do not arrive as a disconnected second sequence. */
+.eva-landing-shell:not(.eva-first-interface--generated) .eva-family-choice-thread .eva-prompt-card,
+.eva-landing-shell:not(.eva-first-interface--generated) .eva-family-choice-thread .eva-landing-secondary-actions {
+  opacity: 1;
+  transform: none;
+  animation: none;
 }
 
 .eva-landing-shell:not(.eva-first-interface--generated) .eva-first-interface__hero .eva-landing-hero-brand h1,
@@ -8046,12 +8838,6 @@ html[data-product='ai-agent-studio']:has(.eva-form-builder.primary-content) .app
 
 .eva-form-builder__landing-composer--initial {
   width: min(100%, calc(720px + (var(--spacing-small) * 2)));
-}
-
-.eva-landing-shell:not(.eva-first-interface--generated) .eva-landing-composer {
-  opacity: 0;
-  transform: translateY(var(--spacing-small));
-  animation: evaLandingContentReveal 0.85s ease-out 3.35s forwards;
 }
 
 .eva-landing-shell .eva-prompt-examples,
@@ -8120,14 +8906,17 @@ html[data-product='ai-agent-studio']:has(.eva-form-builder.primary-content) .app
 @keyframes evaLandingHeroSettle {
   0%,
   42% {
+    visibility: hidden;
     opacity: 0;
     transform: translateY(clamp(calc(var(--spacing-big) * 2), 28vh, calc(var(--spacing-big) * 5)));
   }
   68% {
+    visibility: visible;
     opacity: 1;
     transform: translateY(clamp(calc(var(--spacing-big) * 2), 28vh, calc(var(--spacing-big) * 5)));
   }
   100% {
+    visibility: visible;
     opacity: 1;
     transform: translateY(0);
   }
@@ -8147,10 +8936,12 @@ html[data-product='ai-agent-studio']:has(.eva-form-builder.primary-content) .app
   }
 
   .eva-landing-shell:not(.eva-first-interface--generated) .eva-first-interface__hero,
+  .eva-landing-shell:not(.eva-first-interface--generated) .eva-family-choice-thread,
   .eva-landing-shell:not(.eva-first-interface--generated) .eva-landing-composer,
   .eva-landing-shell:not(.eva-first-interface--generated) .eva-prompt-card,
   .eva-landing-shell:not(.eva-first-interface--generated) .eva-landing-divider,
   .eva-landing-shell:not(.eva-first-interface--generated) .eva-landing-secondary-actions {
+    visibility: visible;
     opacity: 1;
     transform: none;
     animation: none;
@@ -9855,7 +10646,7 @@ button.eva-retail-preview-card::before {
 }
 
 .app--ai .eva-first-interface__free-chat .ai-response__generating-icon {
-  display: none;
+  display: inline-flex;
 }
 
 .app--ai .ai-response__generating-icon {
@@ -10322,4 +11113,778 @@ button.eva-retail-preview-card::before {
 
 .app--ai section.eva-dialogue.eva-first-interface__free-chat .eva-waterfall-status--dynamic::before {
   display: none;
+}
+
+/* Preserve the established chat, configuration, and progress zones at
+   narrow widths by stacking those same zones in document flow. */
+@media (max-width: 700px) {
+  .eva-first-interface--generated {
+    height: auto;
+    min-height: 100%;
+    padding: var(--spacing-small);
+    overflow: visible;
+  }
+
+  .eva-first-interface--generated .eva-view-actions {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .eva-first-interface--generated .eva-view-actions__controls {
+    justify-content: flex-start;
+    flex-wrap: wrap;
+  }
+
+  .eva-generated-layout,
+  .eva-generated-layout--side-collapsed {
+    display: flex;
+    flex: 0 0 auto;
+    flex-direction: column;
+    height: auto;
+    min-height: 0;
+    overflow: visible;
+  }
+
+  .eva-generated-layout__main {
+    overflow: visible;
+  }
+
+  .eva-first-interface--generated .eva-dialogue {
+    flex: 0 0 auto;
+    max-height: none;
+    overflow: visible;
+  }
+
+  .eva-config-summary,
+  .eva-config-summary--internal {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-areas:
+      "welcome"
+      "channel"
+      "instructions"
+      "profile"
+      "placement"
+      "knowledge"
+      "actions"
+      "guardrails";
+  }
+
+  .eva-generated-layout > .eva-generated-side-panel {
+    position: static;
+    order: 1;
+    align-self: stretch;
+    width: 100%;
+    max-height: none;
+    overflow: visible;
+  }
+
+  .eva-generated-layout__main .eva-first-interface__chat--sticky,
+  .eva-generated-composer {
+    position: sticky;
+    bottom: 0;
+  }
+}
+/* Generated agent workspace -------------------------------------------------
+   The AI conversation stays available as a dedicated rail on the right side
+   of the workspace and spans the full page height. The agent header belongs
+   to the workspace beside it, above canvas + summary. */
+.eva-first-interface--generated {
+  padding: 0 0 0 var(--spacing-large);
+}
+
+.eva-first-interface--generated .eva-generated-layout {
+  grid-template-columns:
+    minmax(0, 1fr)
+    var(--eva-chat-panel-width, 304px);
+  gap: var(--spacing-small);
+}
+
+.eva-first-interface--generated .eva-generated-layout--side-collapsed {
+  grid-template-columns: minmax(0, 1fr) minmax(264px, 304px);
+}
+
+.eva-first-interface--generated .eva-generated-layout--chat-collapsed {
+  grid-template-columns: minmax(0, 1fr);
+  gap: 0;
+}
+
+.eva-first-interface--generated:has(.eva-generated-layout--chat-collapsed) {
+  padding-inline: var(--spacing-large);
+}
+
+.eva-first-interface--generated .eva-generated-layout--chat-expanded {
+  grid-template-columns: minmax(0, 1fr);
+  gap: 0;
+}
+
+.eva-first-interface--generated:has(.eva-generated-layout--chat-expanded) {
+  padding-left: 0;
+}
+
+.eva-generated-layout--side-collapsed .eva-generated-side-panel {
+  display: none;
+}
+
+.eva-generated-chat-panel,
+.eva-generated-layout__main {
+  min-width: 0;
+  min-height: 0;
+  border: var(--border-width-small) solid color-mix(in srgb, var(--border-color) 72%, transparent);
+  border-radius: var(--border-radius-large);
+  background: color-mix(in srgb, var(--bg-glass) 76%, transparent);
+  backdrop-filter: blur(20px) saturate(128%);
+  -webkit-backdrop-filter: blur(20px) saturate(128%);
+  box-shadow: var(--elevation-1);
+}
+
+.eva-generated-chat-panel {
+  position: relative;
+  grid-column: 2;
+  grid-row: 1;
+  display: flex;
+  flex-direction: column;
+  align-self: stretch;
+  overflow: hidden;
+  border: 0;
+  border-left: var(--border-width-small) solid color-mix(in srgb, var(--border-color) 56%, transparent);
+  border-radius: 0;
+  background: transparent;
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+  box-shadow: none;
+}
+
+/* Give the rail a distinct, softly layered surface without separating it
+   from the generated workspace. Keep the full-view mode flush with the app
+   shell; only the docked rail gets the rounded leading corner. */
+.eva-generated-layout--chat-rail .eva-generated-chat-panel {
+  border-top-left-radius: 16px;
+  background: color-mix(in srgb, var(--bg-primary) 34%, transparent);
+  backdrop-filter: blur(18px) saturate(112%);
+  -webkit-backdrop-filter: blur(18px) saturate(112%);
+}
+
+.eva-generated-chat-panel__resize-handle {
+  position: absolute;
+  z-index: 14;
+  top: 0;
+  left: 0;
+  bottom: 0;
+  width: 10px;
+  border: 0;
+  background: transparent;
+  cursor: col-resize;
+  touch-action: none;
+}
+
+.eva-generated-chat-panel__resize-handle::after {
+  position: absolute;
+  top: 0;
+  left: 0;
+  bottom: 0;
+  width: 2px;
+  background: transparent;
+  content: '';
+  transition: background 0.15s ease;
+}
+
+.eva-generated-chat-panel__resize-handle:hover::after,
+.eva-generated-chat-panel__resize-handle:focus-visible::after,
+.eva-generated-chat-panel__resize-handle:active::after {
+  background: var(--accent-color);
+}
+
+.eva-generated-chat-panel__resize-handle:focus-visible {
+  outline: none;
+  box-shadow: inset 2px 0 0 var(--focus-ring-1);
+}
+
+.eva-generated-layout__main {
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+  box-shadow: none;
+}
+
+.eva-generated-workspace {
+  grid-column: 1;
+  grid-row: 1;
+}
+
+.eva-generated-chat-panel__view-controls {
+  position: relative;
+  z-index: 12;
+  display: flex;
+  min-height: 48px;
+  align-items: center;
+  align-self: flex-end;
+  flex: 0 0 auto;
+  gap: var(--spacing-xxx-small);
+  padding: var(--spacing-x-small) var(--spacing-x-small) var(--spacing-x-small) 0;
+}
+
+.eva-generated-chat-panel__view-control.btn {
+  width: 32px;
+  min-width: 32px;
+  height: 32px !important;
+  min-height: 32px !important;
+  padding: 0;
+  border-color: color-mix(in srgb, var(--border-color) 52%, transparent);
+  border-radius: var(--border-radius-pill);
+  background: color-mix(in srgb, var(--bg-primary) 52%, transparent);
+  color: var(--text-secondary);
+}
+
+.eva-generated-chat-panel__view-control.btn:hover {
+  border-color: var(--outline-button);
+  background: color-mix(in srgb, var(--bg-glass-light) 58%, transparent);
+  color: var(--text-primary);
+}
+
+.eva-generated-chat-panel__view-control.btn:focus-visible {
+  outline: none;
+  box-shadow:
+    0 0 0 2px var(--focus-ring-0),
+    0 0 0 4px var(--focus-ring-1),
+    0 0 0 5px var(--focus-ring-2);
+}
+
+.eva-generated-chat-panel__view-control.btn svg {
+  width: 16px;
+  height: 16px;
+}
+
+.eva-generated-layout--chat-collapsed .eva-generated-chat-panel {
+  position: absolute;
+  top: 0;
+  right: 0;
+  width: 0;
+  height: 0;
+  min-height: 0;
+  overflow: visible;
+  border: 0;
+  background: transparent;
+}
+
+.eva-generated-chat-panel__floating-trigger {
+  position: fixed;
+  z-index: 100;
+  top: 50%;
+  right: var(--spacing-small);
+  display: flex;
+  transform: translateY(-50%);
+}
+
+.eva-generated-chat-panel__floating-trigger .eva-generated-chat-panel__view-control.btn {
+  width: 40px;
+  min-width: 40px;
+  height: 40px !important;
+  min-height: 40px !important;
+  border-color: color-mix(in srgb, var(--text-primary) 72%, transparent);
+  background: color-mix(in srgb, var(--bg-primary) 92%, transparent);
+  color: var(--text-primary);
+  box-shadow:
+    0 0 0 var(--border-width-small) color-mix(in srgb, var(--bg-primary) 78%, transparent),
+    var(--elevation-2);
+}
+
+.eva-generated-layout--chat-collapsed .eva-generated-chat-panel__stream,
+.eva-generated-layout--chat-collapsed .eva-generated-chat-panel .eva-generated-composer {
+  display: none;
+}
+
+.eva-generated-layout--chat-expanded .eva-generated-workspace {
+  display: none;
+}
+
+.eva-generated-layout--chat-expanded .eva-generated-chat-panel {
+  grid-column: 1;
+  border-left: 0;
+}
+
+.eva-generated-canvas-header {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-x-small);
+  flex: 0 0 auto;
+  border-bottom: 0;
+  background: transparent;
+}
+
+.eva-generated-canvas-header h2 {
+  margin: 0;
+  color: var(--text-primary);
+  font-size: var(--font-size-body-large);
+  line-height: var(--font-lineheight-body-large);
+  font-weight: var(--font-weight-bold);
+}
+
+.eva-generated-canvas-header small,
+.eva-generated-canvas-header p {
+  color: var(--text-secondary);
+  font-size: var(--font-size-body-small);
+  line-height: var(--font-lineheight-body-small);
+}
+
+.eva-generated-chat-panel__stream {
+  display: flex;
+  min-height: 0;
+  flex: 1 1 auto;
+  flex-direction: column;
+  gap: var(--spacing-x-small);
+  padding: var(--spacing-small);
+  overflow-y: auto;
+  scrollbar-gutter: stable;
+}
+
+.eva-generated-chat-transcript {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-large);
+  width: 100%;
+}
+
+.eva-generated-chat-transcript .eva-generated-chat-turn.ai-user-msg {
+  max-width: min(88%, 260px);
+}
+
+.eva-generated-chat-transcript .eva-generated-chat-turn.eva-ai-response.ai-response {
+  width: 100%;
+  max-width: 100%;
+}
+
+.eva-generated-layout--chat-expanded .eva-generated-chat-panel__stream {
+  width: min(100%, calc(720px + (var(--spacing-small) * 2)));
+  margin-inline: auto;
+  padding-top: var(--spacing-large);
+  padding-bottom: var(--spacing-large);
+}
+
+.eva-generated-chat-panel__empty p {
+  margin: 0;
+  color: var(--text-secondary);
+  font-size: var(--font-size-body-small);
+  line-height: var(--font-lineheight-body-small);
+}
+
+.eva-generated-chat-suggestion {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-xx-small);
+  margin-top: var(--spacing-xx-small);
+  padding-top: var(--spacing-xx-small);
+  border-top: var(--border-width-small) solid color-mix(in srgb, var(--border-color) 54%, transparent);
+}
+
+.eva-generated-chat-suggestion > span {
+  color: var(--text-secondary);
+  font-size: var(--font-size-body-small);
+  font-weight: var(--font-weight-medium);
+}
+
+.eva-generated-chat-suggestion blockquote {
+  margin: 0;
+  color: var(--text-primary);
+  font-size: var(--font-size-body-small);
+  line-height: var(--font-lineheight-body-small);
+}
+
+.eva-generated-chat-suggestion > div {
+  display: flex;
+  gap: var(--spacing-xx-small);
+}
+
+.eva-generated-thread-update {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-x-small);
+  padding: var(--spacing-x-small);
+  border: var(--border-width-small) solid color-mix(in srgb, var(--accent-color) 24%, var(--border-color));
+  border-radius: var(--border-radius-large);
+  background: color-mix(in srgb, var(--accent-bg) 24%, transparent);
+}
+
+.eva-generated-thread-update__header {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--spacing-xx-small);
+  color: var(--accent-color);
+}
+
+.eva-generated-thread-update__header > div {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: var(--spacing-xxx-small);
+}
+
+.eva-generated-thread-update__header strong {
+  color: var(--text-primary);
+  font-size: var(--font-size-body-small);
+  line-height: var(--font-lineheight-body-small);
+}
+
+.eva-generated-thread-update__header p {
+  margin: 0;
+  color: var(--text-secondary);
+  font-size: var(--font-size-body-small);
+  line-height: var(--font-lineheight-body-small);
+}
+
+.eva-generated-thread-update .eva-planning-accordion {
+  width: 100%;
+}
+
+.eva-generated-thread-update .eva-planning-accordion .accordion__header {
+  width: 100%;
+}
+
+.eva-generated-thread-update .eva-waterfall-status--planning:not(.eva-waterfall-status--dynamic) {
+  padding-left: var(--spacing-x-small);
+}
+
+.eva-generated-thread-update .eva-waterfall-status__row {
+  font-size: var(--font-size-body-small);
+  line-height: var(--font-lineheight-body-small);
+}
+
+.eva-generated-chat-panel__empty {
+  display: flex;
+  flex: 1 1 auto;
+  min-height: 160px;
+  align-items: center;
+  justify-content: center;
+  flex-direction: column;
+  gap: var(--spacing-x-small);
+  padding: var(--spacing-medium);
+  text-align: center;
+  color: var(--text-secondary);
+}
+
+.eva-generated-chat-panel__activity {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-xx-small);
+  margin-top: auto;
+  padding-top: var(--spacing-x-small);
+  color: var(--text-secondary);
+  font-size: var(--font-size-body-small);
+  line-height: var(--font-lineheight-body-small);
+}
+
+.eva-generated-chat-panel__canvas-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--spacing-xx-small);
+  padding-top: var(--spacing-x-small);
+}
+
+.eva-generated-chat-panel .eva-first-interface__chat--sticky,
+.eva-generated-chat-panel .eva-generated-composer {
+  position: static;
+  inset: auto;
+  z-index: auto;
+  width: 100% !important;
+  flex: 0 0 auto;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+}
+
+.eva-generated-chat-panel .eva-generated-composer__surface,
+.eva-generated-chat-panel .eva-ai-footer.ai-footer {
+  width: 100% !important;
+  max-width: none !important;
+  margin: 0 !important;
+}
+
+.eva-generated-chat-panel .eva-ai-footer.ai-footer {
+  padding: var(--spacing-x-small) !important;
+}
+
+.eva-generated-layout--chat-rail .eva-generated-chat-panel .eva-generated-composer__surface {
+  box-sizing: border-box;
+  padding-inline: var(--spacing-small);
+}
+
+/* Keep the empty rail composer visually quiet: the long prompt hint stays on
+   one clipped line instead of increasing the textarea's scroll height and
+   showing a scrollbar. Once the user types, AiFooter's normal auto-growing
+   textarea behavior takes over again. */
+.eva-generated-layout--chat-rail .eva-generated-chat-panel .ai-footer__textarea:placeholder-shown {
+  height: calc(
+    var(--font-lineheight-body-midsize)
+    + var(--spacing-x-small)
+    + var(--spacing-x-small)
+  ) !important;
+  overflow: hidden;
+  text-overflow: clip;
+  white-space: nowrap;
+}
+
+.eva-generated-chat-panel .eva-ai-footer .ai-footer__group {
+  border-radius: var(--border-radius-large) !important;
+  background: color-mix(in srgb, var(--bg-glass-light) 42%, transparent) !important;
+  box-shadow: none !important;
+}
+
+.eva-generated-chat-panel .eva-ai-footer .ai-footer__disclaimer {
+  padding-inline: var(--spacing-xx-small);
+  font-size: 10px;
+  line-height: 14px;
+}
+
+.eva-generated-layout--chat-expanded .eva-generated-chat-panel .eva-generated-composer {
+  border-top: 0;
+  background: transparent;
+}
+
+.eva-generated-layout--chat-expanded .eva-generated-chat-panel .eva-generated-composer__surface,
+.eva-generated-layout--chat-expanded .eva-generated-chat-panel .eva-ai-footer.ai-footer {
+  width: min(100%, calc(720px + (var(--spacing-small) * 2))) !important;
+  margin-inline: auto !important;
+}
+
+.eva-generated-layout--chat-expanded .eva-generated-chat-panel .eva-ai-footer.ai-footer {
+  padding: 0 var(--spacing-small) var(--spacing-small) !important;
+}
+
+.eva-generated-workspace {
+  display: flex;
+  min-width: 0;
+  min-height: 0;
+  flex-direction: column;
+  padding: var(--spacing-large) 0;
+  overflow: hidden;
+}
+
+.eva-generated-workspace > .eva-view-actions {
+  flex: 0 0 auto;
+  margin: 0 0 var(--spacing-large);
+}
+
+.eva-generated-workspace__content {
+  display: grid;
+  grid-template-columns: minmax(480px, 1fr) minmax(264px, 304px);
+  gap: var(--spacing-small);
+  min-width: 0;
+  min-height: 0;
+  flex: 1 1 auto;
+  overflow: hidden;
+}
+
+.eva-generated-workspace__content--orchestration {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.eva-generated-layout--side-collapsed .eva-generated-workspace__content {
+  grid-template-columns: minmax(480px, 1fr);
+}
+
+.eva-generated-layout__main {
+  padding: 0;
+  overflow: hidden;
+}
+
+.eva-generated-layout__main--orchestration {
+  display: flex;
+  min-height: 0;
+  flex-direction: column;
+}
+
+.eva-canvas-workspace--embedded {
+  min-height: 0;
+  height: auto;
+  flex: 1 1 auto;
+}
+
+.eva-canvas-workspace--embedded .eva-canvas-workspace__body {
+  padding: 0;
+}
+
+.eva-generated-canvas-header {
+  min-height: 64px;
+  justify-content: space-between;
+  padding: 0 0 var(--spacing-small);
+}
+
+.eva-generated-canvas-header > div {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.eva-generated-canvas-header p {
+  margin: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.eva-generated-canvas-header small {
+  color: var(--accent-color);
+  font-weight: var(--font-weight-bold);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.eva-generated-canvas-header .btn {
+  flex: 0 0 auto;
+}
+
+.eva-generated-layout__main > .eva-dialogue {
+  width: 100%;
+  max-width: none;
+  height: 100%;
+  min-height: 0;
+  margin: 0;
+  padding: 0 0 var(--spacing-xxx-large);
+  overflow-y: auto;
+  scroll-padding-top: var(--spacing-small);
+  scroll-padding-bottom: var(--spacing-large);
+}
+
+.eva-generated-layout__main > .eva-dialogue.eva-dialogue--testing-active {
+  padding-bottom: calc(100vh - 120px);
+}
+
+.eva-generated-layout__main > .eva-dialogue > .eva-workspace-section {
+  width: 100%;
+  max-width: none;
+  margin-inline: 0;
+  padding: var(--spacing-medium) 0 var(--spacing-large);
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+}
+
+.eva-generated-layout__main > .eva-dialogue > .eva-workspace-section:first-of-type {
+  padding-top: 0;
+}
+
+.eva-generated-layout__main > .eva-dialogue > .eva-workspace-section:not(:first-of-type) {
+  padding-top: var(--spacing-large);
+}
+
+.eva-first-interface--generated .eva-generated-side-panel {
+  align-self: stretch;
+  max-height: none;
+  height: 100%;
+  padding-bottom: var(--spacing-large);
+}
+
+@media (max-width: 1180px) {
+  .eva-first-interface--generated .eva-generated-layout {
+    grid-template-columns: minmax(0, 1fr) 248px;
+  }
+
+  .eva-generated-chat-panel__resize-handle {
+    display: none;
+  }
+
+  .eva-first-interface--generated .eva-generated-layout--side-collapsed {
+    grid-template-columns: minmax(0, 1fr) 248px;
+  }
+
+  .eva-first-interface--generated .eva-generated-layout--chat-collapsed {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .eva-first-interface--generated .eva-generated-layout--chat-expanded {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .eva-generated-workspace__content {
+    grid-template-columns: minmax(420px, 1fr) 248px;
+  }
+}
+
+@media (max-width: 760px) {
+  .eva-first-interface--generated {
+    height: auto;
+    padding: 0;
+    overflow-y: auto;
+  }
+
+  .eva-first-interface--generated .eva-generated-layout,
+  .eva-first-interface--generated .eva-generated-layout--side-collapsed {
+    grid-template-columns: 1fr;
+    grid-template-rows: auto;
+    height: auto;
+    overflow: visible;
+  }
+
+  .eva-generated-chat-panel,
+  .eva-generated-workspace {
+    grid-column: 1;
+  }
+
+  .eva-generated-chat-panel {
+    grid-row: 1;
+    min-height: 480px;
+    max-height: 62vh;
+    border-left: var(--border-width-small) solid color-mix(in srgb, var(--border-color) 72%, transparent);
+    border-radius: var(--border-radius-large);
+  }
+
+  .eva-first-interface--generated .eva-generated-layout--chat-collapsed {
+    grid-template-columns: 1fr;
+  }
+
+  .eva-generated-layout--chat-collapsed .eva-generated-chat-panel {
+    min-height: 0;
+    max-height: 0;
+  }
+
+  .eva-generated-layout--chat-collapsed .eva-generated-chat-panel__view-controls {
+    flex-direction: row;
+  }
+
+  .eva-generated-layout--chat-expanded .eva-generated-chat-panel {
+    min-height: calc(100vh - 56px);
+    max-height: none;
+    border: 0;
+    border-radius: 0;
+  }
+
+  .eva-generated-workspace {
+    grid-row: 2;
+    padding: var(--spacing-small);
+    overflow: visible;
+  }
+
+  .eva-generated-workspace > .eva-view-actions {
+    align-items: flex-start;
+    flex-wrap: wrap;
+  }
+
+  .eva-generated-workspace .agent-name-row,
+  .eva-generated-workspace .eva-view-actions__controls {
+    flex-wrap: wrap;
+  }
+
+  .eva-generated-workspace__content,
+  .eva-generated-layout--side-collapsed .eva-generated-workspace__content {
+    grid-template-columns: 1fr;
+    overflow: visible;
+  }
+
+  .eva-generated-layout__main {
+    min-height: 640px;
+  }
+
+  .eva-first-interface--generated .eva-generated-side-panel {
+    display: block;
+    position: static;
+    order: 0;
+    height: auto;
+    max-height: none;
+  }
 }
