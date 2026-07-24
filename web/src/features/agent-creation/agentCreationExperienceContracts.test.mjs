@@ -369,7 +369,7 @@ test('entering evaluation removes the preview handoff actions before rendering t
   assert.ok(previewStart >= 0 && testingStart > previewStart);
   assert.match(
     previewSource,
-    /\{evaStep !== ['"]testing['"] && \([\s\S]*?className="eva-dialogue__actions"[\s\S]*?Evaluate my agent[\s\S]*?Update Configuration/,
+    /\{evaStep !== ['"]testing['"] && \([\s\S]*?className="eva-dialogue__actions"[\s\S]*?Evaluate my agent[\s\S]*?Save changes/,
     'the preview handoff row should disappear once evaluation is active so the scenario builder moves up',
   );
   assert.match(
@@ -475,7 +475,7 @@ test('ranked next steps follow the selected setup section until the journey is r
   );
 });
 
-test('guided configuration toolbar restores summary, progress, and update actions', () => {
+test('guided configuration toolbar restores summary, progress, and save actions', () => {
   const source = readSource('../eva/EvaChatExperience.tsx');
   const controlsStart = source.indexOf('<div className="eva-view-actions__controls">');
   const controlsEnd = source.indexOf('</div>', controlsStart);
@@ -494,7 +494,7 @@ test('guided configuration toolbar restores summary, progress, and update action
   assert.match(controlsSource, /name="side-panel"/);
   assert.match(
     controlsSource,
-    /onClick=\{configurationMode === ['"]edit['"] \? handleSaveConfigurations : handleCreateAgent\}[\s\S]*?Update Configuration[\s\S]*?Create Agent/,
+    /onClick=\{configurationMode === ['"]edit['"] \? handleSaveConfigurations : handleCreateAgent\}[\s\S]*?Save changes[\s\S]*?Create Agent/,
   );
   assert.doesNotMatch(controlsSource, /Create new agent/);
   assert.doesNotMatch(controlsSource, /Publish version/);
@@ -506,14 +506,14 @@ test('guided configuration toolbar restores summary, progress, and update action
   assert.match(saveHandlerSource, /updateAgentDraft\(activeDraftAgentId,\s*current\s*=>\s*current\)/);
   assert.match(
     saveHandlerSource,
-    /navigateToAgentStudio\(activeDraftAgentId\)/,
-    'updating an existing configuration should return to the agent summary',
+    /setVariation\(['"]dashboard['"]\)[\s\S]*?navigate\(['"]\/agents['"]\)/,
+    'saving an existing configuration should return to the all-agents view',
   );
-  assert.match(saveHandlerSource, /showToast\(['"]Configurations updated\./);
+  assert.match(saveHandlerSource, /showToast\(['"]Changes saved\./);
   assert.match(source, /id="eva-generated-progress-sidebar"/);
 });
 
-test('existing agents reopen with a collapsed conversation and a complete scrollable configuration', () => {
+test('existing agents progressively disclose untouched optional configuration', () => {
   const source = readSource('../eva/EvaChatExperience.tsx');
   const styles = readSource('../../products/ai-agent-studio/components.css');
 
@@ -524,8 +524,13 @@ test('existing agents reopen with a collapsed conversation and a complete scroll
   );
   assert.match(
     source,
-    /const reviewStepIndex = familyStepOrder\.indexOf\(['"]review['"]\);[\s\S]*?const visibleStepIndex = configurationMode === ['"]edit['"]\s*\?\s*Math\.max\(currentStepIndex,\s*reviewStepIndex\)[\s\S]*?familyStepOrder\.slice\(0,\s*visibleStepIndex \+ 1\)/,
-    'edit mode should reveal every configuration section through Review in one continuous workspace',
+    /const progressivelyDisclosedSteps = new Set<EvaConversationStep>\(\[[\s\S]*?['"]channels['"][\s\S]*?['"]knowledge['"][\s\S]*?['"]actions['"][\s\S]*?['"]security['"][\s\S]*?\]\);/,
+    'optional configuration sections should use progressive disclosure',
+  );
+  assert.match(
+    source,
+    /familyStepOrder[\s\S]*?\.slice\(0,\s*visibleStepIndex \+ 1\)[\s\S]*?\.filter\(step => \{[\s\S]*?step === evaStep[\s\S]*?progress !== undefined && progress !== ['"]not_started['"]/,
+    'edit mode should show an optional section only when it is active or has recorded progress',
   );
   assert.match(
     styles,
@@ -577,7 +582,7 @@ test('create versus edit mode keeps both primary configuration actions synchroni
   const landingSource = readSource('../../pages/agent/AgentStudioLanding.tsx');
   const listSource = readSource('../eva/EvaAgentsTable.tsx');
   const dynamicActionPattern =
-    /variant="primary"[\s\S]{0,180}onClick=\{configurationMode === ['"]edit['"] \? handleSaveConfigurations : handleCreateAgent\}[\s\S]{0,180}\{configurationMode === ['"]edit['"] \? ['"]Update Configuration['"] : ['"]Create Agent['"]\}/g;
+    /variant="primary"[\s\S]{0,180}onClick=\{configurationMode === ['"]edit['"] \? handleSaveConfigurations : handleCreateAgent\}[\s\S]{0,180}\{configurationMode === ['"]edit['"] \? ['"]Save changes['"] : ['"]Create Agent['"]\}/g;
 
   assert.ok(
     [...source.matchAll(dynamicActionPattern)].length >= 4,
@@ -592,8 +597,9 @@ test('create versus edit mode keeps both primary configuration actions synchroni
   const saveHandlerEnd = source.indexOf('const enterRetailAgentStudio', saveHandlerStart);
   const saveHandlerSource = source.slice(saveHandlerStart, saveHandlerEnd);
   assert.match(saveHandlerSource, /updateAgentDraft\(activeDraftAgentId,\s*current\s*=>\s*current\)/);
-  assert.match(saveHandlerSource, /navigateToAgentStudio\(activeDraftAgentId\)/);
-  assert.doesNotMatch(saveHandlerSource, /publishAgentVersion|navigate\(['"]\/agents['"]\)/);
+  assert.match(saveHandlerSource, /setVariation\(['"]dashboard['"]\)/);
+  assert.match(saveHandlerSource, /navigate\(['"]\/agents['"]\)/);
+  assert.doesNotMatch(saveHandlerSource, /publishAgentVersion|navigateToAgentStudio/);
 });
 
 test('AI agent list cards keep a visible 16px grid gap', () => {

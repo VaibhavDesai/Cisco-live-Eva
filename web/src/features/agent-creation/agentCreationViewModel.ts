@@ -336,7 +336,7 @@ function previewViewModel(family: AgentFamily, name: string): PreviewViewModel {
   return {
     title: 'Try an employee question',
     description: 'Preview concise internal guidance without placing the assistant in a workspace yet.',
-    modeLabel: 'Internal assistant preview',
+    modeLabel: 'AI Assistant preview',
     icon: 'people',
     agentMessage: `Hi, I’m ${name}. What would you like help getting done?`,
     userMessage: 'Where should I start with a request I have not handled before?',

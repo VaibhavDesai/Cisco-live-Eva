@@ -42,7 +42,7 @@ test('presents all families with the approved accessible color system', () => {
   assert.deepEqual(new Set(list.map(item => item.family.label)), new Set([
     'Calling',
     'Contact Center',
-    'Internal AI Assistant',
+    'AI Assistant',
   ]));
 });
 

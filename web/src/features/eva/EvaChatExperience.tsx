@@ -2853,9 +2853,10 @@ export default function EvaChatExperience({
     });
     if (activeDraftAgentId) {
       updateAgentDraft(activeDraftAgentId, current => current);
-      navigateToAgentStudio(activeDraftAgentId);
     }
-    showToast('Configurations updated.', 'success');
+    showToast('Changes saved.', 'success');
+    setVariation('dashboard');
+    navigate('/agents');
   };
 
   const enterRetailAgentStudio = () => {
@@ -4888,7 +4889,28 @@ ${previewTranscript}`,
   const visibleStepIndex = configurationMode === 'edit'
     ? Math.max(currentStepIndex, reviewStepIndex)
     : currentStepIndex;
-  const visibleSteps = familyStepOrder.slice(0, visibleStepIndex + 1);
+  const progressivelyDisclosedSteps = new Set<EvaConversationStep>([
+    'channels',
+    'knowledge',
+    'actions',
+    'security',
+  ]);
+  const visibleSteps = familyStepOrder
+    .slice(0, visibleStepIndex + 1)
+    .filter(step => {
+      if (configurationMode !== 'edit' || !progressivelyDisclosedSteps.has(step)) {
+        return true;
+      }
+      if (step === evaStep) {
+        return true;
+      }
+      const capabilityId =
+        step === 'channels' && selectedAgentFamily === 'calling'
+          ? 'voice'
+          : step;
+      const progress = activeAgentDraft?.familyConfiguration[capabilityId]?.progress;
+      return progress !== undefined && progress !== 'not_started';
+    });
   const hideConversationalOnboardingForms =
     conversationalOnboardingStep === 'ready-for-studio' &&
     guidanceVisible &&
@@ -6067,7 +6089,7 @@ ${previewTranscript}`,
                         <strong>{FAMILY_METADATA[family].label}:</strong> {FAMILY_EXPLANATIONS[family]}
                       </p>
                     ))}
-                    <p><strong>One family per agent:</strong> Contact Center and Internal AI Assistant cannot be combined in the same agent. You can duplicate the idea into another family later.</p>
+                    <p><strong>One family per agent:</strong> Contact Center and AI Assistant cannot be combined in the same agent. You can duplicate the idea into another family later.</p>
                   </div>
                 )}
               </div>
@@ -7243,7 +7265,7 @@ ${previewTranscript}`,
                       size="sm"
                       onClick={configurationMode === 'edit' ? handleSaveConfigurations : handleCreateAgent}
                     >
-                      {configurationMode === 'edit' ? 'Update Configuration' : 'Create Agent'}
+                      {configurationMode === 'edit' ? 'Save changes' : 'Create Agent'}
                     </Button>
                   </div>
                 </div>
@@ -8221,7 +8243,7 @@ ${previewTranscript}`,
                         variant="primary"
                         onClick={configurationMode === 'edit' ? handleSaveConfigurations : handleCreateAgent}
                       >
-                        {configurationMode === 'edit' ? 'Update Configuration' : 'Create Agent'}
+                        {configurationMode === 'edit' ? 'Save changes' : 'Create Agent'}
                       </Button>
                     </div>
                   )}
@@ -8257,7 +8279,7 @@ ${previewTranscript}`,
                             variant="primary"
                             onClick={configurationMode === 'edit' ? handleSaveConfigurations : handleCreateAgent}
                           >
-                            {configurationMode === 'edit' ? 'Update Configuration' : 'Create Agent'}
+                            {configurationMode === 'edit' ? 'Save changes' : 'Create Agent'}
                           </Button>
                         </>
                       )}
@@ -8909,7 +8931,7 @@ ${previewTranscript}`,
                         onClick={configurationMode === 'edit' ? handleSaveConfigurations : handleCreateAgent}
                       >
                         <Icon name="sparkle" weight="bold" size="sm" />
-                        {configurationMode === 'edit' ? 'Update Configuration' : 'Create Agent'}
+                        {configurationMode === 'edit' ? 'Save changes' : 'Create Agent'}
                       </Button>
                     )}
                   </div>

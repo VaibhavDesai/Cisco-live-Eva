@@ -108,7 +108,7 @@ The app uses the **Momentum Design System** (dark Webex theme):
 
 ## AI agent creation architecture
 
-The shared AI Agents experience supports Calling, Contact Center, and Internal AI Assistant as mutually exclusive families. New users begin with a conversational minimum profile—licensed family, name, purpose, applied instructions, and one default language—then may publish a reusable configuration version or continue into the synchronized configuration workspace.
+The shared AI Agents experience supports Calling, Contact Center, and AI Assistant as mutually exclusive families. New users begin with a conversational minimum profile—licensed family, name, purpose, applied instructions, and one default language—then may publish a reusable configuration version or continue into the synchronized configuration workspace.
 
 Rich per-agent drafts are persisted through `AppContext`. Chat history, recommendations, preview state, active section, capability requirement and progress, lifecycle, and deployment references stay synchronized across the overview and configuration routes. Publishing and deployment are intentionally separate lifecycle steps.
 

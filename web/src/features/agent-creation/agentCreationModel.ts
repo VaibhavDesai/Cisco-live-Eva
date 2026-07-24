@@ -187,8 +187,8 @@ export const FAMILY_METADATA: Record<AgentFamily, FamilyMetadata> = {
   },
   internal_assistant: {
     id: 'internal_assistant',
-    label: 'Internal AI Assistant',
-    shortLabel: 'Internal',
+    label: 'AI Assistant',
+    shortLabel: 'AI Assistant',
     description: 'Create an employee-facing assistant grounded in internal tools and information.',
     summary: 'Help teams find answers and complete common internal tasks.',
     examples: ['IT help desk', 'Employee policy assistant', 'Incident command assistant'],
@@ -289,8 +289,8 @@ const FAMILY_INTAKE: Record<AgentFamily, AdaptiveIntakeQuestion[]> = {
     {
       id: 'calling-outcome',
       answerKey: 'outcome',
-      prompt: 'What should callers be able to accomplish?',
-      helperText: 'Describe the main caller outcome in plain language.',
+      prompt: 'What do you want this agent to help with?',
+      helperText: 'Describe why people call and what the agent should help them do.',
       required: true,
       inputKind: 'textarea',
     },
