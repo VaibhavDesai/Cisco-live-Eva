@@ -56,10 +56,69 @@ const DEFAULT_PINNED_CARD_IDS = [
   'sec-guardrails-trigger-flag',
   'ce-containment-rate',
   'ap-intent-success-rate',
-  'ap-fulfilment-latency-p95',
   'bi-autocsat-improvement',
   'ce-csat-predictor',
+  'ap-fulfilment-latency-p95',
 ] as const;
+
+const EAGLE_GREEN_STAGE_METRICS: Record<string, Partial<KPIData>> = {
+  'kp-knowledge-coverage': {
+    value: '94.8%',
+    unit: '',
+    change: '+4.6%',
+    isPositive: true,
+    thresholdStatus: 'good',
+    sparklineData: [88.5, 89.7, 90.4, 91.8, 92.6, 93.3, 94.8],
+  },
+  'sec-guardrails-trigger-flag': {
+    value: '0.8%',
+    unit: '',
+    change: '-0.7%',
+    isPositive: true,
+    thresholdStatus: 'good',
+    sparklineData: [1.6, 1.4, 1.3, 1.2, 1.1, 0.9, 0.8],
+  },
+  'ce-containment-rate': {
+    value: '91.6%',
+    unit: '',
+    change: '+5.2%',
+    isPositive: true,
+    thresholdStatus: 'good',
+    sparklineData: [84.2, 85.8, 87.4, 88.1, 89.8, 90.7, 91.6],
+  },
+  'ap-intent-success-rate': {
+    value: '97.8',
+    unit: '%',
+    change: '+2.4%',
+    isPositive: true,
+    thresholdStatus: 'good',
+    sparklineData: [94.1, 95.0, 95.8, 96.2, 96.8, 97.1, 97.8],
+  },
+  'bi-autocsat-improvement': {
+    value: '8.6%',
+    unit: '',
+    change: '+3.4%',
+    isPositive: true,
+    thresholdStatus: 'good',
+    sparklineData: [4.9, 5.6, 6.1, 6.8, 7.2, 7.9, 8.6],
+  },
+  'ce-csat-predictor': {
+    value: '4.7',
+    unit: '/5',
+    change: '+8.1%',
+    isPositive: true,
+    thresholdStatus: 'good',
+    sparklineData: [4.2, 4.3, 4.4, 4.4, 4.5, 4.6, 4.7],
+  },
+  'ap-fulfilment-latency-p95': {
+    value: '1,240',
+    unit: 'ms',
+    change: '-18%',
+    isPositive: true,
+    thresholdStatus: 'good',
+    sparklineData: [1710, 1630, 1540, 1490, 1410, 1320, 1240],
+  },
+};
 
 function stableSeed(input: string): number {
   let h = 2166136261;
@@ -103,6 +162,13 @@ function formatScopedValue(kpi: KPIData, nextNumeric: number): Pick<KPIData, 'va
 }
 
 function scopeKpiToAgent(kpi: KPIData, agentName: string): KPIData {
+  if (agentName === CISCO_LIVE_PRIMARY_AGENT_NAME) {
+    const stageMetric = EAGLE_GREEN_STAGE_METRICS[kpi.id];
+    if (stageMetric) {
+      return { ...kpi, ...stageMetric };
+    }
+  }
+
   const seed = stableSeed(`${agentName}:${kpi.id}`);
   const baseNumeric = parseKpiNumericValue(kpi.value, kpi.unit, kpi.sparklineKind);
   if (baseNumeric === null) return kpi;
