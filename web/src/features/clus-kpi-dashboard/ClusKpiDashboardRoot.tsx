@@ -3,6 +3,7 @@ import {
   useEffect,
   useMemo,
   useCallback,
+  useRef,
   type MouseEvent,
 } from 'react';
 import { useSearchParams } from 'react-router-dom';
@@ -40,6 +41,7 @@ import {
 } from './agentHashNavigation';
 import type { KPIData } from './kpiTypes';
 import { parseKpiNumericValue } from './kpiThresholdPresentation';
+import { CISCO_LIVE_PRIMARY_AGENT_NAME } from '../../demo/ciscoLiveDemo';
 
 const DATE_RANGE_OPTIONS = [
   { value: '24h', label: 'Last 24 hours' },
@@ -156,8 +158,10 @@ export function ClusKpiDashboardRoot() {
   const [showFilterBar, setShowFilterBar] = useState(false);
   const [selectedAgent, setSelectedAgent] = useState<string | null>(null);
   const [dashboardAgentFilter, setDashboardAgentFilter] = useState<string | null>(() =>
-    parseClusKpiDashboardAgentFilter(window.location.search),
+    parseClusKpiDashboardAgentFilter(window.location.search) ?? CISCO_LIVE_PRIMARY_AGENT_NAME,
   );
+  const skipInitialAgentSearchSync = useRef(true);
+  const suppressNextAgentSearchSync = useRef(false);
   const [selectedInteraction, setSelectedInteraction] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState("dashboard");
   const [dateDialogOpen, setDateDialogOpen] = useState(false);
@@ -169,7 +173,18 @@ export function ClusKpiDashboardRoot() {
   const [observabilityConfigVersion, setObservabilityConfigVersion] = useState(0);
 
   useEffect(() => {
-    const agentName = parseClusKpiDashboardAgentFilter(searchParams.toString());
+    if (skipInitialAgentSearchSync.current) {
+      skipInitialAgentSearchSync.current = false;
+      return;
+    }
+    if (suppressNextAgentSearchSync.current) {
+      suppressNextAgentSearchSync.current = false;
+      return;
+    }
+
+    const agentName =
+      parseClusKpiDashboardAgentFilter(searchParams.toString()) ??
+      CISCO_LIVE_PRIMARY_AGENT_NAME;
     setDashboardAgentFilter(current => current === agentName ? current : agentName);
   }, [searchParams]);
 
@@ -179,9 +194,22 @@ export function ClusKpiDashboardRoot() {
       const next = new URLSearchParams(previous);
       if (agentName) next.set(CLUS_KPI_AGENT_FILTER_PARAM, agentName);
       else next.delete(CLUS_KPI_AGENT_FILTER_PARAM);
+      if (next.toString() !== previous.toString()) {
+        suppressNextAgentSearchSync.current = true;
+      }
       return next;
     }, { replace: true });
   }, [setSearchParams]);
+
+  const dashboardAgentNames = useMemo(
+    () => [
+      CISCO_LIVE_PRIMARY_AGENT_NAME,
+      ...agentData
+        .map((agent) => agent.agentName)
+        .filter((agentName) => agentName !== CISCO_LIVE_PRIMARY_AGENT_NAME),
+    ],
+    [],
+  );
 
   useEffect(() => {
     const bump = () => setObservabilityConfigVersion((v) => v + 1);
@@ -481,7 +509,9 @@ export function ClusKpiDashboardRoot() {
                 <div className="clus-kpi-split">
                   {showFilterBar && (
                     <FilterBar
-                      agentNames={agentData.map((agent) => agent.agentName)}
+                      agentNames={dashboardAgentNames}
+                      selectedAgentName={dashboardAgentFilter}
+                      onAgentClear={() => applyDashboardAgentFilter(null)}
                       onAgentClick={(agentName) => {
                         applyDashboardAgentFilter(agentName);
                         setActiveTab('dashboard');

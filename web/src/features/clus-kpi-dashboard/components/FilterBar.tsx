@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import SharedButton from '../../../components/shared/Button';
 import { Checkbox } from '../../../components/shared/Checkbox';
 import { Input } from '../../../components/shared/FormInput';
@@ -10,10 +10,20 @@ interface FilterBarProps {
   hideAgents?: boolean;
   hideType?: boolean;
   hideStatus?: boolean;
+  selectedAgentName?: string | null;
+  onAgentClear?: () => void;
   onAgentClick?: (agentName: string) => void;
 }
 
-export function FilterBar({ agentNames, hideAgents = false, hideType = false, hideStatus = false, onAgentClick }: FilterBarProps) {
+export function FilterBar({
+  agentNames,
+  hideAgents = false,
+  hideType = false,
+  hideStatus = false,
+  selectedAgentName,
+  onAgentClear,
+  onAgentClick,
+}: FilterBarProps) {
   const [showAllAgents, setShowAllAgents] = useState(false);
   const [showAllChannels, setShowAllChannels] = useState(false);
   const [showAllLanguages, setShowAllLanguages] = useState(false);
@@ -25,6 +35,11 @@ export function FilterBar({ agentNames, hideAgents = false, hideType = false, hi
   const [selectedChannels, setSelectedChannels] = useState<Set<string>>(new Set());
   const [selectedLanguages, setSelectedLanguages] = useState<Set<string>>(new Set());
   const [selectedTimezones, setSelectedTimezones] = useState<Set<string>>(new Set());
+
+  useEffect(() => {
+    if (selectedAgentName === undefined) return;
+    setSelectedAgents(selectedAgentName ? new Set([selectedAgentName]) : new Set());
+  }, [selectedAgentName]);
 
   // Filter agents by search query
   const filteredAgents = agentNames.filter(agent => 
@@ -139,8 +154,13 @@ export function FilterBar({ agentNames, hideAgents = false, hideType = false, hi
                       label={agent}
                       checked={selectedAgents.has(agent)}
                       onChange={() => {
-                        toggleSelection(selectedAgents, agent, setSelectedAgents);
-                        onAgentClick?.(agent);
+                        if (selectedAgents.has(agent)) {
+                          setSelectedAgents(new Set());
+                          onAgentClear?.();
+                        } else {
+                          setSelectedAgents(new Set([agent]));
+                          onAgentClick?.(agent);
+                        }
                       }}
                     />
                   </div>
