@@ -24,6 +24,7 @@ import { TextLink } from '../../components/shared/TextLink';
 import CreateEngineModal from '../CreateEngineModal';
 import CreateFulfillmentModal from './CreateFulfillmentModal';
 import PolicyStudio from './PolicyStudio';
+import LatestSecurityGuardrails from './LatestSecurityGuardrails';
 import { optimizeInstructions } from '../../api/ciscoAi';
 import { Icon } from '../../icons';
 import {
@@ -1043,6 +1044,10 @@ export default function ActionConfigureV2() {
           )}
 
           {activeSection === 'Security' && (
+            <LatestSecurityGuardrails agent={ciscoLiveAgent} />
+          )}
+
+          {false && (
             <div className="guardrails-layout">
               <div className="guardrails-header">
                 <div className="guardrails-header-left">

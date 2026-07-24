@@ -49,6 +49,16 @@ const DATE_RANGE_OPTIONS = [
   { value: 'custom', label: 'Select date range' },
 ];
 
+const DEFAULT_PINNED_CARD_IDS = [
+  'kp-knowledge-coverage',
+  'sec-guardrails-trigger-flag',
+  'ce-containment-rate',
+  'ap-intent-success-rate',
+  'ap-fulfilment-latency-p95',
+  'bi-autocsat-improvement',
+  'ce-csat-predictor',
+] as const;
+
 function stableSeed(input: string): number {
   let h = 2166136261;
   for (let i = 0; i < input.length; i++) {
@@ -151,7 +161,9 @@ export function ClusKpiDashboardRoot() {
   const [selectedInteraction, setSelectedInteraction] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState("dashboard");
   const [dateDialogOpen, setDateDialogOpen] = useState(false);
-  const [pinnedCardIds, setPinnedCardIds] = useState<string[]>([]);
+  const [pinnedCardIds, setPinnedCardIds] = useState<string[]>(
+    () => [...DEFAULT_PINNED_CARD_IDS],
+  );
   const [activeCardId, setActiveCardId] = useState<string | null>(null);
 
   const [observabilityConfigVersion, setObservabilityConfigVersion] = useState(0);

@@ -139,6 +139,40 @@ function getConnectedChipLabel(label: string) {
   return CONNECTED_CHIP_LABELS[label] ?? label;
 }
 
+type ConnectedChipType = 'knowledge' | 'memory' | 'orchestration' | 'action' | 'guardrail';
+
+type ConnectedChipProps = {
+  item: string;
+  type: ConnectedChipType;
+  editing: boolean;
+  onRemove: () => void;
+};
+
+function ConnectedChip({ item, type, editing, onRemove }: ConnectedChipProps) {
+  const label = getConnectedChipLabel(item);
+  const classSuffix = type === 'orchestration' ? 'scenario' : type;
+
+  return (
+    <Badge
+      variant="default"
+      className={`agent-studio-service-badge agent-studio-service-badge--${classSuffix}`}
+    >
+      <ConfigurationCategoryIcon type={type} />
+      <span>{label}</span>
+      {editing && (
+        <button
+          type="button"
+          className="agent-studio-chip-delete"
+          aria-label={`Remove ${label}`}
+          onClick={onRemove}
+        >
+          <Icon name="cancel" weight="regular" size="xs" />
+        </button>
+      )}
+    </Badge>
+  );
+}
+
 function getConfiguredSummary(agent: Agent, evaSession?: EvaSessionState | null) {
   const ciscoLiveAgent = getCiscoLiveAgentDefinition(agent.id, agent.name);
   const matchesSession = Boolean(
@@ -267,6 +301,8 @@ export default function AgentStudioLanding() {
   const [previewTranscript, setPreviewTranscript] = useState<PreviewTranscriptEntry[]>([]);
   const [previewPaused, setPreviewPaused] = useState(false);
   const [activeObservabilityKpiId, setActiveObservabilityKpiId] = useState<string | null>(null);
+  const [connectedEditing, setConnectedEditing] = useState(false);
+  const [removedConnectedChips, setRemovedConnectedChips] = useState<Set<string>>(() => new Set());
   const previewCallStatusRef = useRef<PreviewCallStatus>('idle');
   const previewWsRef = useRef<WebSocket | null>(null);
   const previewAudioContextRef = useRef<AudioContext | null>(null);
@@ -293,6 +329,21 @@ export default function AgentStudioLanding() {
   const ciscoLiveAgent = getCiscoLiveAgentDefinition(agent.id, agent.name);
   const storedEvaSession = readEvaSessionState();
   const summary = getConfiguredSummary(agent, storedEvaSession);
+  const connectedChipKey = (type: ConnectedChipType, item: string) => `${type}:${item}`;
+  const connectedItems = {
+    knowledge: summary.knowledgeBases.filter(item => !removedConnectedChips.has(connectedChipKey('knowledge', item))),
+    memory: summary.memories.filter(item => !removedConnectedChips.has(connectedChipKey('memory', item))),
+    orchestration: summary.orchestrationScenarios.filter(item => !removedConnectedChips.has(connectedChipKey('orchestration', item))),
+    action: summary.actions.filter(item => !removedConnectedChips.has(connectedChipKey('action', item))),
+    guardrail: summary.guardrails.filter(item => !removedConnectedChips.has(connectedChipKey('guardrail', item))),
+  };
+  const removeConnectedChip = (type: ConnectedChipType, item: string) => {
+    setRemovedConnectedChips(current => {
+      const next = new Set(current);
+      next.add(connectedChipKey(type, item));
+      return next;
+    });
+  };
   const observability = getCiscoLiveObservability(agent.id);
   const observabilityKpis = observability.metrics.flatMap((metric): KPIData[] => {
     const dashboardMetric = OBSERVABILITY_KPI_CATALOG.find(item => item.id === metric.metricId);
@@ -780,9 +831,6 @@ export default function AgentStudioLanding() {
                   <small>From the conversational setup</small>
                 </span>
               </div>
-              <Button variant="secondary" size="sm" onClick={() => goToSection('Profile')}>
-                Edit
-              </Button>
             </CardHeader>
             <CardBody>
               <div className="agent-studio-summary-list">
@@ -797,8 +845,7 @@ export default function AgentStudioLanding() {
                     </span>
                   </span>
                 )}
-                <span><strong>Ai Engine</strong>{summary.aiEngine}</span>
-                <span><strong>Language</strong>English (US)</span>
+                <span><strong>AI Engine</strong>{summary.aiEngine}</span>
                 <span><strong>Timezone</strong>America/Los_Angeles</span>
               </div>
               <div className="agent-studio-profile-preview" aria-labelledby="agent-studio-profile-preview-title">
@@ -902,83 +949,108 @@ export default function AgentStudioLanding() {
                   <small>Knowledge, memory, orchestration, actions, and guardrails</small>
                 </span>
               </div>
-              <Button variant="secondary" size="sm" onClick={() => goToSection('Knowledge')}>
-                Edit
+              <Button
+                variant="secondary"
+                size="sm"
+                aria-controls="agent-studio-connected-context"
+                aria-pressed={connectedEditing}
+                onClick={() => setConnectedEditing(editing => !editing)}
+              >
+                {connectedEditing ? 'Done' : 'Edit'}
               </Button>
             </CardHeader>
             <CardBody>
-              <div className="agent-studio-connected-group">
-                <strong className="agent-studio-connected-group__label">Knowledge</strong>
-                <div className="agent-studio-chip-group" aria-label="Connected knowledge bases">
-                  {summary.knowledgeBases.map(item => (
-                    <Badge key={item} variant="default" className="agent-studio-service-badge agent-studio-service-badge--knowledge">
-                      <ConfigurationCategoryIcon type="knowledge" />
-                      {getConnectedChipLabel(item)}
-                    </Badge>
-                  ))}
-                </div>
-              </div>
-              {summary.memories.length > 0 && (
-                <div className="agent-studio-connected-group">
-                  <strong className="agent-studio-connected-group__label">AI Memory</strong>
-                  <div className="agent-studio-chip-group" aria-label="Enabled AI memory">
-                    {summary.memories.map(item => (
-                      <Badge key={item} variant="default" className="agent-studio-service-badge agent-studio-service-badge--memory">
-                        <ConfigurationCategoryIcon type="memory" />
-                        {getConnectedChipLabel(item)}
-                      </Badge>
-                    ))}
+              <div id="agent-studio-connected-context" aria-live="polite">
+                {connectedItems.knowledge.length > 0 && (
+                  <div className="agent-studio-connected-group">
+                    <strong className="agent-studio-connected-group__label">Knowledge</strong>
+                    <div className="agent-studio-chip-group" aria-label="Connected knowledge bases">
+                      {connectedItems.knowledge.map(item => (
+                        <ConnectedChip
+                          key={item}
+                          item={item}
+                          type="knowledge"
+                          editing={connectedEditing}
+                          onRemove={() => removeConnectedChip('knowledge', item)}
+                        />
+                      ))}
+                    </div>
                   </div>
-                </div>
-              )}
-              {(summary.orchestrationScenarios.length > 0 || summary.actions.length > 0) && (
-                <div className="agent-studio-connected-group">
-                  <strong className="agent-studio-connected-group__label">Orchestration &amp; actions</strong>
-                  <div className="agent-studio-chip-group" aria-label="Enabled orchestration scenarios and connected agent actions">
-                    {summary.orchestrationScenarios.map(item => (
-                      <Badge key={item} variant="default" className="agent-studio-service-badge agent-studio-service-badge--scenario">
-                        <ConfigurationCategoryIcon type="orchestration" />
-                        {getConnectedChipLabel(item)}
-                      </Badge>
-                    ))}
-                    {summary.actions.map(item => (
-                      <Badge key={item} variant="default" className="agent-studio-service-badge agent-studio-service-badge--action">
-                        <ConfigurationCategoryIcon type="action" />
-                        {getConnectedChipLabel(item)}
-                      </Badge>
-                    ))}
+                )}
+                {connectedItems.memory.length > 0 && (
+                  <div className="agent-studio-connected-group">
+                    <strong className="agent-studio-connected-group__label">AI Memory</strong>
+                    <div className="agent-studio-chip-group" aria-label="Enabled AI memory">
+                      {connectedItems.memory.map(item => (
+                        <ConnectedChip
+                          key={item}
+                          item={item}
+                          type="memory"
+                          editing={connectedEditing}
+                          onRemove={() => removeConnectedChip('memory', item)}
+                        />
+                      ))}
+                    </div>
                   </div>
-                </div>
-              )}
-              {summary.guardrails.length > 0 && (
-                <div className="agent-studio-connected-group">
-                  <strong className="agent-studio-connected-group__label">Guardrails</strong>
-                  <div className="agent-studio-chip-group" aria-label="Enabled guardrails">
-                    {summary.guardrails.slice(0, 4).map(item => (
-                      <Badge key={item} variant="default" className="agent-studio-service-badge agent-studio-service-badge--guardrail">
-                        <ConfigurationCategoryIcon type="guardrail" />
-                        {getConnectedChipLabel(item)}
-                      </Badge>
-                    ))}
-                    {summary.guardrails.length > 4 && (
-                      <Tooltip
-                        content={`All guardrails: ${summary.guardrails.map(getConnectedChipLabel).join(', ')}`}
-                        placement="top"
-                      >
-                        <span
-                          className="agent-studio-guardrail-overflow"
-                          tabIndex={0}
-                          aria-label={`${summary.guardrails.length - 4} more guardrails. Focus or hover to view the complete list.`}
+                )}
+                {(connectedItems.orchestration.length > 0 || connectedItems.action.length > 0) && (
+                  <div className="agent-studio-connected-group">
+                    <strong className="agent-studio-connected-group__label">Orchestration &amp; actions</strong>
+                    <div className="agent-studio-chip-group" aria-label="Enabled orchestration scenarios and connected agent actions">
+                      {connectedItems.orchestration.map(item => (
+                        <ConnectedChip
+                          key={item}
+                          item={item}
+                          type="orchestration"
+                          editing={connectedEditing}
+                          onRemove={() => removeConnectedChip('orchestration', item)}
+                        />
+                      ))}
+                      {connectedItems.action.map(item => (
+                        <ConnectedChip
+                          key={item}
+                          item={item}
+                          type="action"
+                          editing={connectedEditing}
+                          onRemove={() => removeConnectedChip('action', item)}
+                        />
+                      ))}
+                    </div>
+                  </div>
+                )}
+                {connectedItems.guardrail.length > 0 && (
+                  <div className="agent-studio-connected-group">
+                    <strong className="agent-studio-connected-group__label">Guardrails</strong>
+                    <div className="agent-studio-chip-group" aria-label="Enabled guardrails">
+                      {connectedItems.guardrail.slice(0, connectedEditing ? undefined : 4).map(item => (
+                        <ConnectedChip
+                          key={item}
+                          item={item}
+                          type="guardrail"
+                          editing={connectedEditing}
+                          onRemove={() => removeConnectedChip('guardrail', item)}
+                        />
+                      ))}
+                      {!connectedEditing && connectedItems.guardrail.length > 4 && (
+                        <Tooltip
+                          content={`All guardrails: ${connectedItems.guardrail.map(getConnectedChipLabel).join(', ')}`}
+                          placement="top"
                         >
-                          <Badge variant="default" className="agent-studio-service-badge agent-studio-service-badge--guardrail">
-                            +{summary.guardrails.length - 4} more
-                          </Badge>
-                        </span>
-                      </Tooltip>
-                    )}
+                          <span
+                            className="agent-studio-guardrail-overflow"
+                            tabIndex={0}
+                            aria-label={`${connectedItems.guardrail.length - 4} more guardrails. Focus or hover to view the complete list.`}
+                          >
+                            <Badge variant="default" className="agent-studio-service-badge agent-studio-service-badge--guardrail">
+                              +{connectedItems.guardrail.length - 4} more
+                            </Badge>
+                          </span>
+                        </Tooltip>
+                      )}
+                    </div>
                   </div>
-                </div>
-              )}
+                )}
+              </div>
             </CardBody>
           </Card>
         </div>

@@ -2179,6 +2179,31 @@ html[data-product='ai-agent-studio'] .app-header__menu-row-hint {
   color: var(--text-primary);
 }
 
+.agent-studio-chip-delete {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: var(--spacing-medium);
+  height: var(--spacing-medium);
+  margin: calc(var(--spacing-micro) * -1) calc(var(--spacing-micro) * -1) calc(var(--spacing-micro) * -1) 0;
+  padding: 0;
+  border: 0;
+  border-radius: var(--border-radius-pill);
+  background: transparent;
+  color: var(--text-secondary);
+  cursor: pointer;
+}
+
+.agent-studio-chip-delete:hover {
+  background: color-mix(in srgb, var(--text-primary) 10%, transparent);
+  color: var(--text-primary);
+}
+
+.agent-studio-chip-delete:focus-visible {
+  outline: 2px solid var(--accent-color);
+  outline-offset: 2px;
+}
+
 .agent-studio-guardrail-overflow {
   display: inline-flex;
   border-radius: var(--border-radius-pill);
