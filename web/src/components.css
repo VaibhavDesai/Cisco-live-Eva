@@ -12431,6 +12431,10 @@ img.app-header__wordmark-logo {
 
 /* ── Action Configure V2 page ── */
 
+.action-config-v2-page {
+  padding-top: calc(var(--spacing-large) + var(--spacing-medium));
+}
+
 .action-config-v2-shell {
   display: flex;
   flex-direction: column;
@@ -14556,35 +14560,25 @@ img.app-header__wordmark-logo {
   margin-left: auto;
 }
 
-.action-config-v2-preview-btn {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--spacing-xx-small);
-  height: 40px;
-  padding: var(--spacing-xx-small) var(--spacing-small);
-  border-radius: var(--spacing-medium);
-  border: var(--border-width-small) solid var(--outline-button);
-  background: transparent;
-  color: var(--text-primary);
-  font-family: var(--font-family);
-  font-size: var(--font-size-body-large);
+.action-config-v2-header-actions .btn {
+  height: 28px;
+  min-height: 28px;
+  gap: 6px;
+  padding: 1px var(--spacing-x-small);
+  border-radius: var(--border-radius-pill);
+  font-family: var(--font-family-primary);
+  font-size: 13px;
   font-weight: var(--font-weight-medium);
   line-height: var(--font-lineheight-body-large);
-  cursor: pointer;
-  transition: background 0.15s;
-  white-space: nowrap;
-}
-
-.action-config-v2-preview-btn:hover {
-  background: var(--button-secondary-hover);
+  font-feature-settings: 'ss02' 1;
 }
 
 .action-config-v2-more-btn {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 40px;
-  height: 40px;
+  width: 28px;
+  height: 28px;
   border-radius: var(--border-radius-pill);
   border: var(--border-width-small) solid var(--outline-button);
   background: transparent;
@@ -19874,6 +19868,11 @@ img.app-header__wordmark-logo {
 .security-prebuilt-group-body--custom .security-custom-profiles-actions--hero {
   display: flex;
   justify-content: flex-end;
+}
+
+
+.security-prebuilt-group-body--custom .security-rail-header {
+  padding-left: 0;
 }
 
 

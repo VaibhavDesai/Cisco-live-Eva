@@ -30,9 +30,7 @@ import SecurityUIPolicyStudio from './SecurityUIPolicyStudio';
 import { optimizeInstructions } from '../../api/ciscoAi';
 import { Icon } from '../../icons';
 import {
-  FAMILY_METADATA,
   type AgentFamily,
-  type AgentLifecycle,
   type CapabilityState,
   type CustomerChannel,
 } from '../../features/agent-creation/agentCreationModel';
@@ -296,9 +294,6 @@ const profileLanguageValue = (language: string | undefined) =>
 
 const draftLanguageLabel = (language: string) =>
   PROFILE_LANGUAGE_OPTIONS.find(option => option.value === language)?.label ?? language;
-
-const lifecycleLabel = (lifecycle: AgentLifecycle) =>
-  lifecycle.charAt(0).toUpperCase() + lifecycle.slice(1);
 
 const PROFILE_VOICE_OPTIONS = [
   { value: 'ava', label: 'Ava' },
@@ -1151,6 +1146,41 @@ export default function ActionConfigureV2() {
     }).length;
   }, [capabilities, resolveVersionMeta]);
 
+  const selectedChannels =
+    (agentDraft?.familyConfiguration.channels?.values?.selectedChannels as CustomerChannel[] | undefined) ?? [];
+  const configurationFingerprint = useMemo(
+    () => JSON.stringify({
+      profileForm,
+      advancedDefaultGroups,
+      advancedCustomItems,
+      rows,
+      disabledKnowledge,
+      selectedChannels,
+    }),
+    [
+      profileForm,
+      advancedDefaultGroups,
+      advancedCustomItems,
+      rows,
+      disabledKnowledge,
+      selectedChannels,
+    ],
+  );
+  const [savedConfigurationFingerprint, setSavedConfigurationFingerprint] = useState(configurationFingerprint);
+  const savedAgentIdRef = useRef(agentId);
+
+  useEffect(() => {
+    if (savedAgentIdRef.current === agentId) return;
+    savedAgentIdRef.current = agentId;
+    setSavedConfigurationFingerprint(configurationFingerprint);
+  }, [agentId, configurationFingerprint]);
+
+  const hasUnsavedChanges = configurationFingerprint !== savedConfigurationFingerprint;
+  const handleSaveConfiguration = () => {
+    setSavedConfigurationFingerprint(configurationFingerprint);
+    showToast('Configuration saved', 'success');
+  };
+
   if (!currentAgent || currentAgent.id !== agentId) {
     const nextAgent = agents[agentId];
     if (nextAgent) {
@@ -1175,9 +1205,6 @@ export default function ActionConfigureV2() {
     setRows((prev) => prev.filter((row) => row.id !== id));
     setCapabilities((prev) => prev.filter((cap) => cap.id !== id));
   };
-
-  const selectedChannels =
-    (agentDraft?.familyConfiguration.channels?.values?.selectedChannels as CustomerChannel[] | undefined) ?? [];
 
   const toggleChannel = (value: CustomerChannel) => {
     if (!agentId) return;
@@ -1466,20 +1493,15 @@ export default function ActionConfigureV2() {
 
   const headerActions = (
     <div className="action-config-v2-header-actions">
-      {agentFamily && agentDraft && (
-        <>
-          <Badge variant={agentFamily === 'calling' ? 'warning' : agentFamily === 'contact_center' ? 'success' : 'info'}>
-            {FAMILY_METADATA[agentFamily].label}
-          </Badge>
-          <Badge variant={agentDraft.lifecycle === 'draft' ? 'warning' : 'success'}>
-            {lifecycleLabel(agentDraft.lifecycle)}
-          </Badge>
-        </>
+      {hasUnsavedChanges && (
+        <Button type="button" onClick={handleSaveConfiguration}>
+          Save
+        </Button>
       )}
-      <button type="button" className="action-config-v2-preview-btn">
-        <Icon name="chat" weight="bold" size={20} />
+      <Button type="button" variant="secondary">
+        <Icon name="chat" weight="bold" size="xs" />
         Preview
-      </button>
+      </Button>
       <button type="button" className="action-config-v2-more-btn" aria-label="More options">
         <Icon name="more" weight="bold" size={20} />
       </button>
@@ -1487,7 +1509,7 @@ export default function ActionConfigureV2() {
   );
 
   return (
-    <div className="primary-content">
+    <div className="primary-content action-config-v2-page">
       <AgentHeader agent={agent} activeTab="configure" showPublishButton={false} showTabs={false} headerRight={headerActions} />
 
       <div className="action-config-v2-shell">

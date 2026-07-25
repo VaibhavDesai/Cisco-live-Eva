@@ -219,11 +219,14 @@ const operationalKpisForAgent = (agentName: string) => buildObservabilityKpiData
     - OPERATIONAL_KPI_IDS.indexOf(right.id as (typeof OPERATIONAL_KPI_IDS)[number]));
 
 const OPERATIONAL_HEALTH = {
-  score: 92,
+  score: 95.8,
   target: 85,
-  gap: 7,
   signals: 7,
 } as const;
+
+const OPERATIONAL_HEALTH_GAP = Number(
+  (OPERATIONAL_HEALTH.score - OPERATIONAL_HEALTH.target).toFixed(1),
+);
 
 interface OperationalHealthMetric {
   id: string;
@@ -231,11 +234,6 @@ interface OperationalHealthMetric {
   value: string;
   change: string;
 }
-
-const HEALTH_GAUGE_RADIUS = 52;
-const HEALTH_GAUGE_CIRCUMFERENCE = 2 * Math.PI * HEALTH_GAUGE_RADIUS;
-const HEALTH_GAUGE_TRACK = HEALTH_GAUGE_CIRCUMFERENCE * 0.75;
-const HEALTH_GAUGE_VALUE = HEALTH_GAUGE_TRACK * (OPERATIONAL_HEALTH.score / 100);
 
 const OPERATIONAL_HEALTH_METRICS: OperationalHealthMetric[] = [
   { id: 'knowledge-coverage', label: 'Knowledge coverage', value: '94.8%', change: '+4.6%' },
@@ -1299,28 +1297,21 @@ export default function AgentStudioLanding() {
                       role="img"
                       aria-label={`Aggregate health ${OPERATIONAL_HEALTH.score} percent`}
                     >
-                      <svg viewBox="0 0 120 120" aria-hidden="true">
-                        <circle
+                      <svg viewBox="0 0 208 108" aria-hidden="true">
+                        <path
                           className="agent-studio-health-gauge__track"
-                          cx="60"
-                          cy="60"
-                          r={HEALTH_GAUGE_RADIUS}
+                          d="M 12 104 A 92 92 0 0 1 196 104"
                           fill="none"
-                          strokeWidth="6"
-                          strokeLinecap="round"
-                          strokeDasharray={`${HEALTH_GAUGE_TRACK} ${HEALTH_GAUGE_CIRCUMFERENCE}`}
-                          transform="rotate(135 60 60)"
+                          pathLength="100"
+                          strokeWidth="5"
                         />
-                        <circle
+                        <path
                           className="agent-studio-health-gauge__value-arc"
-                          cx="60"
-                          cy="60"
-                          r={HEALTH_GAUGE_RADIUS}
+                          d="M 12 104 A 92 92 0 0 1 196 104"
                           fill="none"
-                          strokeWidth="6"
-                          strokeLinecap="round"
-                          strokeDasharray={`${HEALTH_GAUGE_VALUE} ${HEALTH_GAUGE_CIRCUMFERENCE}`}
-                          transform="rotate(135 60 60)"
+                          pathLength="100"
+                          strokeWidth="5"
+                          strokeDasharray={`${OPERATIONAL_HEALTH.score} 100`}
                         />
                       </svg>
                       <div className="agent-studio-health-gauge__reading">
@@ -1338,7 +1329,7 @@ export default function AgentStudioLanding() {
                       </div>
                       <div>
                         <dt>Gap</dt>
-                        <dd className="is-positive">+{OPERATIONAL_HEALTH.gap}</dd>
+                        <dd className="is-positive">+{OPERATIONAL_HEALTH_GAP}</dd>
                       </div>
                       <div>
                         <dt>Signals</dt>
