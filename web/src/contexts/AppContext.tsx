@@ -20,6 +20,7 @@ import {
   type CapabilityProgress,
   type EntitlementState,
 } from '../features/agent-creation/agentCreationModel';
+import { buildCiscoLiveSeed } from '../demo/ciscoLiveSeed';
 
 // Types
 export interface Agent {
@@ -116,23 +117,31 @@ const emptyAgentState = (): PersistedAgentState => ({
 const isRecord = (value: unknown): value is Record<string, unknown> =>
   Boolean(value) && typeof value === 'object' && !Array.isArray(value);
 
+// The Cisco Live demo agents are always seeded so they appear on /agents fully
+// configured. Persisted (user-edited) records win over the seed by id, so any
+// edits a user makes to a demo agent survive reloads.
+const withCiscoLiveSeed = (agents: AgentsMap, agentDrafts: AgentDraftsMap): PersistedAgentState => {
+  const seed = buildCiscoLiveSeed();
+  return {
+    schemaVersion: 1,
+    agents: { ...seed.agents, ...agents },
+    agentDrafts: { ...seed.agentDrafts, ...agentDrafts },
+  };
+};
+
 const readPersistedAgentState = (): PersistedAgentState => {
-  if (typeof window === 'undefined') return emptyAgentState();
+  if (typeof window === 'undefined') return withCiscoLiveSeed({}, {});
 
   try {
     const raw = window.localStorage.getItem(APP_AGENT_STORAGE_KEY);
-    if (!raw) return emptyAgentState();
+    if (!raw) return withCiscoLiveSeed({}, {});
     const parsed: unknown = JSON.parse(raw);
     if (!isRecord(parsed) || !isRecord(parsed.agents) || !isRecord(parsed.agentDrafts)) {
-      return emptyAgentState();
+      return withCiscoLiveSeed({}, {});
     }
-    return {
-      schemaVersion: 1,
-      agents: parsed.agents as AgentsMap,
-      agentDrafts: parsed.agentDrafts as AgentDraftsMap,
-    };
+    return withCiscoLiveSeed(parsed.agents as AgentsMap, parsed.agentDrafts as AgentDraftsMap);
   } catch {
-    return emptyAgentState();
+    return withCiscoLiveSeed({}, {});
   }
 };
 

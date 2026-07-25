@@ -49,7 +49,7 @@ export default function AgentAnalytics() {
 
   return (
     <div className="primary-content">
-      <AgentHeader agent={agent} activeTab="analytics" showPublishButton={false} />
+      <AgentHeader agent={agent} activeTab="analytics" showPublishButton={false} showTabs={false} />
 
       <div className="secondary-content agent-testing-page agent-testing-page--builder">
         <ThemeModeProvider>

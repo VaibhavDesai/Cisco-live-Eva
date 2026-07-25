@@ -35,6 +35,20 @@ import {
 import { parseAgentPathFromHash } from './agentHashNavigation';
 import type { KPIData } from './kpiTypes';
 import { parseKpiNumericValue } from './kpiThresholdPresentation';
+import { CISCO_LIVE_PRIMARY_AGENT_NAME } from '../../demo/ciscoLiveDemo';
+
+/* Default dashboard state so the Observability page opens scoped to the primary
+   demo agent with its key metrics already pinned (matches the design spec). */
+const DEFAULT_DASHBOARD_AGENT_FILTER = CISCO_LIVE_PRIMARY_AGENT_NAME;
+const DEFAULT_PINNED_CARD_IDS = [
+  'kp-knowledge-coverage',
+  'sec-guardrails-trigger-flag',
+  'ce-containment-rate',
+  'ap-intent-success-rate',
+  'bi-autocsat-improvement',
+  'ce-csat-predictor',
+  'ap-fulfilment-latency-p95',
+];
 
 const DATE_RANGE_OPTIONS = [
   { value: '24h', label: 'Last 24 hours' },
@@ -139,11 +153,13 @@ export function ClusKpiDashboardRoot() {
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [showFilterBar, setShowFilterBar] = useState(false);
   const [selectedAgent, setSelectedAgent] = useState<string | null>(null);
-  const [dashboardAgentFilter, setDashboardAgentFilter] = useState<string | null>(null);
+  const [dashboardAgentFilter, setDashboardAgentFilter] = useState<string | null>(
+    DEFAULT_DASHBOARD_AGENT_FILTER,
+  );
   const [selectedInteraction, setSelectedInteraction] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState("dashboard");
   const [dateDialogOpen, setDateDialogOpen] = useState(false);
-  const [pinnedCardIds, setPinnedCardIds] = useState<string[]>([]);
+  const [pinnedCardIds, setPinnedCardIds] = useState<string[]>(DEFAULT_PINNED_CARD_IDS);
   const [activeCardId, setActiveCardId] = useState<string | null>(null);
 
   const [observabilityConfigVersion, setObservabilityConfigVersion] = useState(0);

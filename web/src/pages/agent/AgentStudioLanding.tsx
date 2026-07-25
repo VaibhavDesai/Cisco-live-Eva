@@ -5,9 +5,12 @@ import { ThemeModeProvider, useThemeMode } from '../../app/ThemeContext';
 import { publicAssetUrl } from '../../app/publicAsset';
 import { AgentHeader } from '../../components/agents';
 import { Badge, Banner, Button, Card, CardBody, CardHeader, Divider, MenuItem, MenuOverlay, Modal, ModalBody, ModalHeader, TextLink, useMenu } from '../../components/shared';
+import Dropdown from '../../components/shared/Dropdown';
+import ConfigurationCategoryIcon, { type ConfigurationCategory } from '../../components/shared/ConfigurationCategoryIcon';
 import { useApp, type Agent } from '../../contexts/AppContext';
 import { useDesignVariation } from '../../contexts/DesignVariationContext';
 import { getElevenLabsConversationSignedUrl, getVoicePreviewErrorMessage } from '../../api/ciscoAi';
+import { getCiscoLiveActionMetric, getCiscoLiveGuardrailTriggerCount, getCiscoLiveObservability, getCiscoLiveSessionLocator } from '../../demo/ciscoLiveDemo';
 import {
   buildInstructionPrompt,
   buildWelcomeMessage,
@@ -215,6 +218,35 @@ const operationalKpisForAgent = (agentName: string) => buildObservabilityKpiData
   .sort((left, right) => OPERATIONAL_KPI_IDS.indexOf(left.id as (typeof OPERATIONAL_KPI_IDS)[number])
     - OPERATIONAL_KPI_IDS.indexOf(right.id as (typeof OPERATIONAL_KPI_IDS)[number]));
 
+const OPERATIONAL_HEALTH = {
+  score: 92,
+  target: 85,
+  gap: 7,
+  signals: 7,
+} as const;
+
+interface OperationalHealthMetric {
+  id: string;
+  label: string;
+  value: string;
+  change: string;
+}
+
+const HEALTH_GAUGE_RADIUS = 52;
+const HEALTH_GAUGE_CIRCUMFERENCE = 2 * Math.PI * HEALTH_GAUGE_RADIUS;
+const HEALTH_GAUGE_TRACK = HEALTH_GAUGE_CIRCUMFERENCE * 0.75;
+const HEALTH_GAUGE_VALUE = HEALTH_GAUGE_TRACK * (OPERATIONAL_HEALTH.score / 100);
+
+const OPERATIONAL_HEALTH_METRICS: OperationalHealthMetric[] = [
+  { id: 'knowledge-coverage', label: 'Knowledge coverage', value: '94.8%', change: '+4.6%' },
+  { id: 'guardrails-trigger-flag', label: 'Guardrails trigger flag', value: '0.8%', change: '-0.7%' },
+  { id: 'containment-rate', label: 'Containment rate', value: '91.6%', change: '+5.2%' },
+  { id: 'action-intent-success-rate', label: 'Action/intent success rate', value: '97.8%', change: '+2.4%' },
+  { id: 'autocsat-improvement', label: 'AutoCSAT improvement', value: '8.6%', change: '+3.4%' },
+  { id: 'csat-predictor', label: 'CSAT predictor (AutoCSAT)', value: '4.7/5', change: '+8.1%' },
+  { id: 'fulfilment-latency-p95', label: 'Fulfilment latency P95', value: '1,240ms', change: '-18%' },
+];
+
 const capabilitySelectionLabels = (draft: AgentDraft | undefined, capabilityId: string): string[] => {
   const values = draft?.familyConfiguration[capabilityId]?.values;
   const selections = values?.selections;
@@ -332,6 +364,8 @@ export default function AgentStudioLanding() {
   const [previewCallError, setPreviewCallError] = useState('');
   const [previewExpanded, setPreviewExpanded] = useState(false);
   const [previewInteractionEnded, setPreviewInteractionEnded] = useState(false);
+  const [previewWidgetOpen, setPreviewWidgetOpen] = useState(false);
+  const [operationalTimeRange, setOperationalTimeRange] = useState('6h');
   const [previewSessionId, setPreviewSessionId] = useState('');
   const [previewTranscript, setPreviewTranscript] = useState<PreviewTranscriptEntry[]>([]);
   const [previewPaused, setPreviewPaused] = useState(false);
@@ -364,6 +398,13 @@ export default function AgentStudioLanding() {
   const lifecycle = agentDraft?.lifecycle ?? agent.lifecycle ?? 'draft';
   const version = agentDraft?.version ?? agent.version ?? 1;
   const familyName = family ? FAMILY_METADATA[family].label : 'Agent family not assigned';
+  // The header chip shows the agent-type name; contact_center is presented as
+  // "CX Concierge" to match the label used on the /agents cards.
+  const familyBadgeLabel = family
+    ? family === 'contact_center'
+      ? 'CX Concierge'
+      : FAMILY_METADATA[family].label
+    : familyName;
   const summary = getConfiguredSummary(agent, agentDraft);
   const recommendedStudioSteps = getRecommendedStudioSteps(agentDraft);
   const existingEvaSession = readEvaSessionState();
@@ -372,6 +413,25 @@ export default function AgentStudioLanding() {
   );
   const goToSection = (section: string) => {
     selectAgent(agent.id);
+    navigate(`/agents/${agent.id}/configure?section=${section}`);
+  };
+
+  /* Overview "smarter" cards deep-link into the agent side navigation
+     (configuration sections or the Testing monitor) rather than reopening the
+     retired guided chat flow. Normalizes recommendation section names to the
+     ?section= values ActionConfigureV2 understands. */
+  const openStep = (step: StudioStep) => {
+    selectAgent(agent.id);
+    if (step.section === 'Testing') {
+      navigate(`/agents/${agent.id}/analytics`);
+      return;
+    }
+    const section =
+      step.section === 'Actions'
+        ? 'Action'
+        : step.section === 'External'
+          ? 'Channels'
+          : step.section;
     navigate(`/agents/${agent.id}/configure?section=${section}`);
   };
 
@@ -857,13 +917,12 @@ export default function AgentStudioLanding() {
   }, [previewExpanded, previewTranscript]);
 
   const headerStatus = (
-    <div className="agent-studio-agent-metadata" aria-label={`${familyName}; ${lifecycleStatusLabel(lifecycle)}; version ${version}`}>
-      {family && <Badge variant={familyBadgeVariant(family)}>{familyName}</Badge>}
+    <div className="agent-studio-agent-metadata" aria-label={`${familyBadgeLabel}; ${lifecycleStatusLabel(lifecycle)}`}>
+      {family && <Badge variant={familyBadgeVariant(family)}>{familyBadgeLabel}</Badge>}
       <span className={`agent-studio-lifecycle-status agent-studio-lifecycle-status--${lifecycle}`}>
         <span className="agent-studio-lifecycle-status__dot" aria-hidden="true" />
         <span>{lifecycleStatusLabel(lifecycle)}</span>
       </span>
-      <span className="agent-studio-version-metadata">Version {version}</span>
     </div>
   );
 
@@ -873,6 +932,16 @@ export default function AgentStudioLanding() {
       role="group"
       aria-label={`${familyName}; ${lifecycleLabel(lifecycle, version)}; version actions`}
     >
+      <Button
+        variant="secondary"
+        aria-haspopup="dialog"
+        aria-expanded={previewWidgetOpen}
+        aria-pressed={previewWidgetOpen}
+        onClick={() => setPreviewWidgetOpen(open => !open)}
+      >
+        <Icon name="play" weight="bold" size="xs" />
+        Preview
+      </Button>
       {lifecycle === 'draft' ? (
         <Button
           variant="secondary"
@@ -911,10 +980,6 @@ export default function AgentStudioLanding() {
           </MenuOverlay>
         </span>
       )}
-      <Button onClick={() => openGuidedSetup('instructions')}>
-        <Icon name="sparkle" weight="bold" size="sm" />
-        Continue setup
-      </Button>
     </div>
   );
   const sessionsDeepLink = previewSessionId
@@ -932,7 +997,12 @@ export default function AgentStudioLanding() {
     ? configuredCapabilityLabels(agentDraft, 'actions', summary.actions)
     : summary.actions;
   const configuredHandoff = configuredCapabilityLabels(agentDraft, 'handoff');
-  const configuredSecurity = configuredCapabilityLabels(agentDraft, 'security');
+  // Surface triggered guardrails first (e.g. "Large reservation approval"),
+  // ordered by trigger count desc; a stable sort keeps the rest as configured.
+  const configuredSecurity = configuredCapabilityLabels(agentDraft, 'security')
+    .map((item, index) => ({ item, index, count: getCiscoLiveGuardrailTriggerCount(item) }))
+    .sort((a, b) => b.count - a.count || a.index - b.index)
+    .map(entry => entry.item);
   const configuredOrchestration = [...configuredActions, ...configuredHandoff];
   const connectedCapabilityCount = configuredKnowledge.length
     + configuredMemory.length
@@ -941,8 +1011,16 @@ export default function AgentStudioLanding() {
   const hasConnectedResources = connectedCapabilityCount > 0;
   const showOperationalStatus = lifecycle !== 'draft';
   const knownSessionId = previewSessionId || agentDraft?.previewState.sessionId || '';
-  const operationalSessionId = knownSessionId || 'SES-002';
-  const operationalSessionPath = `/agents/${encodeURIComponent(agent.id)}/sessions?sessionId=${encodeURIComponent(operationalSessionId)}&source=observability`;
+  // A live preview session stays on this agent; otherwise resolve to the demo
+  // session that actually carries the designed transcript (guardrail first) so
+  // "View session" always opens the transcript with its guardrail markers.
+  const operationalSessionLocator = knownSessionId
+    ? { agentId: agent.id, sessionId: knownSessionId }
+    : getCiscoLiveSessionLocator(agent.id, getCiscoLiveObservability(agent.id).sessionId);
+  const operationalSessionPath = `/agents/${encodeURIComponent(operationalSessionLocator.agentId)}/sessions?sessionId=${encodeURIComponent(operationalSessionLocator.sessionId)}&source=observability`;
+  // The banner describes the event that owns the transcript being opened, so its
+  // title/meta/description stay in sync with the session "View session" links to.
+  const operationalEvent = getCiscoLiveObservability(operationalSessionLocator.agentId);
   const operationalKpis = operationalKpisForAgent(agent.name);
   const activeObservabilityKpi = operationalKpis.find(metric => metric.id === activeObservabilityKpiId);
   const activeObservabilityChartId = activeObservabilityKpi
@@ -1040,64 +1118,13 @@ export default function AgentStudioLanding() {
         <div className="agent-studio-hero__header">
           <div className="agent-studio-hero__main">
             <div className="agent-studio-hero__content">
-              <h1 id="agent-studio-title">Review what's configured</h1>
-              <p id="agent-studio-publish-explanation">
-                Your conversational setup is saved. This checkpoint shows what is already configured
-                before you continue into guided setup. Publishing creates a reusable configuration
-                version; deployment and live traffic are separate steps.
-              </p>
+              <h1 id="agent-studio-title">Overview</h1>
             </div>
           </div>
         </div>
 
         <div className={`agent-studio-grid${isPublishedSummary ? ' agent-studio-grid--published' : ''}`}>
-          <Card className="agent-studio-card agent-studio-card--summary">
-            <CardHeader>
-              <div className="agent-studio-card-heading">
-                <span className="agent-studio-card-heading__icon">
-                  <Icon name="check-circle-filled" weight="bold" size="sm" />
-                </span>
-                <span>
-                  <strong>Profile</strong>
-                  <small>From the conversational setup</small>
-                </span>
-              </div>
-              <Button variant="secondary" size="sm" onClick={() => goToSection('Profile')}>
-                Edit
-              </Button>
-            </CardHeader>
-            <CardBody>
-              <div className="agent-studio-summary-list">
-                {summary.endpoint && (
-                  <span>
-                    <strong>Phone</strong>
-                    <span className="agent-studio-summary-value">
-                      {summary.endpoint}
-                      <Badge variant="info" className="agent-studio-service-badge">Voice</Badge>
-                    </span>
-                  </span>
-                )}
-                <span><strong>AI engine</strong>{summary.aiEngine}</span>
-                <span><strong>Language</strong>{agentDraft?.language.defaultLanguage ?? 'English (US)'}</span>
-                <span><strong>Timezone</strong>America/Los_Angeles</span>
-              </div>
-              {isPublishedSummary && (
-                <section className="agent-studio-profile-preview" aria-labelledby="agent-studio-profile-preview-title">
-                  <Divider aria-hidden="true" />
-                  <div className="agent-studio-profile-preview__header">
-                    <div>
-                      <strong id="agent-studio-profile-preview-title">Preview</strong>
-                      <small>Try what is already configured</small>
-                    </div>
-                    {previewTranscriptButton}
-                  </div>
-                  {previewExperience}
-                </section>
-              )}
-            </CardBody>
-          </Card>
-
-          <Card className="agent-studio-card agent-studio-card--summary">
+          <Card className="agent-studio-card agent-studio-card--summary agent-studio-card--connections">
             <CardHeader>
               <div className="agent-studio-card-heading">
                 <span className="agent-studio-card-heading__icon">
@@ -1118,25 +1145,82 @@ export default function AgentStudioLanding() {
             </CardHeader>
             <CardBody>
               {isPublishedSummary ? (
-                <div className="agent-studio-connected-list">
-                  {[
-                    { label: 'Knowledge', icon: 'files' as const, values: configuredKnowledge, empty: 'Not connected' },
-                    { label: 'AI memory', icon: 'history' as const, values: configuredMemory, empty: 'Not configured' },
-                    { label: 'Orchestration and actions', icon: 'tools' as const, values: configuredOrchestration, empty: 'Not connected' },
-                    { label: 'Guardrails and security', icon: 'shield' as const, values: configuredSecurity, empty: 'Not configured' },
-                  ].map(group => (
-                    <div key={group.label} className="agent-studio-connected-row">
-                      <strong>{group.label}</strong>
-                      <div className="agent-studio-chip-group" aria-label={`Connected ${group.label.toLowerCase()}`}>
-                        {group.values.length > 0
-                          ? group.values.map(item => (
-                              <Badge key={`${group.label}-${item}`} variant="default" className="agent-studio-service-badge">
-                                <Icon name={group.icon} weight="regular" size="xs" />
-                                {item}
-                              </Badge>
-                            ))
-                          : <span className="agent-studio-connected-empty">{group.empty}</span>}
-                      </div>
+                <div className="agent-studio-connected-columns">
+                  {([
+                    [
+                      {
+                        label: 'Knowledge',
+                        empty: 'Not connected',
+                        chips: configuredKnowledge.map(item => ({ item, type: 'knowledge' as ConfigurationCategory })),
+                      },
+                      {
+                        label: 'AI memory',
+                        empty: 'Not configured',
+                        chips: configuredMemory.map(item => ({ item, type: 'memory' as ConfigurationCategory })),
+                      },
+                    ],
+                    [
+                      {
+                        label: 'Orchestration and actions',
+                        empty: 'Not connected',
+                        showActionMetric: true,
+                        chips: [
+                          ...configuredActions.map(item => ({ item, type: 'action' as ConfigurationCategory })),
+                          ...configuredHandoff.map(item => ({ item, type: 'orchestration' as ConfigurationCategory })),
+                        ],
+                      },
+                    ],
+                    [
+                      {
+                        label: 'Security',
+                        empty: 'Not configured',
+                        showGuardrailCount: true,
+                        chips: configuredSecurity.map(item => ({ item, type: 'guardrail' as ConfigurationCategory })),
+                      },
+                    ],
+                  ]).map((column, columnIndex) => (
+                    <div key={columnIndex} className="agent-studio-connected-column">
+                      {column.map(group => (
+                        <div key={group.label} className="agent-studio-connected-group">
+                          <strong>{group.label}</strong>
+                          <div className="agent-studio-chip-group" aria-label={`Connected ${group.label.toLowerCase()}`}>
+                            {group.chips.length > 0
+                              ? group.chips.map(chip => {
+                                  const actionMetric = 'showActionMetric' in group && group.showActionMetric
+                                    ? getCiscoLiveActionMetric(chip.item)
+                                    : null;
+                                  const triggerCount = 'showGuardrailCount' in group && group.showGuardrailCount
+                                    ? getCiscoLiveGuardrailTriggerCount(chip.item)
+                                    : 0;
+                                  return (
+                                    <Badge key={`${group.label}-${chip.item}`} variant="default" className={`agent-studio-service-badge agent-studio-service-badge--${chip.type}`}>
+                                      <ConfigurationCategoryIcon type={chip.type} />
+                                      <span>{chip.item}</span>
+                                      {actionMetric ? (
+                                        <span
+                                          className={`agent-studio-chip-metric${actionMetric.isPositive ? ' is-positive' : ' is-negative'}`}
+                                          title={`Action success rate ${actionMetric.rate}`}
+                                        >
+                                          {actionMetric.rate}
+                                          <Icon name={actionMetric.isPositive ? 'trending' : 'trending-down'} weight="regular" size="xs" />
+                                        </span>
+                                      ) : triggerCount > 0 ? (
+                                        <span
+                                          className="agent-studio-chip-count"
+                                          title={`Triggered ${triggerCount} time${triggerCount === 1 ? '' : 's'}`}
+                                        >
+                                          {triggerCount}
+                                        </span>
+                                      ) : (
+                                        <span className="agent-studio-chip-health-dot" title="Healthy connection" />
+                                      )}
+                                    </Badge>
+                                  );
+                                })
+                              : <span className="agent-studio-connected-empty">{group.empty}</span>}
+                          </div>
+                        </div>
+                      ))}
                     </div>
                   ))}
                 </div>
@@ -1167,24 +1251,6 @@ export default function AgentStudioLanding() {
             </CardBody>
           </Card>
 
-          {!isPublishedSummary && <Card className="agent-studio-card agent-studio-card--summary agent-studio-card--preview">
-            <CardHeader>
-              <div className="agent-studio-card-heading">
-                <span className="agent-studio-card-heading__icon">
-                  <Icon name="play" weight="bold" size="sm" />
-                </span>
-                <span>
-                  <strong>Preview</strong>
-                  <small>Try what is already configured</small>
-                </span>
-              </div>
-              {previewTranscriptButton}
-            </CardHeader>
-            <CardBody>
-              {previewExperience}
-            </CardBody>
-          </Card>}
-
           {showOperationalStatus && (
             <Card className="agent-studio-card agent-studio-card--summary agent-studio-card--operational">
               <CardHeader>
@@ -1198,7 +1264,20 @@ export default function AgentStudioLanding() {
                   </span>
                 </div>
                 <div className="agent-studio-operational-toolbar" role="group" aria-label="Operational tools">
-                  <Badge variant="default">{lifecycle === 'published' ? 'Dashboard demo' : 'Last 24 hours'}</Badge>
+                  <Dropdown
+                    className="agent-studio-operational-timerange"
+                    size="compact"
+                    leadingIcon="filter"
+                    value={operationalTimeRange}
+                    onChange={setOperationalTimeRange}
+                    options={[
+                      { value: '1h', label: 'Past 1 hour' },
+                      { value: '6h', label: 'Past 6 hours' },
+                      { value: '24h', label: 'Past 24 hours' },
+                      { value: '7d', label: 'Past 7 days' },
+                      { value: '30d', label: 'Past 30 days' },
+                    ]}
+                  />
                   <Button variant="secondary" size="sm" onClick={() => navigate(`${sessionsPath}?source=observability`)}>
                     <Icon name="transcript" weight="bold" size="sm" />
                     Open Sessions
@@ -1211,67 +1290,107 @@ export default function AgentStudioLanding() {
               </CardHeader>
               <CardBody className="agent-studio-operational-body">
                 <div
-                  className="kpi-card-grid agent-studio-operational-kpi-grid"
-                  aria-label="Selected observability metrics"
+                  className="agent-studio-operational-overview"
+                  aria-label="Aggregate health and observability metrics"
                 >
-                  {operationalKpis.length > 0
-                    ? operationalKpis.map(metric => (
-                        <KPICard
-                          key={metric.id}
-                          data={metric}
-                          isActive={activeObservabilityKpiId === metric.id}
-                          onClick={() => {
-                            setActiveObservabilityKpiId(currentId => currentId === metric.id ? null : metric.id);
-                          }}
-                          ariaExpanded={activeObservabilityKpiId === metric.id}
-                          ariaControls={activeObservabilityKpiId === metric.id ? activeObservabilityChartId : undefined}
-                        />
-                      ))
-                    : (
-                        <p className="agent-studio-operational-metrics-empty">
-                          No summary metrics are enabled. Choose metrics in Observability settings.
-                        </p>
-                      )}
-                  {activeObservabilityKpi && activeObservabilityChartId && (
+                  <div className="agent-studio-health-gauge">
                     <div
-                      id={activeObservabilityChartId}
-                      className="kpi-card-grid__expanded"
-                      role="region"
-                      aria-label={`${activeObservabilityKpi.heading} trend details`}
+                      className="agent-studio-health-gauge__dial"
+                      role="img"
+                      aria-label={`Aggregate health ${OPERATIONAL_HEALTH.score} percent`}
                     >
-                      <ThemeModeProvider>
-                        <EmbeddedObservabilityProviders>
-                          <KPIChart
-                            key={activeObservabilityKpi.id}
-                            heading={activeObservabilityKpi.heading}
-                            description={activeObservabilityKpi.description}
-                            chartType={activeObservabilityKpi.chartType}
-                            dateRange="24h"
-                            sparklineData={activeObservabilityKpi.sparklineData}
-                            unit={activeObservabilityKpi.unit}
-                            value={activeObservabilityKpi.value}
-                            {...kpiExpandedChartAxisProps(activeObservabilityKpi)}
-                            curveType={activeObservabilityKpi.curveType}
-                          />
-                        </EmbeddedObservabilityProviders>
-                      </ThemeModeProvider>
+                      <svg viewBox="0 0 120 120" aria-hidden="true">
+                        <circle
+                          className="agent-studio-health-gauge__track"
+                          cx="60"
+                          cy="60"
+                          r={HEALTH_GAUGE_RADIUS}
+                          fill="none"
+                          strokeWidth="6"
+                          strokeLinecap="round"
+                          strokeDasharray={`${HEALTH_GAUGE_TRACK} ${HEALTH_GAUGE_CIRCUMFERENCE}`}
+                          transform="rotate(135 60 60)"
+                        />
+                        <circle
+                          className="agent-studio-health-gauge__value-arc"
+                          cx="60"
+                          cy="60"
+                          r={HEALTH_GAUGE_RADIUS}
+                          fill="none"
+                          strokeWidth="6"
+                          strokeLinecap="round"
+                          strokeDasharray={`${HEALTH_GAUGE_VALUE} ${HEALTH_GAUGE_CIRCUMFERENCE}`}
+                          transform="rotate(135 60 60)"
+                        />
+                      </svg>
+                      <div className="agent-studio-health-gauge__reading">
+                        <span className="agent-studio-health-gauge__reading-inner">
+                          <strong>{OPERATIONAL_HEALTH.score}</strong>
+                          <span className="agent-studio-health-gauge__pct">%</span>
+                        </span>
+                      </div>
                     </div>
-                  )}
+                    <p className="agent-studio-health-gauge__label">Aggregate health</p>
+                    <dl className="agent-studio-health-gauge__stats">
+                      <div>
+                        <dt>Target</dt>
+                        <dd>{OPERATIONAL_HEALTH.target}%</dd>
+                      </div>
+                      <div>
+                        <dt>Gap</dt>
+                        <dd className="is-positive">+{OPERATIONAL_HEALTH.gap}</dd>
+                      </div>
+                      <div>
+                        <dt>Signals</dt>
+                        <dd>{OPERATIONAL_HEALTH.signals}</dd>
+                      </div>
+                    </dl>
+                  </div>
+
+                  <div className="agent-studio-operational-metrics-table-wrap">
+                    <table className="agent-studio-operational-metrics-table">
+                      <thead>
+                        <tr>
+                          <th scope="col">Metric</th>
+                          <th scope="col">Value</th>
+                          <th scope="col">Change</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {OPERATIONAL_HEALTH_METRICS.map(metric => (
+                          <tr key={metric.id}>
+                            <th scope="row">
+                              <span className="agent-studio-metric-name">
+                                <span className="agent-studio-metric-dot" aria-hidden="true" />
+                                {metric.label}
+                              </span>
+                            </th>
+                            <td className="agent-studio-metric-value">{metric.value}</td>
+                            <td
+                              className={`agent-studio-metric-change${metric.change.startsWith('+') ? ' is-positive' : ''}`}
+                            >
+                              {metric.change}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
                 </div>
                 <Banner
                   type="success"
                   icon="shield"
                   className="agent-studio-operational-event-banner"
-                  title={knownSessionId ? 'Preview session ready for review' : 'Customer request routed to a specialist'}
+                  title={knownSessionId ? 'Preview session ready for review' : operationalEvent.eventTitle}
                   subtitle={(
                     <>
                       <span className="agent-studio-operational-event-meta">
-                        {knownSessionId ? `Preview session ${knownSessionId}` : 'Dashboard demo · 9:42 AM'}
+                        {knownSessionId ? `Preview session ${knownSessionId}` : operationalEvent.eventMeta}
                       </span>
                       <span>
                         {knownSessionId
                           ? 'Review the conversation transcript, outcome, and handoff context.'
-                          : 'The agent recognized that the request needed human review and transferred the customer with the conversation context and summary attached.'}
+                          : operationalEvent.eventDescription}
                       </span>
                     </>
                   )}
@@ -1282,11 +1401,6 @@ export default function AgentStudioLanding() {
                   }]}
                   dismissable={false}
                 />
-                {lifecycle === 'published' && (
-                  <p className="agent-studio-operational-note">
-                    These four cards use the observability dashboard's demo dataset. This published version is not deployed and is not receiving live traffic.
-                  </p>
-                )}
               </CardBody>
             </Card>
           )}
@@ -1370,7 +1484,7 @@ export default function AgentStudioLanding() {
 
       <div className="agent-studio-step-grid">
         {recommendedStudioSteps.map(step => (
-          <Card key={step.id} clickable className="agent-studio-step-card" onClick={() => openGuidedSetup(step.guidedStep)}>
+          <Card key={step.id} clickable className="agent-studio-step-card" onClick={() => openStep(step)}>
             <CardHeader>
               <div className="agent-studio-card-heading">
                 <span className="agent-studio-card-heading__icon agent-studio-card-heading__icon--muted">
@@ -1394,6 +1508,34 @@ export default function AgentStudioLanding() {
           </Card>
         ))}
       </div>
+
+      {previewWidgetOpen && (
+        <div
+          className="agent-studio-preview-widget"
+          role="dialog"
+          aria-label={`Preview ${agent.name}`}
+          aria-labelledby="agent-studio-preview-widget-title"
+        >
+          <div className="agent-studio-preview-widget__header">
+            <div className="agent-studio-preview-widget__heading">
+              <strong id="agent-studio-preview-widget-title">Preview</strong>
+              <small>Try what is already configured</small>
+            </div>
+            <div className="agent-studio-preview-widget__header-actions">
+              {previewTranscriptButton}
+              <button
+                type="button"
+                className="agent-studio-preview-widget__close"
+                onClick={() => setPreviewWidgetOpen(false)}
+                aria-label="Close preview"
+              >
+                <Icon name="cancel" weight="bold" size="sm" />
+              </button>
+            </div>
+          </div>
+          {previewExperience}
+        </div>
+      )}
     </div>
   );
 }

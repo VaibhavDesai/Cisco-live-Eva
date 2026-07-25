@@ -58,7 +58,7 @@ export default function AgentHistory() {
 
   return (
     <div className="primary-content">
-      <AgentHeader agent={agent} activeTab="history" showPublishButton={false} />
+      <AgentHeader agent={agent} activeTab="history" showPublishButton={false} showTabs={false} />
 
       <div className="secondary-content">
         <Card style={{ padding: 0 }}>

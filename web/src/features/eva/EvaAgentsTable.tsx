@@ -49,18 +49,21 @@ type AgentTile = {
 const FAMILY_PRESENTATION = {
   calling: {
     label: FAMILY_METADATA.calling.label,
+    badgeLabel: FAMILY_METADATA.calling.label,
     icon: 'phone',
     avatarClass: 'receptionist',
     badgeVariant: 'warning',
   },
   contact_center: {
     label: FAMILY_METADATA.contact_center.label,
+    badgeLabel: 'CX Concierge',
     icon: 'headset',
     avatarClass: 'scripted',
     badgeVariant: 'success',
   },
   internal_assistant: {
     label: FAMILY_METADATA.internal_assistant.label,
+    badgeLabel: FAMILY_METADATA.internal_assistant.label,
     icon: 'people',
     avatarClass: 'autonomous',
     badgeVariant: 'info',
@@ -283,7 +286,7 @@ export default function EvaAgentsTable() {
   const handleConfigureClick = (tile: AgentTile) => {
     if (agents[tile.id]) {
       selectAgent(tile.id);
-      navigate(`/agents/${tile.id}/studio`);
+      navigate(`/agents/${tile.id}`);
       return;
     }
 
@@ -446,7 +449,7 @@ export default function EvaAgentsTable() {
                       </div>
                       <div className="ai-agents-agent-labels">
                         <Badge variant={family.badgeVariant}>
-                          {family.label}
+                          {family.badgeLabel}
                         </Badge>
                         <span className={`ai-agents-agent-lifecycle ai-agents-agent-lifecycle--${tile.lifecycle}`}>
                           <span className="ai-agents-agent-lifecycle-dot" aria-hidden="true" />

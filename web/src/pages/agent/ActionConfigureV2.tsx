@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect, useMemo, useCallback } from 'react';
+import { useState, useRef, useEffect, useMemo, useCallback, type ReactNode, type RefObject } from 'react';
 import { createPortal } from 'react-dom';
 import { Navigate, useParams, Link, useSearchParams } from 'react-router-dom';
 import { useApp } from '../../contexts/AppContext';
@@ -7,6 +7,7 @@ import Button from '../../components/shared/Button';
 import Tabs, { Tab, SegmentControl, SegmentItem } from '../../components/shared/Tabs';
 import Toggle from '../../components/shared/Toggle';
 import Dropdown from '../../components/shared/Dropdown';
+import { MenuItem, MenuOverlay, useMenu } from '../../components/shared/Menu';
 import { Slider } from '../../components/shared/Slider';
 import { AccordionGroup, AccordionItem } from '../../components/shared/Accordion';
 
@@ -20,21 +21,27 @@ import { Tooltip } from '../../components/shared/Tooltip';
 import { Banner } from '../../components/shared/Banner';
 import { Modal, ModalHeader, ModalBody, ModalFooter } from '../../components/shared/Modal';
 import { TextLink } from '../../components/shared/TextLink';
+import { ProgressBar } from '../../components/shared/ProgressBar';
 
 import CreateEngineModal from '../CreateEngineModal';
 import CreateFulfillmentModal from './CreateFulfillmentModal';
 import PolicyStudio from './PolicyStudio';
+import SecurityUIPolicyStudio from './SecurityUIPolicyStudio';
 import { optimizeInstructions } from '../../api/ciscoAi';
 import { Icon } from '../../icons';
 import {
   FAMILY_METADATA,
   type AgentFamily,
   type AgentLifecycle,
+  type CapabilityState,
+  type CustomerChannel,
 } from '../../features/agent-creation/agentCreationModel';
+import { EVA_CHANNEL_SELECTION_OPTIONS } from '../../features/eva/evaFormConfig';
+import { CISCO_LIVE_AGENTS, CISCO_LIVE_ACTION_CATALOG } from '../../demo/ciscoLiveDemo';
+import { buildCiscoLiveInstructions } from '../../demo/ciscoLiveSeed';
 import {
   type UpdateStatus,
   type RiskLevel,
-  CAPABILITIES,
   CapabilityRecord,
   VersionMeta,
   DEFAULT_VERSION_META,
@@ -46,6 +53,179 @@ import {
   buildSeededVersionCache,
   resolveVersionMetaFromCache,
 } from './actionConfigShared';
+
+function ProfileLogicSummary({ overview }: { overview: import('./PolicyStudio').PolicyOverview }) {
+  const hasOverview = overview.blocked.length > 0 || overview.allowed.length > 0 || overview.edgeCases.length > 0;
+
+  if (!hasOverview) return null;
+
+  const logicCounts = [
+    {
+      key: 'blocked',
+      icon: 'blocked',
+      iconColor: 'var(--danger-color)',
+      label: `${overview.blocked.length} blocked`,
+    },
+    {
+      key: 'allows',
+      icon: 'check-circle',
+      iconColor: 'var(--success-color, var(--accent-color))',
+      label: `${overview.allowed.length} allow${overview.allowed.length === 1 ? '' : 's'}`,
+    },
+    {
+      key: 'edge',
+      icon: 'search',
+      iconColor: 'var(--warning-color, var(--accent-color))',
+      label: `${overview.edgeCases.length} edge case${overview.edgeCases.length === 1 ? '' : 's'}`,
+    },
+  ] as const;
+
+  return (
+    <div className="custom-profile-card__logic-wrap">
+      <div className="custom-profile-card__logic" aria-label="Custom guardrail rule summary">
+        {logicCounts.map(item => (
+          <span key={item.key} className="custom-profile-card__logic-item">
+            <Icon name={item.icon} size={14} className="custom-profile-card__logic-icon" color={item.iconColor} />
+            <span>{item.label}</span>
+          </span>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+interface GuardrailRailProps {
+  id: string;
+  name: string;
+  description: string;
+  enabled: boolean;
+  disabled?: boolean;
+  expanded: boolean;
+  toggleLabel: string;
+  onToggle: () => void;
+  onExpandedChange: (open: boolean) => void;
+  headerActions?: ReactNode;
+  children: ReactNode;
+}
+
+function CustomGuardrailActionMenu({
+  name,
+  onEdit,
+  onDelete,
+}: {
+  name: string;
+  onEdit: () => void;
+  onDelete: () => void;
+}) {
+  const { open, anchorRef, toggle, close } = useMenu();
+
+  return (
+    <>
+      <button
+        ref={anchorRef as RefObject<HTMLButtonElement>}
+        type="button"
+        className="security-rail-action-menu-btn"
+        aria-label={`Actions for ${name}`}
+        aria-haspopup="menu"
+        aria-expanded={open}
+        onClick={() => toggle()}
+      >
+        <Icon name="more-adr" weight="bold" size="sm" />
+      </button>
+      <MenuOverlay open={open} anchorRef={anchorRef} onClose={close} align="right">
+        <MenuItem
+          label="Edit"
+          icon="edit"
+          onClick={() => {
+            close();
+            onEdit();
+          }}
+        />
+        <MenuItem
+          label="Delete"
+          icon="delete"
+          danger
+          onClick={() => {
+            close();
+            onDelete();
+          }}
+        />
+      </MenuOverlay>
+    </>
+  );
+}
+
+function GuardrailRail({
+  id,
+  name,
+  description,
+  enabled,
+  disabled = false,
+  expanded,
+  toggleLabel,
+  onToggle,
+  onExpandedChange,
+  headerActions,
+  children,
+}: GuardrailRailProps) {
+  const panelId = `${id}-details`;
+  const headerId = `${id}-header`;
+
+  return (
+    <div className={`accordion accordion--small accordion--borderless security-prebuilt-rail-item ${expanded ? 'security-prebuilt-rail-item--expanded' : 'security-prebuilt-rail-item--collapsed'}`}>
+      <div className="security-rail-header">
+        <Toggle
+          checked={enabled}
+          disabled={disabled}
+          onChange={onToggle}
+          size="compact"
+          aria-label={toggleLabel}
+        />
+        <button
+          type="button"
+          id={headerId}
+          className="security-rail-details-btn"
+          aria-expanded={expanded}
+          aria-controls={panelId}
+          onClick={() => onExpandedChange(!expanded)}
+        >
+          <span className="security-guardrail-header-text">
+            <span className="security-guardrail-name">{name}</span>
+            <span className="security-guardrail-desc">{description}</span>
+          </span>
+        </button>
+        <div className="security-rail-trailing">
+          {headerActions}
+          <button
+            type="button"
+            className="security-rail-chevron-btn"
+            aria-label={`${expanded ? 'Collapse' : 'Expand'} ${name}`}
+            aria-expanded={expanded}
+            aria-controls={panelId}
+            onClick={() => onExpandedChange(!expanded)}
+          >
+            <span
+              aria-hidden
+              className={`accordion__chevron ${expanded ? 'accordion__chevron--open' : ''}`}
+            >
+              <Icon name="arrow-down" weight="bold" size="sm" />
+            </span>
+          </button>
+        </div>
+      </div>
+      {expanded && (
+        <div
+          id={panelId}
+          role="region"
+          aria-labelledby={headerId}
+          className="accordion__panel security-rail-panel"
+        >
+          <div className="accordion__panel-content">{children}</div>
+        </div>
+      )}
+    </div>
+  );
+}
 
 function ClampedDesc({ text, expanded, onToggle }: { text: string; expanded: boolean; onToggle: () => void }) {
   const ref = useRef<HTMLParagraphElement>(null);
@@ -79,12 +259,12 @@ type ActionRow = {
   lastUpdated: string;
 };
 
-type ConfigurationSection = 'Profile' | 'Instructions' | 'Knowledge' | 'Action' | 'Security' | 'Language';
+type ConfigurationSection = 'Profile' | 'Channels' | 'Instructions' | 'Knowledge' | 'Action' | 'Security' | 'Language';
 
-const ACTION_SECTIONS: ConfigurationSection[] = ['Profile', 'Instructions', 'Knowledge', 'Action', 'Security', 'Language'];
+const ACTION_SECTIONS: ConfigurationSection[] = ['Profile', 'Channels', 'Instructions', 'Knowledge', 'Action', 'Security', 'Language'];
 
 const FAMILY_SECTIONS: Record<AgentFamily, ConfigurationSection[]> = {
-  calling: ['Profile', 'Instructions', 'Knowledge', 'Language'],
+  calling: ['Profile', 'Channels', 'Instructions', 'Knowledge', 'Language'],
   contact_center: ACTION_SECTIONS,
   internal_assistant: ACTION_SECTIONS,
 };
@@ -163,30 +343,20 @@ const SYSTEM_PROMPT_GUIDELINES = [
 
 type Enforcement = 'monitor' | 'block';
 
-interface StandardGuardrail {
-  id: string;
-  name: string;
-  description: string;
-  enabled: boolean;
-  sensitivity: number;
-  enforcement: Enforcement;
-  direction: Direction;
-  action: AdvAction;
-}
+type Direction = 'prompt' | 'response' | 'both';
 
-const DEFAULT_STANDARD_GUARDRAILS: StandardGuardrail[] = [
-  { id: 'std-toxicity', name: 'Toxicity', description: 'Detect and filter toxic language, insults, and abusive content in conversations.', enabled: true, sensitivity: 50, enforcement: 'monitor', direction: 'response', action: 'block' },
-  { id: 'std-harm', name: 'Harm detection', description: 'Identify requests or responses that could cause physical, emotional, or financial harm.', enabled: true, sensitivity: 50, enforcement: 'monitor', direction: 'response', action: 'block' },
-  { id: 'std-jailbreak', name: 'Jailbreak', description: 'Detect prompt injection attempts designed to bypass agent instructions and safety rules.', enabled: true, sensitivity: 50, enforcement: 'block', direction: 'prompt', action: 'block' },
-  { id: 'std-multiturn', name: 'Multi-turn jailbreak', description: 'Detect multi-step manipulation where users gradually steer the agent away from its guardrails across turns.', enabled: true, sensitivity: 50, enforcement: 'block', direction: 'prompt', action: 'block' },
-];
-
-type Direction = 'prompt' | 'response';
+const DIRECTION_LABELS: Record<Direction, string> = {
+  prompt: 'Prompt',
+  response: 'Response',
+  both: 'Both prompts and responses',
+};
+type CustomGuardrailAction = 'monitor' | 'steer' | 'block';
 type AdvAction = 'block' | 'allow';
 type AdvancedGroupId = 'security' | 'privacy' | 'safety';
 
 interface AdvancedGuardrailItem {
   id: string;
+  sectionId?: string;
   name: string;
   description: string;
   enabled: boolean;
@@ -199,7 +369,13 @@ interface AdvancedGuardrailItem {
 interface AdvancedGuardrailGroup {
   id: AdvancedGroupId;
   label: string;
+  description: string;
   icon: string;
+  sections?: {
+    id: string;
+    label: string;
+    description: string;
+  }[];
   items: AdvancedGuardrailItem[];
 }
 
@@ -209,6 +385,7 @@ interface PolicyVersion {
   description: string;
   overview: import('./PolicyStudio').PolicyOverview;
   createdAt: string;
+  policyText?: string;
 }
 
 interface CustomGuardrailItem {
@@ -216,15 +393,103 @@ interface CustomGuardrailItem {
   name: string;
   description: string;
   enabled: boolean;
+  action: CustomGuardrailAction;
+  direction: Direction;
   createdBy: string;
   createdAt: string;
   overview: import('./PolicyStudio').PolicyOverview;
   versions: PolicyVersion[];
+  policyText?: string;
 }
+
+function formatGuardrailUpdatedAt(date = new Date()) {
+  const time = date.toLocaleTimeString('en-US', {
+    hour: 'numeric',
+    minute: '2-digit',
+    hour12: true,
+  }).toLowerCase();
+  const calendarDate = date.toLocaleDateString('en-US', {
+    month: 'long',
+    day: 'numeric',
+    year: 'numeric',
+  });
+
+  return `Last updated at: ${time}, ${calendarDate}`;
+}
+
+const DEFAULT_GENERATED_CUSTOM_PROFILE: CustomGuardrailItem = {
+  id: 'custom-medical-advice-restriction',
+  name: 'Medical advice restriction',
+  description: 'Prevents the agent from giving medical advice, diagnoses, or treatment recommendations, and keeps it focused on appointment booking and scheduling support',
+  enabled: true,
+  action: 'block',
+  direction: 'prompt',
+  createdBy: 'System',
+  createdAt: 'Last updated at: 11:05 am, July 20, 2026',
+  policyText: `# Medical advice restriction
+
+Purpose
+Prevents the agent from giving medical advice, diagnoses, or treatment recommendations, and keeps it focused on appointment booking and scheduling support
+
+Blocks
+- Medical advice
+- Diagnoses
+- Treatment recommendations
+
+Allows
+- Appointment booking
+- Scheduling support`,
+  overview: {
+    blocked: [
+      { text: 'Medical advice' },
+      { text: 'Diagnoses' },
+      { text: 'Treatment recommendations' },
+    ],
+    allowed: [
+      { text: 'Appointment booking' },
+      { text: 'Scheduling support' },
+    ],
+    edgeCases: [],
+  },
+  versions: [{
+    version: 'v1',
+    name: 'Medical advice restriction',
+    description: 'Prevents the agent from giving medical advice, diagnoses, or treatment recommendations, and keeps it focused on appointment booking and scheduling support',
+    overview: {
+      blocked: [
+        { text: 'Medical advice' },
+        { text: 'Diagnoses' },
+        { text: 'Treatment recommendations' },
+      ],
+      allowed: [
+        { text: 'Appointment booking' },
+        { text: 'Scheduling support' },
+      ],
+      edgeCases: [],
+    },
+    createdAt: 'Last updated at: 11:05 am, July 20, 2026',
+    policyText: `# Medical advice restriction
+
+Purpose
+Prevents the agent from giving medical advice, diagnoses, or treatment recommendations, and keeps it focused on appointment booking and scheduling support
+
+Blocks
+- Medical advice
+- Diagnoses
+- Treatment recommendations
+
+Allows
+- Appointment booking
+- Scheduling support`,
+  }],
+};
 
 const DEFAULT_ADVANCED_GROUPS: AdvancedGuardrailGroup[] = [
   {
-    id: 'security', label: 'Security guardrails', icon: 'shield',
+    id: 'security',
+    label: 'Security guardrails',
+    description: 'Protect AI models against threats and unauthorized access. Ensure integrity and security of the models and outputs.',
+    icon: 'shield',
     items: [
       { id: 'sec-prompt-injection', name: 'Prompt injection', description: 'Detect attempts to manipulate the agent by injecting hidden instructions into user input.', enabled: false, sensitivity: 50, enforcement: 'block', direction: 'prompt', action: 'block' },
       { id: 'sec-code-injection', name: 'Code injection', description: 'Block inputs that attempt to execute arbitrary code through the agent.', enabled: false, sensitivity: 50, enforcement: 'block', direction: 'prompt', action: 'block' },
@@ -237,19 +502,37 @@ const DEFAULT_ADVANCED_GROUPS: AdvancedGuardrailGroup[] = [
     ],
   },
   {
-    id: 'privacy', label: 'Privacy guardrails', icon: 'privacy-circle',
+    id: 'privacy',
+    label: 'Privacy guardrails',
+    description: 'Protect regulated data including PII, PHI, and PCI while maintaining safe and compliant conversations.',
+    icon: 'privacy-circle',
+    sections: [
+      {
+        id: 'pii',
+        label: 'Personally Identifiable Information (PII)',
+        description: 'Aims to prevent the exposure of personal information that can directly identify an individual.',
+      },
+      {
+        id: 'pci',
+        label: 'Payment Card Industry (PCI)',
+        description: 'Aims to prevent disclosure of payment card and financial account data subject to PCI protections.',
+      },
+    ],
     items: [
-      { id: 'priv-pii', name: 'PII detection', description: 'Identify and flag personally identifiable information in agent responses.', enabled: false, sensitivity: 50, enforcement: 'block', direction: 'response', action: 'block' },
-      { id: 'priv-ssn', name: 'SSN redaction', description: 'Automatically redact Social Security numbers from responses.', enabled: false, sensitivity: 50, enforcement: 'block', direction: 'response', action: 'block' },
-      { id: 'priv-credit-card', name: 'Credit card redaction', description: 'Strip credit card numbers from agent output before delivery.', enabled: false, sensitivity: 50, enforcement: 'block', direction: 'response', action: 'block' },
-      { id: 'priv-email', name: 'Email redaction', description: 'Remove email addresses from responses to prevent data leakage.', enabled: false, sensitivity: 50, enforcement: 'block', direction: 'response', action: 'block' },
-      { id: 'priv-phone', name: 'Phone number redaction', description: 'Redact phone numbers from agent responses.', enabled: false, sensitivity: 50, enforcement: 'block', direction: 'response', action: 'block' },
-      { id: 'priv-address', name: 'Address redaction', description: 'Strip physical addresses from responses to protect user privacy.', enabled: false, sensitivity: 50, enforcement: 'block', direction: 'response', action: 'block' },
-      { id: 'priv-ip', name: 'IP address redaction', description: 'Remove IP addresses from agent output.', enabled: false, sensitivity: 50, enforcement: 'monitor', direction: 'response', action: 'allow' },
+      { id: 'priv-pii', sectionId: 'pii', name: 'PII detection', description: 'Identify and flag personally identifiable information in agent responses.', enabled: false, sensitivity: 50, enforcement: 'block', direction: 'response', action: 'block' },
+      { id: 'priv-ssn', sectionId: 'pii', name: 'SSN redaction', description: 'Automatically redact Social Security numbers from responses.', enabled: false, sensitivity: 50, enforcement: 'block', direction: 'response', action: 'block' },
+      { id: 'priv-email', sectionId: 'pii', name: 'Email redaction', description: 'Remove email addresses from responses to prevent data leakage.', enabled: false, sensitivity: 50, enforcement: 'block', direction: 'response', action: 'block' },
+      { id: 'priv-phone', sectionId: 'pii', name: 'Phone number redaction', description: 'Redact phone numbers from agent responses.', enabled: false, sensitivity: 50, enforcement: 'block', direction: 'response', action: 'block' },
+      { id: 'priv-address', sectionId: 'pii', name: 'Address redaction', description: 'Strip physical addresses from responses to protect user privacy.', enabled: false, sensitivity: 50, enforcement: 'block', direction: 'response', action: 'block' },
+      { id: 'priv-ip', sectionId: 'pii', name: 'IP address redaction', description: 'Remove IP addresses from agent output.', enabled: false, sensitivity: 50, enforcement: 'monitor', direction: 'response', action: 'allow' },
+      { id: 'priv-credit-card', sectionId: 'pci', name: 'Credit card redaction', description: 'Strip credit card numbers from agent output before delivery.', enabled: false, sensitivity: 50, enforcement: 'block', direction: 'response', action: 'block' },
     ],
   },
   {
-    id: 'safety', label: 'Safety guardrails', icon: 'check-circle',
+    id: 'safety',
+    label: 'Safety guardrails',
+    description: 'Protect against content harmful to people, organizations, or society. Reduce toxic and dangerous content.',
+    icon: 'check-circle',
     items: [
       { id: 'safe-toxicity', name: 'Toxicity', description: 'Detect and block toxic, abusive, or offensive language in responses.', enabled: false, sensitivity: 50, enforcement: 'block', direction: 'response', action: 'block' },
       { id: 'safe-hate', name: 'Hate speech', description: 'Block responses containing hate speech targeting protected groups.', enabled: false, sensitivity: 50, enforcement: 'block', direction: 'response', action: 'block' },
@@ -276,6 +559,10 @@ export default function ActionConfigureV2() {
     addAiEngine,
   } = useApp();
   const agentDraft = agentId ? agentDrafts[agentId] : undefined;
+  // Resolve the Cisco Live demo definition for this agent (falling back to the
+  // primary demo agent) so every configuration screen shows real design-
+  // explorations names instead of the generic defaults.
+  const ciscoLiveAgent = CISCO_LIVE_AGENTS.find(candidate => candidate.id === agentId) ?? CISCO_LIVE_AGENTS[0];
   const agentFamily = agentDraft?.family;
   const availableSections = useMemo(
     () => agentFamily ? FAMILY_SECTIONS[agentFamily] : ACTION_SECTIONS,
@@ -296,6 +583,17 @@ export default function ActionConfigureV2() {
     return raw === 'advanced' ? 'advanced' : 'standard';
   })();
   const [selectedSection, setSelectedSection] = useState<ConfigurationSection>(initialSection);
+  // Keep the active section in sync with the ?section= query param so the
+  // agent side navigation (which drives section switching) can select and
+  // highlight sections. Falls back to Profile when the param is absent.
+  useEffect(() => {
+    const raw = searchParams.get('section');
+    if (raw && ACTION_SECTIONS.includes(raw as ConfigurationSection)) {
+      setSelectedSection(raw as ConfigurationSection);
+    } else if (!raw) {
+      setSelectedSection('Profile');
+    }
+  }, [searchParams]);
   const activeSection = availableSections.includes(selectedSection) ? selectedSection : 'Profile';
 
   // Profile form state
@@ -307,9 +605,11 @@ export default function ActionConfigureV2() {
     language: profileLanguageValue(agentDraft?.language.defaultLanguage),
     voiceName: 'ava',
     aiEngine: 'Webex AI Pro 1.0',
-    welcomeMessage: '',
+    welcomeMessage: ciscoLiveAgent.welcomeMessage,
     agentGoal: agentDraft?.basics.purpose ?? '',
-    instructions: agentDraft?.instructions.content ?? '',
+    instructions: agentDraft?.instructions.content?.trim()
+      ? agentDraft.instructions.content
+      : buildCiscoLiveInstructions(ciscoLiveAgent),
   }));
 
   const updateProfileField = (field: keyof typeof profileForm, value: string) => {
@@ -351,24 +651,50 @@ export default function ActionConfigureV2() {
   const [preOptimizeText, setPreOptimizeText] = useState('');
 
   // Security tab state
-  const [securityTier, setSecurityTier] = useState<'standard' | 'advanced'>(initialTier);
-  const [showObsBanner, setShowObsBanner] = useState(true);
   const isPaidUser = true;
-  const [standardGuardrails, setStandardGuardrails] = useState<StandardGuardrail[]>(DEFAULT_STANDARD_GUARDRAILS);
-  const [advancedDefaultGroups, setAdvancedDefaultGroups] = useState<AdvancedGuardrailGroup[]>(DEFAULT_ADVANCED_GROUPS);
-  const [advancedCustomItems, setAdvancedCustomItems] = useState<CustomGuardrailItem[]>([]);
-  const [confirmDisableJailbreak, setConfirmDisableJailbreak] = useState(false);
-  const [pendingAdvancedEnable, setPendingAdvancedEnable] = useState<{ groupId: string; itemId: string } | null>(null);
+  const [advancedDefaultGroups, setAdvancedDefaultGroups] = useState<AdvancedGuardrailGroup[]>(() =>
+    DEFAULT_ADVANCED_GROUPS.map(group => ({
+      ...group,
+      items: group.items.map(guardrail => ({
+        ...guardrail,
+        enabled: ciscoLiveAgent.prebuiltGuardrailIds.includes(guardrail.id),
+      })),
+    })),
+  );
+  const [advancedCustomItems, setAdvancedCustomItems] = useState<CustomGuardrailItem[]>(() =>
+    ciscoLiveAgent.customGuardrails.map(guardrail => ({
+      ...guardrail,
+      enabled: true,
+      action: 'block' as CustomGuardrailAction,
+      direction: 'prompt' as Direction,
+      overview: {
+        blocked: guardrail.overview.blocked.map(entry => ({ ...entry })),
+        allowed: guardrail.overview.allowed.map(entry => ({ ...entry })),
+        edgeCases: guardrail.overview.edgeCases.map(entry => ({ ...entry })),
+      },
+      versions: [],
+    })),
+  );
+  const [pendingAdvancedEnable, setPendingAdvancedEnable] = useState<{ groupId: string; itemIds: string[]; label: string } | null>(null);
   const [hasAcknowledgedAdvancedPricing, setHasAcknowledgedAdvancedPricing] = useState(false);
   const [expandedRails, setExpandedRails] = useState<Set<string>>(() => {
     const initial = new Set<string>();
-    DEFAULT_STANDARD_GUARDRAILS.forEach(g => { if (g.enabled) initial.add(g.id); });
-    DEFAULT_ADVANCED_GROUPS.forEach(gp => gp.items.forEach(it => { if (it.enabled) initial.add(it.id); }));
+    DEFAULT_ADVANCED_GROUPS.forEach(gp => gp.items.forEach(it => {
+      if (ciscoLiveAgent.prebuiltGuardrailIds.includes(it.id)) initial.add(it.id);
+    }));
+    ciscoLiveAgent.customGuardrails.forEach(g => initial.add(g.id));
     return initial;
   });
+  const [expandedPrebuiltGroups, setExpandedPrebuiltGroups] = useState<Set<AdvancedGroupId>>(new Set());
+  const [expandedPrivacySections, setExpandedPrivacySections] = useState<Set<string>>(() => new Set(['pii', 'pci']));
+  const [prebuiltSearch, setPrebuiltSearch] = useState('');
+  const [searchOpen, setSearchOpen] = useState(false);
+  const [guardrailMode, setGuardrailMode] = useState<'custom' | 'prebuilt'>('custom');
+  const [customSectionOpen, setCustomSectionOpen] = useState(true);
   const [showPolicyStudio, setShowPolicyStudio] = useState(false);
   const [editingProfileId, setEditingProfileId] = useState<string | null>(null);
-  const [expandedProfileDescs, setExpandedProfileDescs] = useState<Set<string>>(new Set());
+  const [defaultCustomProfileState, setDefaultCustomProfileState] = useState<'idle' | 'generating' | 'complete'>('idle');
+  const [defaultCustomProfileProgress, setDefaultCustomProfileProgress] = useState(0);
 
   const handleOptimize = useCallback(async () => {
     const text = profileForm.instructions.trim();
@@ -393,19 +719,170 @@ export default function ActionConfigureV2() {
     }
   }, [profileForm.instructions, showToast]);
 
-  const [capabilities, setCapabilities] = useState<CapabilityRecord[]>(CAPABILITIES);
+  const ciscoLiveCapabilities: CapabilityRecord[] = ciscoLiveAgent.actions.map((name, index) => ({
+    id: 100 + index,
+    name,
+    type: name.startsWith('Transfer') ? 'Handoff' : 'MCP',
+    enabled: true,
+    description: CISCO_LIVE_ACTION_CATALOG[name] ?? '',
+  }));
+  const [capabilities, setCapabilities] = useState<CapabilityRecord[]>(ciscoLiveCapabilities);
+  const [disabledKnowledge, setDisabledKnowledge] = useState<Record<string, boolean>>({});
+  const toggleKnowledge = (name: string) =>
+    setDisabledKnowledge((prev) => ({ ...prev, [name]: !prev[name] }));
   const [rows, setRows] = useState<ActionRow[]>(
-    CAPABILITIES.map((cap, idx) => ({
+    ciscoLiveCapabilities.map((cap) => ({
       id: cap.id,
       name: cap.name,
       description: cap.description || 'Escalate the conversation to a human agent based on general rules and conditions',
-      enabled: idx < 2,
-      actionType: idx === 0 ? 'Transfer' : 'MCP',
-      providerType: 'System',
-      createdBy: idx === 0 ? 'System' : 'Claire',
-      lastUpdated: '02/28/25, at 1:08 AM',
+      enabled: true,
+      actionType: cap.type === 'Handoff' ? 'Transfer' : cap.type,
+      providerType: /(ServiceNow|fulfillment|SLA)/i.test(cap.name) ? 'ServiceNow' : 'Gofie',
+      createdBy: ciscoLiveAgent.updatedBy,
+      lastUpdated: '07/13/26, at 9:30 AM',
     })),
   );
+
+  // Reflect the Actions table into the shared agent draft so the overview's
+  // "Connections" card stays in sync with what is enabled here. Guarded so it
+  // only writes when the enabled set actually changes.
+  useEffect(() => {
+    if (!agentId) return;
+    const enabledNames = rows.filter(row => row.enabled).map(row => row.name);
+    const cap = agentDraft?.familyConfiguration.actions;
+    const rawSelections = cap?.values?.selections;
+    const currentSelections = Array.isArray(rawSelections)
+      ? rawSelections.filter((s): s is string => typeof s === 'string')
+      : [];
+    const desiredProgress = enabledNames.length > 0 ? 'configured' : 'not_started';
+    const unchanged =
+      cap?.progress === desiredProgress &&
+      currentSelections.length === enabledNames.length &&
+      currentSelections.every((s, i) => s === enabledNames[i]);
+    if (unchanged) return;
+    updateAgentDraft(agentId, draft => {
+      const actionsCap = draft.familyConfiguration.actions;
+      return {
+        ...draft,
+        familyConfiguration: {
+          ...draft.familyConfiguration,
+          actions: {
+            ...(actionsCap as CapabilityState | undefined),
+            progress: desiredProgress,
+            values: { ...(actionsCap?.values ?? {}), selections: enabledNames },
+            updatedAt: new Date().toISOString(),
+          } as CapabilityState,
+        },
+      };
+    });
+  }, [rows, agentId, agentDraft, updateAgentDraft]);
+
+  // Reflect the enabled guardrails into the shared agent draft (security row).
+  useEffect(() => {
+    if (!agentId) return;
+    // Every enabled guardrail counts toward what the overview shows, regardless
+    // of which tier the Security screen is currently displaying.
+    const enabledGuardrailNames = [
+      ...advancedDefaultGroups.flatMap(group => group.items.filter(item => item.enabled).map(item => item.name)),
+      ...advancedCustomItems.filter(item => item.enabled).map(item => item.name),
+    ];
+    const cap = agentDraft?.familyConfiguration.security;
+    const rawSelections = cap?.values?.selections;
+    const currentSelections = Array.isArray(rawSelections)
+      ? rawSelections.filter((s): s is string => typeof s === 'string')
+      : [];
+    const desiredProgress = enabledGuardrailNames.length > 0 ? 'configured' : 'not_started';
+    const unchanged =
+      cap?.progress === desiredProgress &&
+      currentSelections.length === enabledGuardrailNames.length &&
+      currentSelections.every((s, i) => s === enabledGuardrailNames[i]);
+    if (unchanged) return;
+    updateAgentDraft(agentId, draft => {
+      const securityCap = draft.familyConfiguration.security;
+      return {
+        ...draft,
+        familyConfiguration: {
+          ...draft.familyConfiguration,
+          security: {
+            ...(securityCap as CapabilityState | undefined),
+            progress: desiredProgress,
+            values: { ...(securityCap?.values ?? {}), selections: enabledGuardrailNames },
+            updatedAt: new Date().toISOString(),
+          } as CapabilityState,
+        },
+      };
+    });
+  }, [advancedDefaultGroups, advancedCustomItems, agentId, agentDraft, updateAgentDraft]);
+
+  // Reflect the enabled knowledge bases into the shared agent draft (knowledge row).
+  useEffect(() => {
+    if (!agentId) return;
+    const demoAgent = CISCO_LIVE_AGENTS.find((candidate) => candidate.id === agentId) ?? CISCO_LIVE_AGENTS[0];
+    const enabledNames = demoAgent.knowledgeSources
+      .filter((source) => !disabledKnowledge[source.name])
+      .map((source) => source.name);
+    const cap = agentDraft?.familyConfiguration.knowledge;
+    const rawSelections = cap?.values?.selections;
+    const currentSelections = Array.isArray(rawSelections)
+      ? rawSelections.filter((s): s is string => typeof s === 'string')
+      : [];
+    const desiredProgress = enabledNames.length > 0 ? 'configured' : 'not_started';
+    const unchanged =
+      cap?.progress === desiredProgress &&
+      currentSelections.length === enabledNames.length &&
+      currentSelections.every((s, i) => s === enabledNames[i]);
+    if (unchanged) return;
+    updateAgentDraft(agentId, draft => {
+      const knowledgeCap = draft.familyConfiguration.knowledge;
+      return {
+        ...draft,
+        familyConfiguration: {
+          ...draft.familyConfiguration,
+          knowledge: {
+            ...(knowledgeCap as CapabilityState | undefined),
+            progress: desiredProgress,
+            values: { ...(knowledgeCap?.values ?? {}), selections: enabledNames },
+            updatedAt: new Date().toISOString(),
+          } as CapabilityState,
+        },
+      };
+    });
+  }, [disabledKnowledge, agentId, agentDraft, updateAgentDraft]);
+
+  // Reflect the enabled AI memory sources into the shared agent draft (memory row).
+  useEffect(() => {
+    if (!agentId) return;
+    const demoAgent = CISCO_LIVE_AGENTS.find((candidate) => candidate.id === agentId) ?? CISCO_LIVE_AGENTS[0];
+    const enabledNames = demoAgent.memorySources
+      .filter((source) => !disabledKnowledge[source.name])
+      .map((source) => source.name);
+    const cap = agentDraft?.familyConfiguration.memory;
+    const rawSelections = cap?.values?.selections;
+    const currentSelections = Array.isArray(rawSelections)
+      ? rawSelections.filter((s): s is string => typeof s === 'string')
+      : [];
+    const desiredProgress = enabledNames.length > 0 ? 'configured' : 'not_started';
+    const unchanged =
+      cap?.progress === desiredProgress &&
+      currentSelections.length === enabledNames.length &&
+      currentSelections.every((s, i) => s === enabledNames[i]);
+    if (unchanged) return;
+    updateAgentDraft(agentId, draft => {
+      const memoryCap = draft.familyConfiguration.memory;
+      return {
+        ...draft,
+        familyConfiguration: {
+          ...draft.familyConfiguration,
+          memory: {
+            ...(memoryCap as CapabilityState | undefined),
+            progress: desiredProgress,
+            values: { ...(memoryCap?.values ?? {}), selections: enabledNames },
+            updatedAt: new Date().toISOString(),
+          } as CapabilityState,
+        },
+      };
+    });
+  }, [disabledKnowledge, agentId, agentDraft, updateAgentDraft]);
 
   const [actionVersionCache] = useState<Record<string, VersionMeta>>(
     () => buildSeededVersionCache(new Date().toISOString()),
@@ -686,6 +1163,10 @@ export default function ActionConfigureV2() {
   const agent = currentAgent || agents[agentId];
   if (!agent) return <Navigate to="/agents" replace />;
 
+  const knowledgeDemoAgent = CISCO_LIVE_AGENTS.find((candidate) => candidate.id === agent.id) ?? CISCO_LIVE_AGENTS[0];
+  const knowledgeBases = knowledgeDemoAgent.knowledgeSources;
+  const memorySources = knowledgeDemoAgent.memorySources;
+
   const toggleAction = (id: number) => {
     setRows((prev) => prev.map((row) => (row.id === id ? { ...row, enabled: !row.enabled } : row)));
   };
@@ -694,6 +1175,294 @@ export default function ActionConfigureV2() {
     setRows((prev) => prev.filter((row) => row.id !== id));
     setCapabilities((prev) => prev.filter((cap) => cap.id !== id));
   };
+
+  const selectedChannels =
+    (agentDraft?.familyConfiguration.channels?.values?.selectedChannels as CustomerChannel[] | undefined) ?? [];
+
+  const toggleChannel = (value: CustomerChannel) => {
+    if (!agentId) return;
+    updateAgentDraft(agentId, (draft) => {
+      const channelsCap = draft.familyConfiguration.channels;
+      const current = (channelsCap?.values?.selectedChannels as CustomerChannel[] | undefined) ?? [];
+      const next = current.includes(value)
+        ? current.filter((channel) => channel !== value)
+        : [...current, value];
+      return {
+        ...draft,
+        familyConfiguration: {
+          ...draft.familyConfiguration,
+          channels: {
+            ...(channelsCap as CapabilityState | undefined),
+            progress: next.length > 0 ? 'configured' : 'not_started',
+            values: { ...(channelsCap?.values ?? {}), selectedChannels: next },
+            updatedAt: new Date().toISOString(),
+          } as CapabilityState,
+        },
+      };
+    });
+  };
+
+  const prebuiltQuery = prebuiltSearch.trim().toLowerCase();
+  const prebuiltItemMatches = (item: AdvancedGuardrailItem) =>
+    !prebuiltQuery ||
+    item.name.toLowerCase().includes(prebuiltQuery) ||
+    item.description.toLowerCase().includes(prebuiltQuery);
+  const prebuiltHasResults = advancedDefaultGroups.some(group => group.items.some(prebuiltItemMatches));
+  const customItemMatches = (item: CustomGuardrailItem) =>
+    !prebuiltQuery ||
+    item.name.toLowerCase().includes(prebuiltQuery) ||
+    item.description.toLowerCase().includes(prebuiltQuery);
+  const visibleCustomItems = advancedCustomItems.filter(customItemMatches);
+  // While searching, results span BOTH custom and prebuilt guardrails
+  // regardless of the selected mode; only sections with matches are shown.
+  const isGuardrailSearching = Boolean(prebuiltQuery);
+  const showCustomSection = isGuardrailSearching
+    ? visibleCustomItems.length > 0
+    : guardrailMode === 'custom';
+  const showPrebuiltSection = isGuardrailSearching
+    ? prebuiltHasResults
+    : guardrailMode === 'prebuilt';
+  const noGuardrailSearchResults =
+    isGuardrailSearching && visibleCustomItems.length === 0 && !prebuiltHasResults;
+  const prebuiltEnabledCount = advancedDefaultGroups.reduce(
+    (count, group) => count + group.items.filter(item => item.enabled).length,
+    0,
+  );
+  const prebuiltTotalCount = advancedDefaultGroups.reduce(
+    (count, group) => count + group.items.length,
+    0,
+  );
+  const customProfileAppliedCount = Math.max(
+    advancedCustomItems.filter(item => item.enabled).length,
+    defaultCustomProfileState === 'generating' ? 1 : 0,
+  );
+  const customProfileCardCount = (defaultCustomProfileState === 'generating' ? 1 : 0) + advancedCustomItems.length;
+  const customProfileLimit = 3;
+  const customProfileLimitReached = customProfileCardCount >= customProfileLimit;
+  const createCustomProfileDisabled = !isPaidUser || customProfileLimitReached;
+
+  const togglePrebuiltGroup = (groupId: AdvancedGroupId, open: boolean) => {
+    setExpandedPrebuiltGroups(prev => {
+      const next = new Set(prev);
+      if (open) next.add(groupId); else next.delete(groupId);
+      return next;
+    });
+  };
+
+  const togglePrivacySection = (sectionId: string, open: boolean) => {
+    setExpandedPrivacySections(prev => {
+      const next = new Set(prev);
+      if (open) next.add(sectionId); else next.delete(sectionId);
+      return next;
+    });
+  };
+
+  const setPrebuiltGuardrailsEnabled = (groupId: string, itemIds: string[], enabled: boolean) => {
+    const itemIdSet = new Set(itemIds);
+
+    setAdvancedDefaultGroups(prev => prev.map(gp =>
+      gp.id === groupId
+        ? {
+            ...gp,
+            items: gp.items.map(it => itemIdSet.has(it.id) ? { ...it, enabled } : it),
+          }
+        : gp,
+    ));
+
+    if (enabled) {
+      setExpandedRails(prev => {
+        const next = new Set(prev);
+        itemIds.forEach(itemId => next.add(itemId));
+        return next;
+      });
+    }
+  };
+
+  const renderProfileLogic = (profile: CustomGuardrailItem) => (
+    <ProfileLogicSummary overview={profile.overview} />
+  );
+
+  const renderCustomGuardrailDirection = (item: CustomGuardrailItem, disabled = false) => (
+    <div className="security-control-row custom-guardrail-direction-row">
+      <label className="security-control-label">Direction</label>
+      <RadioGroup
+        name={`custom-direction-${item.id}`}
+        value={item.direction}
+        onChange={(value) => setAdvancedCustomItems(prev => prev.map(it =>
+          it.id === item.id ? { ...it, direction: value as Direction } : it,
+        ))}
+        className="security-enforcement-control"
+      >
+        <Radio value="prompt" label="Prompt" disabled={disabled || !item.enabled || !isPaidUser} />
+        <Radio value="response" label="Response" disabled={disabled || !item.enabled || !isPaidUser} />
+        <Radio value="both" label="Both prompts and responses" disabled={disabled || !item.enabled || !isPaidUser} />
+      </RadioGroup>
+    </div>
+  );
+
+  const renderCustomGuardrailAction = (item: CustomGuardrailItem) => (
+    <div className="security-control-row">
+      <label className="security-control-label">Action</label>
+      <RadioGroup
+        name={`custom-action-${item.id}`}
+        value={item.action}
+        onChange={(value) => setAdvancedCustomItems(prev => prev.map(it =>
+          it.id === item.id ? { ...it, action: value as CustomGuardrailAction } : it,
+        ))}
+        className="security-enforcement-control"
+      >
+        <Radio value="monitor" label="Monitor" disabled={!item.enabled || !isPaidUser} />
+        <Radio value="steer" label="Steer" disabled={!item.enabled || !isPaidUser} />
+        <Radio value="block" label="Block" disabled={!item.enabled || !isPaidUser} />
+      </RadioGroup>
+    </div>
+  );
+
+  const renderAdvancedPrebuiltGuardrail = (group: AdvancedGuardrailGroup, item: AdvancedGuardrailItem) => (
+    <GuardrailRail
+      key={item.id}
+      id={item.id}
+      name={item.name}
+      description={item.description}
+      enabled={item.enabled}
+      disabled={!isPaidUser}
+      toggleLabel={`${item.enabled ? 'Disable' : 'Enable'} ${item.name} guardrail`}
+      expanded={expandedRails.has(item.id)}
+      onToggle={() => {
+        if (!item.enabled) {
+          if (!hasAcknowledgedAdvancedPricing) {
+            setPendingAdvancedEnable({ groupId: group.id, itemIds: [item.id], label: item.name });
+            return;
+          }
+          setPrebuiltGuardrailsEnabled(group.id, [item.id], true);
+          showToast(`${item.name} guardrail enabled`, 'success');
+          return;
+        }
+        setPrebuiltGuardrailsEnabled(group.id, [item.id], false);
+      }}
+      onExpandedChange={(open) => setExpandedRails(prev => {
+        const next = new Set(prev);
+        if (open) next.add(item.id); else next.delete(item.id);
+        return next;
+      })}
+    >
+      <div className="security-guardrail-controls">
+        {item.id !== 'sec-code-detection' && (
+          <div className="security-control-row">
+            <label className="security-control-label">Sensitivity</label>
+            <div className="security-slider-wrap">
+              <Slider
+                value={item.sensitivity}
+                onChange={(v) => setAdvancedDefaultGroups(prev => prev.map(gp =>
+                  gp.id === group.id
+                    ? { ...gp, items: gp.items.map(it => it.id === item.id ? { ...it, sensitivity: v as number } : it) }
+                    : gp
+                ))}
+                min={0}
+                max={150}
+                step={50}
+                showTicks
+                disabled={!item.enabled || !isPaidUser}
+              />
+              <div className="security-sensitivity-labels security-sensitivity-labels--four">
+                <span>Low</span>
+                <span>Medium</span>
+                <span>High</span>
+                <span>Very high</span>
+              </div>
+            </div>
+          </div>
+        )}
+        <div className="security-control-row">
+          <label className="security-control-label">Action</label>
+          <RadioGroup
+            name={`action-${item.id}`}
+            value={item.enforcement}
+            onChange={(v) => setAdvancedDefaultGroups(prev => prev.map(gp =>
+              gp.id === group.id
+                ? { ...gp, items: gp.items.map(it => it.id === item.id ? { ...it, enforcement: v as Enforcement, action: v === 'block' ? 'block' : 'allow' } : it) }
+                : gp
+            ))}
+            className="security-enforcement-control"
+          >
+            <Radio value="monitor" label="Monitor" disabled={!item.enabled || !isPaidUser} />
+            <Radio value="block" label="Block" disabled={!item.enabled || !isPaidUser} />
+          </RadioGroup>
+        </div>
+        <div className="security-control-row">
+          <label className="security-control-label">Direction</label>
+          <RadioGroup
+            name={`direction-${item.id}`}
+            value={item.direction}
+            onChange={(v) => setAdvancedDefaultGroups(prev => prev.map(gp =>
+              gp.id === group.id
+                ? { ...gp, items: gp.items.map(it => it.id === item.id ? { ...it, direction: v as Direction } : it) }
+                : gp
+            ))}
+            className="security-enforcement-control"
+          >
+            <Radio value="prompt" label="Prompt" disabled={!item.enabled || !isPaidUser} />
+            <Radio value="response" label="Response" disabled={!item.enabled || !isPaidUser} />
+            <Radio value="both" label="Both prompts and responses" disabled={!item.enabled || !isPaidUser} />
+          </RadioGroup>
+        </div>
+      </div>
+    </GuardrailRail>
+  );
+
+  const renderCustomGuardrailRail = (item: CustomGuardrailItem) => (
+    <GuardrailRail
+      key={item.id}
+      id={item.id}
+      name={item.name}
+      description={item.description}
+      enabled={item.enabled}
+      disabled={!isPaidUser}
+      toggleLabel={`${item.enabled ? 'Disable' : 'Enable'} ${item.name} guardrail`}
+      expanded={expandedRails.has(item.id)}
+      onToggle={() => {
+        const willEnable = !item.enabled;
+        setAdvancedCustomItems(prev => prev.map(it => it.id === item.id ? { ...it, enabled: willEnable } : it));
+        if (willEnable) {
+          showToast(`${item.name} guardrail enabled`, 'success');
+          setExpandedRails(prev => {
+            const next = new Set(prev);
+            next.add(item.id);
+            return next;
+          });
+        }
+      }}
+      onExpandedChange={(open) => setExpandedRails(prev => {
+        const next = new Set(prev);
+        if (open) next.add(item.id); else next.delete(item.id);
+        return next;
+      })}
+      headerActions={
+        <CustomGuardrailActionMenu
+          name={item.name}
+          onEdit={() => { setEditingProfileId(item.id); setShowPolicyStudio(true); }}
+          onDelete={() => setAdvancedCustomItems(prev => prev.filter(it => it.id !== item.id))}
+        />
+      }
+    >
+      <div className="security-guardrail-controls custom-guardrail-controls">
+        {renderProfileLogic(item)}
+        {renderCustomGuardrailAction(item)}
+        {renderCustomGuardrailDirection(item)}
+        <span className="custom-guardrail-panel-meta">
+          <span>{item.createdBy}</span>
+          <span className="custom-profile-card__meta-sep" aria-hidden="true" />
+          <span>{item.createdAt}</span>
+          {item.versions.length > 1 && (
+            <span className="custom-profile-card__version-meta">
+              <span className="custom-profile-card__meta-sep" aria-hidden="true" />
+              <span>{item.versions.length} versions</span>
+            </span>
+          )}
+        </span>
+      </div>
+    </GuardrailRail>
+  );
 
   const headerActions = (
     <div className="action-config-v2-header-actions">
@@ -719,75 +1488,49 @@ export default function ActionConfigureV2() {
 
   return (
     <div className="primary-content">
-      <AgentHeader agent={agent} activeTab="configure" showPublishButton={false} headerRight={headerActions}>
-        <div className="action-config-v2-title-row">
-          <Tabs variant="line" aria-label="Agent configuration sections">
-            {availableSections.map((section) => (
-              <Tab
-                key={section}
-                active={section === activeSection}
-                onClick={() => setSelectedSection(section)}
-              >
-                {agentFamily ? FAMILY_SECTION_LABELS[agentFamily][section] ?? section : section}
-              </Tab>
-            ))}
-          </Tabs>
-          {activeSection === 'Action' && (
-            <div className="add-action-menu-wrapper" ref={addMenuRef}>
-              <button
-                type="button"
-                className="action-config-v2-add-btn"
-                onClick={() => setShowAddMenu(!showAddMenu)}
-              >
-                <Icon name="plus" weight="bold" size={20} />
-                Add actions
-              </button>
-              {showAddMenu && (
-                <div className="add-action-menu">
-                  <div className="add-action-menu-section">
-                    <div className="add-action-menu-header">Browse actions</div>
-                    <button
-                      className="add-action-menu-item"
-                      onClick={() => { setShowAddMenu(false); setShowAddCapabilityModal(true); }}
-                    >
-                      <Icon name="extension-mobility" weight="bold" size={20} />
-                      Select available
-                    </button>
-                  </div>
-                  <div className="add-action-menu-divider" />
-                  <div className="add-action-menu-section">
-                    <div className="add-action-menu-header">Create new action</div>
-                    <button className="add-action-menu-item" onClick={() => setShowAddMenu(false)}>
-                      <Icon name="next" weight="bold" size={20} />
-                      Transfer
-                    </button>
-                    <button className="add-action-menu-item" onClick={() => { setShowAddMenu(false); setShowFulfillmentModal(true); }}>
-                      <Icon name="automation" weight="bold" size={20} />
-                      Fulfillment
-                    </button>
-                  </div>
-                </div>
-              )}
-            </div>
-          )}
-        </div>
-      </AgentHeader>
+      <AgentHeader agent={agent} activeTab="configure" showPublishButton={false} showTabs={false} headerRight={headerActions} />
 
       <div className="action-config-v2-shell">
         <div className="action-config-v2-card">
 
-          {activeSection === 'Profile' && (
-            <div className="v2-profile-layout">
-              <aside className="v2-profile-tips">
-                <h3 className="v2-profile-tips-title">Goal and instruction tips</h3>
-                <ul className="v2-profile-tips-list">
-                  <li>Explain what the agent's purpose is.</li>
-                  <li>Break down the overall goal into specific, sequential steps and tasks.</li>
-                  <li>Reference the actions at each step that are used to fulfil each step and task.</li>
-                  <li>Define the personality and expertise of the AI agent, e.g. friendly, formal, or casual.</li>
-                </ul>
-              </aside>
+          {activeSection === 'Channels' && (
+            <div className="v2-channels">
+              <div className="v2-channels__intro">
+                <h3 className="v2-channels__title">Channels</h3>
+                <p className="v2-channels__desc">Choose the customer channels this agent supports.</p>
+              </div>
+              <div className="v2-channels__grid">
+                {EVA_CHANNEL_SELECTION_OPTIONS.map((option) => {
+                  const active = selectedChannels.includes(option.value);
+                  return (
+                    <button
+                      key={option.value}
+                      type="button"
+                      className={`v2-channel-card${active ? ' v2-channel-card--active' : ''}`}
+                      onClick={() => toggleChannel(option.value)}
+                      aria-pressed={active}
+                    >
+                      {active && (
+                        <span className="v2-channel-card__check" aria-hidden>
+                          <Icon name="check" weight="bold" size={18} />
+                        </span>
+                      )}
+                      <span className="v2-channel-card__icon">
+                        <Icon name={option.icon} weight="bold" size={24} />
+                      </span>
+                      <span className="v2-channel-card__title">{option.title}</span>
+                      <span className="v2-channel-card__desc">{option.description}</span>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          )}
 
+          {activeSection === 'Profile' && (
+            <>
+            <h3 className="action-config-v2-title">Profile</h3>
+            <div className="v2-profile-layout">
               <div className="v2-profile-form">
                 <Input
                   label="Agent name"
@@ -795,29 +1538,6 @@ export default function ActionConfigureV2() {
                   value={profileForm.agentName}
                   onChange={(e) => updateProfileField('agentName', e.target.value)}
                 />
-
-                <Input
-                  label="System ID"
-                  required
-                  value={profileForm.systemId}
-                  onChange={(e) => updateProfileField('systemId', e.target.value)}
-                />
-
-                <div className="v2-profile-avatar-row">
-                  <div className="v2-profile-avatar-preview">
-                    <div className="agent-avatar" style={{ background: agent.gradient, width: 48, height: 48, fontSize: 16 }}>
-                      {agent.initials}
-                    </div>
-                  </div>
-                  <div className="v2-profile-avatar-field">
-                    <Input
-                      label="URL for agent profile image"
-                      required
-                      value={profileForm.avatarUrl}
-                      onChange={(e) => updateProfileField('avatarUrl', e.target.value)}
-                    />
-                  </div>
-                </div>
 
                 <div className="v2-profile-field-group">
                   <label className="v2-profile-label">
@@ -968,29 +1688,13 @@ export default function ActionConfigureV2() {
                   )}
                 </div>
 
-                <div className="v2-profile-textarea-group">
-                  <div className="v2-profile-textarea-header">
-                    <label className="v2-profile-label">
-                      Welcome message <span className="v2-profile-required">*</span>
-                      <button type="button" className="v2-profile-info-btn" aria-label="Info">
-                        <Icon name="info-badge" size={16} />
-                      </button>
-                    </label>
-                    <button type="button" className="v2-profile-insert-example">Insert example</button>
-                  </div>
-                  <Textarea
-                    value={profileForm.welcomeMessage}
-                    onChange={(e) => updateProfileField('welcomeMessage', e.target.value)}
-                    placeholder="Enter description"
-                    rows={4}
-                  />
-                </div>
-
               </div>
             </div>
+            </>
           )}
 
           {activeSection === 'Instructions' && (
+            <div className="instructions-section">
             <div className="instructions-layout">
               <aside className="instructions-sidebar">
                 <h3 className="instructions-sidebar-title">Instructions <span className="instructions-required">(required)</span></h3>
@@ -1060,372 +1764,487 @@ export default function ActionConfigureV2() {
                 )}
               </aside>
             </div>
+
+            <div className="instructions-welcome">
+              <div className="v2-profile-textarea-header">
+                <label className="v2-profile-label">
+                  Welcome message <span className="v2-profile-required">*</span>
+                  <button type="button" className="v2-profile-info-btn" aria-label="Info">
+                    <Icon name="info-badge" size={16} />
+                  </button>
+                </label>
+                <button type="button" className="v2-profile-insert-example">Insert example</button>
+              </div>
+              <Textarea
+                value={profileForm.welcomeMessage}
+                onChange={(e) => updateProfileField('welcomeMessage', e.target.value)}
+                placeholder="Enter description"
+                rows={3}
+              />
+            </div>
+            </div>
           )}
 
           {activeSection === 'Security' && (
             <div className="guardrails-layout">
               <div className="guardrails-header">
-                <div className="guardrails-header-left">
-                  <h3 className="guardrails-title">Security</h3>
-                  <p className="guardrails-subtitle">Configure protection rules to control agent behavior, enforce safety policies, and prevent misuse.</p>
+                <div className="guardrails-header-top">
+                  <h1 className="guardrails-title">
+                    <span>Guardrails</span>
+                    <Badge variant="success" className="security-tier-badge">Powered by AI Defense</Badge>
+                  </h1>
+                  <div className="guardrails-header-right">
+                    {searchOpen ? (
+                      <div className="security-prebuilt-search guardrails-header-search">
+                        <Input
+                          type="search"
+                          value={prebuiltSearch}
+                          onChange={(e) => setPrebuiltSearch(e.target.value)}
+                          placeholder="Search guardrails by name"
+                          aria-label="Search guardrails by name"
+                          leadingIcon="search"
+                          clearable
+                          autoFocus
+                          onClear={() => { setPrebuiltSearch(''); setSearchOpen(false); }}
+                          onBlur={() => { if (!prebuiltSearch.trim()) setSearchOpen(false); }}
+                        />
+                      </div>
+                    ) : (
+                      <Button
+                        variant="secondary"
+                        className="guardrails-search-toggle"
+                        aria-label="Search guardrails"
+                        onClick={() => setSearchOpen(true)}
+                      >
+                        <Icon name="search" weight="regular" size={16} />
+                      </Button>
+                    )}
+                  </div>
                 </div>
+                <p className="guardrails-subtitle">
+                  Configure protection rules to control agent behavior, enforce safety policies, and prevent misuse. Triggered guardrails appear in Sessions. Monitor logs the interaction for review. Block rejects the prompt while keeping the conversation active.
+                </p>
               </div>
 
-              {/* Tier selector */}
+              {!isGuardrailSearching && (
               <div className="security-tier-selector">
-                <Card clickable selected={securityTier === 'standard'} onClick={() => setSecurityTier('standard')} className="security-tier-card">
+                <Card clickable selected={guardrailMode === 'custom'} onClick={() => setGuardrailMode('custom')} className="security-tier-card">
                   <CardBody>
                     <div className="security-tier-card-inner">
-                      <Icon name="shield" weight="bold" size={24} />
+                      <Icon name="sparkle" weight="bold" size={24} />
                       <div className="security-tier-card-text">
-                        <span className="security-tier-card-title">Standard guardrails</span>
-                        <span className="security-tier-card-desc">Basic protection with toxicity, harm detection, and jailbreak prevention.</span>
-                        <span className="security-tier-card-count">{standardGuardrails.filter(g => g.enabled).length}/{standardGuardrails.length} enabled</span>
+                        <span className="security-tier-card-title">Custom guardrails</span>
+                        <span className="security-tier-card-desc">Rules tailored to this agent&apos;s business logic and policy exceptions.</span>
+                        <span className="security-tier-card-count">{customProfileAppliedCount} of {customProfileLimit} enabled</span>
                       </div>
                     </div>
                   </CardBody>
                 </Card>
-                <Card clickable selected={securityTier === 'advanced'} onClick={() => setSecurityTier('advanced')} className="security-tier-card">
+                <Card clickable selected={guardrailMode === 'prebuilt'} onClick={() => setGuardrailMode('prebuilt')} className="security-tier-card">
                   <CardBody>
                     <div className="security-tier-card-inner">
                       <Icon name="secure-circle" weight="bold" size={24} />
                       <div className="security-tier-card-text">
-                        <span className="security-tier-card-title">Advanced guardrails <Badge variant="success" className="security-tier-badge">AI Defense</Badge></span>
-                        <span className="security-tier-card-desc">Comprehensive security, privacy, and safety guardrails with custom profiles.</span>
-                        <span className="security-tier-card-count">{advancedDefaultGroups.reduce((sum, gp) => sum + gp.items.filter(i => i.enabled).length, 0) + advancedCustomItems.filter(c => c.enabled).length}/{advancedDefaultGroups.reduce((sum, gp) => sum + gp.items.length, 0) + advancedCustomItems.length} enabled{advancedCustomItems.length > 0 ? ` · ${advancedCustomItems.length} custom` : ''}</span>
+                        <span className="security-tier-card-title">Prebuilt guardrails</span>
+                        <span className="security-tier-card-desc">Comprehensive security, privacy, and safety guardrails for common risks.</span>
+                        <span className="security-tier-card-count">{prebuiltEnabledCount} of {prebuiltTotalCount} enabled</span>
                       </div>
                     </div>
                   </CardBody>
                 </Card>
               </div>
-
-              {/* Observability banner */}
-              {showObsBanner && (
-                <Banner
-                  type="info"
-                  title="Observability & Logging"
-                  subtitle={<>All triggered rails are logged in the Sessions view. If a rail is set to &ldquo;Monitor&rdquo;, the interaction continues but the violation is logged for admin review. If set to &ldquo;Block&rdquo;, the individual prompt is rejected but the conversation remains active. This allows you to fine-tune confidence settings based on real-world data. <a href="/docs/guardrails" target="_blank" rel="noopener noreferrer" className="banner-link">Learn more</a></>}
-                  dismissable
-                  onDismiss={() => setShowObsBanner(false)}
-                />
               )}
 
-              {/* ── Standard Guardrails ── */}
-              {securityTier === 'standard' && (
-                <div className="security-standard-list">
-                  <AccordionGroup type="contained">
-                    {standardGuardrails.map((g) => (
-                      <AccordionItem
-                        key={g.id}
-                        title={
-                          <div className="security-guardrail-header">
-                            <Toggle
-                              checked={g.enabled}
-                              onChange={() => {
-                                if (g.id === 'std-jailbreak' && g.enabled) {
-                                  setConfirmDisableJailbreak(true);
-                                  return;
-                                }
-                                const willEnable = !g.enabled;
-                                setStandardGuardrails(prev => prev.map(gr => gr.id === g.id ? { ...gr, enabled: willEnable } : gr));
-                                if (willEnable) {
-                                  setExpandedRails(prev => new Set(prev).add(g.id));
-                                  showToast(`${g.name} guardrail enabled`, 'success');
-                                }
-                              }}
-                              size="compact"
-                            />
-                            <div className="security-guardrail-header-text">
-                              <span className="security-guardrail-name">{g.name}</span>
-                              <span className="security-guardrail-desc">{g.description}</span>
-                            </div>
-                          </div>
-                        }
-                        expanded={expandedRails.has(g.id)}
-                        onExpandedChange={(open) => setExpandedRails(prev => {
-                          const next = new Set(prev);
-                          if (open) next.add(g.id); else next.delete(g.id);
-                          return next;
-                        })}
+              <section className="security-prebuilt-section">
+                {showCustomSection && (
+                <div className="security-prebuilt-toolbar">
+                  <div className="security-prebuilt-toolbar-actions">
+                    {customProfileLimitReached ? (
+                      <Tooltip
+                        content="You can create up to 3 custom guardrails for this agent. Delete a guardrail to create another."
+                        placement="top"
                       >
-                        <div className="security-guardrail-controls">
-                          <div className="security-control-row">
-                            <label className="security-control-label">Sensitivity</label>
-                            <div className="security-slider-wrap">
-                              <Slider
-                                value={g.sensitivity}
-                                onChange={(v) => setStandardGuardrails(prev => prev.map(gr => gr.id === g.id ? { ...gr, sensitivity: v as number } : gr))}
-                                min={0}
-                                max={100}
-                                step={50}
-                                showTicks
-                                disabled={!g.enabled}
-                              />
-                              <div className="security-sensitivity-labels">
-                                <span>Low</span>
-                                <span>Medium</span>
-                                <span>High</span>
-                              </div>
-                            </div>
-                          </div>
-                          <div className="security-control-row">
-                            <label className="security-control-label">Enforcement</label>
-                            <RadioGroup
-                              name={`enforcement-${g.id}`}
-                              value={g.enforcement}
-                              onChange={(v) => setStandardGuardrails(prev => prev.map(gr => gr.id === g.id ? { ...gr, enforcement: v as Enforcement } : gr))}
-                              className="security-enforcement-control"
-                            >
-                              <Radio value="monitor" label="Monitor" disabled={!g.enabled} />
-                              <Radio value="block" label="Block" disabled={!g.enabled} />
-                            </RadioGroup>
-                          </div>
-                          <div className="security-control-row">
-                            <label className="security-control-label">Direction</label>
-                            <RadioGroup
-                              name={`direction-${g.id}`}
-                              value={g.direction}
-                              onChange={(v) => setStandardGuardrails(prev => prev.map(gr => gr.id === g.id ? { ...gr, direction: v as Direction } : gr))}
-                              className="security-enforcement-control"
-                            >
-                              <Radio value="prompt" label="Prompt" disabled={!g.enabled} />
-                              <Radio value="response" label="Response" disabled={!g.enabled} />
-                            </RadioGroup>
-                          </div>
-                        </div>
-                      </AccordionItem>
-                    ))}
-                  </AccordionGroup>
-                </div>
-              )}
-
-              {/* ── Advanced Guardrails ── */}
-              {securityTier === 'advanced' && (
-                <div className="security-advanced-panel">
-                  {!isPaidUser && (
-                    <Banner
-                      type="info"
-                      title="Upgrade to Pro"
-                      subtitle="Enable advanced guardrails powered by AI Defense for comprehensive protection across security, privacy, and safety categories."
-                    />
-                  )}
-
-                  <div className="security-advanced-groups">
-                    {advancedDefaultGroups.map((group) => (
-                      <div key={group.id} className="security-advanced-group">
-                        <div className="security-group-header">
-                          <Icon name={group.icon as any} weight="bold" size={18} />
-                          <span>{group.label}</span>
-                          <Badge variant="default">{group.items.filter(i => i.enabled).length}/{group.items.length}</Badge>
-                        </div>
-                        <AccordionGroup type="contained">
-                          {group.items.map((item) => (
-                            <AccordionItem
-                              key={item.id}
-                              title={
-                                <div className="security-guardrail-header">
-                                  <Toggle
-                                    checked={item.enabled}
-                                    disabled={!isPaidUser}
-                                    onChange={() => {
-                                      if (!item.enabled) {
-                                        if (!hasAcknowledgedAdvancedPricing) {
-                                          setPendingAdvancedEnable({ groupId: group.id, itemId: item.id });
-                                          return;
-                                        }
-                                        setAdvancedDefaultGroups(prev => prev.map(gp =>
-                                          gp.id === group.id
-                                            ? { ...gp, items: gp.items.map(it => it.id === item.id ? { ...it, enabled: true } : it) }
-                                            : gp
-                                        ));
-                                        setExpandedRails(prev => new Set(prev).add(item.id));
-                                        showToast(`${item.name} guardrail enabled`, 'success');
-                                        return;
-                                      }
-                                      setAdvancedDefaultGroups(prev => prev.map(gp =>
-                                        gp.id === group.id
-                                          ? { ...gp, items: gp.items.map(it => it.id === item.id ? { ...it, enabled: false } : it) }
-                                          : gp
-                                      ));
-                                    }}
-                                    size="compact"
-                                  />
-                                  <div className="security-guardrail-header-text">
-                                    <span className="security-guardrail-name">{item.name}</span>
-                                    <span className="security-guardrail-desc">{item.description}</span>
-                                  </div>
-                                </div>
-                              }
-                              expanded={expandedRails.has(item.id)}
-                              onExpandedChange={(open) => setExpandedRails(prev => {
-                                const next = new Set(prev);
-                                if (open) next.add(item.id); else next.delete(item.id);
-                                return next;
-                              })}
-                            >
-                              <div className="security-guardrail-controls">
-                                <div className="security-control-row">
-                                  <label className="security-control-label">Sensitivity</label>
-                                  <div className="security-slider-wrap">
-                                    <Slider
-                                      value={item.sensitivity}
-                                      onChange={(v) => setAdvancedDefaultGroups(prev => prev.map(gp =>
-                                        gp.id === group.id
-                                          ? { ...gp, items: gp.items.map(it => it.id === item.id ? { ...it, sensitivity: v as number } : it) }
-                                          : gp
-                                      ))}
-                                      min={0}
-                                      max={100}
-                                      step={50}
-                                      showTicks
-                                      disabled={!item.enabled || !isPaidUser}
-                                    />
-                                    <div className="security-sensitivity-labels">
-                                      <span>Low</span>
-                                      <span>Medium</span>
-                                      <span>High</span>
-                                    </div>
-                                  </div>
-                                </div>
-                                <div className="security-control-row">
-                                  <label className="security-control-label">Enforcement</label>
-                                  <RadioGroup
-                                    name={`enforcement-${item.id}`}
-                                    value={item.enforcement}
-                                    onChange={(v) => setAdvancedDefaultGroups(prev => prev.map(gp =>
-                                      gp.id === group.id
-                                        ? { ...gp, items: gp.items.map(it => it.id === item.id ? { ...it, enforcement: v as Enforcement } : it) }
-                                        : gp
-                                    ))}
-                                    className="security-enforcement-control"
-                                  >
-                                    <Radio value="monitor" label="Monitor" disabled={!item.enabled || !isPaidUser} />
-                                    <Radio value="block" label="Block" disabled={!item.enabled || !isPaidUser} />
-                                  </RadioGroup>
-                                </div>
-                                <div className="security-control-row">
-                                  <label className="security-control-label">Direction</label>
-                                  <RadioGroup
-                                    name={`direction-${item.id}`}
-                                    value={item.direction}
-                                    onChange={(v) => setAdvancedDefaultGroups(prev => prev.map(gp =>
-                                      gp.id === group.id
-                                        ? { ...gp, items: gp.items.map(it => it.id === item.id ? { ...it, direction: v as Direction } : it) }
-                                        : gp
-                                    ))}
-                                    className="security-enforcement-control"
-                                  >
-                                    <Radio value="prompt" label="Prompt" disabled={!item.enabled || !isPaidUser} />
-                                    <Radio value="response" label="Response" disabled={!item.enabled || !isPaidUser} />
-                                  </RadioGroup>
-                                </div>
-                              </div>
-                            </AccordionItem>
-                          ))}
-                        </AccordionGroup>
-                      </div>
-                    ))}
-                    <div className="security-custom-profiles-section">
-                      <div className="security-custom-profiles-header">
-                        <div className="security-group-header">
-                          <Icon name="document-create" weight="bold" size={18} />
-                          <span>Custom profiles</span>
-                          {advancedCustomItems.length > 0 && (
-                            <Badge variant="default">{advancedCustomItems.filter(i => i.enabled).length}/{advancedCustomItems.length}</Badge>
-                          )}
-                        </div>
-                        <Button
-                          variant="primary"
-                          size="sm"
-                          disabled={!isPaidUser}
-                          onClick={() => {
-                            setEditingProfileId(null);
-                            setShowPolicyStudio(true);
-                          }}
+                        <span
+                          className="security-custom-profiles-create-tooltip-anchor"
+                          tabIndex={0}
+                          aria-label="Create custom guardrail unavailable. You can create up to 3 custom guardrails for this agent."
                         >
-                          <Icon name="plus" weight="bold" size={16} />Create custom profile
-                        </Button>
-                      </div>
-                      <p className="security-custom-profiles-desc">Generate custom profiles tailored specifically to this agent&apos;s configuration and requirements.</p>
-                      {advancedCustomItems.length > 0 && (
-                        <div className="custom-profile-grid">
-                          {advancedCustomItems.map((item) => (
-                            <div key={item.id} className={`custom-profile-card${item.enabled ? '' : ' custom-profile-card--disabled'}`}>
-                              <div className="custom-profile-card__header">
-                                <Toggle
-                                  checked={item.enabled}
-                                  disabled={!isPaidUser}
-                                  onChange={() => {
-                                    const willEnable = !item.enabled;
-                                    setAdvancedCustomItems(prev => prev.map(it => it.id === item.id ? { ...it, enabled: willEnable } : it));
-                                    if (willEnable) showToast(`${item.name} profile enabled`, 'success');
-                                  }}
-                                  size="compact"
-                                />
-                                <h4 className="custom-profile-card__name">{item.name}</h4>
-                                <div className="custom-profile-card__actions">
-                                  <Button
-                                    variant="tertiary"
-                                    size="sm"
-                                    aria-label={`Edit ${item.name}`}
-                                    onClick={() => { setEditingProfileId(item.id); setShowPolicyStudio(true); }}
-                                  >
-                                    <Icon name="edit" size={16} />
-                                  </Button>
-                                  <Button
-                                    variant="tertiary"
-                                    size="sm"
-                                    aria-label={`Delete ${item.name}`}
-                                    onClick={() => setAdvancedCustomItems(prev => prev.filter(it => it.id !== item.id))}
-                                  >
-                                    <Icon name="delete" size={16} />
-                                  </Button>
-                                </div>
-                              </div>
-                              <ClampedDesc
-                                text={item.description}
-                                expanded={expandedProfileDescs.has(item.id)}
-                                onToggle={() => setExpandedProfileDescs(prev => {
-                                  const next = new Set(prev);
-                                  if (next.has(item.id)) next.delete(item.id); else next.add(item.id);
-                                  return next;
-                                })}
-                              />
-                              <div className="custom-profile-card__meta">
-                                <span>{item.createdBy}</span>
-                                <span className="custom-profile-card__meta-sep" aria-hidden="true" />
-                                <span>{item.createdAt}</span>
-                                {item.versions.length > 1 && (
-                                  <>
-                                    <span className="custom-profile-card__meta-sep" aria-hidden="true" />
-                                    <span>{item.versions.length} versions</span>
-                                  </>
-                                )}
-                              </div>
-                            </div>
-                          ))}
-                        </div>
-                      )}
-                    </div>
+                          <Button
+                            variant="primary"
+                            disabled
+                            onClick={() => { setEditingProfileId(null); setShowPolicyStudio(true); }}
+                          >
+                            <Icon name="plus" weight="bold" size={16} />Create new
+                          </Button>
+                        </span>
+                      </Tooltip>
+                    ) : (
+                      <Button
+                        variant="primary"
+                        disabled={createCustomProfileDisabled}
+                        onClick={() => { setEditingProfileId(null); setShowPolicyStudio(true); }}
+                      >
+                        <Icon name="plus" weight="bold" size={16} />Create new
+                      </Button>
+                    )}
                   </div>
                 </div>
-              )}
+                )}
+
+                {!isPaidUser && (
+                  <Banner
+                    type="info"
+                    title="Upgrade to Pro"
+                    subtitle="Enable AI Defense guardrails for security, privacy, and safety coverage."
+                  />
+                )}
+
+                <AccordionGroup type="contained" className="security-prebuilt-groups">
+                  {showCustomSection && (
+                    <AccordionItem
+                      className="security-prebuilt-custom-item"
+                      expanded={isGuardrailSearching || customSectionOpen}
+                      onExpandedChange={setCustomSectionOpen}
+                      title={
+                        <div className="security-prebuilt-category-heading security-prebuilt-category-heading--custom">
+                          <div className="security-prebuilt-category-copy">
+                            <div className="security-prebuilt-category-title">
+                              <Icon name="sparkle" weight="bold" size={18} />
+                              <span>Custom guardrails</span>
+                            </div>
+                            <span className="security-prebuilt-category-meta">{customProfileAppliedCount} of {customProfileLimit} created</span>
+                            <span className="security-prebuilt-category-desc">
+                              Create guardrails that understand this agent&apos;s real business rules, like identity verification bypasses, approved service flows, and policy exceptions.
+                            </span>
+                          </div>
+                        </div>
+                      }
+                    >
+                      <div className="security-prebuilt-group-body security-prebuilt-group-body--custom">
+                {((defaultCustomProfileState === 'generating' && !prebuiltQuery) || visibleCustomItems.length > 0) ? (
+                  <AccordionGroup type="borderless" className="security-prebuilt-rail-list">
+                    {defaultCustomProfileState === 'generating' && !prebuiltQuery && (
+                      <div key="generating-custom-profile" className="accordion accordion--small accordion--borderless security-prebuilt-rail-item custom-guardrail-rail--generating">
+                        <div className="security-rail-header">
+                          <span className="security-guardrail-header-text">
+                            <span className="security-guardrail-name">{DEFAULT_GENERATED_CUSTOM_PROFILE.name}</span>
+                            <span className="security-guardrail-desc">{DEFAULT_GENERATED_CUSTOM_PROFILE.description}</span>
+                          </span>
+                        </div>
+                        <div className="accordion__panel security-rail-panel">
+                          <div className="accordion__panel-content security-guardrail-controls custom-guardrail-controls">
+                            {renderProfileLogic(DEFAULT_GENERATED_CUSTOM_PROFILE)}
+                            {renderCustomGuardrailDirection(DEFAULT_GENERATED_CUSTOM_PROFILE, true)}
+                            <ProgressBar
+                              value={defaultCustomProfileProgress}
+                              label="Creating custom guardrail"
+                              helperText="Analyzing this agent's goal and drafting a business-specific policy."
+                              showPercent
+                            />
+                          </div>
+                        </div>
+                      </div>
+                    )}
+                    {visibleCustomItems.map((item) => renderCustomGuardrailRail(item))}
+                  </AccordionGroup>
+                ) : prebuiltQuery ? (
+                  <p className="security-prebuilt-no-results">
+                    No guardrails match &ldquo;{prebuiltSearch.trim()}&rdquo;.
+                  </p>
+                ) : (
+                  <div className="custom-profile-empty-hero">
+                    <Icon name="document-create" weight="bold" size={22} />
+                    <span>No custom guardrails yet. Start with a policy that matches this agent&apos;s business process.</span>
+                  </div>
+                )}
+                      </div>
+                    </AccordionItem>
+                  )}
+                  {showPrebuiltSection && (
+                    <div className="security-prebuilt-default-groups" role="group" aria-label="Prebuilt guardrails">
+                      <div id="prebuilt-default-groups-panel" className="security-prebuilt-default-group-list">
+                          {advancedDefaultGroups.map((group) => {
+                    const sections = group.sections ?? [{
+                      id: 'default',
+                      label: 'AI Defense rules',
+                      description: group.description,
+                    }];
+                    const sectionSummaries = group.sections?.map(section => {
+                      const sectionItems = group.items.filter(item => item.sectionId === section.id);
+                      const enabledCount = sectionItems.filter(item => item.enabled).length;
+                      return {
+                        ...section,
+                        items: sectionItems,
+                        enabledCount,
+                        allEnabled: sectionItems.length > 0 && enabledCount === sectionItems.length,
+                        partiallyEnabled: enabledCount > 0 && enabledCount < sectionItems.length,
+                      };
+                    });
+                    const groupEnabledCount = group.items.filter(item => item.enabled).length;
+                    const groupTotalCount = group.items.length;
+                    const groupDisplayName = group.id.charAt(0).toUpperCase() + group.id.slice(1);
+                    const groupOpen = prebuiltQuery ? true : expandedPrebuiltGroups.has(group.id);
+                    const groupHeaderId = `prebuilt-${group.id}-header`;
+                    const groupPanelId = `prebuilt-${group.id}-panel`;
+
+                    if (prebuiltQuery && !group.items.some(prebuiltItemMatches)) return null;
+
+                    return (
+                      <div
+                        key={group.id}
+                        className="accordion accordion--small security-prebuilt-default-item"
+                      >
+                        <button
+                          type="button"
+                          id={groupHeaderId}
+                          className="accordion__header"
+                          aria-expanded={groupOpen}
+                          aria-controls={groupPanelId}
+                          onClick={() => togglePrebuiltGroup(group.id, !groupOpen)}
+                        >
+                          <span className="accordion__header-text">
+                            <span className="security-prebuilt-category-heading">
+                              <span className="security-prebuilt-category-copy">
+                                <span className="security-prebuilt-category-title">
+                                  <Icon name={group.icon as any} weight="bold" size={18} />
+                                  <span>{groupDisplayName}</span>
+                                </span>
+                                <span className="security-prebuilt-category-meta">{groupEnabledCount} of {groupTotalCount} enabled</span>
+                                <span className="security-prebuilt-category-desc">
+                                  {group.description} <span className="text-link text-link--inline text-link--sm">Learn more about {groupDisplayName} guardrails.</span>
+                                </span>
+                              </span>
+                            </span>
+                          </span>
+                          <span
+                            aria-hidden
+                            className={`accordion__chevron ${groupOpen ? 'accordion__chevron--open' : ''}`}
+                          >
+                            <Icon name="arrow-down" weight="bold" size="sm" />
+                          </span>
+                        </button>
+                        {groupOpen && (
+                          <div
+                            id={groupPanelId}
+                            role="region"
+                            aria-labelledby={groupHeaderId}
+                            className="accordion__panel"
+                          >
+                            <div className="accordion__panel-content security-prebuilt-group-body">
+                              {sections.map((section) => {
+                                const sectionSummary = sectionSummaries?.find(summary => summary.id === section.id);
+                                const sectionItems = sectionSummary?.items ?? group.items;
+                                const visibleSectionItems = sectionItems.filter(prebuiltItemMatches);
+                                if (prebuiltQuery && visibleSectionItems.length === 0) return null;
+                                const hideSectionHeading = (group.id === 'security' || group.id === 'safety') && section.id === 'default';
+                                const sectionEnabledCount = sectionSummary?.enabledCount ?? sectionItems.filter(item => item.enabled).length;
+                                const isSectionEnabled = sectionSummary?.allEnabled ?? (sectionItems.length > 0 && sectionEnabledCount === sectionItems.length);
+                                const isSectionMixed = sectionSummary?.partiallyEnabled ?? false;
+                                const sectionToggleLabel = `${isSectionEnabled ? 'Disable' : 'Enable'} ${section.label} guardrails`;
+                                const sectionOpen = prebuiltQuery ? true : expandedPrivacySections.has(section.id);
+                                const sectionHeaderId = `prebuilt-${group.id}-${section.id}-header`;
+                                const sectionPanelId = `prebuilt-${group.id}-${section.id}-panel`;
+
+                                if (hideSectionHeading) {
+                                  return (
+                                    <AccordionGroup key={section.id} type="borderless" className="security-prebuilt-rail-list">
+                                      {visibleSectionItems.map((item) => renderAdvancedPrebuiltGuardrail(group, item))}
+                                    </AccordionGroup>
+                                  );
+                                }
+
+                                return (
+                                  <div key={section.id} className="security-advanced-rule-section">
+                                    <div className="security-advanced-rule-section-head">
+                                      {group.id === 'privacy' && (
+                                        <Toggle
+                                          className={`security-advanced-rule-section-toggle${isSectionMixed ? ' security-advanced-rule-section-toggle--mixed' : ''}`}
+                                          checked={isSectionEnabled}
+                                          disabled={!isPaidUser || sectionItems.length === 0}
+                                          aria-label={
+                                            isSectionMixed
+                                              ? `${section.label} guardrails partially enabled. ${sectionEnabledCount} of ${sectionItems.length} enabled`
+                                              : sectionToggleLabel
+                                          }
+                                          onChange={() => {
+                                            const sectionItemIds = sectionItems.map(item => item.id);
+
+                                            if (isSectionEnabled) {
+                                              setPrebuiltGuardrailsEnabled(group.id, sectionItemIds, false);
+                                              return;
+                                            }
+
+                                            if (!hasAcknowledgedAdvancedPricing) {
+                                              setPendingAdvancedEnable({
+                                                groupId: group.id,
+                                                itemIds: sectionItemIds,
+                                                label: `${section.label} guardrails`,
+                                              });
+                                              return;
+                                            }
+
+                                            setPrebuiltGuardrailsEnabled(group.id, sectionItemIds, true);
+                                            showToast(`${section.label} guardrails enabled`, 'success');
+                                          }}
+                                        />
+                                      )}
+                                      <button
+                                        type="button"
+                                        id={sectionHeaderId}
+                                        className="security-advanced-rule-section-trigger"
+                                        aria-expanded={sectionOpen}
+                                        aria-controls={sectionPanelId}
+                                        onClick={() => togglePrivacySection(section.id, !sectionOpen)}
+                                      >
+                                        <span className="security-advanced-rule-section-copy">
+                                          <span className="security-advanced-rule-section-title">{section.label}</span>
+                                          {sectionEnabledCount > 0 && (
+                                            <span className="security-advanced-rule-section-count">
+                                              {sectionEnabledCount} enabled
+                                            </span>
+                                          )}
+                                          <span className="security-advanced-rule-section-desc">{section.description}</span>
+                                        </span>
+                                        <span
+                                          aria-hidden
+                                          className={`accordion__chevron ${sectionOpen ? 'accordion__chevron--open' : ''}`}
+                                        >
+                                          <Icon name="arrow-down" weight="bold" size="sm" />
+                                        </span>
+                                      </button>
+                                    </div>
+                                    {sectionOpen && (
+                                      <div
+                                        id={sectionPanelId}
+                                        role="region"
+                                        aria-labelledby={sectionHeaderId}
+                                        className="security-advanced-rule-section-panel"
+                                      >
+                                        <AccordionGroup type="borderless" className="security-prebuilt-rail-list">
+                                          {visibleSectionItems.map((item) => renderAdvancedPrebuiltGuardrail(group, item))}
+                                        </AccordionGroup>
+                                      </div>
+                                    )}
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    );
+                          })}
+                      </div>
+                    </div>
+                  )}
+                </AccordionGroup>
+                {noGuardrailSearchResults && (
+                  <p className="security-prebuilt-no-results">
+                    No guardrails match &ldquo;{prebuiltSearch.trim()}&rdquo;.
+                  </p>
+                )}
+              </section>
             </div>
           )}
 
           {activeSection === 'Knowledge' && (
-            <EmptyState
-              global
-              illustration="message-activity"
-              title="No knowledge bases"
-              description="Connect knowledge bases to give your agent access to relevant information and documents."
-              actions={
-                <Button variant="secondary">
-                  <Icon name="plus" weight="bold" size={20} />
-                  Add knowledge
-                </Button>
-              }
-            />
+            <div className="knowledge-config">
+              <div className="knowledge-config-section">
+                <div className="knowledge-config-heading">
+                  <div>
+                    <h3>Knowledge bases</h3>
+                    <p>Sources your agent can search to answer questions.</p>
+                  </div>
+                  <button type="button" className="action-config-v2-add-btn">
+                    <Icon name="plus" weight="bold" size={20} />
+                    Add knowledge
+                  </button>
+                </div>
+                <div className="action-config-v2-table-wrap">
+                  <table className="action-config-v2-table knowledge-config-table">
+                    <thead>
+                      <tr>
+                        <th className="col-knowledge-toggle" aria-label="Enabled" />
+                        <th className="col-knowledge-name">Name</th>
+                        <th className="col-knowledge-description">Description</th>
+                        <th className="col-knowledge-sources">Sources</th>
+                        <th className="col-knowledge-status">Status</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {knowledgeBases.map((source) => (
+                        <tr key={source.name}>
+                          <td className="col-knowledge-toggle">
+                            <Toggle
+                              checked={!disabledKnowledge[source.name]}
+                              onChange={() => toggleKnowledge(source.name)}
+                              size="compact"
+                              aria-label={`Toggle ${source.name}`}
+                            />
+                          </td>
+                          <td className="col-knowledge-name">
+                            <div className="knowledge-config-name">
+                              <Icon name="document" weight="bold" size={18} />
+                              <span>{source.name}</span>
+                            </div>
+                          </td>
+                          <td className="col-knowledge-description">{source.description}</td>
+                          <td className="col-knowledge-sources">{source.sources}</td>
+                          <td className="col-knowledge-status">
+                            <Badge variant="success">Connected</Badge>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+
+              <div className="knowledge-config-section">
+                <div className="knowledge-config-heading">
+                  <div>
+                    <h3>AI memory</h3>
+                    <p>What your agent remembers across conversations to personalize responses.</p>
+                  </div>
+                </div>
+                <div className="action-config-v2-table-wrap">
+                  <table className="action-config-v2-table knowledge-config-table">
+                    <thead>
+                      <tr>
+                        <th className="col-knowledge-toggle" aria-label="Enabled" />
+                        <th className="col-knowledge-name">Name</th>
+                        <th className="col-knowledge-description">Description</th>
+                        <th className="col-knowledge-status">Status</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {memorySources.map((source) => (
+                        <tr key={source.name}>
+                          <td className="col-knowledge-toggle">
+                            <Toggle
+                              checked={!disabledKnowledge[source.name]}
+                              onChange={() => toggleKnowledge(source.name)}
+                              size="compact"
+                              aria-label={`Toggle ${source.name}`}
+                            />
+                          </td>
+                          <td className="col-knowledge-name">
+                            <div className="knowledge-config-name">
+                              <Icon name="mind-map" weight="bold" size={18} />
+                              <span>{source.name}</span>
+                            </div>
+                          </td>
+                          <td className="col-knowledge-description">{source.description}</td>
+                          <td className="col-knowledge-status">
+                            <Badge variant="success">Active</Badge>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
           )}
 
           {activeSection === 'Language' && (
@@ -1455,6 +2274,48 @@ export default function ActionConfigureV2() {
               }
               onDismiss={() => setShowMcpBanner(false)}
             />
+          )}
+
+          {activeSection === 'Action' && (
+            <div className="action-config-v2-toolbar">
+              <h3 className="action-config-v2-title">Actions</h3>
+              <div className="add-action-menu-wrapper" ref={addMenuRef}>
+                <button
+                  type="button"
+                  className="action-config-v2-add-btn"
+                  onClick={() => setShowAddMenu(!showAddMenu)}
+                >
+                  <Icon name="plus" weight="bold" size={20} />
+                  Add actions
+                </button>
+                {showAddMenu && (
+                  <div className="add-action-menu">
+                    <div className="add-action-menu-section">
+                      <div className="add-action-menu-header">Browse actions</div>
+                      <button
+                        className="add-action-menu-item"
+                        onClick={() => { setShowAddMenu(false); setShowAddCapabilityModal(true); }}
+                      >
+                        <Icon name="extension-mobility" weight="bold" size={20} />
+                        Select available
+                      </button>
+                    </div>
+                    <div className="add-action-menu-divider" />
+                    <div className="add-action-menu-section">
+                      <div className="add-action-menu-header">Create new action</div>
+                      <button className="add-action-menu-item" onClick={() => setShowAddMenu(false)}>
+                        <Icon name="next" weight="bold" size={20} />
+                        Transfer
+                      </button>
+                      <button className="add-action-menu-item" onClick={() => { setShowAddMenu(false); setShowFulfillmentModal(true); }}>
+                        <Icon name="automation" weight="bold" size={20} />
+                        Fulfillment
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
           )}
 
           {activeSection === 'Action' && (
@@ -1545,13 +2406,6 @@ export default function ActionConfigureV2() {
           )}
         </div>
       </div>
-
-      {activeSection === 'Profile' && (
-        <div className="v2-profile-footer">
-          <Button variant="secondary">Cancel</Button>
-          <Button>Save</Button>
-        </div>
-      )}
 
       {showCapabilityEditModal && createPortal(
         <div className="capability-edit-overlay" onClick={handleCloseCapabilityEdit}>
@@ -2074,41 +2928,24 @@ export default function ActionConfigureV2() {
 
       {pendingAdvancedEnable && (
         <Modal onClose={() => setPendingAdvancedEnable(null)} size="sm">
-          <ModalHeader title="Enable advanced guardrail?" onClose={() => setPendingAdvancedEnable(null)} />
+          <ModalHeader title={`Enable ${pendingAdvancedEnable.label}?`} onClose={() => setPendingAdvancedEnable(null)} />
           <ModalBody>
-            Advanced guardrails are powered by Cisco AI Defense and are billed based on usage. Each enabled rail will incur charges per message scanned. You can review pricing in your organization settings.
+            <p>
+              This guardrail uses Cisco AI Defense. Usage is billed per message scanned, and the change applies immediately.
+            </p>
+            <p>
+              Review pricing in <Link to="/settings/organization">organization settings</Link>.
+            </p>
           </ModalBody>
           <ModalFooter>
             <Button variant="secondary" onClick={() => setPendingAdvancedEnable(null)}>Cancel</Button>
             <Button variant="primary" onClick={() => {
-              const { groupId, itemId } = pendingAdvancedEnable;
-              const itemName = advancedDefaultGroups.find(g => g.id === groupId)?.items.find(i => i.id === itemId)?.name;
-              setAdvancedDefaultGroups(prev => prev.map(gp =>
-                gp.id === groupId
-                  ? { ...gp, items: gp.items.map(it => it.id === itemId ? { ...it, enabled: true } : it) }
-                  : gp
-              ));
-              setExpandedRails(prev => new Set(prev).add(itemId));
+              const { groupId, itemIds, label } = pendingAdvancedEnable;
+              setPrebuiltGuardrailsEnabled(groupId, itemIds, true);
               setHasAcknowledgedAdvancedPricing(true);
               setPendingAdvancedEnable(null);
-              showToast(`${itemName} guardrail enabled`, 'success');
+              showToast(`${label} enabled`, 'success');
             }}>Enable</Button>
-          </ModalFooter>
-        </Modal>
-      )}
-
-      {confirmDisableJailbreak && (
-        <Modal onClose={() => setConfirmDisableJailbreak(false)} size="sm">
-          <ModalHeader title="Disable jailbreak protection?" onClose={() => setConfirmDisableJailbreak(false)} />
-          <ModalBody>
-            Jailbreak protection prevents users from bypassing your agent&apos;s instructions and safety rules through prompt injection. Disabling it may expose your agent to manipulation.
-          </ModalBody>
-          <ModalFooter>
-            <Button variant="secondary" onClick={() => setConfirmDisableJailbreak(false)}>Cancel</Button>
-            <Button variant="primary" color="negative" onClick={() => {
-              setStandardGuardrails(prev => prev.map(gr => gr.id === 'std-jailbreak' ? { ...gr, enabled: false } : gr));
-              setConfirmDisableJailbreak(false);
-            }}>Disable</Button>
           </ModalFooter>
         </Modal>
       )}
@@ -2242,55 +3079,26 @@ export default function ActionConfigureV2() {
       )}
       {showPolicyStudio && (() => {
         const editItem = editingProfileId ? advancedCustomItems.find(it => it.id === editingProfileId) : undefined;
-        const initial = editItem
-          ? { name: editItem.name, description: editItem.description, overview: editItem.overview }
-          : undefined;
-        const versionOpts = editItem?.versions.map((v, i) => ({
-          value: v.version,
-          label: i === editItem.versions.length - 1 ? `${v.version} (current)` : v.version,
-        }));
         return (
-          <PolicyStudio
-            key={editingProfileId || 'new'}
-            initialData={initial}
-            versionOptions={versionOpts}
+          <SecurityUIPolicyStudio
+            key={editingProfileId || 'new-security-ui'}
+            initialBasicStep={!editingProfileId}
+            initialProfileName={editItem?.name}
+            initialData={editItem ? {
+              name: editItem.name,
+              description: editItem.description,
+              overview: editItem.overview,
+              policyText: editItem.policyText,
+            } : undefined}
             onClose={() => { setShowPolicyStudio(false); setEditingProfileId(null); }}
             onPublish={(result) => {
-              const now = new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
-              if (result.publishMode === 'new') {
-                const v1: import('./PolicyStudio').PolicyStudioResult & { version: string; createdAt: string } = {
-                  ...result,
-                  version: 'v1',
-                  createdAt: now,
-                };
-                setAdvancedCustomItems(prev => [...prev, {
-                  id: `custom-${Date.now()}`,
-                  name: result.name,
-                  description: result.description,
-                  overview: result.overview,
-                  enabled: true,
-                  createdBy: 'You',
-                  createdAt: now,
-                  versions: [{ version: v1.version, name: v1.name, description: v1.description, overview: v1.overview, createdAt: v1.createdAt }],
-                }]);
-                showToast(`Profile "${result.name}" published`, 'success');
-              } else if (result.publishMode === 'override' && editingProfileId) {
-                setAdvancedCustomItems(prev => prev.map(it => {
-                  if (it.id !== editingProfileId) return it;
-                  const updatedVersions = [...it.versions];
-                  if (updatedVersions.length > 0) {
-                    updatedVersions[updatedVersions.length - 1] = {
-                      ...updatedVersions[updatedVersions.length - 1],
-                      name: result.name,
-                      description: result.description,
-                      overview: result.overview,
-                      createdAt: now,
-                    };
-                  }
-                  return { ...it, name: result.name, description: result.description, overview: result.overview, versions: updatedVersions };
-                }));
-                showToast(`Profile "${result.name}" updated`, 'success');
-              } else if (result.publishMode === 'new-version' && editingProfileId) {
+              const now = formatGuardrailUpdatedAt();
+              const v1: import('./PolicyStudio').PolicyStudioResult & { version: string; createdAt: string } = {
+                ...result,
+                version: 'v1',
+                createdAt: now,
+              };
+              if (editingProfileId) {
                 setAdvancedCustomItems(prev => prev.map(it => {
                   if (it.id !== editingProfileId) return it;
                   const nextNum = it.versions.length + 1;
@@ -2300,17 +3108,37 @@ export default function ActionConfigureV2() {
                     description: result.description,
                     overview: result.overview,
                     createdAt: now,
+                    policyText: result.policyText,
                   };
                   return {
                     ...it,
                     name: result.name,
                     description: result.description,
                     overview: result.overview,
+                    createdAt: now,
+                    policyText: result.policyText,
                     versions: [...it.versions, newVersion],
                   };
                 }));
                 showToast(`Profile "${result.name}" v${(editItem?.versions.length ?? 0) + 1} created`, 'success');
+                setShowPolicyStudio(false);
+                setEditingProfileId(null);
+                return;
               }
+              setAdvancedCustomItems(prev => [...prev, {
+                id: `custom-${Date.now()}`,
+                name: result.name,
+                description: result.description,
+                overview: result.overview,
+                policyText: result.policyText,
+                enabled: true,
+                action: 'block',
+                direction: 'prompt',
+                createdBy: 'You',
+                createdAt: now,
+                versions: [{ version: v1.version, name: v1.name, description: v1.description, overview: v1.overview, createdAt: v1.createdAt, policyText: v1.policyText }],
+              }]);
+              showToast(`Profile "${result.name}" published`, 'success');
               setShowPolicyStudio(false);
               setEditingProfileId(null);
             }}

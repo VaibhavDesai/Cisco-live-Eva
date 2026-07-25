@@ -1,243 +1,377 @@
 import { useEffect, useState } from 'react';
-import { useNavigate, useParams, Navigate, useSearchParams } from 'react-router-dom';
+import { Navigate, useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { useApp } from '../../contexts/AppContext';
 import { AgentHeader } from '../../components/agents';
 import { Card } from '../../components/shared/Card';
 import Badge from '../../components/shared/Badge';
+import Button from '../../components/shared/Button';
 import { Table, TableHead, TableBody, TableRow, TableHeader, TableCell } from '../../components/shared/Table';
 import Dropdown from '../../components/shared/Dropdown';
-import Button from '../../components/shared/Button';
+import { Banner } from '../../components/shared/Banner';
 import { Icon } from '../../icons';
+import {
+  getCiscoLiveSessions,
+  CISCO_LIVE_PRIMARY_AGENT_ID,
+  type CiscoLiveSession,
+  type CiscoLiveSessionOutcome,
+} from '../../demo/ciscoLiveDemo';
 
-const RECENT_SESSIONS = [
-  { id: 'SES-001', time: '2 min ago', messages: 8, duration: '4m 32s', outcome: 'Resolved' },
-  { id: 'SES-002', time: '15 min ago', messages: 12, duration: '6m 18s', outcome: 'Transferred' },
-  { id: 'SES-003', time: '32 min ago', messages: 5, duration: '2m 45s', outcome: 'Resolved' },
-  { id: 'SES-004', time: '1 hour ago', messages: 15, duration: '8m 12s', outcome: 'Resolved' },
-  { id: 'SES-005', time: '2 hours ago', messages: 3, duration: '1m 23s', outcome: 'Abandoned' },
-];
+function outcomeVariant(outcome: CiscoLiveSessionOutcome) {
+  if (outcome === 'Resolved') return 'success';
+  if (outcome === 'Transferred') return 'success';
+  return 'info';
+}
 
-const SESSION_DETAIL_COPY: Record<string, {
-  topic: string;
-  customer: string;
-  summary: string;
-  startedAt: string;
-  channel: string;
-  transcript: Array<{ speaker: string; time: string; text: string; kind?: 'system' }>;
-}> = {
-  'SES-002': {
-    topic: 'Order change routed to a specialist',
-    customer: 'Kristin M.',
-    summary: 'The agent gathered the order context, recognized that the address change required human review, and transferred the customer with a summary attached.',
-    startedAt: 'Today, 9:36 AM',
-    channel: 'Voice',
-    transcript: [
-      { speaker: 'Customer', time: '9:36 AM', text: 'I need to change the delivery address for an order that is already on the way.' },
-      { speaker: 'Order Management Agent', time: '9:37 AM', text: 'I can help gather the order details. I will confirm what can be changed before making any promise.' },
-      { speaker: 'Customer', time: '9:39 AM', text: 'The carrier says the address is locked. Can someone review it?' },
-      { speaker: 'Handoff', time: '9:42 AM', text: 'Transferred to an order specialist with the order context and conversation summary attached.', kind: 'system' },
-    ],
-  },
-};
+function SessionDetail({
+  session,
+  backLabel,
+  onBack,
+  onReviewGuardrail,
+}: {
+  session: CiscoLiveSession;
+  backLabel: string;
+  onBack: () => void;
+  onReviewGuardrail: () => void;
+}) {
+  return (
+    <div className="agent-session-detail-page">
+      <div className="agent-session-detail-topbar">
+        <Button variant="tertiary" size="sm" onClick={onBack}>
+          <Icon name="arrow-left" weight="bold" size="sm" />
+          {backLabel}
+        </Button>
+        <span>Session details</span>
+      </div>
+
+      <header className="agent-session-detail-header">
+        <div>
+          <div className="agent-session-detail-title-row">
+            <h1>{session.topic}</h1>
+            <Badge variant={outcomeVariant(session.outcome)}>{session.outcome}</Badge>
+            {session.guardrailTriggered && <Badge variant="warning">Guardrail triggered</Badge>}
+          </div>
+          <p>{session.summary}</p>
+        </div>
+      </header>
+
+      <div className="agent-session-detail-grid">
+        <Card className="agent-session-transcript-card">
+          <div className="agent-session-panel-heading">
+            <div>
+              <h2>Conversation transcript</h2>
+              <p>{session.messages} messages • {session.duration}</p>
+            </div>
+            <Badge variant="default">{session.channel}</Badge>
+          </div>
+
+          <div className="agent-session-transcript" aria-label="Session conversation transcript">
+            {session.transcript.length > 0 ? session.transcript.map((event) => {
+              if (event.kind === 'guardrail') {
+                return (
+                  <Banner
+                    key={event.id}
+                    type="warning"
+                    icon="shield"
+                    title={`${event.title} · ${event.time}`}
+                    subtitle={(
+                      <span className="agent-session-guardrail-banner__body">
+                        <span>{event.text}</span>
+                        {event.detail && (
+                          <span className="agent-session-guardrail-banner__detail">{event.detail}</span>
+                        )}
+                      </span>
+                    )}
+                    dismissable={false}
+                    className="agent-session-guardrail-banner"
+                  />
+                );
+              }
+
+              if (event.kind === 'system' || event.kind === 'handoff') {
+                return (
+                  <article key={event.id} className={`agent-session-system-event agent-session-system-event--${event.kind}`}>
+                    <span aria-hidden="true">
+                      <Icon name={event.kind === 'handoff' ? 'headset' : 'check-circle'} weight="bold" size="sm" />
+                    </span>
+                    <div>
+                      <div className="agent-session-event-meta">
+                        <strong>{event.title ?? event.speaker}</strong>
+                        <time>{event.time}</time>
+                      </div>
+                      <p>{event.text}</p>
+                    </div>
+                  </article>
+                );
+              }
+
+              return (
+                <article key={event.id} className={`agent-session-message agent-session-message--${event.kind}`}>
+                  <div className="agent-session-message__meta">
+                    <strong>{event.speaker}</strong>
+                    <time>{event.time}</time>
+                  </div>
+                  <p>{event.text}</p>
+                </article>
+              );
+            }) : (
+              <div className="agent-session-transcript-empty">
+                <Icon name="transcript" weight="regular" size="lg" />
+                <strong>Session summary</strong>
+                <p>{session.summary}</p>
+              </div>
+            )}
+          </div>
+        </Card>
+
+        <aside className="agent-session-detail-sidebar" aria-label="Session metadata and policy evaluation">
+          <Card className="agent-session-metadata-card">
+            <div className="agent-session-panel-heading">
+              <div>
+                <h2>Session metadata</h2>
+                <p>Captured from the live interaction</p>
+              </div>
+            </div>
+            <dl className="agent-session-metadata-list">
+              <div><dt>Session ID</dt><dd>{session.id}</dd></div>
+              <div><dt>Consumer</dt><dd>{session.customer}</dd></div>
+              <div><dt>Consumer ID</dt><dd>{session.consumerId}</dd></div>
+              <div><dt>Started</dt><dd>{session.startedAt}</dd></div>
+              <div><dt>Channel</dt><dd>{session.channel}</dd></div>
+              <div><dt>Outcome</dt><dd>{session.outcome}</dd></div>
+            </dl>
+          </Card>
+
+          {session.guardrail ? (
+            <Card className="agent-session-policy-card">
+              <div className="agent-session-policy-card__header">
+                <span aria-hidden="true"><Icon name="shield" weight="bold" size="md" /></span>
+                <div>
+                  <h2>{session.guardrail.name}</h2>
+                </div>
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  className="agent-session-policy-card__review"
+                  onClick={onReviewGuardrail}
+                >
+                  Review guardrail
+                </Button>
+              </div>
+              <dl className="agent-session-policy-list">
+                <div><dt>Policy</dt><dd>{session.guardrail.policy}</dd></div>
+                <div><dt>Detected</dt><dd>{session.guardrail.detected}</dd></div>
+                <div><dt>Action</dt><dd>{session.guardrail.action}</dd></div>
+              </dl>
+            </Card>
+          ) : (
+            <Card className="agent-session-policy-card agent-session-policy-card--quiet">
+              <Icon name="check-circle" weight="bold" size="md" />
+              <div><h2>No policy intervention</h2><p>The session completed within the configured boundaries.</p></div>
+            </Card>
+          )}
+
+          <Card className="agent-session-systems-card">
+            <div className="agent-session-panel-heading">
+              <div><h2>Connected systems</h2><p>Systems used in this session</p></div>
+            </div>
+            <ul>
+              {session.connectedSystems.map((system) => (
+                <li key={system}><Icon name="check-circle" weight="bold" size="sm" />{system}</li>
+              ))}
+            </ul>
+          </Card>
+        </aside>
+      </div>
+    </div>
+  );
+}
 
 export default function AgentSessions() {
   const { agentId } = useParams();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
-  const { agents, agentDrafts, currentAgent, selectAgent } = useApp();
+  const { agents, currentAgent, selectAgent } = useApp();
   const sessionIdQuery = searchParams.get('sessionId')?.trim() ?? '';
   const sourceQuery = searchParams.get('source')?.trim() ?? '';
-  const [searchTerm, setSearchTerm] = useState(sessionIdQuery);
+  const [searchTerm, setSearchTerm] = useState('');
   const [outcomeFilter, setOutcomeFilter] = useState('all');
+  const [guardrailOnly, setGuardrailOnly] = useState(false);
+  const [transfersOnly, setTransfersOnly] = useState(false);
+
   const agent = agentId ? agents[agentId] : undefined;
 
   useEffect(() => {
-    if (agentId && agent && currentAgent?.id !== agentId) {
-      selectAgent(agentId);
+    if (agent && currentAgent?.id !== agent.id) {
+      selectAgent(agent.id);
     }
-  }, [agent, agentId, currentAgent?.id, selectAgent]);
+  }, [agent, currentAgent?.id, selectAgent]);
 
   if (!agent) return <Navigate to="/agents" replace />;
 
-  const isNewAgentWithoutSessions = Boolean(
-    agentId && agentDrafts[agentId] && (!agent.sessions || agent.sessions === '—'),
-  );
-  const showingObservabilityDemo = sourceQuery === 'observability';
-  const hasSessionDataset = !isNewAgentWithoutSessions || showingObservabilityDemo;
-  const availableSessions = hasSessionDataset ? RECENT_SESSIONS : [];
+  const agentSessions = getCiscoLiveSessions(agent.id);
+  const sessions = agentSessions.length > 0 ? agentSessions : getCiscoLiveSessions(CISCO_LIVE_PRIMARY_AGENT_ID);
   const activeSession = sessionIdQuery
-    ? availableSessions.find(session => session.id.toLowerCase() === sessionIdQuery.toLowerCase())
+    ? sessions.find((session) => session.id.toLowerCase() === sessionIdQuery.toLowerCase())
     : undefined;
-  const activeSessionDetail = activeSession ? SESSION_DETAIL_COPY[activeSession.id] : undefined;
+
   const normalizedSearch = searchTerm.trim().toLowerCase();
-  const filteredSessions = availableSessions.filter(session => {
-    const matchesSearch = !normalizedSearch || session.id.toLowerCase().includes(normalizedSearch);
+  const filteredSessions = sessions.filter((session) => {
+    const matchesSearch = !normalizedSearch || [session.id, session.customer, session.topic]
+      .some((value) => value.toLowerCase().includes(normalizedSearch));
     const matchesOutcome = outcomeFilter === 'all' || session.outcome.toLowerCase() === outcomeFilter;
-    return matchesSearch && matchesOutcome;
+    const matchesGuardrail = !guardrailOnly || session.guardrailTriggered;
+    const matchesTransfer = !transfersOnly || session.transferred;
+    return matchesSearch && matchesOutcome && matchesGuardrail && matchesTransfer;
   });
+
+  const openSession = (sessionId: string) => {
+    navigate(`/agents/${agent.id}/sessions?sessionId=${encodeURIComponent(sessionId)}&source=sessions`);
+  };
 
   return (
     <div className="primary-content">
-      <AgentHeader agent={agent} activeTab="sessions" showPublishButton={false} />
+      <AgentHeader
+        agent={agent}
+        activeTab="sessions"
+        showPublishButton={false}
+        showTabs={false}
+      />
 
-      <div className={`secondary-content${activeSession ? ' agent-session-detail-page' : ''}`}>
+      <div className={`agent-sessions-page${activeSession ? '' : ' secondary-content'}`}>
         {activeSession ? (
+          <SessionDetail
+            session={activeSession}
+            backLabel={sourceQuery === 'observability' ? 'Back to agent overview' : 'All sessions'}
+            onBack={() => navigate(
+              sourceQuery === 'observability'
+                ? `/agents/${agent.id}`
+                : `/agents/${agent.id}/sessions`,
+            )}
+            onReviewGuardrail={() => navigate(`/agents/${agent.id}/configure?section=Security&tier=advanced`)}
+          />
+        ) : (
           <>
-            <div className="agent-session-detail-topbar">
-              <Button
-                variant="tertiary"
-                size="sm"
-                onClick={() => navigate(
-                  sourceQuery === 'observability'
-                    ? `/agents/${agent.id}/studio`
-                    : `/agents/${agent.id}/sessions`,
-                )}
-              >
-                <Icon name="arrow-left" weight="bold" size="sm" />
-                {sourceQuery === 'observability' ? 'Back to agent overview' : 'All sessions'}
+            <div className="agent-sessions-heading">
+              <div>
+                <h1>Sessions</h1>
+                <p>Review interactions, handoffs, errors, and policy triggers for this agent.</p>
+              </div>
+              <Button variant="secondary" size="sm">
+                <Icon name="refresh" weight="bold" size="sm" />
+                Refresh
               </Button>
-              <span>Session details</span>
             </div>
 
-            <header className="agent-session-detail-header">
-              <div>
-                <div className="agent-session-detail-title-row">
-                  <h1>{activeSessionDetail?.topic ?? `Session ${activeSession.id}`}</h1>
-                  <Badge variant={activeSession.outcome === 'Transferred' ? 'success' : 'info'}>
-                    {activeSession.outcome}
-                  </Badge>
+            {sourceQuery === 'observability' && (
+              <div className="agent-sessions-preview-callout">
+                <div>
+                  <strong>Opened from operational status</strong>
+                  <p>The session linked to the latest policy event is highlighted.</p>
                 </div>
-                <p>{activeSessionDetail?.summary ?? 'Review the interaction outcome and transcript.'}</p>
+                <Badge variant="info">Agent 360</Badge>
               </div>
-            </header>
+            )}
 
-            <div className="agent-session-detail-grid">
-              <Card className="agent-session-detail-card agent-session-transcript-card">
-                <div className="agent-session-panel-heading">
-                  <div>
-                    <h2>Conversation transcript</h2>
-                    <p>{activeSession.messages} messages · {activeSession.duration}</p>
+            <div className="agent-sessions-layout">
+              <Card className="agent-sessions-filter-card">
+                <h2>Refine results</h2>
+                <label className="agent-sessions-filter-field">
+                  <span>Search</span>
+                  <div className="agent-sessions-search-input">
+                    <Icon name="search" weight="regular" size="sm" />
+                    <input
+                      type="search"
+                      placeholder="Session ID, customer, or topic"
+                      value={searchTerm}
+                      onChange={(event) => setSearchTerm(event.target.value)}
+                    />
                   </div>
-                  <Badge variant="default">{activeSessionDetail?.channel ?? 'Voice'}</Badge>
-                </div>
-                <div className="agent-session-transcript" role="log" aria-label="Session conversation transcript">
-                  {(activeSessionDetail?.transcript ?? []).map(event => (
-                    <article
-                      key={`${event.time}-${event.speaker}`}
-                      className={event.kind === 'system' ? 'agent-session-transcript-event agent-session-transcript-event--system' : 'agent-session-transcript-event'}
-                    >
-                      <div>
-                        <strong>{event.speaker}</strong>
-                        <time>{event.time}</time>
-                      </div>
-                      <p>{event.text}</p>
-                    </article>
-                  ))}
-                </div>
+                </label>
+                <label className="agent-sessions-filter-field">
+                  <span>Outcome</span>
+                  <Dropdown
+                    options={[
+                      { value: 'all', label: 'All outcomes' },
+                      { value: 'resolved', label: 'Resolved' },
+                      { value: 'transferred', label: 'Transferred' },
+                      { value: 'in progress', label: 'In progress' },
+                    ]}
+                    value={outcomeFilter}
+                    onChange={setOutcomeFilter}
+                  />
+                </label>
+                <fieldset className="agent-sessions-metadata-filters">
+                  <legend>Metadata</legend>
+                  <label>
+                    <input type="checkbox" checked={guardrailOnly} onChange={(event) => setGuardrailOnly(event.target.checked)} />
+                    <span>Guardrail triggered</span>
+                  </label>
+                  <label>
+                    <input type="checkbox" checked={transfersOnly} onChange={(event) => setTransfersOnly(event.target.checked)} />
+                    <span>Human transfer</span>
+                  </label>
+                </fieldset>
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  onClick={() => {
+                    setSearchTerm('');
+                    setOutcomeFilter('all');
+                    setGuardrailOnly(false);
+                    setTransfersOnly(false);
+                  }}
+                >
+                  Clear filters
+                </Button>
               </Card>
 
-              <Card className="agent-session-detail-card agent-session-metadata-card">
-                <div className="agent-session-panel-heading">
-                  <div>
-                    <h2>Session metadata</h2>
-                    <p>Captured from the interaction</p>
-                  </div>
+              <Card className="agent-sessions-table-card">
+                <div className="agent-sessions-table-heading">
+                  <div><h2>Recent sessions</h2><p>{filteredSessions.length} of {sessions.length} sessions</p></div>
                 </div>
-                <dl className="agent-session-metadata-list">
-                  <div><dt>Session ID</dt><dd>{activeSession.id}</dd></div>
-                  <div><dt>Customer</dt><dd>{activeSessionDetail?.customer ?? 'Customer'}</dd></div>
-                  <div><dt>Started</dt><dd>{activeSessionDetail?.startedAt ?? activeSession.time}</dd></div>
-                  <div><dt>Channel</dt><dd>{activeSessionDetail?.channel ?? 'Voice'}</dd></div>
-                  <div><dt>Outcome</dt><dd>{activeSession.outcome}</dd></div>
-                </dl>
+                <Table className="agent-sessions-table" stickyHeader>
+                  <TableHead>
+                    <TableRow>
+                      <TableHeader>Channel</TableHeader>
+                      <TableHeader>Session ID</TableHeader>
+                      <TableHeader>Customer</TableHeader>
+                      <TableHeader>Messages</TableHeader>
+                      <TableHeader>Updated</TableHeader>
+                      <TableHeader>Outcome</TableHeader>
+                      <TableHeader>Metadata</TableHeader>
+                    </TableRow>
+                  </TableHead>
+                  <TableBody
+                    empty={filteredSessions.length === 0}
+                    emptyTitle="No sessions found"
+                    emptyDescription="Change or clear the filters to see more sessions."
+                    colSpan={7}
+                  >
+                    {filteredSessions.map((session) => (
+                      <TableRow
+                        key={session.id}
+                        onClick={() => openSession(session.id)}
+                        selected={sourceQuery === 'observability' && session.id === sessionIdQuery}
+                      >
+                        <TableCell><span className="agent-session-channel"><Icon name={session.channel === 'Voice' ? 'phone' : 'chat'} weight="regular" size="sm" />{session.channel}</span></TableCell>
+                        <TableCell><strong>{session.id}</strong><small>{session.topic}</small></TableCell>
+                        <TableCell>{session.customer}</TableCell>
+                        <TableCell>{session.messages}</TableCell>
+                        <TableCell>{session.updated}</TableCell>
+                        <TableCell><Badge variant={outcomeVariant(session.outcome)}>{session.outcome}</Badge></TableCell>
+                        <TableCell>
+                          <span className="agent-session-metadata-icons">
+                            {session.guardrailTriggered && <span title="Guardrail triggered"><Icon name="shield" weight="bold" size="sm" /></span>}
+                            {session.transferred && <span title="Human transfer"><Icon name="headset" weight="bold" size="sm" /></span>}
+                          </span>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
               </Card>
             </div>
           </>
-        ) : (
-        <Card>
-          {sourceQuery === 'preview' && (
-            <div className="agent-sessions-preview-callout">
-              <div>
-                <strong>Preview interaction</strong>
-                <p>
-                  {sessionIdQuery
-                    ? `Showing the session lookup for ${sessionIdQuery}. Metadata appears here once the preview is ingested.`
-                    : 'Showing sessions after your preview. Metadata appears here once the preview is ingested.'}
-                </p>
-              </div>
-              {sessionIdQuery && <Badge variant="info">{sessionIdQuery}</Badge>}
-            </div>
-          )}
-          {showingObservabilityDemo && (
-            <div className="agent-sessions-preview-callout">
-              <div>
-                <strong>Observability session</strong>
-                <p>
-                  {sessionIdQuery
-                    ? `Showing ${sessionIdQuery} from the same dashboard demo dataset used in Agent Studio.`
-                    : 'Showing the dashboard demo sessions available from Agent Studio.'}
-                </p>
-              </div>
-              {sessionIdQuery && <Badge variant="info">{sessionIdQuery}</Badge>}
-            </div>
-          )}
-          <div className="filter-bar agent-sessions-filter-bar">
-            <input
-              type="text"
-              placeholder="Search sessions..."
-              value={searchTerm}
-              onChange={event => setSearchTerm(event.target.value)}
-            />
-            <Dropdown
-              options={[
-                { value: 'all', label: 'All Outcomes' },
-                { value: 'resolved', label: 'Resolved' },
-                { value: 'transferred', label: 'Transferred' },
-                { value: 'abandoned', label: 'Abandoned' }
-              ]}
-              value={outcomeFilter}
-              onChange={setOutcomeFilter}
-            />
-          </div>
-          <Table>
-            <TableHead>
-              <TableRow>
-                <TableHeader>Session ID</TableHeader>
-                <TableHeader>Time</TableHeader>
-                <TableHeader>Messages</TableHeader>
-                <TableHeader>Duration</TableHeader>
-                <TableHeader>Outcome</TableHeader>
-              </TableRow>
-            </TableHead>
-            <TableBody
-              empty={filteredSessions.length === 0}
-              emptyTitle={hasSessionDataset ? 'No matching sessions' : 'No sessions yet'}
-              emptyDescription={
-                hasSessionDataset
-                  ? 'Try changing your search or outcome filter.'
-                  : 'Sessions will appear here after the deployed agent begins receiving traffic.'
-              }
-              colSpan={5}
-            >
-              {filteredSessions.map(session => (
-                <TableRow key={session.id}>
-                  <TableCell><strong>{session.id}</strong></TableCell>
-                  <TableCell>{session.time}</TableCell>
-                  <TableCell>{session.messages}</TableCell>
-                  <TableCell>{session.duration}</TableCell>
-                  <TableCell>
-                    <span style={{
-                      color: session.outcome === 'Resolved' ? 'var(--success-color)' :
-                             session.outcome === 'Transferred' ? 'var(--accent-color)' : 'var(--warning-color)'
-                    }}>
-                      {session.outcome}
-                    </span>
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        </Card>
         )}
       </div>
     </div>
