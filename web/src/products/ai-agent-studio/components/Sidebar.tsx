@@ -102,12 +102,12 @@ export default function Sidebar({ collapsed = false }: SidebarProps) {
                 type="button"
                 className="sidebar-agent-back"
                 onClick={() => navigate('/agents')}
-                title="Back to workspace"
+                title="Back to AI Agents"
               >
                 <span className="sidebar-agent-back__icon" aria-hidden>
                   <Icon name="arrow-left" size={16} />
                 </span>
-                <span className="sidebar-agent-back__label">Back to workspace</span>
+                <span className="sidebar-agent-back__label">Back to AI Agents</span>
               </button>
 
               <button

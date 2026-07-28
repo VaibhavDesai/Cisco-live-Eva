@@ -105,6 +105,12 @@ const buildDraft = (definition: CiscoLiveAgentDefinition): AgentDraft => {
   markConfigured(draft.familyConfiguration, 'knowledge', definition.knowledgeSources.map(source => source.name), now);
   markConfigured(draft.familyConfiguration, 'memory', definition.memorySources.map(source => source.name), now);
   markConfigured(draft.familyConfiguration, 'actions', [...definition.actions], now);
+  markConfigured(
+    draft.familyConfiguration,
+    'handoff',
+    definition.orchestrationScenarios.map(scenario => scenario.name),
+    now,
+  );
   markConfigured(draft.familyConfiguration, 'security', getCiscoLiveGuardrailNames(definition), now);
 
   if (definition.digitalChannelAddress) {

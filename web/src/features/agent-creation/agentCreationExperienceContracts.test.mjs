@@ -6,7 +6,73 @@ function readSource(relativePath) {
   return readFileSync(new URL(relativePath, import.meta.url), 'utf8');
 }
 
-test('Agent Studio draft header publishes through the version model instead of duplicating', () => {
+test('EAGLE GREEN starts with the large-reservation approval policy created, enabled, and connected', () => {
+  const demoSource = readSource('../../demo/ciscoLiveDemo.ts');
+  const seedSource = readSource('../../demo/ciscoLiveSeed.ts');
+  const configureSource = readSource('../../pages/agent/ActionConfigureV2.tsx');
+  const overviewSource = readSource('../../pages/agent/AgentStudioLanding.tsx');
+
+  assert.match(
+    demoSource,
+    /CISCO_LIVE_LARGE_RESERVATION_GUARDRAIL[\s\S]*?id:\s*['"]custom-large-reservation-approval['"][\s\S]*?name:\s*['"]Large reservation approval['"]/,
+  );
+  assert.match(
+    demoSource,
+    /CISCO_LIVE_PRIMARY_GUARDRAILS\s*=\s*\[[\s\S]*?CISCO_LIVE_LARGE_RESERVATION_GUARDRAIL[\s\S]*?\]/,
+    'the approval policy should be part of the primary agent seed',
+  );
+  assert.match(
+    demoSource,
+    /id:\s*CISCO_LIVE_PRIMARY_AGENT_ID[\s\S]*?customGuardrails:\s*CISCO_LIVE_PRIMARY_GUARDRAILS/,
+    'EAGLE GREEN should receive the seeded custom guardrails',
+  );
+  assert.match(
+    configureSource,
+    /ciscoLiveAgent\.customGuardrails\.map\(guardrail => \(\{[\s\S]*?enabled:\s*true/,
+    'seeded custom guardrails should start enabled',
+  );
+  assert.match(
+    seedSource,
+    /markConfigured\(draft\.familyConfiguration,\s*['"]security['"],\s*getCiscoLiveGuardrailNames\(definition\),\s*now\)/,
+    'the seeded policy should configure the Overview Security capability',
+  );
+  assert.match(
+    overviewSource,
+    /const configuredSecurity = configuredCapabilityLabels\(agentDraft,\s*['"]security['"]\)[\s\S]*?chips:\s*configuredSecurity\.map\(item => \(\{\s*item,\s*type:\s*['"]guardrail['"]/,
+    'the Connected card should render configured Security policies as guardrail chips',
+  );
+});
+
+test('operational status shows a compact session event table filtered by the selected time range', () => {
+  const source = readSource('../../pages/agent/AgentStudioLanding.tsx');
+
+  assert.match(
+    source,
+    /const operationalSessions = getCiscoLiveSessions\(agent\.id\)[\s\S]*?\.filter\(session => sessionAgeHours\(session\.updated\) <= operationalTimeRangeHours\)[\s\S]*?\.slice\(0,\s*3\)/,
+    'sessions should respect the selected time range and stay compact',
+  );
+  assert.match(
+    source,
+    /<Banner[\s\S]*?className="agent-studio-operational-event-banner"[\s\S]*?\/>[\s\S]*?<section[\s\S]*?className="agent-studio-session-events"[\s\S]*?<Table className="agent-studio-session-events__table"/,
+    'the session table should appear directly below the operational banner',
+  );
+  assert.match(
+    source,
+    /<section[\s\S]*?className="agent-studio-session-events"[\s\S]*?className="agent-studio-session-events__actions"[\s\S]*?Open Sessions[\s\S]*?<Table className="agent-studio-session-events__table"/,
+    'Open Sessions should sit in the session events header',
+  );
+  assert.match(
+    source,
+    /<TableHeader>Channel<\/TableHeader>[\s\S]*?<TableHeader>Session ID<\/TableHeader>[\s\S]*?<TableHeader>Customer<\/TableHeader>[\s\S]*?<TableHeader>Messages<\/TableHeader>[\s\S]*?<TableHeader>Updated<\/TableHeader>[\s\S]*?<TableHeader>Outcome<\/TableHeader>[\s\S]*?<TableHeader>Event<\/TableHeader>/,
+  );
+  assert.match(
+    source,
+    /if \(outcome === ['"]Transferred['"]\) return ['"]warning['"][\s\S]*?if \(outcome === ['"]Resolved['"]\) return ['"]success['"]/,
+    'transferred sessions should use the yellow warning treatment while resolved sessions remain green',
+  );
+});
+
+test('Agent Studio header saves configuration changes before publishing a new version', () => {
   const source = readSource('../../pages/agent/AgentStudioLanding.tsx');
   const handlerStart = source.indexOf('const handlePublishVersion');
   const headerActionsStart = source.indexOf('const headerActions =');
@@ -17,35 +83,30 @@ test('Agent Studio draft header publishes through the version model instead of d
   assert.ok(handlerStart >= 0 && headerActionsStart > handlerStart && headerActionsEnd > headerActionsStart);
   assert.match(handlerSource, /publishAgentVersion\(agent\.id\)/);
   assert.match(handlerSource, /Published version \$\{publishedDraft\.version\}/);
+  assert.match(handlerSource, /const hasUnsavedConfigurationChanges[\s\S]*?currentAgentRevision !== overviewReleaseState\.savedRevision/);
+  assert.match(handlerSource, /const releaseActionLabel = hasSavedConfigurationReadyToPublish \? ['"]Publish['"] : ['"]Save['"]/);
+  assert.match(handlerSource, /const handleReleaseAction[\s\S]*?showToast\(['"]Configuration saved['"], ['"]success['"]\)[\s\S]*?handlePublishVersion\(\)/);
   assert.match(
     headerActionsSource,
-    /lifecycle === ['"]draft['"]\s*\?\s*\([\s\S]*?onClick=\{handlePublishVersion\}[\s\S]*?>\s*Publish\s*<\/Button>[\s\S]*?:\s*family\s*&&\s*\([\s\S]*?Duplicate as…/,
-    'drafts should show Publish while later lifecycle states retain Duplicate as',
+    /disabled=\{releaseActionDisabled\}[\s\S]*?onClick=\{handleReleaseAction\}[\s\S]*?\{releaseActionLabel\}/,
+    'the action should be disabled without changes, then progress from Save to Publish',
   );
+  assert.doesNotMatch(headerActionsSource, /Duplicate as…/);
 });
 
-test('observability summary cards toggle the dashboard chart inline with disclosure semantics', () => {
+test('operational status presents its metrics as a compact table with a dashboard link', () => {
   const studioSource = readSource('../../pages/agent/AgentStudioLanding.tsx');
-  const cardSource = readSource('../clus-kpi-dashboard/components/KPICard.tsx');
-
-  assert.match(studioSource, /useState<string \| null>\(null\)[^;]*activeObservabilityKpiId|activeObservabilityKpiId[^;]*useState<string \| null>\(null\)/);
   assert.match(
     studioSource,
-    /<KPICard[\s\S]*?isActive=\{activeObservabilityKpiId\s*===\s*metric\.id\}[\s\S]*?onClick=\{\(\)\s*=>\s*\{[\s\S]*?setActiveObservabilityKpiId\(\w+\s*=>\s*\w+\s*===\s*metric\.id\s*\?\s*null\s*:\s*metric\.id\);[\s\S]*?\}\}[\s\S]*?\/>/,
-    'clicking the active card should collapse it and clicking another should select it',
+    /className="agent-studio-operational-metrics-table"[\s\S]*?<th scope="col">Metric<\/th>[\s\S]*?<th scope="col">Value<\/th>[\s\S]*?<th scope="col">Change<\/th>[\s\S]*?OPERATIONAL_HEALTH_METRICS\.map/,
+    'the operational metrics should remain compact and scannable',
   );
-  assert.match(studioSource, /ariaExpanded=\{activeObservabilityKpiId\s*===\s*metric\.id\}/);
-  assert.match(studioSource, /ariaControls=\{activeObservabilityKpiId\s*===\s*metric\.id\s*\?\s*activeObservabilityChartId\s*:\s*undefined\}/);
   assert.match(
     studioSource,
-    /\{activeObservabilityKpi\s*&&\s*activeObservabilityChartId\s*&&\s*\([\s\S]*?id=\{activeObservabilityChartId\}[\s\S]*?<KPIChart[\s\S]*?heading=\{activeObservabilityKpi\.heading\}[\s\S]*?sparklineData=\{activeObservabilityKpi\.sparklineData\}/,
-    'the selected dashboard metric should reveal its detailed KPIChart in the summary card',
+    /onClick=\{\(\) => navigate\(observabilityPath\)\}[\s\S]*?View observability dashboard/,
+    'the detailed dashboard should remain one explicit action away',
   );
-
-  assert.match(cardSource, /ariaExpanded\?:\s*boolean/);
-  assert.match(cardSource, /ariaControls\?:\s*string/);
-  assert.match(cardSource, /aria-expanded=\{ariaExpanded\}/);
-  assert.match(cardSource, /aria-controls=\{ariaControls\}/);
+  assert.doesNotMatch(studioSource, /<KPICard|<KPIChart/);
 });
 
 test('operational session banner opens a concrete session detail', () => {
@@ -58,7 +119,7 @@ test('operational session banner opens a concrete session detail', () => {
     'the operational event should reuse the success banner and link to its session',
   );
   assert.match(studioSource, /source=observability/);
-  assert.match(sessionsSource, /const activeSession = sessionIdQuery[\s\S]*?availableSessions\.find/);
+  assert.match(sessionsSource, /const activeSession = sessionIdQuery[\s\S]*?sessions\.find/);
   assert.match(sessionsSource, />Session details</);
   assert.match(sessionsSource, /Conversation transcript/);
   assert.match(sessionsSource, /Back to agent overview/);
