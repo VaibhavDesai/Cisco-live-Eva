@@ -1436,9 +1436,6 @@ export default function AgentStudioLanding() {
                     List
                   </button>
                 </div>
-                <Button variant="secondary" size="sm" onClick={() => goToSection('Knowledge')}>
-                  Edit
-                </Button>
               </div>
             </CardHeader>
             <CardBody id="agent-studio-connected-content">

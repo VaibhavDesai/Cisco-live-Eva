@@ -2025,6 +2025,11 @@ html[data-product='ai-agent-studio'] .app-header__menu-row-hint {
   position: relative;
 }
 
+.agent-studio-overview-card .agent-studio-connected-toolbar,
+.agent-studio-overview-card .agent-studio-operational-toolbar {
+  margin-right: 36px;
+}
+
 .agent-studio-overview-card__drag-handle {
   position: absolute;
   z-index: 3;
