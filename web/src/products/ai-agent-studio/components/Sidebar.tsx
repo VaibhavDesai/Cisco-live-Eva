@@ -14,7 +14,7 @@ interface NavItem {
 }
 
 const navItems: NavItem[] = [
-  { path: '/', label: 'Dashboard', icon: 'home-bold' },
+  { path: '/', label: 'New agent', icon: 'home-bold' },
   { path: '/agents', label: 'AI Agents', icon: 'bot-bold' },
   { path: '/observability', label: 'Observability', icon: 'multiline-chart-regular' },
   { path: '/knowledge', label: 'Knowledge', icon: 'apps-bold' },

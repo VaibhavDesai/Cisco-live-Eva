@@ -731,6 +731,8 @@ test('Dashboard home starts the first conversational creation landing', () => {
   const sidebarSource = readSource('../../products/ai-agent-studio/components/Sidebar.tsx');
 
   assert.match(dashboardSource, /<EvaChatExperience resetSessionOnInitialMount \/>/);
+  assert.match(sidebarSource, /\{\s*path:\s*['"]\/['"],\s*label:\s*['"]New agent['"]/);
+  assert.doesNotMatch(sidebarSource, /\{\s*path:\s*['"]\/['"],\s*label:\s*['"]Dashboard['"]/);
   assert.match(sidebarSource, /item\.path === ['"]\/['"][\s\S]*?setVariation\(['"]dashboard['"]\)/);
   assert.match(sidebarSource, /navigate\(item\.path\)/);
 });
