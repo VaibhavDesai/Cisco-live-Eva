@@ -10,6 +10,12 @@ import {
 } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { supabase, isReviewConfigured } from './supabaseClient';
+import {
+  addReviewReply,
+  createReviewThread,
+  listReviewThreads,
+  updateReviewThreadStatus,
+} from './reviewApi';
 import type { Anchor, Comment, Thread, ThreadWithComments } from './types';
 
 const DISPLAY_NAME_STORAGE_KEY = 'review.displayName';
@@ -196,12 +202,42 @@ export const ReviewProvider = ({ children }: { children: ReactNode }) => {
       : 'idle';
 
   useEffect(() => {
-    if (!enabled || !supabase) {
+    if (!enabled) {
       setThreads([]);
       return;
     }
     const myLoadId = ++loadIdRef.current;
     let cancelled = false;
+
+    if (!supabase) {
+      const loadFromReviewApi = async () => {
+        try {
+          const nextThreads = await listReviewThreads(route);
+          if (cancelled || myLoadId !== loadIdRef.current) return;
+          setThreads(nextThreads);
+
+          const pending = pendingSelectRef.current;
+          if (pending && nextThreads.some((thread) => thread.id === pending)) {
+            pendingSelectRef.current = null;
+            setSelectedThreadId(pending);
+          }
+        } catch (error) {
+          if (cancelled || myLoadId !== loadIdRef.current) return;
+          console.error('[review] failed to load threads', error);
+          setThreads([]);
+        }
+      };
+
+      void loadFromReviewApi();
+      const pollId = window.setInterval(() => {
+        void loadFromReviewApi();
+      }, 2500);
+
+      return () => {
+        cancelled = true;
+        window.clearInterval(pollId);
+      };
+    }
 
     (async () => {
       const { data: threadRows, error: tErr } = await supabase
@@ -333,9 +369,13 @@ export const ReviewProvider = ({ children }: { children: ReactNode }) => {
   }, []);
 
   const loadAllThreads = useCallback(async () => {
-    if (!supabase) return;
     setCommentsModalLoading(true);
     try {
+      if (!supabase) {
+        setAllThreads(await listReviewThreads());
+        return;
+      }
+
       const { data: threadRows, error: tErr } = await supabase
         .from('threads')
         .select('*')
@@ -366,6 +406,9 @@ export const ReviewProvider = ({ children }: { children: ReactNode }) => {
           comments: commentsByThread.get(t.id) || [],
         })),
       );
+    } catch (error) {
+      console.error('[review] failed to load all threads', error);
+      setAllThreads([]);
     } finally {
       setCommentsModalLoading(false);
     }
@@ -443,11 +486,30 @@ export const ReviewProvider = ({ children }: { children: ReactNode }) => {
 
   const createThread = useCallback(
     async (anchor: Anchor, body: string): Promise<Thread | null> => {
-      if (!supabase) return null;
       const name = await ensureDisplayName();
       if (!name) return null;
       const trimmed = body.trim().slice(0, 4000);
       if (!trimmed) return null;
+
+      if (!supabase) {
+        try {
+          const { thread, comment } = await createReviewThread(
+            route,
+            anchor,
+            name,
+            trimmed,
+          );
+          setThreads((prev) => mergeComment(mergeThread(prev, thread), comment));
+          setAllThreads((prev) =>
+            mergeComment(mergeThread(prev, thread), comment),
+          );
+          return thread;
+        } catch (error) {
+          console.error('[review] createThread failed', error);
+          return null;
+        }
+      }
+
       const { data: inserted, error } = await supabase
         .from('threads')
         .insert({
@@ -483,11 +545,23 @@ export const ReviewProvider = ({ children }: { children: ReactNode }) => {
 
   const addReply = useCallback(
     async (threadId: string, body: string): Promise<Comment | null> => {
-      if (!supabase) return null;
       const name = await ensureDisplayName();
       if (!name) return null;
       const trimmed = body.trim().slice(0, 4000);
       if (!trimmed) return null;
+
+      if (!supabase) {
+        try {
+          const comment = await addReviewReply(threadId, name, trimmed);
+          setThreads((prev) => mergeComment(prev, comment));
+          setAllThreads((prev) => mergeComment(prev, comment));
+          return comment;
+        } catch (error) {
+          console.error('[review] addReply failed', error);
+          return null;
+        }
+      }
+
       const { data, error } = await supabase
         .from('comments')
         .insert({ thread_id: threadId, author_name: name, body: trimmed })
@@ -505,7 +579,17 @@ export const ReviewProvider = ({ children }: { children: ReactNode }) => {
 
   const setThreadStatus = useCallback(
     async (threadId: string, status: 'open' | 'resolved') => {
-      if (!supabase) return;
+      if (!supabase) {
+        try {
+          const thread = await updateReviewThreadStatus(threadId, status);
+          setThreads((prev) => mergeThread(prev, thread));
+          setAllThreads((prev) => mergeThread(prev, thread));
+        } catch (error) {
+          console.error('[review] setThreadStatus failed', error);
+        }
+        return;
+      }
+
       const { data, error } = await supabase
         .from('threads')
         .update({ status })

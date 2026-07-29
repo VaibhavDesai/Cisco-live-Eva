@@ -1,5 +1,20 @@
 import type { AgentPageTab } from './components/PageHeader';
 
+export const CLUS_KPI_AGENT_FILTER_PARAM = 'agent';
+
+/** Agent scope carried by the shared Observability dashboard URL. */
+export function parseClusKpiDashboardAgentFilter(search: string): string | null {
+  const normalized = search.startsWith('?') ? search.slice(1) : search;
+  return new URLSearchParams(normalized).get(CLUS_KPI_AGENT_FILTER_PARAM)?.trim() || null;
+}
+
+/** Search string for the shared Observability dashboard with one agent filter applied. */
+export function buildClusKpiDashboardAgentFilterSearch(agentName: string): string {
+  const params = new URLSearchParams();
+  params.set(CLUS_KPI_AGENT_FILTER_PARAM, agentName);
+  return `?${params.toString()}`;
+}
+
 /**
  * Path portion of `#/agent/<encodedName>?...` — excludes query string so `%20` names parse correctly.
  */

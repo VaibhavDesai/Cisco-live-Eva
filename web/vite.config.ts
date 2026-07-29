@@ -4,6 +4,7 @@ import path from 'path'
 import fs from 'fs'
 import tls from 'node:tls'
 import dotenv from 'dotenv'
+import { reviewCommentsPlugin } from './vite/reviewCommentsPlugin'
 
 dotenv.config({ path: path.resolve(__dirname, '..', '.env') })
 dotenv.config({ path: path.resolve(__dirname, '.env.local') })
@@ -94,6 +95,7 @@ export default defineConfig({
   base: process.env.VITE_BASE_PATH || '/',
   plugins: [
     react(),
+    reviewCommentsPlugin(),
     {
       name: 'serve-momentum-icons',
       configureServer(server) {

@@ -205,7 +205,7 @@ export default function Sidebar({ collapsed = false }: SidebarProps) {
                     label={item.label}
                     active={itemActive}
                     onClick={() => {
-                      if (item.path === '/') {
+                      if (item.path === '/' || item.path === '/agents') {
                         setVariation('dashboard');
                       }
                       navigate(item.path);
