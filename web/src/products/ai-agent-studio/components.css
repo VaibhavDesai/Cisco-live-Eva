@@ -2021,6 +2021,44 @@ html[data-product='ai-agent-studio'] .app-header__menu-row-hint {
   outline-offset: 2px;
 }
 
+.agent-studio-overview-card {
+  position: relative;
+}
+
+.agent-studio-overview-card__drag-handle {
+  position: absolute;
+  z-index: 3;
+  top: var(--spacing-micro);
+  left: 50%;
+  display: inline-flex;
+  width: 40px;
+  height: 28px;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  border: 0;
+  border-radius: var(--border-radius-pill);
+  color: var(--text-secondary);
+  background: transparent;
+  cursor: grab;
+  transform: translateX(-50%);
+}
+
+.agent-studio-overview-card__drag-handle:hover {
+  color: var(--text-primary);
+  background: var(--button-secondary-hover);
+}
+
+.agent-studio-overview-card__drag-handle:active {
+  cursor: grabbing;
+  background: var(--button-secondary-active);
+}
+
+.agent-studio-overview-card__drag-handle:focus-visible {
+  outline: 2px solid var(--outline-input-active);
+  outline-offset: 2px;
+}
+
 .agent-studio-connected-chart__header {
   display: flex;
   min-width: 0;
@@ -2261,8 +2299,8 @@ html[data-product='ai-agent-studio'] .app-header__menu-row-hint {
 }
 
 .agent-studio-connected-insights__bulb {
-  color: var(--mds-color-theme-outline-label-gold);
-  background: color-mix(in srgb, var(--mds-color-theme-outline-label-gold) 14%, transparent);
+  color: var(--text-primary);
+  background: transparent;
 }
 
 .agent-studio-connected-insights__bulb svg {
@@ -2319,14 +2357,13 @@ html[data-product='ai-agent-studio'] .app-header__menu-row-hint {
   width: 28px;
   height: 28px;
   place-items: center;
-  border-radius: var(--border-radius-medium);
-  color: var(--success-color);
-  background: color-mix(in srgb, var(--success-color) 16%, transparent);
+  color: var(--text-primary);
+  background: transparent;
 }
 
 .agent-studio-connected-insights__status--warning {
-  color: var(--warning-color);
-  background: color-mix(in srgb, var(--warning-color) 16%, transparent);
+  color: var(--text-primary);
+  background: transparent;
 }
 
 .agent-studio-connected-insights__list button > span:nth-child(2) {

@@ -2,11 +2,30 @@ import { Icon } from '../../icons';
 
 export type ConfigurationCategory = 'knowledge' | 'memory' | 'action' | 'orchestration' | 'guardrail';
 
+export function KnowledgeBookIcon({ size = 16 }: { size?: number }) {
+  return (
+    <svg
+      viewBox="0 0 16 16"
+      width={size}
+      height={size}
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.5"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+    >
+      <path d="M2.5 3.5c1.9-.7 3.7-.4 5.5.9v8c-1.8-1.3-3.6-1.6-5.5-.9v-8Z" />
+      <path d="M13.5 3.5c-1.9-.7-3.7-.4-5.5.9v8c1.8-1.3 3.6-1.6 5.5-.9v-8Z" />
+    </svg>
+  );
+}
+
 export default function ConfigurationCategoryIcon({ type }: { type: ConfigurationCategory }) {
   if (type === 'action') {
     return (
       <span className="configuration-category-icon configuration-category-icon--action" aria-hidden="true">
-        <Icon name="bot-customer-assistant" weight="regular" size="xs" />
+        <Icon name="tools" weight="bold" size="xs" />
       </span>
     );
   }
@@ -37,10 +56,7 @@ export default function ConfigurationCategoryIcon({ type }: { type: Configuratio
 
   return (
     <span className="configuration-category-icon configuration-category-icon--knowledge" aria-hidden="true">
-      <svg viewBox="0 0 16 16" fill="none">
-        <path d="M2.5 3.5c1.9-.7 3.7-.4 5.5.9v8c-1.8-1.3-3.6-1.6-5.5-.9v-8Z" />
-        <path d="M13.5 3.5c-1.9-.7-3.7-.4-5.5.9v8c1.8-1.3 3.6-1.6 5.5-.9v-8Z" />
-      </svg>
+      <KnowledgeBookIcon />
     </span>
   );
 }

@@ -1,5 +1,7 @@
+import type { ReactNode } from 'react';
 import { useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import SideNav from '../../../components/shared/SideNav';
+import { KnowledgeBookIcon } from '../../../components/shared/ConfigurationCategoryIcon';
 import { Icon } from '../../../icons/Icon';
 import { useApp } from '../../../contexts/AppContext';
 import { useDesignVariation } from '../../../contexts/DesignVariationContext';
@@ -27,7 +29,7 @@ const ORGANIZATION_NAME = 'Renergize Healthcare';
 interface ConfigureItem {
   section: string;
   label: string;
-  icon: string;
+  icon: string | ReactNode;
   families?: AgentFamily[];
 }
 
@@ -35,7 +37,7 @@ const CONFIGURE_ITEMS: ConfigureItem[] = [
   { section: 'Profile', label: 'Profile', icon: 'contact-card-bold' },
   { section: 'Channels', label: 'Channels', icon: 'headset-bold', families: ['calling', 'contact_center'] },
   { section: 'Instructions', label: 'Instructions', icon: 'document-bold' },
-  { section: 'Knowledge', label: 'Knowledge & Memory', icon: 'folder-bold' },
+  { section: 'Knowledge', label: 'Knowledge & Memory', icon: <KnowledgeBookIcon size={24} /> },
   { section: 'Action', label: 'Actions', icon: 'tools-bold', families: ['contact_center', 'internal_assistant'] },
   { section: 'Security', label: 'Security', icon: 'shield-bold', families: ['contact_center', 'internal_assistant'] },
 ];

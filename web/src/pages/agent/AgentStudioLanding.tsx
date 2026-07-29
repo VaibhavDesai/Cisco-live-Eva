@@ -30,7 +30,10 @@ import {
   TextLink,
 } from '../../components/shared';
 import Dropdown from '../../components/shared/Dropdown';
-import ConfigurationCategoryIcon, { type ConfigurationCategory } from '../../components/shared/ConfigurationCategoryIcon';
+import ConfigurationCategoryIcon, {
+  KnowledgeBookIcon,
+  type ConfigurationCategory,
+} from '../../components/shared/ConfigurationCategoryIcon';
 import { useApp, type Agent } from '../../contexts/AppContext';
 import { useDesignVariation } from '../../contexts/DesignVariationContext';
 import { getElevenLabsConversationSignedUrl, getVoicePreviewErrorMessage } from '../../api/ciscoAi';
@@ -65,7 +68,8 @@ import { useProjects } from '../../projects/useProjects';
 
 type PreviewCallStatus = 'idle' | 'connecting' | 'listening' | 'speaking' | 'paused' | 'ended' | 'error';
 type ConnectedViewMode = 'metrics' | 'resources';
-type OverviewTileGroup = 'summary' | 'charts';
+type OverviewTileGroup = 'cards' | 'summary' | 'charts';
+type OverviewCardId = 'capability' | 'operational';
 type OverviewSummaryTileId = 'knowledge' | 'memory' | 'actions' | 'guardrails';
 type OverviewChartTileId = 'signals' | 'actions' | 'guardrails';
 type OverviewReleaseState = {
@@ -78,6 +82,10 @@ const DEFAULT_OVERVIEW_SUMMARY_ORDER: OverviewSummaryTileId[] = [
   'memory',
   'actions',
   'guardrails',
+];
+const DEFAULT_OVERVIEW_CARD_ORDER: OverviewCardId[] = [
+  'capability',
+  'operational',
 ];
 const DEFAULT_OVERVIEW_CHART_ORDER: OverviewChartTileId[] = [
   'signals',
@@ -418,6 +426,9 @@ export default function AgentStudioLanding() {
   const [previewWidgetOpen, setPreviewWidgetOpen] = useState(false);
   const [operationalTimeRange, setOperationalTimeRange] = useState('6h');
   const [connectedViewMode, setConnectedViewMode] = useState<ConnectedViewMode>('metrics');
+  const [overviewCardOrder, setOverviewCardOrder] = useState<OverviewCardId[]>(
+    () => readOverviewTileOrder(agentId, 'cards', DEFAULT_OVERVIEW_CARD_ORDER),
+  );
   const [overviewSummaryOrder, setOverviewSummaryOrder] = useState<OverviewSummaryTileId[]>(
     () => readOverviewTileOrder(agentId, 'summary', DEFAULT_OVERVIEW_SUMMARY_ORDER),
   );
@@ -458,6 +469,7 @@ export default function AgentStudioLanding() {
   const previewConnectionTimerRef = useRef<number | null>(null);
 
   useEffect(() => {
+    setOverviewCardOrder(readOverviewTileOrder(agentId, 'cards', DEFAULT_OVERVIEW_CARD_ORDER));
     setOverviewSummaryOrder(readOverviewTileOrder(agentId, 'summary', DEFAULT_OVERVIEW_SUMMARY_ORDER));
     setOverviewChartOrder(readOverviewTileOrder(agentId, 'charts', DEFAULT_OVERVIEW_CHART_ORDER));
     setDraggedOverviewTile(null);
@@ -506,7 +518,16 @@ export default function AgentStudioLanding() {
   ) => {
     if (sourceId === targetId) return;
 
-    if (group === 'summary') {
+    if (group === 'cards') {
+      const nextOrder = reorderOverviewTiles(
+        overviewCardOrder,
+        sourceId as OverviewCardId,
+        targetId as OverviewCardId,
+      );
+      if (nextOrder === overviewCardOrder) return;
+      setOverviewCardOrder(nextOrder);
+      persistOverviewTileOrder(agent.id, group, nextOrder);
+    } else if (group === 'summary') {
       const nextOrder = reorderOverviewTiles(
         overviewSummaryOrder,
         sourceId as OverviewSummaryTileId,
@@ -533,7 +554,11 @@ export default function AgentStudioLanding() {
     tileId: string,
     offset: -1 | 1,
   ) => {
-    const order: readonly string[] = group === 'summary' ? overviewSummaryOrder : overviewChartOrder;
+    const order: readonly string[] = group === 'cards'
+      ? overviewCardOrder
+      : group === 'summary'
+        ? overviewSummaryOrder
+        : overviewChartOrder;
     const currentIndex = order.indexOf(tileId);
     const targetIndex = Math.min(order.length - 1, Math.max(0, currentIndex + offset));
     if (currentIndex < 0 || currentIndex === targetIndex) return;
@@ -1346,7 +1371,36 @@ export default function AgentStudioLanding() {
         </div>
 
         <div className="agent-studio-grid agent-studio-grid--published">
-          <Card className="agent-studio-card agent-studio-card--summary agent-studio-card--connections">
+          {overviewCardOrder.map((cardId, index) => cardId === 'capability' ? (
+          <Card
+            key={cardId}
+            className={[
+              'agent-studio-card agent-studio-card--summary agent-studio-card--connections',
+              'agent-studio-overview-card agent-studio-overview-tile',
+              draggedOverviewTile?.group === 'cards' && draggedOverviewTile.id === cardId
+                ? 'is-dragging'
+                : '',
+              overviewDropTarget?.group === 'cards' && overviewDropTarget.id === cardId
+                ? 'is-drop-target'
+                : '',
+            ].filter(Boolean).join(' ')}
+            draggable={showOperationalStatus}
+            onDragStart={event => handleOverviewTileDragStart(event, 'cards', cardId)}
+            onDragOver={event => handleOverviewTileDragOver(event, 'cards', cardId)}
+            onDrop={event => handleOverviewTileDrop(event, 'cards', cardId)}
+            onDragEnd={handleOverviewTileDragEnd}
+          >
+            {showOperationalStatus && (
+              <button
+                type="button"
+                className="agent-studio-overview-card__drag-handle"
+                aria-label={`Reorder Capability usage. Position ${index + 1} of ${overviewCardOrder.length}`}
+                title="Drag to reorder. Use arrow keys to move this card."
+                onKeyDown={event => handleOverviewTileKeyDown(event, 'cards', cardId)}
+              >
+                <Icon name="dragger-vertical" weight="bold" size="sm" />
+              </button>
+            )}
             <CardHeader>
               <div className="agent-studio-card-heading">
                 <span className="agent-studio-card-heading__icon">
@@ -1653,7 +1707,7 @@ export default function AgentStudioLanding() {
                         </button>
                         <button type="button" onClick={() => goToSection('Knowledge')}>
                           <span className="agent-studio-connected-insights__status">
-                            <Icon name="files" weight="bold" size="sm" />
+                            <KnowledgeBookIcon size={16} />
                           </span>
                           <span>
                             <strong>
@@ -1753,9 +1807,34 @@ export default function AgentStudioLanding() {
                 )}
             </CardBody>
           </Card>
-
-          {showOperationalStatus && (
-            <Card className="agent-studio-card agent-studio-card--summary agent-studio-card--operational">
+          ) : cardId === 'operational' && showOperationalStatus ? (
+            <Card
+              key={cardId}
+              className={[
+                'agent-studio-card agent-studio-card--summary agent-studio-card--operational',
+                'agent-studio-overview-card agent-studio-overview-tile',
+                draggedOverviewTile?.group === 'cards' && draggedOverviewTile.id === cardId
+                  ? 'is-dragging'
+                  : '',
+                overviewDropTarget?.group === 'cards' && overviewDropTarget.id === cardId
+                  ? 'is-drop-target'
+                  : '',
+              ].filter(Boolean).join(' ')}
+              draggable
+              onDragStart={event => handleOverviewTileDragStart(event, 'cards', cardId)}
+              onDragOver={event => handleOverviewTileDragOver(event, 'cards', cardId)}
+              onDrop={event => handleOverviewTileDrop(event, 'cards', cardId)}
+              onDragEnd={handleOverviewTileDragEnd}
+            >
+              <button
+                type="button"
+                className="agent-studio-overview-card__drag-handle"
+                aria-label={`Reorder Operational status. Position ${index + 1} of ${overviewCardOrder.length}`}
+                title="Drag to reorder. Use arrow keys to move this card."
+                onKeyDown={event => handleOverviewTileKeyDown(event, 'cards', cardId)}
+              >
+                <Icon name="dragger-vertical" weight="bold" size="sm" />
+              </button>
               <CardHeader>
                 <div className="agent-studio-card-heading">
                   <span className="agent-studio-card-heading__icon">
@@ -1958,7 +2037,7 @@ export default function AgentStudioLanding() {
                 </section>
               </CardBody>
             </Card>
-          )}
+          ) : null)}
         </div>
       </section>
 

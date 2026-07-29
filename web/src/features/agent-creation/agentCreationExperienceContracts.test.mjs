@@ -94,6 +94,44 @@ test('Agent Studio header saves configuration changes before publishing a new ve
   assert.doesNotMatch(headerActionsSource, /Duplicate as…/);
 });
 
+test('overview cards can be reordered and persist their layout per agent', () => {
+  const source = readSource('../../pages/agent/AgentStudioLanding.tsx');
+
+  assert.match(
+    source,
+    /const DEFAULT_OVERVIEW_CARD_ORDER:\s*OverviewCardId\[\]\s*=\s*\[[\s\S]*?['"]capability['"][\s\S]*?['"]operational['"][\s\S]*?\]/,
+  );
+  assert.match(source, /readOverviewTileOrder\(agentId,\s*['"]cards['"],\s*DEFAULT_OVERVIEW_CARD_ORDER\)/);
+  assert.match(source, /persistOverviewTileOrder\(agent\.id,\s*group,\s*nextOrder\)/);
+  assert.match(
+    source,
+    /overviewCardOrder\.map\(\(cardId,\s*index\)[\s\S]*?handleOverviewTileDragStart\(event,\s*['"]cards['"],\s*cardId\)[\s\S]*?handleOverviewTileKeyDown\(event,\s*['"]cards['"],\s*cardId\)/,
+    'the main cards should share the drag and keyboard reordering model',
+  );
+});
+
+test('overview and navigation reuse the same capability icon language', () => {
+  const categoryIconSource = readSource('../../components/shared/ConfigurationCategoryIcon.tsx');
+  const sidebarSource = readSource('../../products/ai-agent-studio/components/Sidebar.tsx');
+  const overviewSource = readSource('../../pages/agent/AgentStudioLanding.tsx');
+
+  assert.match(
+    categoryIconSource,
+    /type === ['"]action['"][\s\S]*?<Icon name="tools" weight="bold"/,
+    'Actions should reuse the Tools icon from the side navigation',
+  );
+  assert.match(
+    sidebarSource,
+    /section:\s*['"]Knowledge['"][\s\S]*?icon:\s*<KnowledgeBookIcon size=\{24\} \/>/,
+    'Knowledge navigation should reuse the overview book icon',
+  );
+  assert.match(
+    overviewSource,
+    /Maintain healthy coverage[\s\S]*?<KnowledgeBookIcon size=\{16\} \/>|<KnowledgeBookIcon size=\{16\} \/>[\s\S]*?Maintain healthy coverage/,
+    'the knowledge coverage suggestion should use the same book icon',
+  );
+});
+
 test('operational status presents its metrics as a compact table with a dashboard link', () => {
   const studioSource = readSource('../../pages/agent/AgentStudioLanding.tsx');
   assert.match(
