@@ -1131,11 +1131,39 @@ function getReadinessRecommendationFixMeta(recommendation: string): {
 export default function EvaChatExperience({
   resetSessionOnInitialMount = false,
   voiceTranscribePath = '/transcribe',
+  initialSession,
+  onSessionChange,
+  threadPanelOpen,
+  threads: controlledThreads,
+  activeThreadId: controlledActiveThreadId,
+  onSelectThread: controlledOnSelectThread,
+  onNewThread: controlledOnNewThread,
+  onRenameThread: controlledOnRenameThread,
+  onDeleteThread: controlledOnDeleteThread,
+  onThreadPanelClose,
+  onProductNavigate,
+  shellMode = false,
 }: {
   resetSessionOnInitialMount?: boolean;
   voiceTranscribePath?: string;
+  initialSession?: EvaSessionState | null;
+  onSessionChange?: (snapshot: EvaSessionState) => void;
+  threadPanelOpen?: boolean;
+  threads?: EvaThread[];
+  activeThreadId?: string;
+  onSelectThread?: (threadId: string | number) => void;
+  onNewThread?: () => void;
+  onRenameThread?: (threadId: string | number, title: string) => void;
+  onDeleteThread?: (threadId: string | number) => void;
+  onThreadPanelClose?: () => void;
+  onProductNavigate?: () => void;
+  shellMode?: boolean;
 } = {}) {
   const navigate = useNavigate();
+  const navigateProduct = (path: string) => {
+    onProductNavigate?.();
+    navigate(path);
+  };
   const location = useLocation();
   const {
     agents,
@@ -1164,6 +1192,8 @@ export default function EvaChatExperience({
         /* sessionStorage may be unavailable; fall back to a fresh in-memory landing. */
       }
       restoredEvaSessionRef.current = null;
+    } else if (initialSession !== undefined) {
+      restoredEvaSessionRef.current = initialSession;
     } else {
       restoredEvaSessionRef.current = readEvaSessionState();
     }
@@ -1339,6 +1369,9 @@ export default function EvaChatExperience({
     { id: 'eva-thread-current', title: 'Current AI Assistant setup', group: 'Today' },
     { id: 'eva-thread-canvas', title: 'Canvas orchestration', group: 'Today' },
   ]);
+  const resolvedThreadPanelOpen = threadPanelOpen ?? showEvaThreadPanel;
+  const resolvedActiveThreadId = controlledActiveThreadId ?? activeEvaThreadId;
+  const resolvedThreads = controlledThreads ?? evaThreads;
   const [evaPlanningProgress, setEvaPlanningProgress] = useState(0);
   const [studioTransitioning, setStudioTransitioning] = useState(false);
   /* Drives the right-rail Progress card's step-by-step reveal during the
@@ -1440,6 +1473,7 @@ export default function EvaChatExperience({
       ...overrides,
     };
     window.sessionStorage.setItem(EVA_SESSION_STORAGE_KEY, JSON.stringify(snapshot));
+    onSessionChange?.(snapshot);
   };
 
   /* Keep the original dashboard chat and its configuration zone synchronized
@@ -1532,12 +1566,8 @@ export default function EvaChatExperience({
 
   const openEvaCanvas = (overrides: Partial<EvaSessionState> = {}) => {
     persistEvaSession(overrides);
-    /* Remember the route the user is opening the canvas from so the
-       canvas's "Chat view" / "New thread" buttons can return them
-       there. Without this, opening the canvas from /dashboard (the
-       "Chat-based in Dashboard" variation) and clicking Chat view
-       would dump the user on /agents (EvaAgentsTable's landing
-       screen) with the impression their build state was lost. */
+    /* Remember the product route that opened the canvas so its Chat view
+       and New thread controls can restore that context. */
     try {
       if (location.pathname && !EVA_CANVAS_PATHS.includes(location.pathname)) {
         window.sessionStorage.setItem(EVA_CANVAS_ORIGIN_PATH_KEY, location.pathname);
@@ -1545,15 +1575,12 @@ export default function EvaChatExperience({
     } catch {
       /* sessionStorage unavailable — falls back to /agents on close. */
     }
-    /* Pick the canvas route that lives under the same parent as the
-       user's current page. From / (Dashboard) we navigate to
-       /eva-canvas so the Dashboard sidebar item stays highlighted; from
-       anywhere else (notably /agents) we use /agents/eva-canvas. The
-       overlay component recognises both as "open" via EVA_CANVAS_PATHS. */
+    /* `/agents/eva-canvas` is canonical; the root alias remains for
+       compatibility with an older saved dashboard route. */
     const canvasPath = location.pathname === '/'
       ? EVA_CANVAS_DASHBOARD_PATH
       : EVA_CANVAS_AGENTS_PATH;
-    navigate(canvasPath);
+    navigateProduct(canvasPath);
   };
 
   const toggleSelectedChannel = (channel: EvaChannelSelection) => {
@@ -1846,7 +1873,7 @@ export default function EvaChatExperience({
       statusClass: 'badge-warning',
       knowledgeBases: template.draft.knowledgeBases.slice(0, 2).map(kb => kb.name),
     });
-    navigate(`/agents/${agent.id}/studio`);
+    navigateProduct(`/agents/${agent.id}/studio`);
   };
 
   const handleBuildFromScratch = () => {
@@ -1874,7 +1901,7 @@ export default function EvaChatExperience({
      landing is mounted from the Dashboard route. */
   const handleSwitchToExistingAgents = () => {
     setVariation('dashboard');
-    navigate('/agents');
+    navigateProduct('/agents');
   };
 
   const addOnboardingAssistantMessage = (text: string, followups?: string[], originStep?: string) => {
@@ -2250,13 +2277,13 @@ export default function EvaChatExperience({
     const agent = saveFamilyProposalDraft();
     if (!agent) return;
     setVariation('dashboard');
-    navigate('/agents');
+    navigateProduct('/agents');
   };
 
   const handleContinueFamilyConfiguration = () => {
     const agent = saveFamilyProposalDraft();
     if (!agent) return;
-    navigate(`/agents/${agent.id}/studio`);
+    navigateProduct(`/agents/${agent.id}/studio`);
   };
 
   const handleCreateAgent = () => {
@@ -2287,7 +2314,7 @@ export default function EvaChatExperience({
       /* The published agent remains saved in AppContext if session storage is unavailable. */
     }
     setVariation('dashboard');
-    navigate('/agents');
+    navigateProduct('/agents');
   };
 
   const openRecommendationSection = (
@@ -2489,7 +2516,7 @@ export default function EvaChatExperience({
     selectAgent(agent.id);
     showToast(`Successfully created "${agent.name}".`, 'success');
     setVariation('dashboard');
-    navigate('/agents');
+    navigateProduct('/agents');
   };
 
   const askRetailPhoneNumber = () => {
@@ -2816,7 +2843,7 @@ export default function EvaChatExperience({
       window.clearTimeout(studioTransitionTimerRef.current);
     }
     studioTransitionTimerRef.current = window.setTimeout(() => {
-      navigate(`/agents/${agentId}/studio`);
+      navigateProduct(`/agents/${agentId}/studio`);
       studioTransitionTimerRef.current = null;
     }, STUDIO_TRANSITION_MS);
   };
@@ -2856,7 +2883,7 @@ export default function EvaChatExperience({
     }
     showToast('Changes saved.', 'success');
     setVariation('dashboard');
-    navigate('/agents');
+    navigateProduct('/agents');
   };
 
   const enterRetailAgentStudio = () => {
@@ -2988,6 +3015,10 @@ export default function EvaChatExperience({
   };
 
   const handleNewEvaThread = () => {
+    if (controlledOnNewThread) {
+      controlledOnNewThread();
+      return;
+    }
     const id = `eva-thread-${Date.now()}`;
     setEvaThreads(prev => [{ id, title: 'New thread', group: 'Today' }, ...prev]);
     setActiveEvaThreadId(id);
@@ -3028,15 +3059,10 @@ export default function EvaChatExperience({
     setLandingMode('build');
   };
 
-  /* When the user clicks "New thread" on the canvas overlay header, the
-     overlay sets a one-shot sessionStorage flag and navigates back to
-     the route they came from (which may be /agents OR /dashboard when
-     the chat experience is mounted via the "Chat-based in Dashboard"
-     variation). Because the canvas overlay only changes pathname rather
-     than unmounting EvaChatExperience on the /agents path, watching
-     `location.pathname` lets us consume the flag every time we land on
-     a non-canvas route — and we ignore the canvas path itself so the
-     handoff doesn't accidentally fire while the canvas is opening. */
+  /* The canvas uses a one-shot flag for New thread. Because the Uplift
+     shell keeps this assistant mounted across product routes, returning
+     from the canvas can create a new shell-owned thread without losing
+     the active product destination. */
   useEffect(() => {
     if (EVA_CANVAS_PATHS.includes(location.pathname)) return;
     let shouldStart = false;
@@ -3055,19 +3081,31 @@ export default function EvaChatExperience({
   }, [location.pathname]);
 
   const handleSelectEvaThread = (threadId: string | number) => {
+    if (controlledOnSelectThread) {
+      controlledOnSelectThread(threadId);
+      return;
+    }
     setActiveEvaThreadId(String(threadId));
   };
 
   const handleRenameEvaThread = (threadId: string | number) => {
-    const currentThread = evaThreads.find(thread => thread.id === String(threadId));
+    const currentThread = resolvedThreads.find(thread => thread.id === String(threadId));
     const nextTitle = window.prompt('Rename thread', currentThread?.title ?? '');
     if (!nextTitle?.trim()) return;
+    if (controlledOnRenameThread) {
+      controlledOnRenameThread(threadId, nextTitle.trim());
+      return;
+    }
     setEvaThreads(prev => prev.map(thread =>
       thread.id === String(threadId) ? { ...thread, title: nextTitle.trim() } : thread,
     ));
   };
 
   const handleDeleteEvaThread = (threadId: string | number) => {
+    if (controlledOnDeleteThread) {
+      controlledOnDeleteThread(threadId);
+      return;
+    }
     const id = String(threadId);
     setEvaThreads(prev => {
       const next = prev.filter(thread => thread.id !== id);
@@ -3127,17 +3165,17 @@ export default function EvaChatExperience({
     showToast(`AI Assistant created "${agentName}" as a draft agent.`, 'success');
     selectAgent(agent.id);
     setVariation('dashboard');
-    navigate('/agents');
+    navigateProduct('/agents');
   };
 
   const handleAgentClick = (agentId: string) => {
     selectAgent(agentId);
-    navigate(`/agents/${agentId}`);
+    navigateProduct(`/agents/${agentId}`);
   };
 
   const handleConfigureClick = (agentId: string) => {
     selectAgent(agentId);
-    navigate(`/agents/${agentId}/studio`);
+    navigateProduct(`/agents/${agentId}/studio`);
   };
 
   const getBadgeVariant = (statusClass: string) => {
@@ -3160,7 +3198,7 @@ export default function EvaChatExperience({
       return;
     }
     selectAgent(existingAgent.id);
-    navigate(`/agents/${existingAgent.id}/configure?section=${section}`);
+    navigateProduct(`/agents/${existingAgent.id}/configure?section=${section}`);
   };
 
   const showOrchestrationSuggestion = () => {
@@ -3191,15 +3229,6 @@ export default function EvaChatExperience({
     if (!normalized) return;
 
     if (handleFamilyIntakeAnswer(text)) {
-      return;
-    }
-
-    /* Family is a required, mutually exclusive entitlement choice. Free-form
-       creation never starts before it is selected. */
-    if (!selectedAgentFamily && !familyProposalApplied) {
-      setFreeChatActive(false);
-      setFamilyHelpVisible(true);
-      showToast('Choose one agent area before describing the agent.', 'info');
       return;
     }
 
@@ -4476,7 +4505,7 @@ Simulation rules:
                   href={previewSessionsLink}
                   onClick={event => {
                     event.preventDefault();
-                    navigate(previewSessionsLink);
+                    navigateProduct(previewSessionsLink);
                   }}
                 >
                   Open in Sessions
@@ -4944,7 +4973,7 @@ ${previewTranscript}`,
      on the same flag. */
   const showLandingOptions = !guidanceVisible && !evaThinking && !orchestrationSuggested && !freeChatActive;
   const showBuildFlow = landingMode === 'build' || guidanceVisible || evaThinking || orchestrationSuggested || freeChatActive;
-  const shouldShowEvaThreadPanel = showEvaThreadPanel && !showLandingOptions;
+  const shouldShowEvaThreadPanel = resolvedThreadPanelOpen;
   const conversationPlaceholder = familyProposalChangeRequested
     ? 'Describe what you want to change in the proposal.'
     : familyIntakeQuestion?.prompt ?? 'Ask any question during your configuration.';
@@ -5973,17 +6002,23 @@ ${previewTranscript}`,
   }
 
   return (
-    <div className={`primary-content eva-agents-landing eva-agents-landing--flush${studioTransitioning ? ' eva-agents-landing--studio-transitioning' : ''}`}>
+    <div className={`primary-content eva-agents-landing eva-agents-landing--flush${studioTransitioning ? ' eva-agents-landing--studio-transitioning' : ''}${shellMode ? ' eva-agents-landing--uplift-shell' : ''}`}>
       {shouldShowEvaThreadPanel && (
         <aside className="eva-thread-panel-shell" aria-label="AI Assistant threads">
           <AiThreadPanel
-            threads={evaThreads}
-            activeThreadId={activeEvaThreadId}
+            threads={resolvedThreads}
+            activeThreadId={resolvedActiveThreadId}
             onSelectThread={handleSelectEvaThread}
             onNewThread={handleNewEvaThread}
             onRenameThread={handleRenameEvaThread}
             onDeleteThread={handleDeleteEvaThread}
-            onCollapse={() => setShowEvaThreadPanel(false)}
+            onCollapse={() => {
+              if (onThreadPanelClose) {
+                onThreadPanelClose();
+              } else {
+                setShowEvaThreadPanel(false);
+              }
+            }}
           />
         </aside>
       )}
@@ -7751,7 +7786,7 @@ ${previewTranscript}`,
                     </Table>
                     {evaStep === 'knowledge' && (
                       <div className="eva-dialogue__actions">
-                        <Button variant="secondary" onClick={() => navigate('/knowledge')}>
+                        <Button variant="secondary" onClick={() => navigateProduct('/knowledge')}>
                           <Icon name="plus" weight="bold" size={16} />
                           Connect knowledge
                         </Button>
@@ -7851,7 +7886,7 @@ ${previewTranscript}`,
                     </Table>
                     {evaStep === 'actions' && (
                       <div className="eva-dialogue__actions">
-                        <Button variant="secondary" onClick={() => navigate('/assistant-skills')}>
+                        <Button variant="secondary" onClick={() => navigateProduct('/assistant-skills')}>
                           <Icon name="plus" weight="bold" size={16} />
                           Set up action
                         </Button>

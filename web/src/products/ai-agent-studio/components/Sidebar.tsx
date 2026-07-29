@@ -4,8 +4,8 @@ import SideNav from '../../../components/shared/SideNav';
 import { KnowledgeBookIcon } from '../../../components/shared/ConfigurationCategoryIcon';
 import { Icon } from '../../../icons/Icon';
 import { useApp } from '../../../contexts/AppContext';
-import { useDesignVariation } from '../../../contexts/DesignVariationContext';
 import { type AgentFamily } from '../../../features/agent-creation/agentCreationModel';
+import { useUpliftWorkspace } from '../UpliftWorkspaceContext';
 
 interface NavItem {
   path: string;
@@ -14,7 +14,6 @@ interface NavItem {
 }
 
 const navItems: NavItem[] = [
-  { path: '/', label: 'New agent', icon: 'home-bold' },
   { path: '/agents', label: 'AI Agents', icon: 'bot-bold' },
   { path: '/observability', label: 'Observability', icon: 'multiline-chart-regular' },
   { path: '/knowledge', label: 'Knowledge', icon: 'apps-bold' },
@@ -67,14 +66,22 @@ function parseAgentId(pathname: string): string | null {
 
 interface SidebarProps {
   collapsed?: boolean;
+  agentPanelOpen?: boolean;
+  surfaceCompact?: boolean;
+  onAgentPanelOpenChange?: (open: boolean) => void;
 }
 
-export default function Sidebar({ collapsed = false }: SidebarProps) {
+export default function Sidebar({
+  collapsed = false,
+  agentPanelOpen = true,
+  surfaceCompact = false,
+  onAgentPanelOpenChange,
+}: SidebarProps) {
   const location = useLocation();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
-  const { setVariation } = useDesignVariation();
   const { agents, agentDrafts, selectAgent } = useApp();
+  const { setSnap } = useUpliftWorkspace();
 
   const agentId = parseAgentId(location.pathname);
   const agent = agentId ? agents[agentId] : undefined;
@@ -95,10 +102,44 @@ export default function Sidebar({ collapsed = false }: SidebarProps) {
       item => location.pathname === `/agents/${agentId}/${item.path}`,
     )?.path;
 
+    if (!agentPanelOpen || surfaceCompact) {
+      return (
+        <button
+          type="button"
+          className="uplift-agent-panel-handle"
+          aria-label="Open agent navigation"
+          title="Open agent navigation"
+          onClick={() => {
+            if (surfaceCompact) setSnap('expanded');
+            onAgentPanelOpenChange?.(true);
+            window.requestAnimationFrame(() => {
+              document.querySelector<HTMLButtonElement>('.uplift-agent-panel__collapse')?.focus();
+            });
+          }}
+        >
+          <Icon name="side-panel-bold" size={20} />
+        </button>
+      );
+    }
+
     return (
-      <aside className={`sidebar${collapsed ? ' sidebar--collapsed' : ''}`}>
+      <aside className="sidebar uplift-agent-panel">
+        <button
+          type="button"
+          className="uplift-agent-panel__collapse"
+          aria-label="Collapse agent navigation"
+          title="Collapse agent navigation"
+          onClick={() => {
+            onAgentPanelOpenChange?.(false);
+            window.requestAnimationFrame(() => {
+              document.querySelector<HTMLButtonElement>('.uplift-agent-panel-handle')?.focus();
+            });
+          }}
+        >
+          <Icon name="arrow-left-bold" size={16} />
+        </button>
         <div className="sidebar-main">
-          <SideNav collapsed={collapsed} aria-label="Agent navigation" className="sidebar-agent-nav">
+          <SideNav aria-label="Agent navigation" className="sidebar-agent-nav">
             <SideNav.Upper>
               <button
                 type="button"
@@ -172,14 +213,6 @@ export default function Sidebar({ collapsed = false }: SidebarProps) {
     return location.pathname === path || location.pathname.startsWith(path + '/');
   };
 
-  /* Map canvas overlay routes back onto the parent tab so the sidebar
-     highlight stays put while the canvas is open. /eva-canvas opens
-     over the Dashboard root, /agents/eva-canvas opens over AI Agents —
-     both already match via the standard isActive check, but we treat
-     /eva-canvas explicitly as Dashboard so the index ('/') item stays
-     highlighted instead of going inactive. */
-  const isDashboardActive = location.pathname === '/' || location.pathname === '/eva-canvas';
-
   return (
     <aside className={`sidebar${collapsed ? ' sidebar--collapsed' : ''}`}>
       <div className="sidebar-main">
@@ -194,9 +227,7 @@ export default function Sidebar({ collapsed = false }: SidebarProps) {
                       ? location.pathname === '/observability' ||
                         location.pathname === '/kpi-dashboard' ||
                         location.pathname.endsWith('/kpi-dashboard')
-                    : item.path === '/'
-                      ? isDashboardActive
-                      : isActive(item.path, item.path === '/');
+                    : isActive(item.path);
 
                 return (
                   <SideNav.Item
@@ -205,9 +236,7 @@ export default function Sidebar({ collapsed = false }: SidebarProps) {
                     label={item.label}
                     active={itemActive}
                     onClick={() => {
-                      if (item.path === '/') {
-                        setVariation('dashboard');
-                      }
+                      if (collapsed) setSnap('expanded');
                       navigate(item.path);
                     }}
                   />

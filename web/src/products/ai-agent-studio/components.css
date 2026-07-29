@@ -13640,3 +13640,463 @@ button.eva-retail-preview-card::before {
     width: 100vw;
   }
 }
+
+/* ── Uplift layered workspace shell ─────────────────────────────────
+   Reference: Uplift AI Assistant full shell (60px product rail, 44px
+   assistant rail, 44px header, 12px glass radii). */
+
+.uplift-workspace {
+  --uplift-product-width: 70vw;
+  --uplift-assistant-width: 30vw;
+  position: fixed;
+  inset: 0;
+  overflow: hidden;
+  background: var(--mds-color-theme-background-solid-primary-normal, #050506);
+  color: var(--text-primary);
+  isolation: isolate;
+}
+
+.uplift-assistant-base {
+  position: absolute;
+  top: 0;
+  right: 60px;
+  bottom: 0;
+  left: min(calc(var(--uplift-product-width) + 8px), calc(100vw - 60px));
+  z-index: 1;
+  width: auto;
+  min-width: 0;
+  overflow: hidden;
+  container-name: uplift-assistant;
+  container-type: inline-size;
+  transition: left 240ms cubic-bezier(0.2, 0, 0, 1);
+}
+
+.uplift-assistant-base > .primary-content,
+.uplift-assistant-base .eva-agents-landing--uplift-shell {
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+  box-sizing: border-box;
+  padding: 44px 12px 8px;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+}
+
+.uplift-assistant-base .eva-agents-landing--uplift-shell {
+  overflow: hidden;
+}
+
+.uplift-assistant-base .eva-agents-landing--uplift-shell .eva-first-interface {
+  min-width: 0;
+}
+
+.uplift-assistant-base .eva-thread-panel-shell {
+  width: 248px;
+  flex: 0 0 248px;
+  border: 1px solid var(--mds-color-theme-outline-secondary-normal, rgba(255, 255, 255, 0.12));
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--mds-color-theme-background-solid-primary-normal, #101014) 82%, transparent);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  box-shadow: 0 16px 36px rgba(0, 0, 0, 0.24);
+}
+
+.uplift-product-surface {
+  position: fixed;
+  top: 8px;
+  bottom: 8px;
+  left: 0;
+  z-index: 20;
+  width: var(--uplift-product-width);
+  min-width: 60px;
+  overflow: hidden;
+  border: 1px solid var(--mds-color-theme-outline-secondary-normal, rgba(255, 255, 255, 0.14));
+  border-left: 0;
+  border-radius: 0 12px 12px 0;
+  background:
+    linear-gradient(
+      135deg,
+      color-mix(in srgb, var(--mds-color-theme-background-solid-primary-normal, #111116) 94%, transparent),
+      color-mix(in srgb, var(--mds-color-theme-background-solid-secondary-normal, #171720) 86%, transparent)
+    );
+  backdrop-filter: blur(10px) saturate(120%);
+  -webkit-backdrop-filter: blur(10px) saturate(120%);
+  box-shadow:
+    0 24px 56px rgba(0, 0, 0, 0.32),
+    0 0 1px rgba(255, 255, 255, 0.16);
+  transition:
+    width 240ms cubic-bezier(0.2, 0, 0, 1),
+    border-radius 180ms ease;
+}
+
+.uplift-workspace--resizing,
+.uplift-workspace--resizing * {
+  cursor: ew-resize !important;
+  user-select: none !important;
+}
+
+.uplift-workspace--resizing .uplift-product-surface {
+  transition: none;
+}
+
+.uplift-workspace--resizing .uplift-assistant-base {
+  transition: none;
+}
+
+.uplift-product-surface > .app-header--uplift-product {
+  position: relative;
+  z-index: 8;
+  height: 44px;
+  min-height: 44px;
+  padding: 4px 8px 4px 10px;
+  border-bottom: 1px solid var(--mds-color-theme-outline-secondary-normal, rgba(255, 255, 255, 0.1));
+  background: color-mix(in srgb, var(--mds-color-theme-background-solid-primary-normal, #0d0d10) 72%, transparent);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+}
+
+.uplift-product-surface .app-header--uplift-product .app-header__icon-btn {
+  width: 36px;
+  height: 36px;
+}
+
+.uplift-product-surface .app-header--uplift-product .app-header__wordmark-logo {
+  max-width: 176px;
+}
+
+.uplift-product-surface__body {
+  position: absolute;
+  inset: 44px 0 0;
+  min-width: 0;
+  overflow: hidden;
+}
+
+.uplift-product-surface .sidebar {
+  position: absolute;
+  inset: 0 auto 0 0;
+  z-index: 9;
+  width: 240px;
+  height: auto;
+  padding: 0;
+  overflow: visible;
+  background: color-mix(in srgb, var(--mds-color-theme-background-solid-primary-normal, #0d0d10) 56%, transparent);
+  border-right: 1px solid var(--mds-color-theme-outline-secondary-normal, rgba(255, 255, 255, 0.08));
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+}
+
+.uplift-product-surface .sidebar--collapsed {
+  width: 60px;
+}
+
+.uplift-product-surface .sidebar--collapsed .sidenav {
+  width: 60px;
+}
+
+.uplift-product-surface .sidebar--collapsed .sidenav__tab {
+  min-width: 40px;
+  width: 40px;
+  min-height: 40px;
+  margin-inline: 10px;
+}
+
+.uplift-product-surface .sidebar-bottom {
+  padding-inline: 8px;
+  padding-bottom: 8px;
+}
+
+.uplift-product-surface .main {
+  position: absolute;
+  inset: 0 0 0 240px;
+  z-index: 1;
+  width: auto;
+  height: 100%;
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  overflow: hidden;
+  transition: left 180ms cubic-bezier(0.2, 0, 0, 1);
+}
+
+.uplift-product-surface .main > .primary-content {
+  height: 100%;
+  min-height: 0;
+  overflow: auto;
+  box-sizing: border-box;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+}
+
+.uplift-workspace--agent .uplift-product-surface .main {
+  left: 0;
+}
+
+.uplift-workspace--agent-panel-open .uplift-product-surface .main {
+  left: 256px;
+}
+
+.uplift-product-surface__resize-handle {
+  position: absolute;
+  top: 44px;
+  right: -5px;
+  bottom: 0;
+  z-index: 40;
+  width: 12px;
+  cursor: ew-resize;
+  touch-action: none;
+  outline: none;
+}
+
+.uplift-product-surface__resize-handle > span {
+  position: absolute;
+  top: 50%;
+  left: 5px;
+  width: 2px;
+  height: 48px;
+  border-radius: 999px;
+  background: transparent;
+  transform: translateY(-50%);
+  transition: background 120ms ease;
+}
+
+.uplift-product-surface__resize-handle:hover > span,
+.uplift-product-surface__resize-handle:focus-visible > span,
+.uplift-workspace--resizing .uplift-product-surface__resize-handle > span {
+  background: var(--mds-color-theme-outline-accent-normal, #64b5ff);
+}
+
+.uplift-workspace--compact .uplift-product-surface {
+  border-radius: 0 12px 12px 0;
+}
+
+.uplift-workspace--compact .uplift-product-surface__body {
+  inset-block-start: 0;
+}
+
+.uplift-workspace--compact .uplift-product-surface__resize-handle {
+  top: 0;
+}
+
+.uplift-assistant-rail {
+  position: fixed;
+  top: 52px;
+  right: 4px;
+  bottom: 8px;
+  z-index: 50;
+  display: flex;
+  width: 40px;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  box-sizing: border-box;
+  padding: 4px 0;
+  border: 1px solid var(--mds-color-theme-outline-secondary-normal, rgba(255, 255, 255, 0.12));
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--mds-color-theme-background-solid-primary-normal, #111116) 76%, transparent);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.24);
+}
+
+.uplift-assistant-rail__button {
+  display: inline-flex;
+  width: 36px;
+  height: 36px;
+  flex: 0 0 36px;
+  align-items: center;
+  justify-content: center;
+  border: 0;
+  border-radius: 10px;
+  background: transparent;
+  color: var(--mds-color-theme-text-secondary-normal, var(--text-secondary));
+  cursor: pointer;
+}
+
+.uplift-assistant-rail__button:hover,
+.uplift-assistant-rail__button:focus-visible {
+  background: var(--mds-color-theme-background-primary-hover, rgba(255, 255, 255, 0.08));
+  color: var(--text-primary);
+  outline: 2px solid transparent;
+}
+
+.uplift-assistant-rail__button.is-active,
+.uplift-assistant-rail__button--active {
+  color: var(--mds-color-theme-text-accent-normal, #64b5ff);
+}
+
+.uplift-assistant-rail__divider {
+  width: 28px;
+  height: 1px;
+  margin: 4px 0;
+  background: var(--mds-color-theme-outline-secondary-normal, rgba(255, 255, 255, 0.12));
+}
+
+.uplift-agent-panel {
+  position: absolute !important;
+  inset: 12px auto 12px 12px !important;
+  z-index: 30 !important;
+  width: 232px !important;
+  height: auto !important;
+  overflow: hidden !important;
+  border: 1px solid var(--mds-color-theme-outline-secondary-normal, rgba(255, 255, 255, 0.14)) !important;
+  border-radius: 12px !important;
+  background: color-mix(in srgb, var(--mds-color-theme-background-solid-secondary-normal, #19191f) 78%, transparent) !important;
+  backdrop-filter: blur(10px) saturate(120%) !important;
+  -webkit-backdrop-filter: blur(10px) saturate(120%) !important;
+  box-shadow: 0 16px 36px rgba(0, 0, 0, 0.28) !important;
+}
+
+.uplift-agent-panel__collapse {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  z-index: 3;
+  display: inline-flex;
+  width: 32px;
+  height: 32px;
+  align-items: center;
+  justify-content: center;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--text-secondary);
+  cursor: pointer;
+}
+
+.uplift-agent-panel__collapse:hover,
+.uplift-agent-panel__collapse:focus-visible {
+  background: var(--mds-color-theme-background-primary-hover, rgba(255, 255, 255, 0.08));
+  color: var(--text-primary);
+}
+
+.uplift-agent-panel .sidebar-main {
+  padding-top: 36px;
+}
+
+.uplift-agent-panel-handle {
+  position: absolute;
+  top: 12px;
+  left: 12px;
+  z-index: 30;
+  display: inline-flex;
+  width: 40px;
+  height: 40px;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--mds-color-theme-outline-secondary-normal, rgba(255, 255, 255, 0.14));
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--mds-color-theme-background-solid-secondary-normal, #19191f) 78%, transparent);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  color: var(--text-primary);
+  cursor: pointer;
+  box-shadow: 0 10px 24px rgba(0, 0, 0, 0.24);
+}
+
+[data-theme='light'] .uplift-product-surface,
+[data-theme='light'] .uplift-agent-panel,
+[data-theme='light'] .uplift-assistant-rail,
+[data-theme='light'] .uplift-assistant-base .eva-thread-panel-shell {
+  background: color-mix(in srgb, var(--mds-color-theme-background-solid-primary-normal, #fff) 88%, transparent) !important;
+}
+
+@media (max-width: 1023px) {
+  .uplift-product-surface {
+    top: 0;
+    bottom: 0;
+    border-radius: 0 12px 12px 0;
+  }
+
+  .uplift-workspace:not(.uplift-workspace--compact) .uplift-product-surface {
+    width: calc(100vw - 60px) !important;
+  }
+
+  .uplift-assistant-base .eva-thread-panel-shell {
+    position: absolute;
+    top: 52px;
+    bottom: 12px;
+    left: 72px;
+    z-index: 12;
+    width: min(320px, calc(100vw - 148px));
+    box-shadow: 0 20px 50px rgba(0, 0, 0, 0.38);
+  }
+
+  .uplift-agent-panel {
+    width: min(280px, calc(100vw - 96px)) !important;
+  }
+
+  .uplift-workspace--agent-panel-open .uplift-product-surface .main {
+    left: 0;
+  }
+}
+
+@container uplift-assistant (max-width: 720px) {
+  .eva-agents-landing--uplift-shell .eva-first-interface {
+    padding-inline: 12px;
+  }
+
+  .eva-agents-landing--uplift-shell .eva-first-interface__hero h1 {
+    font-size: clamp(28px, 10cqi, 40px);
+  }
+
+  .eva-agents-landing--uplift-shell .eva-first-interface__hero h2 {
+    font-size: clamp(20px, 7cqi, 30px);
+  }
+
+  .eva-agents-landing--uplift-shell .eva-prompt-examples,
+  .eva-agents-landing--uplift-shell .eva-landing-template-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .eva-agents-landing--uplift-shell .eva-generated-layout,
+  .eva-agents-landing--uplift-shell .eva-generated-layout--side-collapsed {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .eva-agents-landing--uplift-shell .eva-generated-side-panel {
+    display: none;
+  }
+
+  .eva-agents-landing--uplift-shell .eva-first-interface--free-chat .eva-first-interface__chat--sticky {
+    left: 12px;
+    right: 12px;
+    width: calc(100% - 24px) !important;
+  }
+}
+
+@container uplift-assistant (max-width: 360px) {
+  .eva-agents-landing--uplift-shell .eva-first-interface--landing {
+    padding-block-start: 24px;
+  }
+
+  .eva-agents-landing--uplift-shell .eva-prompt-examples {
+    display: flex;
+    overflow-x: auto;
+    scroll-snap-type: x mandatory;
+  }
+
+  .eva-agents-landing--uplift-shell .eva-prompt-card {
+    min-width: min(240px, calc(100cqi - 24px));
+    scroll-snap-align: start;
+  }
+
+  .eva-agents-landing--uplift-shell .eva-landing-divider,
+  .eva-agents-landing--uplift-shell .eva-landing-secondary-actions {
+    width: 100%;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .uplift-product-surface,
+  .uplift-assistant-base,
+  .uplift-product-surface .main,
+  .uplift-product-surface__resize-handle > span {
+    transition: none !important;
+  }
+}

@@ -251,8 +251,38 @@ test('landing quick templates use the original direct template flow', () => {
   );
   assert.match(
     source,
-    /const handleTemplateSelect[\s\S]*?createOrSelectDraftAgent[\s\S]*?navigate\(`\/agents\/\$\{agent\.id\}\/studio`\)/,
+    /const handleTemplateSelect[\s\S]*?createOrSelectDraftAgent[\s\S]*?navigateProduct\(`\/agents\/\$\{agent\.id\}\/studio`\)/,
     'choosing a homepage template should continue into the existing agent studio',
+  );
+});
+
+test('homepage free-form prompts can start and continue the original Acme retail workflow', () => {
+  const source = readSource('../eva/EvaChatExperience.tsx');
+  const intentSource = readSource('../eva/evaFormConfig.ts');
+  const handleSendStart = source.indexOf('const handleSend = (text: string)');
+  const handleSendEnd = source.indexOf('const matchTemplateFromText', handleSendStart);
+  const handleSendSource = source.slice(handleSendStart, handleSendEnd);
+
+  assert.ok(handleSendStart >= 0 && handleSendEnd > handleSendStart);
+  assert.doesNotMatch(
+    handleSendSource,
+    /Choose one agent area before describing the agent/,
+    'the homepage prompt should not be blocked by the removed family chooser',
+  );
+  assert.match(
+    handleSendSource,
+    /retailPrototypeStep !== ['"]idle['"][\s\S]*?handleRetailReceptionistStoryAnswer\(text\)[\s\S]*?getVoiceAgentWorkflowIntent\(text\)[\s\S]*?beginRetailReceptionistStory\(voiceAgentIntent\)/,
+    'active retail replies and new Acme trigger prompts should route through the original guided flow',
+  );
+  assert.match(
+    source,
+    /const beginRetailReceptionistStory[\s\S]*?setFreeChatActive\(true\)[\s\S]*?setRetailPrototypeStep\(['"]discovering['"]\)[\s\S]*?originStep[\s\S]*?retail-channel-choice/,
+    'the trigger should open the conversational thread and advance to the channel choice',
+  );
+  assert.match(
+    intentSource,
+    /hasStoreSignal[\s\S]*?\\b\(store\|shop\|retail\)\\b[\s\S]*?hasRequestIntent/,
+    'shop creation prompts should remain recognized as retail workflow intents',
   );
 });
 
@@ -373,12 +403,12 @@ test('starter proposal actions edit the plan, create a draft, or continue to its
   );
   assert.match(
     handlerSource,
-    /const handleCreateFamilyAgent[\s\S]*?saveFamilyProposalDraft\(\)[\s\S]*?setVariation\(['"]dashboard['"]\)[\s\S]*?navigate\(['"]\/agents['"]\)/,
+    /const handleCreateFamilyAgent[\s\S]*?saveFamilyProposalDraft\(\)[\s\S]*?setVariation\(['"]dashboard['"]\)[\s\S]*?navigateProduct\(['"]\/agents['"]\)/,
     'Create agent should save the proposal as a draft and return to All Agents',
   );
   assert.match(
     handlerSource,
-    /const handleContinueFamilyConfiguration[\s\S]*?saveFamilyProposalDraft\(\)[\s\S]*?navigate\(`\/agents\/\$\{agent\.id\}\/studio`\)/,
+    /const handleContinueFamilyConfiguration[\s\S]*?saveFamilyProposalDraft\(\)[\s\S]*?navigateProduct\(`\/agents\/\$\{agent\.id\}\/studio`\)/,
     'Continue configuration should save the draft and open its overview',
   );
   assert.doesNotMatch(source, />\s*(Apply draft|Ask for changes|Configure more)\s*</);
@@ -604,7 +634,7 @@ test('guided configuration toolbar restores summary, progress, and save actions'
   assert.match(saveHandlerSource, /updateAgentDraft\(activeDraftAgentId,\s*current\s*=>\s*current\)/);
   assert.match(
     saveHandlerSource,
-    /setVariation\(['"]dashboard['"]\)[\s\S]*?navigate\(['"]\/agents['"]\)/,
+    /setVariation\(['"]dashboard['"]\)[\s\S]*?navigateProduct\(['"]\/agents['"]\)/,
     'saving an existing configuration should return to the all-agents view',
   );
   assert.match(saveHandlerSource, /showToast\(['"]Changes saved\./);
@@ -669,7 +699,7 @@ test('final creation actions publish once and return to the existing-agent list'
   assert.match(handlerSource, /getMinimumPublishIssues\(draftToPublish\)/);
   assert.match(handlerSource, /publishAgentVersion\(activeDraftAgentId\)/);
   assert.match(handlerSource, /setVariation\(['"]dashboard['"]\)/);
-  assert.match(handlerSource, /navigate\(['"]\/agents['"]\)/);
+  assert.match(handlerSource, /navigateProduct\(['"]\/agents['"]\)/);
   assert.match(handlerSource, /removeItem\(EVA_SESSION_STORAGE_KEY\)/);
   assert.match(handlerSource, /removeItem\(EVA_AUTO_START_VOICE_PREVIEW_KEY\)/);
   assert.doesNotMatch(source, /handlePublishCurrentVersion/);
@@ -696,7 +726,7 @@ test('create versus edit mode keeps both primary configuration actions synchroni
   const saveHandlerSource = source.slice(saveHandlerStart, saveHandlerEnd);
   assert.match(saveHandlerSource, /updateAgentDraft\(activeDraftAgentId,\s*current\s*=>\s*current\)/);
   assert.match(saveHandlerSource, /setVariation\(['"]dashboard['"]\)/);
-  assert.match(saveHandlerSource, /navigate\(['"]\/agents['"]\)/);
+  assert.match(saveHandlerSource, /navigateProduct\(['"]\/agents['"]\)/);
   assert.doesNotMatch(saveHandlerSource, /publishAgentVersion|navigateToAgentStudio/);
 });
 
@@ -719,13 +749,57 @@ test('AI agent list cards keep a visible 16px grid gap', () => {
   );
 });
 
-test('Dashboard home starts the first conversational creation landing', () => {
+test('Uplift shell makes the assistant persistent and removes the New Agent destination', () => {
+  const appSource = readSource('../../App.tsx');
+  const layoutSource = readSource('../../components/layout/MainLayout.tsx');
+  const agentsSource = readSource('../../pages/Agents.tsx');
   const dashboardSource = readSource('../../pages/Dashboard.tsx');
   const sidebarSource = readSource('../../products/ai-agent-studio/components/Sidebar.tsx');
 
-  assert.match(dashboardSource, /<EvaChatExperience resetSessionOnInitialMount \/>/);
-  assert.match(sidebarSource, /\{\s*path:\s*['"]\/['"],\s*label:\s*['"]New agent['"]/);
-  assert.doesNotMatch(sidebarSource, /\{\s*path:\s*['"]\/['"],\s*label:\s*['"]Dashboard['"]/);
-  assert.match(sidebarSource, /item\.path === ['"]\/['"][\s\S]*?setVariation\(['"]dashboard['"]\)/);
+  assert.match(appSource, /<Route path="\/" element=\{<Navigate to="\/agents" replace \/>\} \/>/);
+  assert.equal((layoutSource.match(/<EvaChatExperience/g) ?? []).length, 1);
+  assert.match(layoutSource, /shellMode/);
+  assert.match(layoutSource, /<AssistantControlRail \/>/);
+  assert.match(
+    layoutSource,
+    /className="uplift-assistant-base app--ai"/,
+    'the persistent assistant must retain the original AI Agent Studio presentation scope',
+  );
+  assert.match(layoutSource, /onProductNavigate=\{\(\) => setSnap\('expanded'\)\}/);
+  assert.match(layoutSource, /role="separator"[\s\S]*?aria-label="Resize AI Agent Studio workspace"/);
+  assert.doesNotMatch(agentsSource, /EvaChatExperience/);
+  assert.match(dashboardSource, /<Navigate to="\/agents" replace \/>/);
+  assert.doesNotMatch(sidebarSource, /New agent/);
+  assert.match(sidebarSource, /className="sidebar uplift-agent-panel"/);
+  assert.match(sidebarSource, /aria-label="Open agent navigation"/);
+  assert.match(sidebarSource, /Back to AI Agents/);
   assert.match(sidebarSource, /navigate\(item\.path\)/);
+});
+
+test('Uplift shell includes responsive drawers, reduced motion, and accessible compact controls', () => {
+  const layoutSource = readSource('../../components/layout/MainLayout.tsx');
+  const railSource = readSource('../../products/ai-agent-studio/components/AssistantControlRail.tsx');
+  const styles = readSource('../../products/ai-agent-studio/components.css');
+
+  assert.match(layoutSource, /aria-valuemin=\{PRODUCT_RAIL_WIDTH\}/);
+  assert.match(layoutSource, /event\.key === 'Home'/);
+  assert.match(layoutSource, /event\.key === 'End'/);
+  assert.match(railSource, /event\.key === 'Escape'/);
+  assert.match(railSource, /title="Chat history"/);
+  assert.match(railSource, /title="New chat"/);
+  assert.match(styles, /@media \(max-width: 1023px\)/);
+  assert.match(styles, /@media \(prefers-reduced-motion: reduce\)/);
+  assert.match(styles, /backdrop-filter:\s*blur\(10px\)/);
+  assert.match(
+    layoutSource,
+    /const assistantWorkspaceWidth = Math\.max\([\s\S]*?viewportWidth[\s\S]*?- surfaceWidth[\s\S]*?- ASSISTANT_RAIL_WIDTH/,
+    'assistant content should be sized from the workspace that remains beside the product surface',
+  );
+  assert.match(layoutSource, /data-assistant-workspace-width=\{Math\.round\(assistantWorkspaceWidth\)\}/);
+  assert.match(
+    styles,
+    /\.uplift-assistant-base\s*\{[\s\S]*?left:\s*min\(calc\(var\(--uplift-product-width\) \+ 8px\), calc\(100vw - 60px\)\);[\s\S]*?container-type:\s*inline-size/,
+    'the assistant content surface should move with the draggable product edge while its background stays fixed',
+  );
+  assert.match(styles, /@container uplift-assistant \(max-width: 720px\)/);
 });
