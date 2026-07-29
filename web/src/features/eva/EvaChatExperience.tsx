@@ -6000,6 +6000,11 @@ ${previewTranscript}`,
           </section>
         )}
 
+        {/* Inline composer between hero and prompt cards — matches the
+            form-builder landing layout so all chat-based variations share
+            one entry-point design. The "real" composer rendered below
+            (the sticky/footer one) is suppressed while we're in the
+            landing state to avoid two composers stacking. */}
         {showLandingOptions && landingMode === 'build' && (
           <div className="eva-landing-composer" aria-label="Talk to AI Assistant">
             <AiFooter
@@ -6008,7 +6013,7 @@ ${previewTranscript}`,
               onSend={handleSend}
               processing={false}
               disabled={evaThinking}
-              placeholder={'Describe the agent you want to build.\ne.g. Create an agent that answers customer questions and routes complex requests.'}
+              placeholder={'Describe the agent you want to build.\ne.g. A friendly banking assistant that helps customers check their balance, dispute charges, and get account help — always calm and reassuring.'}
               suggestions={[]}
               voiceActive={voiceActive}
               onVoiceToggle={() => setVoiceActive(previous => !previous)}
@@ -6019,117 +6024,61 @@ ${previewTranscript}`,
         )}
 
         {showLandingOptions && landingMode === 'build' && (
-          <section className="eva-dialogue eva-family-choice-thread" aria-label="Choose an AI agent area">
-            <AiResponseMessage
-              className="eva-ai-response"
-              showActions={false}
-              assistantName="AI Assistant"
-              content="What area do you want this AI Agent to surface in? Choose one licensed area to begin."
-            >
-              <div className="eva-prompt-examples eva-family-choice-grid" role="radiogroup" aria-label="AI agent areas">
-                {AGENT_FAMILIES.map(family => {
-                  const metadata = FAMILY_METADATA[family];
-                  const licensed = entitlements[family] === 'licensed';
-                  const firstLicensedFamily = AGENT_FAMILIES.find(candidate => entitlements[candidate] === 'licensed');
-                  return (
-                    <button
-                      key={family}
-                      type="button"
-                      role="radio"
-                      aria-checked="false"
-                      disabled={!licensed}
-                      tabIndex={family === firstLicensedFamily ? 0 : -1}
-                      className={`eva-prompt-card eva-family-choice-card eva-family-choice-card--${family}`}
-                      onClick={() => handleAgentFamilySelect(family)}
-                      onKeyDown={event => handleAgentFamilyKeyDown(event, family)}
-                    >
-                      <span className="eva-prompt-card__header">
-                        <span className="eva-prompt-card__icon" aria-hidden="true">
-                          <Icon name={FAMILY_ICONS[family]} weight="bold" size="md" />
-                        </span>
-                            <strong>{FAMILY_CHOICE_LABELS[family]}</strong>
-                      </span>
-                      <span className="eva-prompt-card__copy">
-                        <strong>{metadata.summary}</strong>
-                        <span>{metadata.description}</span>
-                      </span>
-                      <small>{licensed ? 'Licensed' : 'License required'}</small>
-                    </button>
-                  );
-                })}
-              </div>
-              <div className="eva-family-choice-help">
-                <div className="eva-family-choice-actions">
-                  <Button
-                    type="button"
-                    variant="secondary"
-                    size="sm"
-                    aria-expanded={familyHelpVisible}
-                    onClick={() => setFamilyHelpVisible(visible => !visible)}
-                  >
-                    <Icon name="help" weight="bold" size="sm" />
-                    Help me choose
-                  </Button>
-                  <Button
-                    type="button"
-                    variant="secondary"
-                    size="sm"
-                    aria-expanded={showOtherTemplates}
-                    aria-controls="eva-landing-template-options"
-                    onClick={() => setShowOtherTemplates(visible => !visible)}
-                  >
-                    <Icon name="apps" weight="bold" size="sm" />
-                    {showOtherTemplates ? 'Hide templates' : 'Show templates'}
-                  </Button>
-                </div>
-                {familyHelpVisible && (
-                  <div className="eva-family-choice-help__content">
-                    {(Object.keys(FAMILY_METADATA) as AgentFamily[]).map(family => (
-                      <p key={family}>
-                        <strong>{FAMILY_METADATA[family].label}:</strong> {FAMILY_EXPLANATIONS[family]}
-                      </p>
-                    ))}
-                    <p><strong>One family per agent:</strong> Contact Center and AI Assistant cannot be combined in the same agent. You can duplicate the idea into another family later.</p>
-                  </div>
-                )}
-              </div>
-            </AiResponseMessage>
-            {showOtherTemplates && (
-              <div id="eva-landing-template-options" className="eva-landing-template-options">
-                <p>Start with a familiar template. You can review the family-specific proposal before anything is applied.</p>
-                <div className="eva-prompt-examples eva-landing-template-grid" aria-label="Starter templates">
-                  {starterPrompts.slice(0, 4).map(prompt => (
-                    <button
-                      key={prompt.templateId}
-                      type="button"
-                      className="eva-prompt-card"
-                      onClick={() => handleLandingStarterSelect(prompt.templateId)}
-                    >
-                      <span className="eva-prompt-card__header">
-                        <span className="eva-prompt-card__icon" aria-hidden="true">
-                          <Icon name={prompt.icon} weight="bold" size="md" />
-                        </span>
-                        <strong>{prompt.title}</strong>
-                      </span>
-                      <span className="eva-prompt-card__copy">
-                        <strong>{prompt.summary}</strong>
-                        <span>{prompt.description}</span>
-                      </span>
-                      <small>Start here</small>
-                    </button>
-                  ))}
-                </div>
-              </div>
-            )}
-            {Object.keys(agents).length > 0 && (
-              <div className="eva-landing-secondary-actions">
-                <Button variant="secondary" onClick={handleSwitchToExistingAgents}>
-                  <Icon name="user" weight="bold" size="sm" />
-                  All agents
-                </Button>
-              </div>
-            )}
+          <div className="eva-landing-divider eva-landing-template-divider" role="separator" aria-label="quick start with">
+            <span className="eva-landing-divider-line" aria-hidden="true" />
+            <span className="eva-landing-divider-text">Quick start with</span>
+            <span className="eva-landing-divider-line" aria-hidden="true" />
+          </div>
+        )}
+
+        {showLandingOptions && landingMode === 'build' && (
+          <section className="eva-prompt-examples" aria-label="Quick templates">
+            {starterPrompts.slice(0, 4).map(prompt => (
+              <button
+                key={prompt.templateId}
+                type="button"
+                className="eva-prompt-card"
+                onClick={() => handleTemplateSelect(prompt.templateId)}
+              >
+                <span className="eva-prompt-card__header">
+                  <span className="eva-prompt-card__icon" aria-hidden="true">
+                    <Icon name={prompt.icon} weight="bold" size="md" />
+                  </span>
+                  <strong>{prompt.title}</strong>
+                </span>
+                <span className="eva-prompt-card__copy">
+                  <strong>{prompt.summary}</strong>
+                  <span>{prompt.description}</span>
+                </span>
+                <small>Start here</small>
+              </button>
+            ))}
           </section>
+        )}
+
+        {/* Secondary entry points — same pattern used on the form-builder
+            landing. The "Or" divider separates the templated/free-text
+            path above from the two direct shortcuts below. */}
+        {showLandingOptions && landingMode === 'build' && (
+          <>
+            <div className="eva-landing-divider" role="separator" aria-label="or">
+              <span className="eva-landing-divider-line" aria-hidden="true" />
+              <span className="eva-landing-divider-text">Or</span>
+              <span className="eva-landing-divider-line" aria-hidden="true" />
+            </div>
+
+            <div className="eva-landing-secondary-actions">
+              <Button variant="secondary" onClick={handleSwitchToExistingAgents}>
+                <Icon name="user" weight="bold" size="sm" />
+                All agents
+              </Button>
+
+              <Button variant="secondary" onClick={() => setIsCreateModalOpen(true)}>
+                <Icon name="plus" weight="bold" size="sm" />
+                Start from scratch
+              </Button>
+            </div>
+          </>
         )}
 
         {/* Free-chat dialogue surface — renders ABOVE the right-rail

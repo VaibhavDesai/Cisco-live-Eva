@@ -53,8 +53,8 @@ test('operational status shows a compact session event table filtered by the sel
   );
   assert.match(
     source,
-    /<Banner[\s\S]*?className="agent-studio-operational-event-banner"[\s\S]*?\/>[\s\S]*?<section[\s\S]*?className="agent-studio-session-events"[\s\S]*?<Table className="agent-studio-session-events__table"/,
-    'the session table should appear directly below the operational banner',
+    /className="agent-studio-operational-overview"[\s\S]*?<\/div>[\s\S]*?<section[\s\S]*?className="agent-studio-session-events"[\s\S]*?<Table className="agent-studio-session-events__table"/,
+    'the session table should remain directly below the operational metrics',
   );
   assert.match(
     source,
@@ -123,8 +123,8 @@ test('overview and navigation reuse the same capability icon language', () => {
 
   assert.match(
     categoryIconSource,
-    /type === ['"]action['"][\s\S]*?<Icon name="tools" weight="bold"/,
-    'Actions should reuse the Tools icon from the side navigation',
+    /type === ['"]action['"][\s\S]*?<Icon name="tools" weight="regular"/,
+    'Actions should use the Tools icon with the same visual weight as the other overview glyphs',
   );
   assert.match(
     sidebarSource,
@@ -138,8 +138,22 @@ test('overview and navigation reuse the same capability icon language', () => {
   );
 });
 
+test('overview suggestions stay hidden while the section is paused', () => {
+  const overviewSource = readSource('../../pages/agent/AgentStudioLanding.tsx');
+  assert.match(
+    overviewSource,
+    /const SHOW_CONNECTED_SUGGESTIONS = false;[\s\S]*?\{SHOW_CONNECTED_SUGGESTIONS && \([\s\S]*?className="agent-studio-connected-insights"/,
+    'the Suggestions section should remain out of the rendered overview',
+  );
+});
+
 test('operational status presents its metrics as a compact table with a dashboard link', () => {
   const studioSource = readSource('../../pages/agent/AgentStudioLanding.tsx');
+  assert.match(
+    studioSource,
+    /const observabilityPath = ['"]\/observability['"];/,
+    'the dashboard action should match the workspace Observability navigation',
+  );
   assert.match(
     studioSource,
     /className="agent-studio-operational-metrics-table"[\s\S]*?<th scope="col">Metric<\/th>[\s\S]*?<th scope="col">Value<\/th>[\s\S]*?<th scope="col">Change<\/th>[\s\S]*?OPERATIONAL_HEALTH_METRICS\.map/,
@@ -153,14 +167,20 @@ test('operational status presents its metrics as a compact table with a dashboar
   assert.doesNotMatch(studioSource, /<KPICard|<KPIChart/);
 });
 
-test('operational session banner opens a concrete session detail', () => {
+test('selected guardrail banner opens a concrete session detail', () => {
   const studioSource = readSource('../../pages/agent/AgentStudioLanding.tsx');
   const sessionsSource = readSource('../../pages/agent/AgentSessions.tsx');
 
   assert.match(
     studioSource,
-    /<Banner[\s\S]*?type="success"[\s\S]*?className="agent-studio-operational-event-banner"[\s\S]*?label: 'View session →'[\s\S]*?navigate\(operationalSessionPath\)/,
-    'the operational event should reuse the success banner and link to its session',
+    /selectedGuardrail && selectedGuardrail\.count > 0[\s\S]*?<Banner[\s\S]*?className="agent-studio-operational-event-banner agent-studio-connected-event-banner"[\s\S]*?label: 'View session →'[\s\S]*?navigate\(operationalSessionPath\)/,
+    'the selected guardrail event should appear below the capability charts and link to its session',
+  );
+  assert.match(studioSource, /aria-pressed=\{selectedGuardrailName === guardrail\.item\}/);
+  assert.match(
+    studioSource,
+    /selectedGuardrailName === guardrail\.item \? null : guardrail\.item/,
+    'clicking the selected guardrail should clear the selection and hide its event banner',
   );
   assert.match(studioSource, /source=observability/);
   assert.match(sessionsSource, /const activeSession = sessionIdQuery[\s\S]*?sessions\.find/);
@@ -169,44 +189,38 @@ test('operational session banner opens a concrete session detail', () => {
   assert.match(sessionsSource, /Back to agent overview/);
 });
 
-test('landing restores the conversational composer before the centered family chooser', () => {
+test('landing restores the design-exploration composer and quick-template entry points', () => {
   const source = readSource('../eva/EvaChatExperience.tsx');
-  const styles = readSource('../../products/ai-agent-studio/components.css');
   const composerIndex = source.indexOf('className="eva-landing-composer"');
-  const familyChooserIndex = source.indexOf('className="eva-dialogue eva-family-choice-thread"');
+  const quickTemplatesIndex = source.indexOf('aria-label="Quick templates"');
 
-  assert.ok(composerIndex >= 0, 'the original landing composer should be present');
-  assert.ok(familyChooserIndex > composerIndex, 'the composer should remain before the family-card section');
+  assert.ok(composerIndex >= 0, 'the design-exploration landing composer should be present');
+  assert.ok(quickTemplatesIndex > composerIndex, 'the composer should remain before the quick-template section');
   assert.match(
-    source.slice(composerIndex, familyChooserIndex),
-    /<AiFooter[\s\S]*?onSend=\{handleSend\}[\s\S]*?voiceActive=\{voiceActive\}/,
-    'the landing must reuse the established conversational composer',
+    source.slice(composerIndex, quickTemplatesIndex),
+    /<AiFooter[\s\S]*?onSend=\{handleSend\}[\s\S]*?friendly banking assistant[\s\S]*?voiceActive=\{voiceActive\}/,
+    'the landing should reuse the design-exploration composer and example prompt',
   );
   assert.match(
-    styles,
-    /\.eva-family-choice-thread\s*>\s*\.eva-ai-response\.ai-response\s*\{[\s\S]*?width:\s*100%;[\s\S]*?max-width:\s*none;[\s\S]*?margin-inline:\s*auto;/,
-    'the family response should fill and center within the landing composition',
+    source,
+    /aria-label="quick start with"[\s\S]*?aria-label="Quick templates"[\s\S]*?starterPrompts\.slice\(0,\s*4\)\.map/,
+    'the four design-exploration starters should appear below the Quick start with divider',
   );
   assert.match(
-    styles,
-    /\.eva-family-choice-thread[^{]*\.ai-response__content\s*\{[\s\S]*?text-align:\s*center;/,
-    'the family prompt should use the centered landing alignment',
+    source,
+    /onClick=\{\(\) => handleTemplateSelect\(prompt\.templateId\)\}/,
+    'each starter should retain the original direct template flow',
   );
   assert.match(
-    styles,
-    /\.eva-landing-shell:not\(\.eva-first-interface--generated\) \.eva-first-interface__hero,\s*\.eva-landing-shell:not\(\.eva-first-interface--generated\) \.eva-landing-composer,\s*\.eva-landing-shell:not\(\.eva-first-interface--generated\) \.eva-family-choice-thread\s*\{[\s\S]*?animation:\s*evaLandingHeroSettle/,
-    'hero, composer, and family content should enter as one connected animation',
+    source,
+    />\s*All agents\s*<[\s\S]*?>\s*Start from scratch\s*</,
+    'the original secondary landing actions should remain available',
   );
 });
 
-test('landing family labels and recommendation actions use the requested visual hierarchy', () => {
+test('configuration recommendation actions use the requested visual hierarchy', () => {
   const source = readSource('../eva/EvaChatExperience.tsx');
 
-  assert.match(
-    source,
-    /const FAMILY_CHOICE_LABELS[\s\S]*?contact_center:\s*['"]CX concierge['"][\s\S]*?internal_assistant:\s*['"]Ai Assistant['"]/,
-  );
-  assert.match(source, /<strong>\{FAMILY_CHOICE_LABELS\[family\]\}<\/strong>/);
   assert.doesNotMatch(
     source,
     /className="eva-family-recommendation__header"[\s\S]{0,180}<Badge/,
@@ -227,39 +241,18 @@ test('landing family labels and recommendation actions use the requested visual 
   );
 });
 
-test('Show templates reveals all four legacy starters through the family-aware proposal flow', () => {
+test('landing quick templates use the original direct template flow', () => {
   const source = readSource('../eva/EvaChatExperience.tsx');
 
-  assert.match(source, />\s*\{showOtherTemplates\s*\?\s*['"]Hide templates['"]\s*:\s*['"]Show templates['"]\}\s*</);
-  assert.match(source, /aria-expanded=\{showOtherTemplates\}/);
-  assert.match(source, /aria-controls=['"]eva-landing-template-options['"]/);
   assert.match(
     source,
-    /\{showOtherTemplates\s*&&\s*\([\s\S]*?id=['"]eva-landing-template-options['"][\s\S]*?starterPrompts\.slice\(0,\s*4\)\.map/,
-    'the template button should disclose the previous four template cards',
+    /aria-label="Quick templates"[\s\S]*?starterPrompts\.slice\(0,\s*4\)\.map[\s\S]*?onClick=\{\(\) => handleTemplateSelect\(prompt\.templateId\)\}/,
+    'the four starter cards should be visible on the homepage and use the direct template handler',
   );
-
-  const expectedTargets = [
-    ['customer-support', 'calling', 'voice-receptionist'],
-    ['knowledge-assistant', 'contact_center', 'cx-concierge'],
-    ['policy-compliance', 'internal_assistant', 'it-help-desk'],
-    ['workflow-automation', 'contact_center', 'order-management'],
-  ];
-  for (const [templateId, family, starterId] of expectedTargets) {
-    assert.match(
-      source,
-      new RegExp(`['"]${templateId}['"]\\s*:\\s*\\{[^}]*family:\\s*['"]${family}['"][^}]*starterId:\\s*['"]${starterId}['"]`),
-      `${templateId} should open the compatible ${family} proposal`,
-    );
-  }
-
-  assert.match(source, /setSelectedAgentFamily\(target\.family\)/);
-  assert.match(source, /setFamilyProposal\(proposal\)/);
-  assert.match(source, /setFamilyProposalApplied\(false\)/);
-  assert.doesNotMatch(
+  assert.match(
     source,
-    /handleLandingStarterSelect[\s\S]{0,2500}applyProposalToConfiguration\(/,
-    'choosing a template must present a proposal instead of applying configuration automatically',
+    /const handleTemplateSelect[\s\S]*?createOrSelectDraftAgent[\s\S]*?navigate\(`\/agents\/\$\{agent\.id\}\/studio`\)/,
+    'choosing a homepage template should continue into the existing agent studio',
   );
 });
 

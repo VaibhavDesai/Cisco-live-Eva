@@ -55,7 +55,6 @@ import {
   type EvaConversationStep,
 } from '../../features/eva/evaFormConfig';
 import { EVA_TEMPLATES } from '../../features/eva/evaTemplates';
-import { clusKpiAgentObservabilityHashSegment } from '../../features/clus-kpi-dashboard/agentHashNavigation';
 import {
   FAMILY_METADATA,
   type AgentDraft,
@@ -63,8 +62,6 @@ import {
   type AgentLifecycle,
 } from '../../features/agent-creation/agentCreationModel';
 import { Icon } from '../../icons';
-import { buildProjectPath } from '../../projects/project-routing';
-import { useProjects } from '../../projects/useProjects';
 
 type PreviewCallStatus = 'idle' | 'connecting' | 'listening' | 'speaking' | 'paused' | 'ended' | 'error';
 type ConnectedViewMode = 'metrics' | 'resources';
@@ -92,6 +89,7 @@ const DEFAULT_OVERVIEW_CHART_ORDER: OverviewChartTileId[] = [
   'actions',
   'guardrails',
 ];
+const SHOW_CONNECTED_SUGGESTIONS = false;
 
 function overviewLayoutStorageKey(agentId: string, group: OverviewTileGroup) {
   return `eva-agent-overview-layout-v1:${agentId}:${group}`;
@@ -406,7 +404,6 @@ function getPreviewTimeLabel() {
 export default function AgentStudioLanding() {
   const { agentId } = useParams();
   const navigate = useNavigate();
-  const { currentProjectId } = useProjects();
   const {
     agents,
     agentDrafts,
@@ -426,6 +423,7 @@ export default function AgentStudioLanding() {
   const [previewWidgetOpen, setPreviewWidgetOpen] = useState(false);
   const [operationalTimeRange, setOperationalTimeRange] = useState('6h');
   const [connectedViewMode, setConnectedViewMode] = useState<ConnectedViewMode>('metrics');
+  const [selectedGuardrailActivity, setSelectedGuardrailActivity] = useState<string | null | undefined>(undefined);
   const [overviewCardOrder, setOverviewCardOrder] = useState<OverviewCardId[]>(
     () => readOverviewTileOrder(agentId, 'cards', DEFAULT_OVERVIEW_CARD_ORDER),
   );
@@ -1156,7 +1154,7 @@ export default function AgentStudioLanding() {
     ? `/agents/${agent.id}/sessions?sessionId=${encodeURIComponent(previewSessionId)}&source=preview`
     : `/agents/${agent.id}/sessions?source=preview`;
   const sessionsPath = `/agents/${encodeURIComponent(agent.id)}/sessions`;
-  const observabilityPath = `${buildProjectPath(currentProjectId, '/kpi-dashboard')}#${clusKpiAgentObservabilityHashSegment(agent.name)}`;
+  const observabilityPath = '/observability';
   const showPreviewSessionLink = previewInteractionEnded && (previewCallStatus === 'ended' || previewCallStatus === 'error');
   const configuredKnowledge = agentDraft
     ? configuredCapabilityLabels(agentDraft, 'knowledge', summary.knowledgeBases)
@@ -1209,6 +1207,18 @@ export default function AgentStudioLanding() {
     item,
     count: getCiscoLiveGuardrailTriggerCount(item),
   }));
+  const defaultSelectedGuardrailName = connectedGuardrailActivity.find(guardrail => guardrail.count > 0)?.item
+    ?? connectedGuardrailActivity[0]?.item
+    ?? null;
+  const selectedGuardrailName = selectedGuardrailActivity === undefined
+    ? defaultSelectedGuardrailName
+    : selectedGuardrailActivity
+      && connectedGuardrailActivity.some(guardrail => guardrail.item === selectedGuardrailActivity)
+      ? selectedGuardrailActivity
+      : null;
+  const selectedGuardrail = connectedGuardrailActivity.find(
+    guardrail => guardrail.item === selectedGuardrailName,
+  );
   const guardrailTriggerTotal = connectedGuardrailActivity.reduce((total, item) => total + item.count, 0);
   const allAgentSessions = getCiscoLiveSessions(agent.id);
   const guardedSessionRate = allAgentSessions.length > 0
@@ -1650,11 +1660,22 @@ export default function AgentStudioLanding() {
                                       const maxCount = Math.max(1, ...connectedGuardrailActivity.map(item => item.count));
                                       const height = guardrail.count === 0 ? 4 : Math.max(18, (guardrail.count / maxCount) * 100);
                                       return (
-                                        <div key={guardrail.item} className="agent-studio-guardrail-chart__item">
-                                          <div className="agent-studio-guardrail-chart__plot">
+                                        <div
+                                          key={guardrail.item}
+                                          className={`agent-studio-guardrail-chart__item${selectedGuardrailName === guardrail.item ? ' is-selected' : ''}`}
+                                        >
+                                          <button
+                                            type="button"
+                                            className="agent-studio-guardrail-chart__plot"
+                                            aria-label={`${guardrail.item}: ${guardrail.count} trigger${guardrail.count === 1 ? '' : 's'}`}
+                                            aria-pressed={selectedGuardrailName === guardrail.item}
+                                            onClick={() => setSelectedGuardrailActivity(
+                                              selectedGuardrailName === guardrail.item ? null : guardrail.item,
+                                            )}
+                                          >
                                             <span>{guardrail.count}</span>
                                             <i style={{ height: `${height}%` }} />
-                                          </div>
+                                          </button>
                                           <small title={guardrail.item}>{guardrail.item}</small>
                                         </div>
                                       );
@@ -1670,6 +1691,28 @@ export default function AgentStudioLanding() {
                       })}
                     </div>
 
+                    {selectedGuardrail && selectedGuardrail.count > 0 && (
+                      <Banner
+                        type="success"
+                        icon="shield"
+                        className="agent-studio-operational-event-banner agent-studio-connected-event-banner"
+                        title={operationalEvent.eventTitle}
+                        subtitle={(
+                          <>
+                            <span className="agent-studio-operational-event-meta">{operationalEvent.eventMeta}</span>
+                            <span>{operationalEvent.eventDescription}</span>
+                          </>
+                        )}
+                        actions={[{
+                          label: 'View session →',
+                          onClick: () => navigate(operationalSessionPath),
+                          variant: 'outline',
+                        }]}
+                        dismissable={false}
+                      />
+                    )}
+
+                    {SHOW_CONNECTED_SUGGESTIONS && (
                     <section className="agent-studio-connected-insights" aria-labelledby="connected-insights-title">
                       <div className="agent-studio-connected-insights__heading">
                         <span className="agent-studio-card-heading__icon agent-studio-connected-insights__bulb" aria-hidden="true">
@@ -1720,6 +1763,7 @@ export default function AgentStudioLanding() {
                         </button>
                       </div>
                     </section>
+                    )}
                   </div>
                 ) : (
                   <div className="agent-studio-connected-columns">
@@ -1931,30 +1975,6 @@ export default function AgentStudioLanding() {
                     </table>
                   </div>
                 </div>
-                <Banner
-                  type="success"
-                  icon="shield"
-                  className="agent-studio-operational-event-banner"
-                  title={knownSessionId ? 'Preview session ready for review' : operationalEvent.eventTitle}
-                  subtitle={(
-                    <>
-                      <span className="agent-studio-operational-event-meta">
-                        {knownSessionId ? `Preview session ${knownSessionId}` : operationalEvent.eventMeta}
-                      </span>
-                      <span>
-                        {knownSessionId
-                          ? 'Review the conversation transcript, outcome, and handoff context.'
-                          : operationalEvent.eventDescription}
-                      </span>
-                    </>
-                  )}
-                  actions={[{
-                    label: 'View session →',
-                    onClick: () => navigate(operationalSessionPath),
-                    variant: 'outline',
-                  }]}
-                  dismissable={false}
-                />
                 <section
                   className="agent-studio-session-events"
                   aria-labelledby="agent-studio-session-events-title"

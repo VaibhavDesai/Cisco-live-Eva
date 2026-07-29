@@ -25,7 +25,7 @@ export default function ConfigurationCategoryIcon({ type }: { type: Configuratio
   if (type === 'action') {
     return (
       <span className="configuration-category-icon configuration-category-icon--action" aria-hidden="true">
-        <Icon name="tools" weight="bold" size="xs" />
+        <Icon name="tools" weight="regular" size="xs" />
       </span>
     );
   }

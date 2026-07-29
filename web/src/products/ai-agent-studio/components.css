@@ -2255,12 +2255,28 @@ html[data-product='ai-agent-studio'] .app-header__menu-row-hint {
 
 .agent-studio-guardrail-chart__plot {
   display: flex;
+  width: 100%;
   min-height: 104px;
   flex: 1;
   flex-direction: column;
   justify-content: flex-end;
   gap: var(--spacing-xxx-small);
+  padding: 0;
+  border: 0;
   border-bottom: var(--border-width-small) solid var(--border-color);
+  color: inherit;
+  text-align: left;
+  background: transparent;
+  cursor: pointer;
+}
+
+.agent-studio-guardrail-chart__plot:focus-visible {
+  outline: 2px solid var(--outline-input-active);
+  outline-offset: 2px;
+}
+
+.agent-studio-guardrail-chart__item.is-selected .agent-studio-guardrail-chart__plot {
+  border-bottom-color: var(--mds-color-theme-outline-label-gold);
 }
 
 .agent-studio-guardrail-chart__plot span {
@@ -2277,6 +2293,10 @@ html[data-product='ai-agent-studio'] .app-header__menu-row-hint {
   margin-inline: auto;
   border-radius: var(--border-radius-medium) var(--border-radius-medium) 0 0;
   background: color-mix(in srgb, var(--mds-color-theme-outline-label-gold) 72%, var(--bg-primary));
+}
+
+.agent-studio-guardrail-chart__item.is-selected .agent-studio-guardrail-chart__plot i {
+  background: var(--mds-color-theme-outline-label-gold);
 }
 
 .agent-studio-guardrail-chart__item small {
