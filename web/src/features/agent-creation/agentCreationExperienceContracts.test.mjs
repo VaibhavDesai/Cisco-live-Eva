@@ -96,6 +96,7 @@ test('Agent Studio header saves configuration changes before publishing a new ve
 
 test('overview cards can be reordered and persist their layout per agent', () => {
   const source = readSource('../../pages/agent/AgentStudioLanding.tsx');
+  const styles = readSource('../../products/ai-agent-studio/components.css');
 
   assert.match(
     source,
@@ -107,6 +108,11 @@ test('overview cards can be reordered and persist their layout per agent', () =>
     source,
     /overviewCardOrder\.map\(\(cardId,\s*index\)[\s\S]*?handleOverviewTileDragStart\(event,\s*['"]cards['"],\s*cardId\)[\s\S]*?handleOverviewTileKeyDown\(event,\s*['"]cards['"],\s*cardId\)/,
     'the main cards should share the drag and keyboard reordering model',
+  );
+  assert.match(
+    styles,
+    /\.agent-studio-overview-card__drag-handle\s*\{[^}]*top:\s*var\(--spacing-x-small\);[^}]*right:\s*var\(--spacing-x-small\);[^}]*width:\s*28px;/,
+    'large overview card handles should align with the smaller tile handles in the upper-right corner',
   );
 });
 

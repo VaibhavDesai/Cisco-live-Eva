@@ -2028,10 +2028,10 @@ html[data-product='ai-agent-studio'] .app-header__menu-row-hint {
 .agent-studio-overview-card__drag-handle {
   position: absolute;
   z-index: 3;
-  top: var(--spacing-micro);
-  left: 50%;
+  top: var(--spacing-x-small);
+  right: var(--spacing-x-small);
   display: inline-flex;
-  width: 40px;
+  width: 28px;
   height: 28px;
   align-items: center;
   justify-content: center;
@@ -2041,7 +2041,6 @@ html[data-product='ai-agent-studio'] .app-header__menu-row-hint {
   color: var(--text-secondary);
   background: transparent;
   cursor: grab;
-  transform: translateX(-50%);
 }
 
 .agent-studio-overview-card__drag-handle:hover {
