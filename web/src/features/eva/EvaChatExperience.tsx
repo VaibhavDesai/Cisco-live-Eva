@@ -3194,15 +3194,6 @@ export default function EvaChatExperience({
       return;
     }
 
-    /* Family is a required, mutually exclusive entitlement choice. Free-form
-       creation never starts before it is selected. */
-    if (!selectedAgentFamily && !familyProposalApplied) {
-      setFreeChatActive(false);
-      setFamilyHelpVisible(true);
-      showToast('Choose one agent area before describing the agent.', 'info');
-      return;
-    }
-
     if (normalized === RETAIL_TRANSITION_PROMPT) {
       jumpToRetailActionReview();
       return;

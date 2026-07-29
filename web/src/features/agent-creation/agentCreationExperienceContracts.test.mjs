@@ -256,6 +256,36 @@ test('landing quick templates use the original direct template flow', () => {
   );
 });
 
+test('homepage free-form prompts can start and continue the original Acme retail workflow', () => {
+  const source = readSource('../eva/EvaChatExperience.tsx');
+  const intentSource = readSource('../eva/evaFormConfig.ts');
+  const handleSendStart = source.indexOf('const handleSend = (text: string)');
+  const handleSendEnd = source.indexOf('const matchTemplateFromText', handleSendStart);
+  const handleSendSource = source.slice(handleSendStart, handleSendEnd);
+
+  assert.ok(handleSendStart >= 0 && handleSendEnd > handleSendStart);
+  assert.doesNotMatch(
+    handleSendSource,
+    /Choose one agent area before describing the agent/,
+    'the homepage prompt should not be blocked by the removed family chooser',
+  );
+  assert.match(
+    handleSendSource,
+    /retailPrototypeStep !== ['"]idle['"][\s\S]*?handleRetailReceptionistStoryAnswer\(text\)[\s\S]*?getVoiceAgentWorkflowIntent\(text\)[\s\S]*?beginRetailReceptionistStory\(voiceAgentIntent\)/,
+    'active retail replies and new Acme trigger prompts should route through the original guided flow',
+  );
+  assert.match(
+    source,
+    /const beginRetailReceptionistStory[\s\S]*?setFreeChatActive\(true\)[\s\S]*?setRetailPrototypeStep\(['"]discovering['"]\)[\s\S]*?originStep[\s\S]*?retail-channel-choice/,
+    'the trigger should open the conversational thread and advance to the channel choice',
+  );
+  assert.match(
+    intentSource,
+    /hasStoreSignal[\s\S]*?\\b\(store\|shop\|retail\)\\b[\s\S]*?hasRequestIntent/,
+    'shop creation prompts should remain recognized as retail workflow intents',
+  );
+});
+
 test('Contact Center proposal review shows the verified channel, name, greeting, and instructions', () => {
   const source = readSource('../eva/EvaChatExperience.tsx');
   const proposalStart = source.indexOf('className="eva-family-proposal"');
