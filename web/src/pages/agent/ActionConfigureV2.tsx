@@ -30,6 +30,7 @@ import SecurityUIPolicyStudio from './SecurityUIPolicyStudio';
 import { optimizeInstructions } from '../../api/ciscoAi';
 import { Icon } from '../../icons';
 import {
+  FAMILY_METADATA,
   type AgentFamily,
   type CapabilityState,
   type CustomerChannel,
@@ -51,6 +52,20 @@ import {
   buildSeededVersionCache,
   resolveVersionMetaFromCache,
 } from './actionConfigShared';
+import { useUpliftWorkspace } from '../../products/ai-agent-studio/UpliftWorkspaceContext';
+
+const familyBadgeVariant = (family: AgentFamily) => {
+  if (family === 'calling') return 'warning' as const;
+  if (family === 'contact_center') return 'success' as const;
+  return 'info' as const;
+};
+
+const lifecycleStatusLabel = (lifecycle: string) => {
+  if (lifecycle === 'draft') return 'Draft';
+  if (lifecycle === 'published') return 'Published';
+  if (lifecycle === 'deployed') return 'Deployed';
+  return 'Live';
+};
 
 function ProfileLogicSummary({ overview }: { overview: import('./PolicyStudio').PolicyOverview }) {
   const hasOverview = overview.blocked.length > 0 || overview.allowed.length > 0 || overview.edgeCases.length > 0;
@@ -553,6 +568,10 @@ export default function ActionConfigureV2() {
     aiEngines,
     addAiEngine,
   } = useApp();
+  const {
+    state: upliftWorkspaceState,
+    setSnap,
+  } = useUpliftWorkspace();
   const agentDraft = agentId ? agentDrafts[agentId] : undefined;
   // Resolve the Cisco Live demo definition for this agent (falling back to the
   // primary demo agent) so every configuration screen shows real design-
@@ -1175,7 +1194,6 @@ export default function ActionConfigureV2() {
     setSavedConfigurationFingerprint(configurationFingerprint);
   }, [agentId, configurationFingerprint]);
 
-  const hasUnsavedChanges = configurationFingerprint !== savedConfigurationFingerprint;
   const handleSaveConfiguration = () => {
     setSavedConfigurationFingerprint(configurationFingerprint);
     showToast('Configuration saved', 'success');
@@ -1193,6 +1211,15 @@ export default function ActionConfigureV2() {
   const agent = currentAgent || agents[agentId];
   if (!agent) return <Navigate to="/agents" replace />;
 
+  const family = agentDraft?.family ?? agent.family;
+  const lifecycle = agentDraft?.lifecycle ?? agent.lifecycle ?? 'draft';
+  const familyName = family ? FAMILY_METADATA[family].label : 'Agent family not assigned';
+  const familyBadgeLabel = family === 'contact_center'
+    ? 'CX Concierge'
+    : family
+      ? FAMILY_METADATA[family].label
+      : familyName;
+  const studioHeaderAgent = { ...agent, meta: agent.description };
   const knowledgeDemoAgent = CISCO_LIVE_AGENTS.find((candidate) => candidate.id === agent.id) ?? CISCO_LIVE_AGENTS[0];
   const knowledgeBases = knowledgeDemoAgent.knowledgeSources;
   const memorySources = knowledgeDemoAgent.memorySources;
@@ -1491,26 +1518,81 @@ export default function ActionConfigureV2() {
     </GuardrailRail>
   );
 
-  const headerActions = (
-    <div className="action-config-v2-header-actions">
-      {hasUnsavedChanges && (
-        <Button type="button" onClick={handleSaveConfiguration}>
-          Save
-        </Button>
+  const headerStatus = (
+    <div className="agent-studio-agent-metadata" aria-label={`${familyBadgeLabel}; ${lifecycleStatusLabel(lifecycle)}`}>
+      {family && (
+        <Badge className="agent-studio-family-badge" variant={familyBadgeVariant(family)}>
+          {familyBadgeLabel}
+        </Badge>
       )}
-      <Button type="button" variant="secondary">
-        <Icon name="chat" weight="bold" size="xs" />
+      <span className={`agent-studio-lifecycle-status agent-studio-lifecycle-status--${lifecycle}`}>
+        <span className="agent-studio-lifecycle-status__dot" aria-hidden="true" />
+        <span>{lifecycleStatusLabel(lifecycle)}</span>
+      </span>
+    </div>
+  );
+
+  const headerActions = (
+    <div
+      className="agent-studio-header-actions"
+      role="group"
+      aria-label={`${familyName}; configuration actions`}
+    >
+      <Button
+        type="button"
+        variant="secondary"
+        size="sm"
+        className="agent-studio-header-action agent-studio-header-action--icon"
+        aria-label={upliftWorkspaceState.productSurface.snap === 'expanded'
+          ? 'Switch AI Agent Studio to split view'
+          : 'Expand AI Agent Studio workspace'}
+        title={upliftWorkspaceState.productSurface.snap === 'expanded'
+          ? 'Split view'
+          : 'Expanded view'}
+        aria-pressed={upliftWorkspaceState.productSurface.snap === 'expanded'}
+        onClick={() => setSnap(
+          upliftWorkspaceState.productSurface.snap === 'expanded' ? 'split' : 'expanded',
+        )}
+      >
+        <Icon name="side-panel" weight="regular" size="sm" />
+      </Button>
+      <Button
+        type="button"
+        variant="secondary"
+        size="sm"
+        className="agent-studio-header-action"
+      >
+        <Icon name="play" weight="bold" size="xs" />
         Preview
       </Button>
-      <button type="button" className="action-config-v2-more-btn" aria-label="More options">
-        <Icon name="more" weight="bold" size={20} />
-      </button>
+      <Button
+        type="button"
+        size="sm"
+        className="agent-studio-header-action"
+        aria-label={`Save ${agent.name} configuration`}
+        onClick={handleSaveConfiguration}
+      >
+        Save
+      </Button>
     </div>
   );
 
   return (
-    <div className="primary-content action-config-v2-page">
-      <AgentHeader agent={agent} activeTab="configure" showPublishButton={false} showTabs={false} headerRight={headerActions} />
+    <div className="primary-content action-config-v2-page agent-workspace-page">
+      <AgentHeader
+        agent={studioHeaderAgent}
+        activeTab="configure"
+        showPublishButton={false}
+        showTabs={false}
+        headerTop={(
+          <Link className="agent-studio-back-link" to="/agents">
+            <Icon name="arrow-left" weight="bold" size="xs" />
+            <span>Back to AI Agents</span>
+          </Link>
+        )}
+        statusContent={headerStatus}
+        headerRight={headerActions}
+      />
 
       <div className="action-config-v2-shell">
         <div className="action-config-v2-card">
@@ -1518,7 +1600,7 @@ export default function ActionConfigureV2() {
           {activeSection === 'Channels' && (
             <div className="v2-channels">
               <div className="v2-channels__intro">
-                <h3 className="v2-channels__title">Channels</h3>
+                <h1 className="v2-channels__title agent-config-section-title">Channels</h1>
                 <p className="v2-channels__desc">Choose the customer channels this agent supports.</p>
               </div>
               <div className="v2-channels__grid">
@@ -1551,7 +1633,7 @@ export default function ActionConfigureV2() {
 
           {activeSection === 'Profile' && (
             <>
-            <h3 className="action-config-v2-title">Profile</h3>
+            <h1 className="action-config-v2-title agent-config-section-title">Profile</h1>
             <div className="v2-profile-layout">
               <div className="v2-profile-form">
                 <Input
@@ -1719,7 +1801,7 @@ export default function ActionConfigureV2() {
             <div className="instructions-section">
             <div className="instructions-layout">
               <aside className="instructions-sidebar">
-                <h3 className="instructions-sidebar-title">Instructions <span className="instructions-required">(required)</span></h3>
+                <h1 className="instructions-sidebar-title agent-config-section-title">Instructions <span className="instructions-required">(required)</span></h1>
                 <ul className="instructions-guidelines">
                   <li>Describe what the agent does and which actions it can take.</li>
                   <li>Use markdown headers to organize role, goals, guardrails, and output rules.</li>
@@ -1811,7 +1893,7 @@ export default function ActionConfigureV2() {
             <div className="guardrails-layout">
               <div className="guardrails-header">
                 <div className="guardrails-header-top">
-                  <h1 className="guardrails-title">
+                  <h1 className="guardrails-title agent-config-section-title">
                     <span>Guardrails</span>
                     <Badge variant="success" className="security-tier-badge">Powered by AI Defense</Badge>
                   </h1>
@@ -2174,7 +2256,7 @@ export default function ActionConfigureV2() {
               <div className="knowledge-config-section">
                 <div className="knowledge-config-heading">
                   <div>
-                    <h3>Knowledge bases</h3>
+                    <h1 className="agent-config-section-title">Knowledge bases</h1>
                     <p>Sources your agent can search to answer questions.</p>
                   </div>
                   <button type="button" className="action-config-v2-add-btn">
@@ -2270,18 +2352,21 @@ export default function ActionConfigureV2() {
           )}
 
           {activeSection === 'Language' && (
-            <EmptyState
-              global
-              illustration="campfire-gather"
-              title="No languages configured"
-              description="Add language support so your agent can communicate with users in their preferred language."
-              actions={
-                <Button variant="secondary">
-                  <Icon name="plus" weight="bold" size={20} />
-                  Add language
-                </Button>
-              }
-            />
+            <>
+              <h1 className="agent-config-section-title">Language</h1>
+              <EmptyState
+                global
+                illustration="campfire-gather"
+                title="No languages configured"
+                description="Add language support so your agent can communicate with users in their preferred language."
+                actions={
+                  <Button variant="secondary">
+                    <Icon name="plus" weight="bold" size={20} />
+                    Add language
+                  </Button>
+                }
+              />
+            </>
           )}
 
           {activeSection === 'Action' && showMcpBanner && mcpUpdateCount > 0 && (
@@ -2300,7 +2385,7 @@ export default function ActionConfigureV2() {
 
           {activeSection === 'Action' && (
             <div className="action-config-v2-toolbar">
-              <h3 className="action-config-v2-title">Actions</h3>
+              <h1 className="action-config-v2-title agent-config-section-title">Actions</h1>
               <div className="add-action-menu-wrapper" ref={addMenuRef}>
                 <button
                   type="button"

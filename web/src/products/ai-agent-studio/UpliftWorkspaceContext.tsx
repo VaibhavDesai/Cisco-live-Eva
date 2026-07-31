@@ -18,8 +18,8 @@ import {
   MOBILE_SHELL_BREAKPOINT,
   PRODUCT_RAIL_WIDTH,
   WORKSPACE_STORAGE_KEY,
-  getNearestProductSurfaceSnap,
   getProductSurfaceSnapWidth,
+  getAssistantContextAgentId,
   parseStoredUpliftWorkspaceState,
   upliftWorkspaceReducer,
   type AssistantThread,
@@ -45,9 +45,9 @@ interface UpliftWorkspaceContextValue {
   viewportWidth: number;
   surfaceWidth: number;
   activeThread: AssistantThread;
+  visibleThreads: AssistantThread[];
   setSnap: (snap: ProductSurfaceSnap) => void;
   setDragWidth: (width: number | null) => void;
-  snapToNearestWidth: (width: number) => void;
   openThreadHistory: () => void;
   closeThreadHistory: () => void;
   setAgentPanelOpen: (open: boolean) => void;
@@ -82,8 +82,16 @@ export function UpliftWorkspaceProvider({ children }: { children: ReactNode }) {
   const activeThread = state.assistant.threads.find(
     thread => thread.id === state.assistant.activeThreadId,
   ) ?? state.assistant.threads[0];
-  const surfaceWidth = state.productSurface.width
-    ?? getProductSurfaceSnapWidth(state.productSurface.snap, viewportWidth);
+  const visibleThreads = state.assistant.threads.filter(
+    thread => thread.contextAgentId === activeThread.contextAgentId,
+  );
+  const maxSurfaceWidth = getProductSurfaceSnapWidth('expanded', viewportWidth);
+  const surfaceWidth = state.productSurface.width === null
+    ? getProductSurfaceSnapWidth(state.productSurface.snap, viewportWidth)
+    : Math.max(
+      PRODUCT_RAIL_WIDTH,
+      Math.min(maxSurfaceWidth, state.productSurface.width),
+    );
 
   const setSnap = useCallback((snap: ProductSurfaceSnap) => {
     dispatch({
@@ -92,10 +100,21 @@ export function UpliftWorkspaceProvider({ children }: { children: ReactNode }) {
     });
   }, [viewportWidth]);
   const setDragWidth = useCallback((width: number | null) => {
-    dispatch({ type: 'set-width', width });
-  }, []);
-  const snapToNearestWidth = useCallback((width: number) => {
-    dispatch({ type: 'set-snap', snap: getNearestProductSurfaceSnap(width, viewportWidth) });
+    if (width === null) {
+      dispatch({ type: 'set-width', width });
+      return;
+    }
+    const maxWidth = getProductSurfaceSnapWidth('expanded', viewportWidth);
+    const constrainedWidth = Math.max(
+      PRODUCT_RAIL_WIDTH,
+      Math.min(maxWidth, width),
+    );
+    const snap: ProductSurfaceSnap = constrainedWidth <= PRODUCT_RAIL_WIDTH
+      ? 'compact'
+      : constrainedWidth >= maxWidth
+        ? 'expanded'
+        : 'split';
+    dispatch({ type: 'set-width', width: constrainedWidth, snap });
   }, [viewportWidth]);
   const openThreadHistory = useCallback(() => dispatch({ type: 'open-thread-history' }), []);
   const closeThreadHistory = useCallback(() => dispatch({ type: 'close-thread-history' }), []);
@@ -103,12 +122,22 @@ export function UpliftWorkspaceProvider({ children }: { children: ReactNode }) {
     dispatch({ type: 'set-agent-panel', open });
   }, []);
   const setAssistantContextPath = useCallback((path: string) => {
-    dispatch({ type: 'set-context-path', path });
+    dispatch({
+      type: 'set-context-path',
+      path,
+      id: `assistant-thread-${Date.now()}`,
+      now: new Date().toISOString(),
+    });
   }, []);
   const createNewThread = useCallback(() => {
     const now = new Date().toISOString();
-    dispatch({ type: 'new-thread', id: `assistant-thread-${Date.now()}`, now });
-  }, []);
+    dispatch({
+      type: 'new-thread',
+      id: `assistant-thread-${Date.now()}`,
+      now,
+      contextAgentId: getAssistantContextAgentId(state.assistant.contextPath),
+    });
+  }, [state.assistant.contextPath]);
   const selectThread = useCallback((id: string | number) => {
     dispatch({ type: 'select-thread', id: String(id) });
   }, []);
@@ -137,9 +166,9 @@ export function UpliftWorkspaceProvider({ children }: { children: ReactNode }) {
     viewportWidth,
     surfaceWidth,
     activeThread,
+    visibleThreads,
     setSnap,
     setDragWidth,
-    snapToNearestWidth,
     openThreadHistory,
     closeThreadHistory,
     setAgentPanelOpen,
@@ -161,10 +190,10 @@ export function UpliftWorkspaceProvider({ children }: { children: ReactNode }) {
     setAssistantContextPath,
     setDragWidth,
     setSnap,
-    snapToNearestWidth,
     state,
     surfaceWidth,
     updateActiveThreadSnapshot,
+    visibleThreads,
     viewportWidth,
   ]);
 

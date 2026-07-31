@@ -367,7 +367,7 @@ export default function EvaAgentsTable() {
   });
 
   return (
-    <div className="primary-content">
+    <div className="primary-content ai-agents-list-surface">
       <div className="page-header ai-agents-header">
         <div>
           <h1 className="page-title">AI Agents</h1>

@@ -1,7 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Navigate, useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { useApp } from '../../contexts/AppContext';
-import { AgentHeader } from '../../components/agents';
 import { Card } from '../../components/shared/Card';
 import Badge from '../../components/shared/Badge';
 import Button from '../../components/shared/Button';
@@ -15,6 +14,7 @@ import {
   type CiscoLiveSession,
   type CiscoLiveSessionOutcome,
 } from '../../demo/ciscoLiveDemo';
+import AgentMonitorHeader from './AgentMonitorHeader';
 
 function outcomeVariant(outcome: CiscoLiveSessionOutcome) {
   if (outcome === 'Resolved') return 'success';
@@ -229,15 +229,10 @@ export default function AgentSessions() {
   };
 
   return (
-    <div className="primary-content">
-      <AgentHeader
-        agent={agent}
-        activeTab="sessions"
-        showPublishButton={false}
-        showTabs={false}
-      />
+    <div className="primary-content agent-monitor-page agent-workspace-page">
+      <AgentMonitorHeader agent={agent} activeTab="sessions" />
 
-      <div className={`agent-sessions-page${activeSession ? '' : ' secondary-content'}`}>
+      <div className={`agent-sessions-page agent-monitor-content${activeSession ? '' : ' secondary-content'}`}>
         {activeSession ? (
           <SessionDetail
             session={activeSession}
@@ -253,7 +248,7 @@ export default function AgentSessions() {
           <>
             <div className="agent-sessions-heading">
               <div>
-                <h1>Sessions</h1>
+                <h1 className="agent-workspace-section-title">Sessions</h1>
                 <p>Review interactions, handoffs, errors, and policy triggers for this agent.</p>
               </div>
               <Button variant="secondary" size="sm">

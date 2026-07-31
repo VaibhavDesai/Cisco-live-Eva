@@ -83,8 +83,14 @@ function AiThreadPanel({
             className="ai-thread-panel__new-btn"
             onClick={onNewThread}
           >
-            <Icon name="start-chat-bold" size={16} />
-            New thread
+            <span className="ai-thread-panel__new-leading">
+              <Icon name="edit-bold" size={20} />
+              <span>New Chat</span>
+            </span>
+            <span className="ai-thread-panel__new-trailing" aria-hidden>
+              <span className="ai-thread-panel__new-divider" />
+              <Icon name="recents-bold" size={20} />
+            </span>
           </button>
         </div>
       </div>
@@ -97,10 +103,16 @@ function AiThreadPanel({
               <div
                 key={thread.id}
                 className={`ai-thread-item${activeThreadId === thread.id ? ' ai-thread-item--active' : ''}`}
-                onClick={() => onSelectThread?.(thread.id)}
                 ref={menuOpen === thread.id ? menuRef : undefined}
               >
-                <span className="ai-thread-item__title">{thread.title}</span>
+                <button
+                  type="button"
+                  className="ai-thread-item__select"
+                  aria-current={activeThreadId === thread.id ? 'true' : undefined}
+                  onClick={() => onSelectThread?.(thread.id)}
+                >
+                  <span className="ai-thread-item__title">{thread.title}</span>
+                </button>
                 <button
                   type="button"
                   className="ai-thread-item__menu-btn"

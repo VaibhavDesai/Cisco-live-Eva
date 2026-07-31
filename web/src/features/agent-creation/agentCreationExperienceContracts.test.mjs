@@ -38,19 +38,22 @@ test('EAGLE GREEN starts with the large-reservation approval policy created, ena
   );
   assert.match(
     overviewSource,
-    /const configuredSecurity = configuredCapabilityLabels\(agentDraft,\s*['"]security['"]\)[\s\S]*?chips:\s*configuredSecurity\.map\(item => \(\{\s*item,\s*type:\s*['"]guardrail['"]/,
+    /const overviewSnapshot = buildAgentOverviewSnapshot\([\s\S]*?security:\s*configuredSecurity[\s\S]*?chips:\s*configuredSecurity\.map\(item => \(\{\s*item,\s*type:\s*['"]guardrail['"]/,
     'the Connected card should render configured Security policies as guardrail chips',
   );
 });
 
 test('operational status shows a compact session event table filtered by the selected time range', () => {
   const source = readSource('../../pages/agent/AgentStudioLanding.tsx');
+  const snapshotSource = readSource('../agent-overview/agentOverviewSnapshot.ts');
+  const styles = readSource('../../products/ai-agent-studio/components.css');
 
   assert.match(
-    source,
-    /const operationalSessions = getCiscoLiveSessions\(agent\.id\)[\s\S]*?\.filter\(session => sessionAgeHours\(session\.updated\) <= operationalTimeRangeHours\)[\s\S]*?\.slice\(0,\s*3\)/,
+    snapshotSource,
+    /const recentSessions = operationalAvailable[\s\S]*?allSessions[\s\S]*?\.filter\(session => getAgentOverviewSessionAgeHours\(session\.updated\) <= resolvedTimeRange\.hours\)[\s\S]*?\.slice\(0,\s*3\)/,
     'sessions should respect the selected time range and stay compact',
   );
+  assert.match(source, /const operationalSessions = overviewSnapshot\.operational\.recentSessions/);
   assert.match(
     source,
     /className="agent-studio-operational-overview"[\s\S]*?<\/div>[\s\S]*?<section[\s\S]*?className="agent-studio-session-events"[\s\S]*?<Table className="agent-studio-session-events__table"/,
@@ -69,6 +72,11 @@ test('operational status shows a compact session event table filtered by the sel
     source,
     /if \(outcome === ['"]Transferred['"]\) return ['"]warning['"][\s\S]*?if \(outcome === ['"]Resolved['"]\) return ['"]success['"]/,
     'transferred sessions should use the yellow warning treatment while resolved sessions remain green',
+  );
+  assert.match(
+    styles,
+    /\.agent-studio-session-events\s*\{[\s\S]*?border:\s*var\(--border-width-small\) solid var\(--color-theme-outline-secondary-normal,\s*#FFFFFF33\);[\s\S]*?background:\s*var\(--color-theme-background-secondary-normal,\s*#FFFFFF1C\);/,
+    'the session table should use the same secondary surface and outline tokens as the dashboard cards',
   );
 });
 
@@ -120,6 +128,7 @@ test('overview and navigation reuse the same capability icon language', () => {
   const categoryIconSource = readSource('../../components/shared/ConfigurationCategoryIcon.tsx');
   const sidebarSource = readSource('../../products/ai-agent-studio/components/Sidebar.tsx');
   const overviewSource = readSource('../../pages/agent/AgentStudioLanding.tsx');
+  const configureSource = readSource('../../pages/agent/ActionConfigureV2.tsx');
 
   assert.match(
     categoryIconSource,
@@ -156,7 +165,7 @@ test('operational status presents its metrics as a compact table with a dashboar
   );
   assert.match(
     studioSource,
-    /className="agent-studio-operational-metrics-table"[\s\S]*?<th scope="col">Metric<\/th>[\s\S]*?<th scope="col">Value<\/th>[\s\S]*?<th scope="col">Change<\/th>[\s\S]*?OPERATIONAL_HEALTH_METRICS\.map/,
+    /className="agent-studio-operational-metrics-table"[\s\S]*?<th scope="col">Metric<\/th>[\s\S]*?<th scope="col">Value<\/th>[\s\S]*?<th scope="col">Change<\/th>[\s\S]*?AGENT_OVERVIEW_OPERATIONAL_METRICS\.map/,
     'the operational metrics should remain compact and scannable',
   );
   assert.match(
@@ -735,17 +744,35 @@ test('AI agent list cards keep a visible 16px grid gap', () => {
   const spacingTokens = readSource('../../tokens/spacing-tokens.css');
   const gridRuleStart = styles.indexOf('.ai-agents-grid {');
   const gridRuleEnd = styles.indexOf('}', gridRuleStart);
-  const cardRuleStart = styles.indexOf('.ai-agents-agent-card {');
+  const cardRuleStart = styles.indexOf('\n.ai-agents-agent-card {', gridRuleEnd) + 1;
   const cardRuleEnd = styles.indexOf('}', cardRuleStart);
+  const footerRuleStart = styles.indexOf('.ai-agents-agent-footer {');
+  const footerRuleEnd = styles.indexOf('}', footerRuleStart);
 
   assert.ok(gridRuleStart >= 0 && gridRuleEnd > gridRuleStart);
   assert.ok(cardRuleStart >= 0 && cardRuleEnd > cardRuleStart);
+  assert.ok(footerRuleStart >= 0 && footerRuleEnd > footerRuleStart);
   assert.match(styles.slice(gridRuleStart, gridRuleEnd), /gap:\s*var\(--spacing-small\)/);
+  assert.match(
+    styles.slice(gridRuleStart, gridRuleEnd),
+    /grid-template-columns:\s*repeat\(auto-fit,\s*minmax\(min\(100%,\s*220px\),\s*1fr\)\)/,
+    'agent cards should use responsive fractional tracks with a 220px floor so narrow workspaces can fit multiple columns',
+  );
   assert.match(spacingTokens, /--spacing-small:\s*16px/);
   assert.doesNotMatch(
     styles.slice(cardRuleStart, cardRuleEnd),
     /max-width:/,
     'cards must fill their grid tracks so extra track width does not inflate the visible gap',
+  );
+  assert.match(
+    styles.slice(cardRuleStart, cardRuleEnd),
+    /display:\s*flex;[\s\S]*?flex-direction:\s*column;/,
+    'agent cards should expose a full-height flex column for consistent action placement',
+  );
+  assert.match(
+    styles.slice(footerRuleStart, footerRuleEnd),
+    /margin-top:\s*auto;/,
+    'the Preview action should stay pinned to the bottom of every agent card',
   );
 });
 
@@ -755,6 +782,14 @@ test('Uplift shell makes the assistant persistent and removes the New Agent dest
   const agentsSource = readSource('../../pages/Agents.tsx');
   const dashboardSource = readSource('../../pages/Dashboard.tsx');
   const sidebarSource = readSource('../../products/ai-agent-studio/components/Sidebar.tsx');
+  const overviewSource = readSource('../../pages/agent/AgentStudioLanding.tsx');
+  const configureSource = readSource('../../pages/agent/ActionConfigureV2.tsx');
+  const monitorHeaderSource = readSource('../../pages/agent/AgentMonitorHeader.tsx');
+  const sessionsSource = readSource('../../pages/agent/AgentSessions.tsx');
+  const testingSource = readSource('../../pages/agent/AgentAnalytics.tsx');
+  const historySource = readSource('../../pages/agent/AgentHistory.tsx');
+  const sharedStyles = readSource('../../components.css');
+  const styles = readSource('../../products/ai-agent-studio/components.css');
 
   assert.match(appSource, /<Route path="\/" element=\{<Navigate to="\/agents" replace \/>\} \/>/);
   assert.equal((layoutSource.match(/<EvaChatExperience/g) ?? []).length, 1);
@@ -765,31 +800,175 @@ test('Uplift shell makes the assistant persistent and removes the New Agent dest
     /className="uplift-assistant-base app--ai"/,
     'the persistent assistant must retain the original AI Agent Studio presentation scope',
   );
-  assert.match(layoutSource, /onProductNavigate=\{\(\) => setSnap\('expanded'\)\}/);
+  assert.match(
+    layoutSource,
+    /onProductNavigate=\{options => \{[\s\S]*?options\?\.keepAssistantVisible[\s\S]*?setSnap\('split'\)[\s\S]*?setSnap\('expanded'\)/,
+  );
+  assert.match(
+    layoutSource,
+    /preserveAssistantOnNextRouteRef\.current = true[\s\S]*?setSnap\('split'\)/,
+    'agent configuration handoffs should not be overridden by the route-change workspace safeguard',
+  );
   assert.match(layoutSource, /role="separator"[\s\S]*?aria-label="Resize AI Agent Studio workspace"/);
   assert.doesNotMatch(agentsSource, /EvaChatExperience/);
   assert.match(dashboardSource, /<Navigate to="\/agents" replace \/>/);
   assert.doesNotMatch(sidebarSource, /New agent/);
   assert.match(sidebarSource, /className="sidebar uplift-agent-panel"/);
   assert.match(sidebarSource, /aria-label="Open agent navigation"/);
-  assert.match(sidebarSource, /Back to AI Agents/);
+  assert.match(sidebarSource, /aria-label="Compact agent navigation"/);
+  assert.match(sidebarSource, /className="sidebar sidebar--collapsed uplift-agent-compact-rail"/);
+  assert.doesNotMatch(sidebarSource, /onMouseEnter=\{\(\) => openAgentPanel\(\)\}/);
+  assert.doesNotMatch(sidebarSource, /onMouseLeave=\{\(\) => onAgentPanelOpenChange\?\.\(false\)\}/);
+  assert.doesNotMatch(layoutSource, /if \(agentPanelVisible\) setAgentPanelOpen\(false\)/);
+  assert.match(
+    sidebarSource,
+    /<Link[\s\S]*?className="sidebar-agent-back-link"[\s\S]*?to="\/agents"[\s\S]*?Back to AI Agents[\s\S]*?<\/Link>/,
+    'the docked Progress panel should provide a semantic route back to the AI Agents list',
+  );
+  assert.match(sidebarSource, /<h2>Progress<\/h2>/);
+  assert.doesNotMatch(sidebarSource, /header="Configuration"/);
+  assert.match(
+    sidebarSource,
+    /className="sidebar-agent-nav"[\s\S]*?<SideNav\.Upper>[\s\S]*?<SideNav\.Item[\s\S]*?label="Overview"[\s\S]*?\/>[\s\S]*?<SideNav\.Section header="Configure">/,
+    'Overview should sit directly below Progress without a separate Configuration section or divider',
+  );
+  assert.match(sidebarSource, /header="Configure"/);
+  assert.match(sidebarSource, /header="Monitor"/);
+  assert.match(overviewSource, /Back to AI Agents/);
+  assert.match(overviewSource, /className="agent-studio-back-link"/);
+  assert.doesNotMatch(overviewSource, /agent-studio-header-action--back/);
+  assert.match(overviewSource, /primary-content agent-studio-landing agent-workspace-page/);
+  assert.match(configureSource, /primary-content action-config-v2-page agent-workspace-page/);
+  assert.match(configureSource, /className="agent-studio-back-link"[\s\S]*?Back to AI Agents/);
+  assert.match(configureSource, /statusContent=\{headerStatus\}/);
+  assert.match(configureSource, /className="agent-studio-header-actions"/);
+  assert.match(configureSource, /aria-label=\{`Save \$\{agent\.name\} configuration`\}/);
+  assert.match(configureSource, /v2-channels__title agent-config-section-title/);
+  assert.match(configureSource, /instructions-sidebar-title agent-config-section-title/);
+  assert.match(configureSource, /guardrails-title agent-config-section-title/);
+  assert.match(configureSource, /action-config-v2-title agent-config-section-title/);
+  assert.match(monitorHeaderSource, /className="agent-studio-back-link"[\s\S]*?Back to AI Agents/);
+  assert.match(monitorHeaderSource, /statusContent=\{headerStatus\}/);
+  assert.match(monitorHeaderSource, /className="agent-studio-header-actions"/);
+  assert.match(monitorHeaderSource, /aria-label=\{`Save \$\{agent\.name\} configuration`\}/);
+  assert.match(sessionsSource, /primary-content agent-monitor-page agent-workspace-page/);
+  assert.match(sessionsSource, /agent-workspace-section-title">Sessions/);
+  assert.match(testingSource, /primary-content agent-monitor-page agent-workspace-page/);
+  assert.match(testingSource, /agent-workspace-section-title">Testing/);
+  assert.match(historySource, /primary-content agent-monitor-page agent-workspace-page/);
+  assert.match(historySource, /agent-workspace-section-title">History/);
+  assert.match(
+    sharedStyles,
+    /\.action-config-v2-page\s*\{[\s\S]*?display:\s*flex;[\s\S]*?flex-direction:\s*column;[\s\S]*?gap:\s*var\(--spacing-medium\);/,
+  );
+  assert.match(
+    styles,
+    /\.agent-monitor-page\s*\{[\s\S]*?flex-direction:\s*column;[\s\S]*?gap:\s*var\(--spacing-medium\);/,
+  );
+  assert.match(
+    styles,
+    /\.agent-monitor-page \.agent-workspace-section-title\s*\{[\s\S]*?font-size:\s*var\(--font-size-heading-midsize\);[\s\S]*?line-height:\s*var\(--font-lineheight-heading-midsize\);/,
+  );
+  assert.match(
+    sharedStyles,
+    /\.action-config-v2-page \.agent-config-section-title\s*\{[\s\S]*?font-size:\s*var\(--font-size-heading-midsize\);[\s\S]*?line-height:\s*var\(--font-lineheight-heading-midsize\);/,
+  );
   assert.match(sidebarSource, /navigate\(item\.path\)/);
+  assert.match(
+    sidebarSource,
+    /const workspaceNavCollapsed =[\s\S]*?collapsed \|\| \(!workspaceNavHovered && !workspaceNavFocusWithin\)/,
+    'the workspace sidenav should be collapsed by default and expand for pointer or keyboard focus',
+  );
+  assert.match(sidebarSource, /onMouseEnter=\{\(\) => setWorkspaceNavHovered\(true\)\}/);
+  assert.match(sidebarSource, /onMouseLeave=\{\(\) => setWorkspaceNavHovered\(false\)\}/);
+  assert.match(sidebarSource, /onFocusCapture=\{\(\) => setWorkspaceNavFocusWithin\(true\)\}/);
+  assert.match(
+    styles,
+    /\.uplift-product-surface \.main\s*\{[\s\S]*?inset:\s*0 0 0 60px;/,
+    'the product content should use the collapsed rail width while the hover-expanded sidenav overlays it',
+  );
 });
 
 test('Uplift shell includes responsive drawers, reduced motion, and accessible compact controls', () => {
   const layoutSource = readSource('../../components/layout/MainLayout.tsx');
   const railSource = readSource('../../products/ai-agent-studio/components/AssistantControlRail.tsx');
+  const overviewSource = readSource('../../pages/agent/AgentStudioLanding.tsx');
+  const assistantSource = readSource('../eva/EvaChatExperience.tsx');
+  const footerSource = readSource('../../components/shared/ai/AiFooter.jsx');
+  const knowledgeSource = readSource('../../pages/Knowledge.tsx');
+  const knowledgeDetailSource = readSource('../../pages/KnowledgeBaseDetail.tsx');
+  const aiEngineSource = readSource('../../pages/Settings.tsx');
   const styles = readSource('../../products/ai-agent-studio/components.css');
 
   assert.match(layoutSource, /aria-valuemin=\{PRODUCT_RAIL_WIDTH\}/);
+  assert.match(layoutSource, /aria-valuemax=\{maxSurfaceWidth\}/);
+  assert.match(layoutSource, /aria-valuetext=\{`\$\{Math\.round\(surfaceWidth\)\} pixels wide`\}/);
+  assert.match(
+    layoutSource,
+    /const step = event\.shiftKey \? KEYBOARD_RESIZE_LARGE_STEP : KEYBOARD_RESIZE_STEP;[\s\S]*?setDragWidth\(surfaceWidth \+ direction \* step\)/,
+    'the workspace separator should support fine-grained keyboard resizing',
+  );
+  assert.match(
+    layoutSource,
+    /window\.addEventListener\('pointermove', handlePointerMove\)[\s\S]*?window\.addEventListener\('pointerup', finishPointerResize\)/,
+    'pointer resizing should continue after the pointer leaves the visible edge handle',
+  );
+  assert.doesNotMatch(
+    layoutSource,
+    /onBlur=\{\(\) => snapToNearestWidth\(surfaceWidth\)\}/,
+    'the workspace should retain a freely chosen width when the resize handle loses focus',
+  );
   assert.match(layoutSource, /event\.key === 'Home'/);
   assert.match(layoutSource, /event\.key === 'End'/);
   assert.match(railSource, /event\.key === 'Escape'/);
   assert.match(railSource, /title="Chat history"/);
   assert.match(railSource, /title="New chat"/);
+  assert.match(
+    layoutSource,
+    /aria-label="Start a new chat"[\s\S]*?createThread\(\);[\s\S]*?closeThreadHistory\(\);/,
+    'the Assistant header new-chat action should create and reveal a fresh home thread',
+  );
+  assert.match(
+    railSource,
+    /const assistantOpen = state\.productSurface\.snap !== 'expanded'/,
+    'the Assistant rail should derive a clear open or closed state',
+  );
+  assert.match(
+    railSource,
+    /const openSnap = viewportWidth < MOBILE_SHELL_BREAKPOINT \? 'compact' : 'split';[\s\S]*?setSnap\(assistantOpen \? 'expanded' : openSnap\)/,
+    'the Assistant rail should only toggle between closed and the screen-appropriate open view',
+  );
+  assert.doesNotMatch(
+    railSource,
+    /state\.productSurface\.snap === 'split'[\s\S]*?setSnap\('compact'\)/,
+    'the Assistant rail should not cycle through workspace sizes on repeated activation',
+  );
+  assert.match(
+    railSource,
+    /aria-label=\{assistantOpen \? 'Close AI Assistant' : 'Open AI Assistant'\}[\s\S]*?aria-pressed=\{assistantOpen\}/,
+    'the Assistant toggle should expose its current state and next action',
+  );
   assert.match(styles, /@media \(max-width: 1023px\)/);
   assert.match(styles, /@media \(prefers-reduced-motion: reduce\)/);
   assert.match(styles, /backdrop-filter:\s*blur\(10px\)/);
+  assert.match(knowledgeSource, /className="primary-content knowledge-page-surface"/);
+  assert.match(knowledgeDetailSource, /className="primary-content knowledge-page-surface"/);
+  assert.match(aiEngineSource, /className="primary-content ai-engine-page-surface"/);
+  assert.match(
+    styles,
+    /\.primary-content\.knowledge-page-surface,[\s\S]*?\.primary-content\.ai-engine-page-surface,[\s\S]*?> \.clus-kpi-dashboard-root\s*\{[\s\S]*?border:\s*0;[\s\S]*?border-radius:\s*0;[\s\S]*?background:\s*rgba\(25, 25, 25, 0\.8\);/,
+    'Observability, Knowledge, and AI Engine should share the borderless AI Agents product surface',
+  );
+  assert.match(
+    styles,
+    /\.uplift-product-surface \.sidebar:not\(\.uplift-agent-panel\)\s*\{[\s\S]*?background-color:\s*rgba\(25, 25, 25, 0\.8\);[\s\S]*?background-image:\s*linear-gradient\(\s*90deg,\s*rgba\(25, 25, 25, 0\) 72\.95%,\s*rgba\(41, 41, 41, 0\.2\) 100\.82%[\s\S]*?backdrop-filter:\s*blur\(20px\);[\s\S]*?-webkit-backdrop-filter:\s*blur\(20px\);/,
+    'the product sidenav should layer the horizontal glass gradient over the 80% core container color without changing the floating Progress panel',
+  );
+  assert.match(
+    styles,
+    /\.sidebar:not\(\.sidebar--collapsed\):not\(\.uplift-agent-panel\) \.sidenav\s*\{[\s\S]*?width:\s*100%;/,
+    'the expanded sidenav should stay within the sidebar content box so pill corners remain visible',
+  );
   assert.match(
     layoutSource,
     /const assistantWorkspaceWidth = Math\.max\([\s\S]*?viewportWidth[\s\S]*?- surfaceWidth[\s\S]*?- ASSISTANT_RAIL_WIDTH/,
@@ -797,9 +976,148 @@ test('Uplift shell includes responsive drawers, reduced motion, and accessible c
   );
   assert.match(layoutSource, /data-assistant-workspace-width=\{Math\.round\(assistantWorkspaceWidth\)\}/);
   assert.match(
+    layoutSource,
+    /state\.productSurface\.snap !== 'expanded'[\s\S]*?activeThread\.messages\.length === 0/,
+    'all visible Assistant sizes should request the appropriate empty-thread experience',
+  );
+  assert.match(
+    assistantSource,
+    /AGENT_ASSISTANT_STARTER_PROMPTS\.map\(prompt => \([\s\S]*?onClick=\{\(\) => handleSend\(prompt\)\}/,
+    'contextual starter prompts should send through the normal message path',
+  );
+  assert.match(
+    assistantSource,
+    /const showSideEmptyState =[\s\S]*?sideEmptyState[\s\S]*?Boolean\(contextOverviewSnapshot\)/,
+    'only agent-bound empty threads should replace the global Assistant home with contextual prompts',
+  );
+  assert.match(
+    assistantSource,
+    /<section className="eva-first-interface__hero"[\s\S]*?<EvaHeroAnimation \/>[\s\S]*?Build, deploy, and manage AI agents for every interaction\./,
+    'a global new chat should restore the animated Assistant home and slogan',
+  );
+  const contextualComposerSource = assistantSource.match(
+    /\{showSideEmptyState && \([\s\S]*?<\/section>\s*\)\}/,
+  )?.[0] ?? '';
+  assert.ok(contextualComposerSource, 'the contextual empty state should render its composer');
+  assert.doesNotMatch(
+    contextualComposerSource,
+    /\bfillContainer\b/,
+    'the contextual composer should keep the shared compact height instead of stretching vertically',
+  );
+  assert.match(
     styles,
-    /\.uplift-assistant-base\s*\{[\s\S]*?left:\s*min\(calc\(var\(--uplift-product-width\) \+ 8px\), calc\(100vw - 60px\)\);[\s\S]*?container-type:\s*inline-size/,
+    /\.uplift-assistant-empty-composer[\s\S]*?\.ai-footer__textarea\s*\{[\s\S]*?min-height:\s*20px;[\s\S]*?\.ai-footer__textarea:placeholder-shown\s*\{[\s\S]*?height:\s*44px !important;/,
+    'the empty contextual composer should preserve the shared compact textarea height',
+  );
+  assert.match(
+    assistantSource,
+    /if \(landingMode === 'existing' && !contextOverviewSnapshot\)/,
+    'an agent-bound thread must not render the global Agents landing table',
+  );
+  assert.match(
+    styles,
+    /\.uplift-assistant-base\s*\{[\s\S]*?left:\s*min\(calc\(var\(--uplift-product-width\) \+ 4px\), calc\(100vw - 48px\)\);[\s\S]*?container-type:\s*inline-size/,
     'the assistant content surface should move with the draggable product edge while its background stays fixed',
   );
+  assert.match(
+    styles,
+    /\.uplift-workspace--expanded \.uplift-assistant-base\s*\{[\s\S]*?left:\s*calc\(100vw - 48px\);[\s\S]*?visibility:\s*hidden;[\s\S]*?pointer-events:\s*none;/,
+    'the minimized Assistant should collapse its content surface instead of exposing an interactive strip beside the control rail',
+  );
   assert.match(styles, /@container uplift-assistant \(max-width: 720px\)/);
+  assert.match(
+    styles,
+    /\.uplift-workspace--expanded \.uplift-assistant-base \.eva-first-interface__chat--sticky\s*\{[\s\S]*?display:\s*none;/,
+    'only the collapsed Assistant workspace should hide the composer',
+  );
+  assert.doesNotMatch(
+    styles,
+    /\.uplift-workspace--split \.uplift-assistant-base \.eva-first-interface__chat--sticky\s*\{[\s\S]*?display:\s*none;/,
+    'the default Assistant workspace should keep the composer visible',
+  );
+  assert.match(footerSource, /e\.key === 'Enter' && !e\.shiftKey/);
+  assert.match(footerSource, /Math\.min\(ta\.scrollHeight,\s*200\)/);
+  assert.match(
+    styles,
+    /\.uplift-assistant-base[\s\S]*?\.eva-first-interface[\s\S]*?\.ai-footer__group:focus-within[\s\S]*?0 0 0 6px var\(--focus-ring-2\)/,
+    'the focused contextual composer should retain a visible multi-ring focus treatment',
+  );
+  assert.match(
+    styles,
+    /\.uplift-assistant-base \.eva-ai-footer \.ai-footer__action-bar\s*\{[\s\S]*?flex:\s*0 0 40px;/,
+    'the composer action row should remain a separate 40px control strip',
+  );
+  assert.match(
+    styles,
+    /@media \(min-width:\s*720px\)\s*\{[\s\S]*?\.uplift-workspace--agent-panel-open[\s\S]*?\.main[\s\S]*?> \.primary-content\.agent-workspace-page\s*\{[\s\S]*?padding-left:\s*calc\(244px \+ var\(--spacing-small\)\);/,
+    'desktop Overview and Configure content should reserve the floating Progress panel column',
+  );
+  assert.match(
+    styles,
+    /\.uplift-workspace--agent \.uplift-product-surface \.main > \.primary-content\.agent-workspace-page\s*\{[\s\S]*?background:\s*rgba\(25,\s*25,\s*25,\s*0\.8\);/,
+    'the Agent Studio content surface should use #191919 at 80% opacity',
+  );
+  assert.match(
+    styles,
+    /\.uplift-product-surface \.main > \.primary-content\.ai-agents-list-surface\s*\{[\s\S]*?background:\s*rgba\(25,\s*25,\s*25,\s*0\.8\);/,
+    'the AI Agents list should share the Agent Studio content surface background',
+  );
+  assert.match(
+    styles,
+    /@media \(min-width:\s*720px\)\s*\{[\s\S]*?\.uplift-workspace--agent-panel-open[\s\S]*?\.agent-workspace-page[\s\S]*?> \.agent-header-sticky\s*\{[\s\S]*?margin-left:\s*calc\(-244px - var\(--spacing-small\)\);/,
+    'the agent header should span the full product surface while the floating Progress panel is open',
+  );
+  assert.match(
+    styles,
+    /@media \(min-width:\s*720px\)\s*\{[\s\S]*?\.uplift-workspace--agent \.uplift-agent-panel\s*\{[\s\S]*?inset:\s*151px auto auto 12px !important;[\s\S]*?height:\s*calc\(100% - 163px\) !important;[\s\S]*?max-height:\s*calc\(100% - 163px\) !important;/,
+    'the floating Progress panel should align its top edge with the desktop Overview heading and retain the bottom inset',
+  );
+  assert.match(
+    styles,
+    /\.agent-studio-grid--published \.agent-studio-connected-summary__item,[\s\S]*?\.agent-studio-grid--published \.agent-studio-connected-chart\s*\{[\s\S]*?border:\s*var\(--border-width-small\) solid var\(--color-theme-outline-secondary-normal,\s*#FFFFFF33\);[\s\S]*?background:\s*var\(--color-theme-background-secondary-normal,\s*#FFFFFF1C\);/,
+    'capability summary and chart cards should use the secondary background and outline tokens',
+  );
+  assert.match(
+    styles,
+    /\.agent-studio-grid--published \.agent-studio-connected-insights\s*\{[\s\S]*?border:\s*0;[\s\S]*?background:\s*var\(--color-theme-background-secondary-normal,\s*#FFFFFF1C\);/,
+    'overview dashboard insights should remain a borderless secondary surface',
+  );
+  assert.match(
+    styles,
+    /\.agent-studio-grid--published :is\([\s\S]*?\.agent-studio-card--connections\.card,[\s\S]*?\.agent-studio-card--operational\.card[\s\S]*?\)\s*\{[\s\S]*?border:\s*0;[\s\S]*?background:\s*var\(--bg-glass\);[\s\S]*?backdrop-filter:\s*blur\(20px\) saturate\(120%\);/,
+    'Capability usage and Operational status should share the same glass surface treatment',
+  );
+  assert.match(
+    styles,
+    /\.agent-studio-connected-metrics\s*\{[\s\S]*?gap:\s*16px;/,
+    'capability dashboard rows should keep 16px of vertical space',
+  );
+  assert.match(
+    overviewSource,
+    /<Icon name="side-panel" weight="regular" size="sm" \/>/,
+    'agent headers should use the outlined side-panel icon for workspace sizing',
+  );
+  assert.match(
+    overviewSource,
+    /upliftWorkspaceState\.productSurface\.snap === 'expanded' \? 'split' : 'expanded'/,
+    'agent headers should toggle between split and expanded workspace sizes',
+  );
+  assert.match(layoutSource, /name="side-panel"[\s\S]*?weight="bold"/);
+  assert.doesNotMatch(layoutSource, /name="sign-out"/);
+  assert.match(
+    layoutSource,
+    /if \(snap === 'split'\) return 'compact';[\s\S]*?if \(snap === 'compact'\) return 'expanded';[\s\S]*?return 'split';/,
+    'the Assistant header size control should cycle Default, Full screen, and Collapse',
+  );
+  assert.match(
+    layoutSource,
+    /Make AI Assistant full screen[\s\S]*?Collapse AI Assistant workspace[\s\S]*?Restore default AI Assistant workspace/,
+    'each Assistant workspace state should expose a clear next-action label',
+  );
+  assert.doesNotMatch(layoutSource, /aria-label="Hide AI Assistant workspace"/);
+  assert.match(
+    assistantSource,
+    /navigateProduct\(`\/agents\/\$\{agentId\}\/studio`\);[\s\S]*?setStudioTransitioning\(false\);/,
+    'the persistent Assistant must return after its product-navigation transition finishes',
+  );
 });

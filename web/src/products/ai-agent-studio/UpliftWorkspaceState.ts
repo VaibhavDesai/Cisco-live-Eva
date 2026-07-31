@@ -19,6 +19,7 @@ export interface AssistantThread extends EvaThread {
   updatedAt: string;
   messages: EvaSessionState['messages'];
   creationWorkflowSnapshot: EvaSessionState | null;
+  contextAgentId?: string;
 }
 
 export interface AssistantWorkspaceState {
@@ -35,12 +36,12 @@ export interface UpliftWorkspaceState {
 
 export type WorkspaceAction =
   | { type: 'set-snap'; snap: ProductSurfaceSnap }
-  | { type: 'set-width'; width: number | null }
+  | { type: 'set-width'; width: number | null; snap?: ProductSurfaceSnap }
   | { type: 'open-thread-history' }
   | { type: 'close-thread-history' }
   | { type: 'set-agent-panel'; open: boolean }
-  | { type: 'set-context-path'; path: string }
-  | { type: 'new-thread'; id: string; now: string }
+  | { type: 'set-context-path'; path: string; id: string; now: string }
+  | { type: 'new-thread'; id: string; now: string; contextAgentId?: string }
   | { type: 'select-thread'; id: string }
   | { type: 'rename-thread'; id: string; title: string; now: string }
   | { type: 'delete-thread'; id: string; replacementId: string; now: string }
@@ -51,12 +52,15 @@ export const PRODUCT_RAIL_WIDTH = 60;
 export const ASSISTANT_RAIL_WIDTH = 44;
 export const ASSISTANT_RAIL_GUTTER = 16;
 export const MOBILE_SHELL_BREAKPOINT = 1024;
+const SPLIT_PRODUCT_WIDTH_RATIO = 0.8;
+const SPLIT_ASSISTANT_RESERVED_WIDTH = 300;
 
 const createThread = (
   id: string,
   now: string,
   snapshot: EvaSessionState | null,
   title = 'New chat',
+  contextAgentId?: string,
 ): AssistantThread => ({
   id,
   title,
@@ -65,7 +69,19 @@ const createThread = (
   updatedAt: now,
   messages: snapshot?.messages ?? [],
   creationWorkflowSnapshot: snapshot,
+  ...(contextAgentId ? { contextAgentId } : {}),
 });
+
+export function getAssistantContextAgentId(path: string): string | undefined {
+  const pathname = path.split(/[?#]/, 1)[0];
+  const match = pathname.match(/^\/agents\/([^/]+)/);
+  if (!match || match[1] === 'eva-canvas') return undefined;
+  try {
+    return decodeURIComponent(match[1]);
+  } catch {
+    return match[1];
+  }
+}
 
 export function createInitialUpliftWorkspaceState(
   migratedSession: EvaSessionState | null = null,
@@ -138,7 +154,11 @@ export function upliftWorkspaceReducer(
     case 'set-width':
       return {
         ...state,
-        productSurface: { ...state.productSurface, width: action.width },
+        productSurface: {
+          ...state.productSurface,
+          width: action.width,
+          snap: action.snap ?? state.productSurface.snap,
+        },
       };
     case 'open-thread-history':
       if (state.productSurface.threadHistoryOpen) return state;
@@ -146,10 +166,8 @@ export function upliftWorkspaceReducer(
         ...state,
         productSurface: {
           ...state.productSurface,
-          snap: 'compact',
-          width: null,
-          temporaryAssistantOverride: true,
-          previousSnap: state.productSurface.snap,
+          temporaryAssistantOverride: false,
+          previousSnap: null,
           threadHistoryOpen: true,
         },
       };
@@ -158,8 +176,12 @@ export function upliftWorkspaceReducer(
         ...state,
         productSurface: {
           ...state.productSurface,
-          snap: state.productSurface.previousSnap ?? 'split',
-          width: null,
+          snap: state.productSurface.temporaryAssistantOverride
+            ? state.productSurface.previousSnap ?? 'split'
+            : state.productSurface.snap,
+          width: state.productSurface.temporaryAssistantOverride
+            ? null
+            : state.productSurface.width,
           temporaryAssistantOverride: false,
           previousSnap: null,
           threadHistoryOpen: false,
@@ -170,13 +192,42 @@ export function upliftWorkspaceReducer(
         ...state,
         productSurface: { ...state.productSurface, agentPanelOpen: action.open },
       };
-    case 'set-context-path':
+    case 'set-context-path': {
+      const contextAgentId = getAssistantContextAgentId(action.path);
+      const activeThread = state.assistant.threads.find(
+        thread => thread.id === state.assistant.activeThreadId,
+      );
+      if (activeThread?.contextAgentId === contextAgentId) {
+        return {
+          ...state,
+          assistant: { ...state.assistant, contextPath: action.path },
+        };
+      }
+      const matchingThread = state.assistant.threads
+        .filter(thread => thread.contextAgentId === contextAgentId)
+        .sort((left, right) => right.updatedAt.localeCompare(left.updatedAt))[0];
+      const thread = matchingThread
+        ?? createThread(action.id, action.now, null, 'New chat', contextAgentId);
       return {
         ...state,
-        assistant: { ...state.assistant, contextPath: action.path },
+        assistant: {
+          ...state.assistant,
+          contextPath: action.path,
+          threads: matchingThread
+            ? state.assistant.threads
+            : [thread, ...state.assistant.threads],
+          activeThreadId: thread.id,
+        },
       };
+    }
     case 'new-thread': {
-      const thread = createThread(action.id, action.now, null);
+      const thread = createThread(
+        action.id,
+        action.now,
+        null,
+        'New chat',
+        action.contextAgentId,
+      );
       return {
         ...state,
         assistant: {
@@ -205,16 +256,37 @@ export function upliftWorkspaceReducer(
         },
       };
     case 'delete-thread': {
+      const deletedThread = state.assistant.threads.find(thread => thread.id === action.id);
       const remaining = state.assistant.threads.filter(thread => thread.id !== action.id);
-      const threads = remaining.length
+      if (state.assistant.activeThreadId !== action.id) {
+        return {
+          ...state,
+          assistant: { ...state.assistant, threads: remaining },
+        };
+      }
+      const replacementContextAgentId = deletedThread?.contextAgentId
+        ?? getAssistantContextAgentId(state.assistant.contextPath);
+      const matchingRemaining = remaining
+        .filter(thread => thread.contextAgentId === replacementContextAgentId)
+        .sort((left, right) => right.updatedAt.localeCompare(left.updatedAt));
+      const replacement = matchingRemaining[0]
+        ?? createThread(
+          action.replacementId,
+          action.now,
+          null,
+          'New chat',
+          replacementContextAgentId,
+        );
+      const threads = matchingRemaining.length
         ? remaining
-        : [createThread(action.replacementId, action.now, null)];
-      const activeThreadId = state.assistant.activeThreadId === action.id
-        ? threads[0].id
-        : state.assistant.activeThreadId;
+        : [replacement, ...remaining];
       return {
         ...state,
-        assistant: { ...state.assistant, threads, activeThreadId },
+        assistant: {
+          ...state.assistant,
+          threads,
+          activeThreadId: replacement.id,
+        },
       };
     }
     case 'update-active-thread':
@@ -249,7 +321,11 @@ export function getProductSurfaceSnapWidth(
   );
   if (snap === 'compact') return PRODUCT_RAIL_WIDTH;
   if (viewportWidth < MOBILE_SHELL_BREAKPOINT || snap === 'expanded') return expandedWidth;
-  return Math.min(expandedWidth, Math.max(720, Math.round(viewportWidth * 0.7)));
+  return Math.min(
+    expandedWidth,
+    viewportWidth - SPLIT_ASSISTANT_RESERVED_WIDTH,
+    Math.max(720, Math.round(viewportWidth * SPLIT_PRODUCT_WIDTH_RATIO)),
+  );
 }
 
 export function getNearestProductSurfaceSnap(

@@ -1,9 +1,10 @@
+import { useEffect } from 'react';
 import { useParams, Navigate } from 'react-router-dom';
 import { useApp } from '../../contexts/AppContext';
-import { AgentHeader } from '../../components/agents';
 import { Card } from '../../components/shared/Card';
 import Button from '../../components/shared/Button';
 import Badge from '../../components/shared/Badge';
+import AgentMonitorHeader from './AgentMonitorHeader';
 
 const CHANGELOG = [
   {
@@ -44,23 +45,22 @@ export default function AgentHistory() {
   const { agentId } = useParams();
   const { agents, currentAgent, selectAgent } = useApp();
 
-  if (!currentAgent || currentAgent.id !== agentId) {
-    const agent = agents[agentId];
-    if (agent) {
-      selectAgent(agentId);
-    } else {
-      return <Navigate to="/agents" replace />;
-    }
-  }
+  const agent = agentId ? agents[agentId] : undefined;
 
-  const agent = currentAgent || agents[agentId];
+  useEffect(() => {
+    if (agent && currentAgent?.id !== agent.id) {
+      selectAgent(agent.id);
+    }
+  }, [agent, currentAgent?.id, selectAgent]);
+
   if (!agent) return <Navigate to="/agents" replace />;
 
   return (
-    <div className="primary-content">
-      <AgentHeader agent={agent} activeTab="history" showPublishButton={false} showTabs={false} />
+    <div className="primary-content agent-monitor-page agent-workspace-page">
+      <AgentMonitorHeader agent={agent} activeTab="history" />
 
-      <div className="secondary-content">
+      <div className="secondary-content agent-monitor-content agent-history-page">
+        <h1 className="agent-workspace-section-title">History</h1>
         <Card style={{ padding: 0 }}>
           {CHANGELOG.map((entry, index) => (
             <div

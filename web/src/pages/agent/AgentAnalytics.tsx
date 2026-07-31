@@ -1,7 +1,6 @@
-import { useState, type ReactNode } from 'react';
+import { useEffect, useState, type ReactNode } from 'react';
 import { useParams, Navigate } from 'react-router-dom';
 import { useApp } from '../../contexts/AppContext';
-import { AgentHeader } from '../../components/agents';
 import Tabs, { Tab } from '../../components/shared/Tabs';
 import { TestingOverviewPanel } from '../../features/clus-simulated-testing/components/TestingOverviewPanel';
 import { TestingScenariosSection } from '../../features/clus-simulated-testing/components/TestingScenariosSection';
@@ -11,6 +10,7 @@ import { SimulatedTestingResultsProvider } from '../../features/clus-simulated-t
 import { ThemeModeProvider, useThemeMode } from '../../app/ThemeContext';
 import { publicAssetUrl } from '../../app/publicAsset';
 import { IconProvider, ThemeProvider } from '@momentum-design/components/react';
+import AgentMonitorHeader from './AgentMonitorHeader';
 
 type TestingTab = 'overview' | 'scenarios' | 'results' | 'changelog';
 
@@ -35,23 +35,22 @@ export default function AgentAnalytics() {
   const { agents, currentAgent, selectAgent } = useApp();
   const [activeTab, setActiveTab] = useState<TestingTab>('overview');
 
-  if (!currentAgent || currentAgent.id !== agentId) {
-    const agent = agents[agentId];
-    if (agent) {
-      selectAgent(agentId);
-    } else {
-      return <Navigate to="/agents" replace />;
-    }
-  }
+  const agent = agentId ? agents[agentId] : undefined;
 
-  const agent = currentAgent || agents[agentId];
+  useEffect(() => {
+    if (agent && currentAgent?.id !== agent.id) {
+      selectAgent(agent.id);
+    }
+  }, [agent, currentAgent?.id, selectAgent]);
+
   if (!agent) return <Navigate to="/agents" replace />;
 
   return (
-    <div className="primary-content">
-      <AgentHeader agent={agent} activeTab="analytics" showPublishButton={false} showTabs={false} />
+    <div className="primary-content agent-monitor-page agent-workspace-page">
+      <AgentMonitorHeader agent={agent} activeTab="analytics" />
 
-      <div className="secondary-content agent-testing-page agent-testing-page--builder">
+      <div className="secondary-content agent-testing-page agent-testing-page--builder agent-monitor-content">
+        <h1 className="agent-workspace-section-title">Testing</h1>
         <ThemeModeProvider>
           <BuilderTestingProviders>
             <SimulatedTestingResultsProvider>
