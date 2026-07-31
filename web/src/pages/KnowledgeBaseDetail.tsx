@@ -171,7 +171,7 @@ export default function KnowledgeBaseDetail() {
 
   if (!loading && !collection) {
     return (
-      <div className="primary-content knowledge-page-surface">
+      <div className="primary-content">
         <section className="sources-panel sources-panel--empty knowledge-detail-not-found">
           <EmptyState
             illustration="cliff-open"
@@ -185,7 +185,7 @@ export default function KnowledgeBaseDetail() {
   }
 
   return (
-    <div className="primary-content knowledge-page-surface">
+    <div className="primary-content">
       {collection && (
         <>
           <DetailHeader

@@ -1044,7 +1044,9 @@ export default function EvaFormBuilder() {
   const selectedLanguage = PROFILE_LANGUAGE_OPTIONS.find(o => o.value === personality.language);
   const selectedVoice = PROFILE_VOICE_OPTIONS.find(o => o.value === personality.voice);
   const languageSummary = selectedLanguage?.label ?? personality.language;
-  const agentCharacterSummary = `${selectedVoice?.label ?? personality.voice} voice · Friendly and professional`;
+  const agentCharacterSummary = `${selectedVoice?.label ?? personality.voice} voice · ${
+    personality.gender === 'neutral' ? 'Neutral' : personality.gender
+  } character`;
   const instructionSummary = summarizeInstructionPrompt(instructionPrompt);
   /* Mirrors the form's actual configuration sections (driven by
      `revealedSections` and gated 1:1 with each <AccordionItem> below).
@@ -1055,22 +1057,22 @@ export default function EvaFormBuilder() {
      just-revealed section; after `phase === 'complete'`, that's the first
      not-yet-visited section. Everything else is `queued`. */
   const formProgressEntries: Array<{ label: string; detail: string }> = [
-    { label: 'Profile', detail: `${agentName} · ${languageSummary}` },
-    { label: 'Channel', detail: channelSummary },
-    { label: 'Instruction', detail: instructionSummary },
+    { label: '1. Profile', detail: `${agentName} · ${languageSummary}` },
+    { label: '2. Channel', detail: channelSummary },
+    { label: '3. Instruction', detail: instructionSummary },
     {
-      label: 'Knowledge',
+      label: '4. Knowledge',
       detail: `${selectedKnowledgeBases.length} source${selectedKnowledgeBases.length === 1 ? '' : 's'} selected`,
     },
     {
-      label: 'Action',
+      label: '5. Action',
       detail: `${selectedActions.length} action${selectedActions.length === 1 ? '' : 's'} enabled`,
     },
     {
-      label: 'Guardrails',
+      label: '6. Guardrails',
       detail: `Standard ${standardGuardrails.filter(g => g.enabled).length} · Advanced ${advancedGuardrailGroups.reduce((sum, g) => sum + g.items.filter(i => i.enabled).length, 0)}`,
     },
-    { label: 'Review', detail: 'Final configuration check' },
+    { label: '7. Review', detail: 'Final configuration check' },
   ];
   const firstUnvisitedIndex = formProgressEntries.findIndex(
     (_, index) => !visitedSections.has(index),

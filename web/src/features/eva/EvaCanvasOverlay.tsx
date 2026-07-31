@@ -2,9 +2,18 @@ import { useEffect, useRef, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import EvaCanvasSurface from './canvas/EvaCanvasSurface';
 
-/* Pathnames that signal "canvas should be open." `/agents/eva-canvas`
-   is canonical in the Uplift shell. `/eva-canvas` remains as a
-   compatibility alias for saved links and redirects to the same surface. */
+/* Pathnames that signal "canvas should be open." We support multiple
+   sibling routes so the canvas can be mounted under different parents
+   without forcing a sidebar tab switch:
+     - `/agents/eva-canvas` — opens over the AI Agents page (variations
+       'landing' and 'form-bases', and 'dashboard' when the user is on
+       /agents directly).
+     - `/eva-canvas` — opens over the Dashboard page (variation
+       'dashboard' when the user is on / and EvaChatExperience is
+       rendered through Dashboard.tsx). Keeping the canvas under the
+       Dashboard root means the "Dashboard" sidebar item stays
+       highlighted while the canvas is open, instead of jumping to
+       "AI Agents" mid-flow. */
 export const EVA_CANVAS_AGENTS_PATH = '/agents/eva-canvas';
 export const EVA_CANVAS_DASHBOARD_PATH = '/eva-canvas';
 export const EVA_CANVAS_PATHS: readonly string[] = [
@@ -16,13 +25,22 @@ const isCanvasPath = (pathname: string): boolean =>
   EVA_CANVAS_PATHS.includes(pathname);
 
 /* One-shot sessionStorage flag set by the canvas's "New thread" button.
-   The persistent shell chat consumes it after leaving the canvas and
-   creates a new shell-owned assistant thread. */
+   The chat experience reads it on the next path change back to /agents and
+   spawns a fresh thread. Using sessionStorage keeps EvaCanvasOverlay
+   decoupled from EvaChatExperience — no shared store, no cross-component
+   imperative handle, just a tiny rendezvous point. The flag is consumed
+   (cleared) by the reader. */
 export const EVA_CANVAS_NEW_THREAD_FLAG = 'eva-canvas-request-new-thread';
 
-/* Origin path the user was on when they opened the canvas. The global
-   assistant remains mounted while the product route changes, so closing
-   the canvas simply restores the originating product context. */
+/* Origin path the user was on when they opened the canvas. The canvas
+   route lives under /agents (so EvaCanvasOverlay can slide in over
+   <Agents>), but the chat-based experience can also be reached from
+   /dashboard via the "Chat-based in Dashboard" design variation. When
+   that user clicks "Canvas view" we still navigate to /agents/eva-canvas,
+   which unmounts the Dashboard route. Clicking "Chat view" must then
+   send them back to /dashboard so the original underlying view (and its
+   restored EvaChatExperience state) is what they see — not the Agents
+   page. We persist the origin in sessionStorage and consume it on close. */
 export const EVA_CANVAS_ORIGIN_PATH_KEY = 'eva-canvas-origin-path';
 
 /* Map a canvas path to its sensible parent route. Used as a fallback
@@ -124,8 +142,13 @@ export default function EvaCanvasOverlay() {
   }, [isOpenPath]);
 
   const handleBack = () => {
-    /* Return to whichever product route opened the canvas. The assistant
-       conversation remains mounted and keeps its thread state. */
+    /* Return to whichever route the user opened the canvas from
+       (falling back to the parent of the current canvas path). This
+       preserves the chat-based build state when the canvas was opened
+       from the Dashboard route under the "Chat-based in Dashboard"
+       variation — going to /agents instead would land the user on
+       EvaAgentsTable's landing screen and look like the build flow was
+       wiped. */
     navigate(consumeCanvasOriginPath(location.pathname));
   };
 

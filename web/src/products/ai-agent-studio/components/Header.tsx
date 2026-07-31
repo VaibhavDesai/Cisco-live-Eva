@@ -12,7 +12,6 @@ export interface StudioHeaderProps {
   onAiClick?: () => void;
   onMenuClick?: () => void;
   centerContent?: ReactNode;
-  embedded?: boolean;
 }
 
 const DESIGN_VARIATION_OPTIONS: Array<{ value: DesignVariation; label: string }> = [
@@ -21,7 +20,7 @@ const DESIGN_VARIATION_OPTIONS: Array<{ value: DesignVariation; label: string }>
   { value: 'form-bases', label: 'Form-based in Ai Agent' },
 ];
 
-export default function Header({ onAiClick, onMenuClick, centerContent, embedded = false }: StudioHeaderProps) {
+export default function Header({ onAiClick, onMenuClick, centerContent }: StudioHeaderProps) {
   const {
     configured: reviewConfigured,
     active: reviewActive,
@@ -32,12 +31,11 @@ export default function Header({ onAiClick, onMenuClick, centerContent, embedded
 
   return (
     <AppHeader
-      fixed={!embedded}
-      className={`app-header--agent-studio-brand${embedded ? ' app-header--uplift-product' : ''}`}
+      fixed
+      className="app-header--agent-studio-brand"
       wordmarkSvg={webexAiAgentStudioWordmark}
       wordmarkAlt="AI Agent Studio"
       showSearch={false}
-      showAiButton={!embedded}
       centerContent={centerContent}
       alertCount={0}
       avatarSrc="https://i.pravatar.cc/64?img=12"

@@ -54,7 +54,6 @@ export interface EvaMessage {
   text: string;
   timestamp?: string;
   followups?: string[];
-  contextLabel?: string;
   suggestion?: EvaFieldSuggestion;
   suggestionAccepted?: boolean;
   /* When set, marks the waterfall step a user message was sent in (or

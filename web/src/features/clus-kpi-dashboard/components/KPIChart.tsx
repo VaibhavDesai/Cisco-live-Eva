@@ -19,7 +19,6 @@ import {
 } from 'date-fns';
 import SharedButton from '../../../components/shared/Button';
 import { Icon } from '../momentum';
-import { Icon as StudioIcon } from '../../../icons';
 import { RecentInteractions } from './RecentInteractions';
 
 interface KPIChartProps {
@@ -780,7 +779,7 @@ export function KPIChart({
               onClick={() => setViewMode('chart')}
               aria-label="Chart view"
             >
-              <StudioIcon name="multiline-chart" weight="bold" size={14} />
+              <Icon name="multiline-chart-bold" size={14} lengthUnit="px" aria-hidden />
             </SharedButton>
             <SharedButton
               variant="secondary"
@@ -790,7 +789,7 @@ export function KPIChart({
               onClick={() => setViewMode('interactions')}
               aria-label="Table view"
             >
-              <StudioIcon name="table" weight="bold" size={14} />
+              <Icon name="table-bold" size={14} lengthUnit="px" aria-hidden />
             </SharedButton>
           </div>
         ) : null}
@@ -810,7 +809,7 @@ export function KPIChart({
             }
             aria-label="Box zoom"
           >
-            <StudioIcon name="selection" weight="bold" size={14} />
+            <Icon name="selection-bold" size={14} lengthUnit="px" aria-hidden />
           </SharedButton>
           <SharedButton
             variant="secondary"
@@ -826,7 +825,7 @@ export function KPIChart({
             }
             aria-label="Reset zoom"
           >
-            <StudioIcon name="reset" weight="bold" size={14} />
+            <Icon name="reset-bold" size={14} lengthUnit="px" aria-hidden />
           </SharedButton>
         </div>
       </div>

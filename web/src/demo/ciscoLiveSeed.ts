@@ -3,9 +3,9 @@ import {
   type AgentDraft,
   type CapabilityState,
   type StarterProposal,
-} from '../features/agent-creation/agentCreationModel.ts';
+} from '../features/agent-creation/agentCreationModel';
 import type { Agent } from '../contexts/AppContext';
-import { CISCO_LIVE_AGENTS, type CiscoLiveAgentDefinition } from './ciscoLiveDemo.ts';
+import { CISCO_LIVE_AGENTS, type CiscoLiveAgentDefinition } from './ciscoLiveDemo';
 
 // Display names for the prebuilt guardrails referenced by each agent's
 // `prebuiltGuardrailIds`. Kept in sync with the standard/advanced catalogs in

@@ -24,7 +24,7 @@ export default function Settings() {
   const [editingEngine, setEditingEngine] = useState<AiEngine | null>(null);
 
   return (
-    <div className="primary-content ai-engine-page-surface">
+    <div className="primary-content">
       <div className="page-header">
         <div>
           <h1 className="page-title">AI Engine</h1>

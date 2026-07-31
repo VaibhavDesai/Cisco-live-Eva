@@ -115,7 +115,7 @@ export default function Knowledge() {
   const canCreateCollection = newCollectionName.trim().length > 0;
 
   return (
-    <div className="primary-content knowledge-page-surface">
+    <div className="primary-content">
       <div className="page-header">
         <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--spacing-x-small)' }}>
           <h1 className="page-title" style={{ margin: 0 }}>

@@ -16,10 +16,6 @@ import {
 import { buildKpiDataWithDashboardSparklines } from './dashboardKpiSparklines';
 
 const seedById = new Map(phase1ObservabilityMetricSeeds.map((s) => [s.id, s]));
-const POSITIVE_DEMO_METRIC_IDS = new Set([
-  'kp-knowledge-coverage',
-  'ce-containment-rate',
-]);
 
 /**
  * Per-section demo bands — approx. 60% good, 10% bad, remainder neutral within each category.
@@ -46,11 +42,6 @@ export function buildDemoThresholdBandsForCatalog(sortedCatalog: readonly KPIDat
       else if (i < goodN + badN) map.set(id, 'bad');
       else map.set(id, 'neutral');
     });
-  }
-  for (const id of POSITIVE_DEMO_METRIC_IDS) {
-    if (sortedCatalog.some((metric) => metric.id === id)) {
-      map.set(id, 'good');
-    }
   }
   return map;
 }

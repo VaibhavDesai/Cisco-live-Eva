@@ -1,21 +1,11 @@
 import { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import Avatar from '../shared/Avatar';
 import Badge from '../shared/Badge';
 import Button from '../shared/Button';
 import Tabs, { Tab } from '../shared/Tabs';
 import { useApp } from '../../contexts/AppContext';
 
-export default function AgentHeader({
-  agent,
-  activeTab,
-  showPublishButton = true,
-  showTabs = true,
-  headerTop = null,
-  headerRight = null,
-  statusContent = null,
-  children = null,
-}) {
+export default function AgentHeader({ agent, activeTab, showPublishButton = true, showTabs = true, headerRight = null, statusContent = null, children = null }) {
   const navigate = useNavigate();
   const { toggleAgentPublish, showToast } = useApp();
   const stickyRef = useRef(null);
@@ -63,16 +53,13 @@ export default function AgentHeader({
 
   return (
     <div ref={stickyRef} className={`agent-header-sticky${isStuck ? ' agent-header-stuck' : ''}`}>
-      {headerTop}
-      <div className="agent-header">
-        <Avatar
-          variant="initials"
-          size="midsize"
-          initials={agent.initials}
-          className="agent-avatar"
+      <div className="agent-header" style={{ marginBottom: '16px' }}>
+        <div 
+          className="agent-avatar" 
           style={{ background: agent.gradient }}
-          aria-label={`${agent.name} avatar`}
-        />
+        >
+          {agent.initials}
+        </div>
         <div className="agent-info">
           <div className="agent-name-row">
             <span className="agent-name">{agent.name}</span>

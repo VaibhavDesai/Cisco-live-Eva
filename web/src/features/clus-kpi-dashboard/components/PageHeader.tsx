@@ -193,15 +193,15 @@ export function PageHeader({
   return (
     <div className="clus-kpi-page-header flex w-full min-w-0 flex-col">
       {/* Top Section - Agent Info */}
-      <div className="clus-kpi-agent-header-top flex w-full min-w-0 items-start justify-between gap-4">
-        <div className="clus-kpi-agent-header-identity flex min-w-0 flex-1 items-start gap-4">
+      <div className="flex w-full min-w-0 items-start justify-between gap-4">
+        <div className="flex min-w-0 flex-1 items-start gap-4">
           <div
             className="clus-kpi-agent-header-avatar shrink-0"
             aria-hidden
           >
             {agentNameToInitials(agentName)}
           </div>
-          <div className="clus-kpi-agent-header-copy flex min-w-0 flex-col gap-2">
+          <div className="flex min-w-0 flex-col gap-2">
             <div className="clus-kpi-agent-header-title-row mb-0 flex min-w-0 flex-nowrap items-center justify-start gap-2">
               <h1 className={`clus-project-title clus-project-title--agent ${ck.text}`}>{agentName}</h1>
               {showPublishedBadge ? (
@@ -241,11 +241,10 @@ export function PageHeader({
       </div>
 
       {/* Bottom Section — TabList + secondary Publish (same Tab pattern as Observability homepage) */}
-      <div className="clus-kpi-agent-header-navigation flex w-full min-w-0 self-stretch items-center justify-between gap-4">
-        <div className="clus-kpi-agent-header-tabs min-w-0 flex-1">
+      <div className="flex w-full min-w-0 self-stretch items-center justify-between gap-4">
+        <div className="min-w-0 flex-1">
           <TabList
             ref={agentTabListRef}
-            className="clus-kpi-agent-header-tablist"
             data-aria-label={
               preset === 'testCustomer'
                 ? 'AI customer configuration areas'

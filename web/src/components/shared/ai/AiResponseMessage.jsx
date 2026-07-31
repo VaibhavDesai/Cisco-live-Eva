@@ -77,7 +77,6 @@ function AiResponseMessage({
   onFollowup,
   assistantName = 'AI Assistant',
   assistantState = 'static',
-  contextLabel,
   className = '',
   showActions = true,
   ...rootProps
@@ -131,9 +130,6 @@ function AiResponseMessage({
       </div>
 
       <div className="ai-response__body">
-        {contextLabel && (
-          <div className="ai-response__context-label">{contextLabel}</div>
-        )}
         <div className="ai-response__content">
           {typeof responseContent === 'string'
             ? responseContent.split('\n').map((p, i) => (
