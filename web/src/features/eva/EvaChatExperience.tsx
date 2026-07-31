@@ -5137,9 +5137,11 @@ ${previewTranscript}`,
      to the hero + starter cards the moment evaThinking turns off,
      erasing the assistant's reply. The chat-thread render below is gated
      on the same flag. */
+  /* The shell decides whether this empty thread is docked or full screen.
+     The docked welcome applies with or without an agent route; agent context
+     only adds the contextual starter prompts rendered inside that state. */
   const showSideEmptyState =
     sideEmptyState
-    && Boolean(contextOverviewSnapshot)
     && !guidanceVisible
     && !evaThinking
     && !orchestrationSuggested

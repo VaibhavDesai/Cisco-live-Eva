@@ -977,8 +977,8 @@ test('Uplift shell includes responsive drawers, reduced motion, and accessible c
   assert.match(layoutSource, /data-assistant-workspace-width=\{Math\.round\(assistantWorkspaceWidth\)\}/);
   assert.match(
     layoutSource,
-    /state\.productSurface\.snap !== 'expanded'[\s\S]*?activeThread\.messages\.length === 0/,
-    'all visible Assistant sizes should request the appropriate empty-thread experience',
+    /state\.productSurface\.snap === 'split'[\s\S]*?activeThread\.messages\.length === 0/,
+    'only the default side-panel Assistant should request the empty-thread experience',
   );
   assert.match(
     assistantSource,
@@ -987,27 +987,32 @@ test('Uplift shell includes responsive drawers, reduced motion, and accessible c
   );
   assert.match(
     assistantSource,
-    /const showSideEmptyState =[\s\S]*?sideEmptyState[\s\S]*?Boolean\(contextOverviewSnapshot\)/,
-    'only agent-bound empty threads should replace the global Assistant home with contextual prompts',
+    /const showSideEmptyState =[\s\S]*?sideEmptyState[\s\S]*?!guidanceVisible/,
+    'all empty side-panel threads should replace the annotated Assistant home with the empty state',
+  );
+  assert.doesNotMatch(
+    assistantSource,
+    /const showSideEmptyState =[\s\S]*?Boolean\(contextOverviewSnapshot\)[\s\S]*?const showLandingOptions/,
+    'the side-panel empty state should not require an agent context',
   );
   assert.match(
     assistantSource,
     /<section className="eva-first-interface__hero"[\s\S]*?<EvaHeroAnimation \/>[\s\S]*?Build, deploy, and manage AI agents for every interaction\./,
-    'a global new chat should restore the animated Assistant home and slogan',
+    'the full-screen Assistant should retain the animated home and slogan',
   );
-  const contextualComposerSource = assistantSource.match(
+  const sideEmptyComposerSource = assistantSource.match(
     /\{showSideEmptyState && \([\s\S]*?<\/section>\s*\)\}/,
   )?.[0] ?? '';
-  assert.ok(contextualComposerSource, 'the contextual empty state should render its composer');
+  assert.ok(sideEmptyComposerSource, 'the side-panel empty state should render its composer');
   assert.doesNotMatch(
-    contextualComposerSource,
+    sideEmptyComposerSource,
     /\bfillContainer\b/,
-    'the contextual composer should keep the shared compact height instead of stretching vertically',
+    'the side-panel empty composer should keep the shared compact height instead of stretching vertically',
   );
   assert.match(
     styles,
     /\.uplift-assistant-empty-composer[\s\S]*?\.ai-footer__textarea\s*\{[\s\S]*?min-height:\s*20px;[\s\S]*?\.ai-footer__textarea:placeholder-shown\s*\{[\s\S]*?height:\s*44px !important;/,
-    'the empty contextual composer should preserve the shared compact textarea height',
+    'the empty side-panel composer should preserve the shared compact textarea height',
   );
   assert.match(
     assistantSource,

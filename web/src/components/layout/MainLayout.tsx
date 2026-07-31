@@ -84,8 +84,11 @@ export default function MainLayout() {
   const preserveAssistantOnNextRouteRef = useRef(false);
   const agentContext = isAgentRoute(location.pathname);
   const compact = state.productSurface.snap === 'compact';
+  /* Empty threads use the quiet welcome state only while the Assistant is
+     docked beside the product. In the compact product snap the Assistant is
+     full screen, so it keeps the annotated AI Agent Studio landing instead. */
   const showAssistantSideEmptyState =
-    state.productSurface.snap !== 'expanded'
+    state.productSurface.snap === 'split'
     && activeThread.messages.length === 0;
   const assistantWorkspaceSizeActionLabel = state.productSurface.snap === 'split'
     ? 'Make AI Assistant full screen'
