@@ -899,6 +899,13 @@ test('Uplift shell includes responsive drawers, reduced motion, and accessible c
   const knowledgeDetailSource = readSource('../../pages/KnowledgeBaseDetail.tsx');
   const aiEngineSource = readSource('../../pages/Settings.tsx');
   const styles = readSource('../../products/ai-agent-studio/components.css');
+  const viteConfigSource = readSource('../../../vite.config.ts');
+
+  assert.match(
+    viteConfigSource,
+    /name:\s*['"]write-spa-route-entries['"][\s\S]*?apply:\s*['"]build['"][\s\S]*?path\.join\(distDir,\s*['"]agents['"]\)[\s\S]*?fs\.copyFileSync\(appEntry,\s*path\.join\(agentsEntryDir,\s*['"]index\.html['"]\)\)/,
+    'production builds should emit an /agents route entry for static Pages deep links',
+  );
 
   assert.match(layoutSource, /aria-valuemin=\{PRODUCT_RAIL_WIDTH\}/);
   assert.match(layoutSource, /aria-valuemax=\{maxSurfaceWidth\}/);
