@@ -792,6 +792,11 @@ test('Uplift shell makes the assistant persistent and removes the New Agent dest
   const styles = readSource('../../products/ai-agent-studio/components.css');
 
   assert.match(appSource, /<Route path="\/" element=\{<Navigate to="\/agents" replace \/>\} \/>/);
+  assert.match(
+    layoutSource,
+    /const enteringWorkspaceRoute = isInitialWorkspaceRoute \|\| routeChanged;[\s\S]*?enteringWorkspaceRoute && isAssistantLandingRoute\(location\.pathname\)[\s\S]*?closeThreadHistory\(\)[\s\S]*?setSnap\('compact'\)[\s\S]*?return;/,
+    'entering the AI Agents landing route should open the annotated full-screen Assistant before paint',
+  );
   assert.equal((layoutSource.match(/<EvaChatExperience/g) ?? []).length, 1);
   assert.match(layoutSource, /shellMode/);
   assert.match(layoutSource, /<AssistantControlRail \/>/);

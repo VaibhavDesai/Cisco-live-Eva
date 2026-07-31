@@ -1,5 +1,6 @@
 import {
   useEffect,
+  useLayoutEffect,
   useRef,
   type CSSProperties,
   type KeyboardEvent,
@@ -45,6 +46,7 @@ const isAgentRoute = (pathname: string) => (
   /^\/agents\/[^/]+/.test(pathname)
   && !pathname.startsWith('/agents/eva-canvas')
 );
+const isAssistantLandingRoute = (pathname: string) => /^\/agents\/?$/.test(pathname);
 const ASSISTANT_CONTENT_GUTTER = 8;
 const KEYBOARD_RESIZE_STEP = 24;
 const KEYBOARD_RESIZE_LARGE_STEP = 96;
@@ -80,6 +82,7 @@ export default function MainLayout() {
     width: number;
     handle: HTMLDivElement;
   } | null>(null);
+  const initialWorkspaceRouteRef = useRef(true);
   const previousPathRef = useRef(location.pathname);
   const preserveAssistantOnNextRouteRef = useRef(false);
   const agentContext = isAgentRoute(location.pathname);
@@ -113,15 +116,23 @@ export default function MainLayout() {
     setAssistantContextPath(`${location.pathname}${location.search}`);
   }, [location.pathname, location.search, setAssistantContextPath]);
 
-  useEffect(() => {
+  useLayoutEffect(() => {
+    const isInitialWorkspaceRoute = initialWorkspaceRouteRef.current;
+    initialWorkspaceRouteRef.current = false;
     const routeChanged = previousPathRef.current !== location.pathname;
     previousPathRef.current = location.pathname;
     const preserveAssistant = preserveAssistantOnNextRouteRef.current;
     if (routeChanged) {
       preserveAssistantOnNextRouteRef.current = false;
     }
+    const enteringWorkspaceRoute = isInitialWorkspaceRoute || routeChanged;
+    if (enteringWorkspaceRoute && isAssistantLandingRoute(location.pathname)) {
+      if (state.productSurface.threadHistoryOpen) closeThreadHistory();
+      setSnap('compact');
+      return;
+    }
     if (
-      routeChanged
+      enteringWorkspaceRoute
       && !preserveAssistant
       && state.productSurface.snap === 'compact'
       && !state.productSurface.threadHistoryOpen
@@ -129,6 +140,7 @@ export default function MainLayout() {
       setSnap('expanded');
     }
   }, [
+    closeThreadHistory,
     location.pathname,
     setSnap,
     state.productSurface.snap,
