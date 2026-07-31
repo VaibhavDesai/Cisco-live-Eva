@@ -97,6 +97,22 @@ export default defineConfig({
     react(),
     reviewCommentsPlugin(),
     {
+      // Static Pages hosting does not provide SPA fallback routing. Emit a
+      // concrete entry so direct links to /agents load the Uplift app.
+      name: 'write-spa-route-entries',
+      apply: 'build',
+      closeBundle() {
+        const distDir = path.resolve(__dirname, 'dist')
+        const appEntry = path.join(distDir, 'index.html')
+        const agentsEntryDir = path.join(distDir, 'agents')
+
+        if (!fs.existsSync(appEntry)) return
+
+        fs.mkdirSync(agentsEntryDir, { recursive: true })
+        fs.copyFileSync(appEntry, path.join(agentsEntryDir, 'index.html'))
+      },
+    },
+    {
       name: 'serve-momentum-icons',
       configureServer(server) {
         server.middlewares.use('/momentum-icons', (req, res, next) => {

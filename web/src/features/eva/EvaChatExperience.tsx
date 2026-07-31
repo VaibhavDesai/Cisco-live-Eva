@@ -14,6 +14,7 @@ import {
   EVA_CANVAS_ORIGIN_PATH_KEY,
   EVA_CANVAS_PATHS,
 } from './EvaCanvasOverlay';
+import EvaHeroAnimation from './EvaHeroAnimation';
 import { EVA_TEMPLATES } from './evaTemplates';
 import type { EvaAgentDraft, EvaFieldSuggestion, EvaKnowledgeRecommendation, EvaMessage, EvaTemplateId } from './types';
 import { formatRelative } from '../../pages/knowledge/utils';
@@ -25,6 +26,7 @@ import {
   getFieldSuggestionLabel,
 } from './evaSuggestion';
 import providerServiceNowLogo from '../../assets/provider-servicenow.png';
+import assistantIllustration from '../../assets/ai-assistant-illustration.svg';
 import providerSalesforceLogo from '../../../asserts/image-970a0f16-ad96-4ce4-ba0f-01d8e724dfa4.png';
 import providerStripeLogo from '../../../asserts/image-de1daa48-7bd9-4599-a2f3-6b82797ed1ad.png';
 import {
@@ -42,6 +44,19 @@ import {
   type AgentFamily,
   type StarterProposal,
 } from '../agent-creation/agentCreationModel';
+import { useAgentOverviewContext } from '../agent-overview/AgentOverviewContext';
+import { buildAgentOverviewSnapshot } from '../agent-overview/agentOverviewSnapshot';
+import {
+  AGENT_ASSISTANT_STARTER_PROMPTS,
+  buildAgentAssistantFallback,
+  buildAgentAssistantReply,
+  buildAgentAssistantSystemPrompt,
+  getAgentAssistantConfigurationSections,
+  getAllowlistedAgentAssistantAction,
+  matchAgentAssistantIntent,
+  type AgentAssistantSection,
+} from '../agent-overview/agentAssistantDemo';
+import { getAssistantContextAgentId } from '../../products/ai-agent-studio/UpliftWorkspaceState';
 import {
   CHANNEL_PHONE_NUMBER_OPTIONS,
   DIGITAL_CHANNEL_DETAILS,
@@ -1131,11 +1146,44 @@ function getReadinessRecommendationFixMeta(recommendation: string): {
 export default function EvaChatExperience({
   resetSessionOnInitialMount = false,
   voiceTranscribePath = '/transcribe',
+  initialSession,
+  onSessionChange,
+  threadPanelOpen,
+  threads: controlledThreads,
+  activeThreadId: controlledActiveThreadId,
+  onSelectThread: controlledOnSelectThread,
+  onNewThread: controlledOnNewThread,
+  onRenameThread: controlledOnRenameThread,
+  onDeleteThread: controlledOnDeleteThread,
+  onThreadPanelClose,
+  onProductNavigate,
+  shellMode = false,
+  sideEmptyState = false,
 }: {
   resetSessionOnInitialMount?: boolean;
   voiceTranscribePath?: string;
+  initialSession?: EvaSessionState | null;
+  onSessionChange?: (snapshot: EvaSessionState) => void;
+  threadPanelOpen?: boolean;
+  threads?: EvaThread[];
+  activeThreadId?: string;
+  onSelectThread?: (threadId: string | number) => void;
+  onNewThread?: () => void;
+  onRenameThread?: (threadId: string | number, title: string) => void;
+  onDeleteThread?: (threadId: string | number) => void;
+  onThreadPanelClose?: () => void;
+  onProductNavigate?: (options?: { keepAssistantVisible?: boolean }) => void;
+  shellMode?: boolean;
+  sideEmptyState?: boolean;
 } = {}) {
   const navigate = useNavigate();
+  const navigateProduct = (
+    path: string,
+    options?: { keepAssistantVisible?: boolean },
+  ) => {
+    onProductNavigate?.(options);
+    navigate(path);
+  };
   const location = useLocation();
   const {
     agents,
@@ -1154,6 +1202,19 @@ export default function EvaChatExperience({
     showToast,
   } = useApp();
   const { setVariation } = useDesignVariation();
+  const { getTimeRange } = useAgentOverviewContext();
+  const contextAgentId = getAssistantContextAgentId(
+    `${location.pathname}${location.search}`,
+  );
+  const contextAgent = contextAgentId ? agents[contextAgentId] : undefined;
+  const contextAgentDraft = contextAgentId ? agentDrafts[contextAgentId] : undefined;
+  const contextOverviewSnapshot = contextAgent
+    ? buildAgentOverviewSnapshot({
+        agent: contextAgent,
+        draft: contextAgentDraft,
+        timeRange: getTimeRange(contextAgentId),
+      })
+    : null;
   const restoredEvaSessionRef = useRef<EvaSessionState | null | undefined>(undefined);
   if (restoredEvaSessionRef.current === undefined) {
     if (resetSessionOnInitialMount && location.pathname === '/') {
@@ -1164,6 +1225,8 @@ export default function EvaChatExperience({
         /* sessionStorage may be unavailable; fall back to a fresh in-memory landing. */
       }
       restoredEvaSessionRef.current = null;
+    } else if (initialSession !== undefined) {
+      restoredEvaSessionRef.current = initialSession;
     } else {
       restoredEvaSessionRef.current = readEvaSessionState();
     }
@@ -1339,6 +1402,9 @@ export default function EvaChatExperience({
     { id: 'eva-thread-current', title: 'Current AI Assistant setup', group: 'Today' },
     { id: 'eva-thread-canvas', title: 'Canvas orchestration', group: 'Today' },
   ]);
+  const resolvedThreadPanelOpen = threadPanelOpen ?? showEvaThreadPanel;
+  const resolvedActiveThreadId = controlledActiveThreadId ?? activeEvaThreadId;
+  const resolvedThreads = controlledThreads ?? evaThreads;
   const [evaPlanningProgress, setEvaPlanningProgress] = useState(0);
   const [studioTransitioning, setStudioTransitioning] = useState(false);
   /* Drives the right-rail Progress card's step-by-step reveal during the
@@ -1440,6 +1506,7 @@ export default function EvaChatExperience({
       ...overrides,
     };
     window.sessionStorage.setItem(EVA_SESSION_STORAGE_KEY, JSON.stringify(snapshot));
+    onSessionChange?.(snapshot);
   };
 
   /* Keep the original dashboard chat and its configuration zone synchronized
@@ -1532,12 +1599,8 @@ export default function EvaChatExperience({
 
   const openEvaCanvas = (overrides: Partial<EvaSessionState> = {}) => {
     persistEvaSession(overrides);
-    /* Remember the route the user is opening the canvas from so the
-       canvas's "Chat view" / "New thread" buttons can return them
-       there. Without this, opening the canvas from /dashboard (the
-       "Chat-based in Dashboard" variation) and clicking Chat view
-       would dump the user on /agents (EvaAgentsTable's landing
-       screen) with the impression their build state was lost. */
+    /* Remember the product route that opened the canvas so its Chat view
+       and New thread controls can restore that context. */
     try {
       if (location.pathname && !EVA_CANVAS_PATHS.includes(location.pathname)) {
         window.sessionStorage.setItem(EVA_CANVAS_ORIGIN_PATH_KEY, location.pathname);
@@ -1545,15 +1608,12 @@ export default function EvaChatExperience({
     } catch {
       /* sessionStorage unavailable — falls back to /agents on close. */
     }
-    /* Pick the canvas route that lives under the same parent as the
-       user's current page. From / (Dashboard) we navigate to
-       /eva-canvas so the Dashboard sidebar item stays highlighted; from
-       anywhere else (notably /agents) we use /agents/eva-canvas. The
-       overlay component recognises both as "open" via EVA_CANVAS_PATHS. */
+    /* `/agents/eva-canvas` is canonical; the root alias remains for
+       compatibility with an older saved dashboard route. */
     const canvasPath = location.pathname === '/'
       ? EVA_CANVAS_DASHBOARD_PATH
       : EVA_CANVAS_AGENTS_PATH;
-    navigate(canvasPath);
+    navigateProduct(canvasPath);
   };
 
   const toggleSelectedChannel = (channel: EvaChannelSelection) => {
@@ -1846,7 +1906,7 @@ export default function EvaChatExperience({
       statusClass: 'badge-warning',
       knowledgeBases: template.draft.knowledgeBases.slice(0, 2).map(kb => kb.name),
     });
-    navigate(`/agents/${agent.id}/studio`);
+    navigateProduct(`/agents/${agent.id}/studio`);
   };
 
   const handleBuildFromScratch = () => {
@@ -1874,7 +1934,7 @@ export default function EvaChatExperience({
      landing is mounted from the Dashboard route. */
   const handleSwitchToExistingAgents = () => {
     setVariation('dashboard');
-    navigate('/agents');
+    navigateProduct('/agents');
   };
 
   const addOnboardingAssistantMessage = (text: string, followups?: string[], originStep?: string) => {
@@ -2250,13 +2310,13 @@ export default function EvaChatExperience({
     const agent = saveFamilyProposalDraft();
     if (!agent) return;
     setVariation('dashboard');
-    navigate('/agents');
+    navigateProduct('/agents');
   };
 
   const handleContinueFamilyConfiguration = () => {
     const agent = saveFamilyProposalDraft();
     if (!agent) return;
-    navigate(`/agents/${agent.id}/studio`);
+    navigateProduct(`/agents/${agent.id}/studio`);
   };
 
   const handleCreateAgent = () => {
@@ -2287,7 +2347,7 @@ export default function EvaChatExperience({
       /* The published agent remains saved in AppContext if session storage is unavailable. */
     }
     setVariation('dashboard');
-    navigate('/agents');
+    navigateProduct('/agents');
   };
 
   const openRecommendationSection = (
@@ -2489,7 +2549,7 @@ export default function EvaChatExperience({
     selectAgent(agent.id);
     showToast(`Successfully created "${agent.name}".`, 'success');
     setVariation('dashboard');
-    navigate('/agents');
+    navigateProduct('/agents');
   };
 
   const askRetailPhoneNumber = () => {
@@ -2816,7 +2876,8 @@ export default function EvaChatExperience({
       window.clearTimeout(studioTransitionTimerRef.current);
     }
     studioTransitionTimerRef.current = window.setTimeout(() => {
-      navigate(`/agents/${agentId}/studio`);
+      navigateProduct(`/agents/${agentId}/studio`);
+      setStudioTransitioning(false);
       studioTransitionTimerRef.current = null;
     }, STUDIO_TRANSITION_MS);
   };
@@ -2856,7 +2917,7 @@ export default function EvaChatExperience({
     }
     showToast('Changes saved.', 'success');
     setVariation('dashboard');
-    navigate('/agents');
+    navigateProduct('/agents');
   };
 
   const enterRetailAgentStudio = () => {
@@ -2988,6 +3049,10 @@ export default function EvaChatExperience({
   };
 
   const handleNewEvaThread = () => {
+    if (controlledOnNewThread) {
+      controlledOnNewThread();
+      return;
+    }
     const id = `eva-thread-${Date.now()}`;
     setEvaThreads(prev => [{ id, title: 'New thread', group: 'Today' }, ...prev]);
     setActiveEvaThreadId(id);
@@ -3028,15 +3093,10 @@ export default function EvaChatExperience({
     setLandingMode('build');
   };
 
-  /* When the user clicks "New thread" on the canvas overlay header, the
-     overlay sets a one-shot sessionStorage flag and navigates back to
-     the route they came from (which may be /agents OR /dashboard when
-     the chat experience is mounted via the "Chat-based in Dashboard"
-     variation). Because the canvas overlay only changes pathname rather
-     than unmounting EvaChatExperience on the /agents path, watching
-     `location.pathname` lets us consume the flag every time we land on
-     a non-canvas route — and we ignore the canvas path itself so the
-     handoff doesn't accidentally fire while the canvas is opening. */
+  /* The canvas uses a one-shot flag for New thread. Because the Uplift
+     shell keeps this assistant mounted across product routes, returning
+     from the canvas can create a new shell-owned thread without losing
+     the active product destination. */
   useEffect(() => {
     if (EVA_CANVAS_PATHS.includes(location.pathname)) return;
     let shouldStart = false;
@@ -3055,19 +3115,31 @@ export default function EvaChatExperience({
   }, [location.pathname]);
 
   const handleSelectEvaThread = (threadId: string | number) => {
+    if (controlledOnSelectThread) {
+      controlledOnSelectThread(threadId);
+      return;
+    }
     setActiveEvaThreadId(String(threadId));
   };
 
   const handleRenameEvaThread = (threadId: string | number) => {
-    const currentThread = evaThreads.find(thread => thread.id === String(threadId));
+    const currentThread = resolvedThreads.find(thread => thread.id === String(threadId));
     const nextTitle = window.prompt('Rename thread', currentThread?.title ?? '');
     if (!nextTitle?.trim()) return;
+    if (controlledOnRenameThread) {
+      controlledOnRenameThread(threadId, nextTitle.trim());
+      return;
+    }
     setEvaThreads(prev => prev.map(thread =>
       thread.id === String(threadId) ? { ...thread, title: nextTitle.trim() } : thread,
     ));
   };
 
   const handleDeleteEvaThread = (threadId: string | number) => {
+    if (controlledOnDeleteThread) {
+      controlledOnDeleteThread(threadId);
+      return;
+    }
     const id = String(threadId);
     setEvaThreads(prev => {
       const next = prev.filter(thread => thread.id !== id);
@@ -3127,17 +3199,17 @@ export default function EvaChatExperience({
     showToast(`AI Assistant created "${agentName}" as a draft agent.`, 'success');
     selectAgent(agent.id);
     setVariation('dashboard');
-    navigate('/agents');
+    navigateProduct('/agents');
   };
 
   const handleAgentClick = (agentId: string) => {
     selectAgent(agentId);
-    navigate(`/agents/${agentId}`);
+    navigateProduct(`/agents/${agentId}`);
   };
 
   const handleConfigureClick = (agentId: string) => {
     selectAgent(agentId);
-    navigate(`/agents/${agentId}/studio`);
+    navigateProduct(`/agents/${agentId}/studio`);
   };
 
   const getBadgeVariant = (statusClass: string) => {
@@ -3160,7 +3232,126 @@ export default function EvaChatExperience({
       return;
     }
     selectAgent(existingAgent.id);
-    navigate(`/agents/${existingAgent.id}/configure?section=${section}`);
+    navigateProduct(`/agents/${existingAgent.id}/configure?section=${section}`);
+  };
+
+  const contextConfigurationSections = contextOverviewSnapshot
+    ? getAgentAssistantConfigurationSections(
+        contextOverviewSnapshot,
+        contextAgentDraft
+          ? getActionableStoredRecommendations(contextAgentDraft)
+              .map(recommendation => recommendation.targetSection)
+          : [],
+        {
+          Profile: Boolean(
+            contextAgentDraft?.basics.name.trim()
+            && contextAgentDraft.basics.purpose.trim()
+            && contextAgentDraft.basics.description.trim(),
+          ),
+          Instructions: Boolean(
+            contextAgentDraft?.instructions.applied
+            || contextAgentDraft?.instructions.content.trim(),
+          ),
+          Channels: contextAgentDraft?.familyConfiguration.channels?.progress === 'configured',
+          Language: Boolean(contextAgentDraft?.language.defaultLanguage),
+        },
+      )
+    : [];
+
+  const openContextAgentAssistantDestination = (
+    action: AgentAssistantSection | 'Sessions',
+  ) => {
+    if (!contextAgent) return;
+    selectAgent(contextAgent.id);
+    const path = action === 'Sessions'
+      ? `/agents/${encodeURIComponent(contextAgent.id)}/sessions`
+      : `/agents/${encodeURIComponent(contextAgent.id)}/configure?section=${encodeURIComponent(action)}`;
+    navigateProduct(path, { keepAssistantVisible: true });
+  };
+
+  const handleContextAgentAssistantAction = (label: string): boolean => {
+    const action = getAllowlistedAgentAssistantAction(label);
+    if (!action || !contextAgent) return false;
+    openContextAgentAssistantDestination(action);
+    return true;
+  };
+
+  const appendContextAgentAssistantReply = (
+    reply: {
+      text: string;
+      contextLabel: string;
+      followups: string[];
+    },
+  ) => {
+    setMessages(previous => [
+      ...previous,
+      {
+        role: 'assistant',
+        text: reply.text,
+        contextLabel: reply.contextLabel,
+        followups: reply.followups.slice(0, 3),
+      },
+    ]);
+  };
+
+  const makeModelReplyConcise = (value: string) => {
+    const sentences = value
+      .trim()
+      .match(/[^.!?]+[.!?]+|[^.!?]+$/g)
+      ?.map(sentence => sentence.trim())
+      .filter(Boolean) ?? [];
+    return sentences.slice(0, 4).join(' ');
+  };
+
+  const handleContextAgentAssistantSend = async (text: string) => {
+    if (!contextOverviewSnapshot) return;
+    setFreeChatActive(true);
+    setEvaThinking(true);
+    const intent = matchAgentAssistantIntent(text);
+
+    try {
+      if (intent) {
+        await new Promise(resolve => window.setTimeout(resolve, 520));
+        appendContextAgentAssistantReply(buildAgentAssistantReply(
+          intent,
+          contextOverviewSnapshot,
+          {
+            userText: text,
+            configurationSections: contextConfigurationSections,
+          },
+        ));
+        return;
+      }
+
+      const history: { role: 'system' | 'user' | 'assistant'; content: string }[] = [
+        {
+          role: 'system',
+          content: buildAgentAssistantSystemPrompt(contextOverviewSnapshot),
+        },
+        ...messages.map(message => ({ role: message.role, content: message.text })),
+        { role: 'user', content: text },
+      ];
+      const rawReply = await sendEvaChat(history);
+      const { prose } = extractFollowupsAndProse(rawReply);
+      const conciseReply = makeModelReplyConcise(prose || rawReply);
+      if (!conciseReply) {
+        appendContextAgentAssistantReply(
+          buildAgentAssistantFallback(contextOverviewSnapshot),
+        );
+        return;
+      }
+      appendContextAgentAssistantReply({
+        text: conciseReply,
+        contextLabel: `Overview · ${contextOverviewSnapshot.timeRange.label}`,
+        followups: [...AGENT_ASSISTANT_STARTER_PROMPTS],
+      });
+    } catch {
+      appendContextAgentAssistantReply(
+        buildAgentAssistantFallback(contextOverviewSnapshot),
+      );
+    } finally {
+      setEvaThinking(false);
+    }
   };
 
   const showOrchestrationSuggestion = () => {
@@ -3190,16 +3381,15 @@ export default function EvaChatExperience({
     const normalized = text.trim().toLowerCase();
     if (!normalized) return;
 
-    if (handleFamilyIntakeAnswer(text)) {
+    if (contextOverviewSnapshot) {
+      setMessages(previous => [...previous, { role: 'user', text }]);
+      setOrchestrationSuggested(false);
+      setShowOtherTemplates(false);
+      void handleContextAgentAssistantSend(text);
       return;
     }
 
-    /* Family is a required, mutually exclusive entitlement choice. Free-form
-       creation never starts before it is selected. */
-    if (!selectedAgentFamily && !familyProposalApplied) {
-      setFreeChatActive(false);
-      setFamilyHelpVisible(true);
-      showToast('Choose one agent area before describing the agent.', 'info');
+    if (handleFamilyIntakeAnswer(text)) {
       return;
     }
 
@@ -3353,6 +3543,11 @@ export default function EvaChatExperience({
   const handleLlmFollowupClick = (option: string) => {
     const trimmed = option.trim();
     if (!trimmed) return;
+    if (handleContextAgentAssistantAction(trimmed)) return;
+    if (contextOverviewSnapshot) {
+      handleSend(trimmed);
+      return;
+    }
     if (familyIntakeQuestion && selectedAgentFamily && !familyProposalApplied) {
       handleFamilyIntakeAnswer(trimmed);
       return;
@@ -4476,7 +4671,7 @@ Simulation rules:
                   href={previewSessionsLink}
                   onClick={event => {
                     event.preventDefault();
-                    navigate(previewSessionsLink);
+                    navigateProduct(previewSessionsLink);
                   }}
                 >
                   Open in Sessions
@@ -4942,9 +5137,23 @@ ${previewTranscript}`,
      to the hero + starter cards the moment evaThinking turns off,
      erasing the assistant's reply. The chat-thread render below is gated
      on the same flag. */
-  const showLandingOptions = !guidanceVisible && !evaThinking && !orchestrationSuggested && !freeChatActive;
+  /* The shell decides whether this empty thread is docked or full screen.
+     The docked welcome applies with or without an agent route; agent context
+     only adds the contextual starter prompts rendered inside that state. */
+  const showSideEmptyState =
+    sideEmptyState
+    && !guidanceVisible
+    && !evaThinking
+    && !orchestrationSuggested
+    && !freeChatActive;
+  const showLandingOptions =
+    !showSideEmptyState
+    && !guidanceVisible
+    && !evaThinking
+    && !orchestrationSuggested
+    && !freeChatActive;
   const showBuildFlow = landingMode === 'build' || guidanceVisible || evaThinking || orchestrationSuggested || freeChatActive;
-  const shouldShowEvaThreadPanel = showEvaThreadPanel && !showLandingOptions;
+  const shouldShowEvaThreadPanel = resolvedThreadPanelOpen;
   const conversationPlaceholder = familyProposalChangeRequested
     ? 'Describe what you want to change in the proposal.'
     : familyIntakeQuestion?.prompt ?? 'Ask any question during your configuration.';
@@ -5856,7 +6065,7 @@ ${previewTranscript}`,
     </AccordionItem>
   );
 
-  if (landingMode === 'existing') {
+  if (landingMode === 'existing' && !contextOverviewSnapshot) {
     return (
       <div className="primary-content">
         <div className="page-header">
@@ -5973,30 +6182,68 @@ ${previewTranscript}`,
   }
 
   return (
-    <div className={`primary-content eva-agents-landing eva-agents-landing--flush${studioTransitioning ? ' eva-agents-landing--studio-transitioning' : ''}`}>
+    <div className={`primary-content eva-agents-landing eva-agents-landing--flush${studioTransitioning ? ' eva-agents-landing--studio-transitioning' : ''}${shellMode ? ' eva-agents-landing--uplift-shell' : ''}`}>
       {shouldShowEvaThreadPanel && (
         <aside className="eva-thread-panel-shell" aria-label="AI Assistant threads">
           <AiThreadPanel
-            threads={evaThreads}
-            activeThreadId={activeEvaThreadId}
+            className={shellMode ? 'ai-thread-panel--uplift' : ''}
+            threads={resolvedThreads}
+            activeThreadId={resolvedActiveThreadId}
             onSelectThread={handleSelectEvaThread}
             onNewThread={handleNewEvaThread}
             onRenameThread={handleRenameEvaThread}
             onDeleteThread={handleDeleteEvaThread}
-            onCollapse={() => setShowEvaThreadPanel(false)}
+            onCollapse={() => {
+              if (onThreadPanelClose) {
+                onThreadPanelClose();
+              } else {
+                setShowEvaThreadPanel(false);
+              }
+            }}
           />
         </aside>
       )}
 
       <div
-        className={`eva-first-interface${showLandingOptions ? ' eva-first-interface--landing eva-landing-shell' : ''}${!freeChatActive && (guidanceVisible || evaThinking || orchestrationSuggested) ? ' eva-first-interface--generated' : ''}${freeChatActive && !guidanceVisible && !orchestrationSuggested ? ' eva-first-interface--free-chat' : ''}`}
+        className={`eva-first-interface${showLandingOptions ? ' eva-first-interface--landing eva-landing-shell' : ''}${showSideEmptyState ? ' eva-first-interface--side-empty' : ''}${!freeChatActive && (guidanceVisible || evaThinking || orchestrationSuggested) ? ' eva-first-interface--generated' : ''}${freeChatActive && !guidanceVisible && !orchestrationSuggested ? ' eva-first-interface--free-chat' : ''}`}
       >
         {showLandingOptions && (
           <section className="eva-first-interface__hero" aria-labelledby="eva-landing-title">
             <div className="eva-landing-hero-brand">
+              <EvaHeroAnimation />
               <h1 id="eva-landing-title">AI Agent Studio</h1>
             </div>
             <h2>Build, deploy, and manage AI agents for every interaction.</h2>
+          </section>
+        )}
+
+        {showSideEmptyState && (
+          <section className="uplift-assistant-empty-state" aria-label="AI Assistant is ready">
+            <div className="uplift-assistant-empty-state__visual" aria-hidden="true">
+              <img
+                className="uplift-assistant-empty-state__illustration"
+                src={assistantIllustration}
+                alt=""
+              />
+            </div>
+            {contextOverviewSnapshot && (
+              <div
+                className="uplift-assistant-empty-state__prompts"
+                role="group"
+                aria-label={`Questions about ${contextOverviewSnapshot.agent.name}`}
+              >
+                {AGENT_ASSISTANT_STARTER_PROMPTS.map(prompt => (
+                  <button
+                    key={prompt}
+                    type="button"
+                    className="uplift-assistant-empty-state__prompt"
+                    onClick={() => handleSend(prompt)}
+                  >
+                    {prompt}
+                  </button>
+                ))}
+              </div>
+            )}
           </section>
         )}
 
@@ -6189,6 +6436,7 @@ ${previewTranscript}`,
                 RETAIL_PHONE_NUMBER_OPTIONS.find(option => option.value === channelPhoneNumber) ??
                 RETAIL_PHONE_NUMBER_OPTIONS[0];
               const isControlledPrototypePrompt =
+                Boolean(message.contextLabel) ||
                 baseFollowups.includes(CONTINUE_TO_STUDIO_LABEL) ||
                 baseFollowups.includes(RETAIL_VOICE_LABEL) ||
                 baseFollowups.includes(RETAIL_VIDEO_LABEL) ||
@@ -6210,6 +6458,7 @@ ${previewTranscript}`,
                   data-retail-origin-step={message.originStep}
                   showActions={false}
                   assistantName="AI Assistant"
+                  contextLabel={message.contextLabel}
                   content={isRetailChannelChoice ? (
                     <>
                       <p>{message.text}</p>
@@ -7751,7 +8000,7 @@ ${previewTranscript}`,
                     </Table>
                     {evaStep === 'knowledge' && (
                       <div className="eva-dialogue__actions">
-                        <Button variant="secondary" onClick={() => navigate('/knowledge')}>
+                        <Button variant="secondary" onClick={() => navigateProduct('/knowledge')}>
                           <Icon name="plus" weight="bold" size={16} />
                           Connect knowledge
                         </Button>
@@ -7851,7 +8100,7 @@ ${previewTranscript}`,
                     </Table>
                     {evaStep === 'actions' && (
                       <div className="eva-dialogue__actions">
-                        <Button variant="secondary" onClick={() => navigate('/assistant-skills')}>
+                        <Button variant="secondary" onClick={() => navigateProduct('/assistant-skills')}>
                           <Icon name="plus" weight="bold" size={16} />
                           Set up action
                         </Button>
@@ -9162,7 +9411,27 @@ ${previewTranscript}`,
             landing-mode entry point. This footer composer is for the
             "build flow" once Eva is generating / has generated content
             — show it only when we're past the landing screen. */}
-        {showBuildFlow && !showGeneratedSidePanel && !showLandingOptions && (
+        {showSideEmptyState && (
+          <section
+            className="eva-first-interface__chat eva-first-interface__chat--sticky uplift-assistant-empty-composer"
+            aria-label="Talk to AI Assistant"
+          >
+            <AiFooter
+              className="eva-ai-footer"
+              onSend={handleSend}
+              processing={false}
+              disabled={evaThinking}
+              placeholder="Ask me anything"
+              suggestions={[]}
+              voiceActive={voiceActive}
+              onVoiceToggle={() => setVoiceActive(previous => !previous)}
+              transcribePath={voiceTranscribePath}
+              showDisclaimer={false}
+            />
+          </section>
+        )}
+
+        {showBuildFlow && !showGeneratedSidePanel && !showLandingOptions && !showSideEmptyState && (
           <section className="eva-first-interface__chat eva-first-interface__chat--sticky" aria-label="Talk to AI Assistant">
             {!guidanceVisible && !evaThinking && <div className="eva-chat-spacer" aria-hidden />}
             <AiFooter
@@ -9176,6 +9445,7 @@ ${previewTranscript}`,
               voiceActive={voiceActive}
               onVoiceToggle={() => setVoiceActive(prev => !prev)}
               transcribePath={voiceTranscribePath}
+              showDisclaimer={false}
             />
           </section>
         )}

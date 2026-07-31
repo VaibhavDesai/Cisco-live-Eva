@@ -1,11 +1,11 @@
-import type { ReactNode } from 'react';
-import { useLocation, useNavigate, useSearchParams } from 'react-router-dom';
+import { useState, type ReactNode } from 'react';
+import { Link, useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import SideNav from '../../../components/shared/SideNav';
 import { KnowledgeBookIcon } from '../../../components/shared/ConfigurationCategoryIcon';
 import { Icon } from '../../../icons/Icon';
 import { useApp } from '../../../contexts/AppContext';
-import { useDesignVariation } from '../../../contexts/DesignVariationContext';
 import { type AgentFamily } from '../../../features/agent-creation/agentCreationModel';
+import { useUpliftWorkspace } from '../UpliftWorkspaceContext';
 
 interface NavItem {
   path: string;
@@ -14,7 +14,6 @@ interface NavItem {
 }
 
 const navItems: NavItem[] = [
-  { path: '/', label: 'New agent', icon: 'home-bold' },
   { path: '/agents', label: 'AI Agents', icon: 'bot-bold' },
   { path: '/observability', label: 'Observability', icon: 'multiline-chart-regular' },
   { path: '/knowledge', label: 'Knowledge', icon: 'apps-bold' },
@@ -67,17 +66,36 @@ function parseAgentId(pathname: string): string | null {
 
 interface SidebarProps {
   collapsed?: boolean;
+  agentPanelOpen?: boolean;
+  surfaceCompact?: boolean;
+  onAgentPanelOpenChange?: (open: boolean) => void;
 }
 
-export default function Sidebar({ collapsed = false }: SidebarProps) {
+export default function Sidebar({
+  collapsed = false,
+  agentPanelOpen = true,
+  surfaceCompact = false,
+  onAgentPanelOpenChange,
+}: SidebarProps) {
+  const [workspaceNavHovered, setWorkspaceNavHovered] = useState(false);
+  const [workspaceNavFocusWithin, setWorkspaceNavFocusWithin] = useState(false);
   const location = useLocation();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
-  const { setVariation } = useDesignVariation();
   const { agents, agentDrafts, selectAgent } = useApp();
+  const { setSnap } = useUpliftWorkspace();
 
   const agentId = parseAgentId(location.pathname);
   const agent = agentId ? agents[agentId] : undefined;
+  const openAgentPanel = (restoreFocus = false) => {
+    if (surfaceCompact) setSnap('expanded');
+    onAgentPanelOpenChange?.(true);
+    if (restoreFocus) {
+      window.requestAnimationFrame(() => {
+        document.querySelector<HTMLButtonElement>('.uplift-agent-panel__collapse')?.focus();
+      });
+    }
+  };
 
   /* ── Agent-scoped navigation ─────────────────────────────────────── */
   if (agentId && agent) {
@@ -95,42 +113,127 @@ export default function Sidebar({ collapsed = false }: SidebarProps) {
       item => location.pathname === `/agents/${agentId}/${item.path}`,
     )?.path;
 
-    return (
-      <aside className={`sidebar${collapsed ? ' sidebar--collapsed' : ''}`}>
-        <div className="sidebar-main">
-          <SideNav collapsed={collapsed} aria-label="Agent navigation" className="sidebar-agent-nav">
-            <SideNav.Upper>
-              <button
-                type="button"
-                className="sidebar-agent-back"
-                onClick={() => navigate('/agents')}
-                title="Back to AI Agents"
-              >
-                <span className="sidebar-agent-back__icon" aria-hidden>
-                  <Icon name="arrow-left" size={16} />
-                </span>
-                <span className="sidebar-agent-back__label">Back to AI Agents</span>
-              </button>
+    if (surfaceCompact) {
+      return (
+        <aside className="sidebar sidebar--collapsed uplift-agent-compact-rail">
+          <div className="sidebar-main">
+            <SideNav collapsed aria-label="Compact agent navigation">
+              <SideNav.Upper>
+                <SideNav.Section>
+                  <SideNav.Item
+                    icon={<Icon name="dashboard" weight="bold" size={24} />}
+                    label="Configuration"
+                    active={isOverviewRoute}
+                    onClick={() => {
+                      selectAgent(agentId);
+                      setSnap('expanded');
+                      navigate(`/agents/${agentId}`);
+                    }}
+                  />
+                </SideNav.Section>
 
-              <button
-                type="button"
-                className={`sidebar-agent-pill${isOverviewRoute ? ' sidebar-agent-pill--active' : ''}`}
+                <SideNav.Section divider>
+                  {configureItems.map(item => (
+                    <SideNav.Item
+                      key={item.section}
+                      icon={item.icon}
+                      label={item.label}
+                      active={onConfigureRoute && activeSection === item.section}
+                      onClick={() => {
+                        selectAgent(agentId);
+                        setSnap('expanded');
+                        navigate(`/agents/${agentId}/configure?section=${item.section}`);
+                      }}
+                    />
+                  ))}
+                </SideNav.Section>
+
+                <SideNav.Section divider>
+                  {MONITOR_ITEMS.map(item => (
+                    <SideNav.Item
+                      key={item.path}
+                      icon={item.icon}
+                      label={item.label}
+                      active={activeMonitorPath === item.path}
+                      onClick={() => {
+                        selectAgent(agentId);
+                        setSnap('expanded');
+                        navigate(`/agents/${agentId}/${item.path}`);
+                      }}
+                    />
+                  ))}
+                </SideNav.Section>
+              </SideNav.Upper>
+            </SideNav>
+          </div>
+        </aside>
+      );
+    }
+
+    if (!agentPanelOpen) {
+      return (
+        <button
+          type="button"
+          className="uplift-agent-panel-handle"
+          aria-label="Open agent navigation"
+          title="Open agent navigation"
+          onClick={() => openAgentPanel(true)}
+        >
+          <span className="uplift-agent-panel__grabber-dots" aria-hidden>
+            <span />
+            <span />
+            <span />
+          </span>
+        </button>
+      );
+    }
+
+    return (
+      <aside className="sidebar uplift-agent-panel">
+        <button
+          type="button"
+          className="uplift-agent-panel__collapse"
+          aria-label="Collapse agent navigation"
+          title="Collapse agent navigation"
+          onClick={() => {
+            onAgentPanelOpenChange?.(false);
+            window.requestAnimationFrame(() => {
+              document.querySelector<HTMLButtonElement>('.uplift-agent-panel-handle')?.focus();
+            });
+          }}
+        >
+          <span className="uplift-agent-panel__grabber-dots" aria-hidden>
+            <span />
+            <span />
+            <span />
+          </span>
+        </button>
+        <div className="sidebar-main">
+          <Link
+            className="sidebar-agent-back-link"
+            to="/agents"
+            onClick={() => onAgentPanelOpenChange?.(false)}
+          >
+            <Icon name="arrow-left" weight="bold" size="xs" />
+            <span>Back to AI Agents</span>
+          </Link>
+          <div className="sidebar-agent-progress-title">
+            <Icon name="list-menu" weight="bold" size={20} />
+            <h2>Progress</h2>
+          </div>
+          <SideNav aria-label="Agent navigation" className="sidebar-agent-nav">
+            <SideNav.Upper>
+              <SideNav.Item
+                icon="dashboard-bold"
+                label="Overview"
+                active={isOverviewRoute}
                 onClick={() => {
                   selectAgent(agentId);
                   navigate(`/agents/${agentId}`);
                 }}
-                title={`${agent.name} overview`}
-              >
-                <span className="sidebar-agent-pill__avatar" style={{ background: agent.gradient }} aria-hidden>
-                  {agent.initials}
-                </span>
-                <span className="sidebar-agent-pill__text">
-                  <span className="sidebar-agent-pill__name">{agent.name}</span>
-                  <span className="sidebar-agent-pill__meta">CX concierge</span>
-                </span>
-              </button>
+              />
 
-              <SideNav.Section header="Configure" className="sidebar-agent-section--first">
+              <SideNav.Section header="Configure">
                 {configureItems.map(item => (
                   <SideNav.Item
                     key={item.section}
@@ -171,19 +274,23 @@ export default function Sidebar({ collapsed = false }: SidebarProps) {
     if (end) return location.pathname === path;
     return location.pathname === path || location.pathname.startsWith(path + '/');
   };
-
-  /* Map canvas overlay routes back onto the parent tab so the sidebar
-     highlight stays put while the canvas is open. /eva-canvas opens
-     over the Dashboard root, /agents/eva-canvas opens over AI Agents —
-     both already match via the standard isActive check, but we treat
-     /eva-canvas explicitly as Dashboard so the index ('/') item stays
-     highlighted instead of going inactive. */
-  const isDashboardActive = location.pathname === '/' || location.pathname === '/eva-canvas';
+  const workspaceNavCollapsed =
+    collapsed || (!workspaceNavHovered && !workspaceNavFocusWithin);
 
   return (
-    <aside className={`sidebar${collapsed ? ' sidebar--collapsed' : ''}`}>
+    <aside
+      className={`sidebar workspace-sidebar${workspaceNavCollapsed ? ' sidebar--collapsed' : ' workspace-sidebar--expanded'}`}
+      onMouseEnter={() => setWorkspaceNavHovered(true)}
+      onMouseLeave={() => setWorkspaceNavHovered(false)}
+      onFocusCapture={() => setWorkspaceNavFocusWithin(true)}
+      onBlurCapture={(event) => {
+        if (!event.currentTarget.contains(event.relatedTarget)) {
+          setWorkspaceNavFocusWithin(false);
+        }
+      }}
+    >
       <div className="sidebar-main">
-        <SideNav collapsed={collapsed} aria-label="Main navigation">
+        <SideNav collapsed={workspaceNavCollapsed} aria-label="Main navigation">
           <SideNav.Upper>
             <SideNav.Section>
               {navItems.map(item => {
@@ -194,9 +301,7 @@ export default function Sidebar({ collapsed = false }: SidebarProps) {
                       ? location.pathname === '/observability' ||
                         location.pathname === '/kpi-dashboard' ||
                         location.pathname.endsWith('/kpi-dashboard')
-                    : item.path === '/'
-                      ? isDashboardActive
-                      : isActive(item.path, item.path === '/');
+                    : isActive(item.path);
 
                 return (
                   <SideNav.Item
@@ -205,9 +310,7 @@ export default function Sidebar({ collapsed = false }: SidebarProps) {
                     label={item.label}
                     active={itemActive}
                     onClick={() => {
-                      if (item.path === '/' || item.path === '/agents') {
-                        setVariation('dashboard');
-                      }
+                      if (collapsed) setSnap('expanded');
                       navigate(item.path);
                     }}
                   />

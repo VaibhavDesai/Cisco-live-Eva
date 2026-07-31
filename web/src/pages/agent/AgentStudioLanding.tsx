@@ -6,7 +6,7 @@ import {
   type KeyboardEvent as ReactKeyboardEvent,
   type ReactNode,
 } from 'react';
-import { Navigate, useNavigate, useParams } from 'react-router-dom';
+import { Link, Navigate, useNavigate, useParams } from 'react-router-dom';
 import { IconProvider, ThemeProvider } from '@momentum-design/components/react';
 import { ThemeModeProvider, useThemeMode } from '../../app/ThemeContext';
 import { publicAssetUrl } from '../../app/publicAsset';
@@ -42,7 +42,6 @@ import {
   getCiscoLiveGuardrailTriggerCount,
   getCiscoLiveObservability,
   getCiscoLiveSessionLocator,
-  getCiscoLiveSessions,
 } from '../../demo/ciscoLiveDemo';
 import {
   buildInstructionPrompt,
@@ -62,6 +61,16 @@ import {
   type AgentLifecycle,
 } from '../../features/agent-creation/agentCreationModel';
 import { Icon } from '../../icons';
+import { useUpliftWorkspace } from '../../products/ai-agent-studio/UpliftWorkspaceContext';
+import { useAgentOverviewContext } from '../../features/agent-overview/AgentOverviewContext';
+import {
+  AGENT_OVERVIEW_OPERATIONAL_HEALTH,
+  AGENT_OVERVIEW_OPERATIONAL_HEALTH_GAP,
+  AGENT_OVERVIEW_OPERATIONAL_METRICS,
+  AGENT_OVERVIEW_TIME_RANGE_OPTIONS,
+  buildAgentOverviewSnapshot,
+  getAgentOverviewTimeRange,
+} from '../../features/agent-overview/agentOverviewSnapshot';
 
 type PreviewCallStatus = 'idle' | 'connecting' | 'listening' | 'speaking' | 'paused' | 'ended' | 'error';
 type ConnectedViewMode = 'metrics' | 'resources';
@@ -243,85 +252,10 @@ const lifecycleStatusLabel = (lifecycle: AgentLifecycle) => {
   return 'Live';
 };
 
-const OPERATIONAL_HEALTH = {
-  score: 95.8,
-  target: 85,
-  signals: 7,
-} as const;
-
-const OPERATIONAL_HEALTH_GAP = Number(
-  (OPERATIONAL_HEALTH.score - OPERATIONAL_HEALTH.target).toFixed(1),
-);
-
-interface OperationalHealthMetric {
-  id: string;
-  label: string;
-  value: string;
-  change: string;
-}
-
-const OPERATIONAL_HEALTH_METRICS: OperationalHealthMetric[] = [
-  { id: 'knowledge-coverage', label: 'Knowledge coverage', value: '94.8%', change: '+4.6%' },
-  { id: 'guardrails-trigger-flag', label: 'Guardrails trigger flag', value: '0.8%', change: '-0.7%' },
-  { id: 'containment-rate', label: 'Containment rate', value: '91.6%', change: '+5.2%' },
-  { id: 'action-intent-success-rate', label: 'Action/intent success rate', value: '97.8%', change: '+2.4%' },
-  { id: 'autocsat-improvement', label: 'AutoCSAT improvement', value: '8.6%', change: '+3.4%' },
-  { id: 'csat-predictor', label: 'CSAT predictor (AutoCSAT)', value: '4.7/5', change: '+8.1%' },
-  { id: 'fulfilment-latency-p95', label: 'Fulfilment latency P95', value: '1,240ms', change: '-18%' },
-];
-
-const OPERATIONAL_TIME_RANGE_OPTIONS = [
-  { value: '1h', label: 'Past 1 hour' },
-  { value: '6h', label: 'Past 6 hours' },
-  { value: '24h', label: 'Past 24 hours' },
-  { value: '7d', label: 'Past 7 days' },
-  { value: '30d', label: 'Past 30 days' },
-] as const;
-
-const OPERATIONAL_TIME_RANGE_HOURS: Record<string, number> = {
-  '1h': 1,
-  '6h': 6,
-  '24h': 24,
-  '7d': 24 * 7,
-  '30d': 24 * 30,
-};
-
-const sessionAgeHours = (updated: string): number => {
-  const normalized = updated.trim().toLowerCase();
-  if (normalized === 'just now') return 0;
-  const match = normalized.match(/^(\d+)\s+(minute|minutes|hour|hours|day|days)/);
-  if (!match) return Number.POSITIVE_INFINITY;
-  const value = Number(match[1]);
-  if (match[2].startsWith('minute')) return value / 60;
-  if (match[2].startsWith('day')) return value * 24;
-  return value;
-};
-
 const sessionOutcomeVariant = (outcome: string): 'success' | 'warning' | 'info' => {
   if (outcome === 'Transferred') return 'warning';
   if (outcome === 'Resolved') return 'success';
   return 'info';
-};
-
-const capabilitySelectionLabels = (draft: AgentDraft | undefined, capabilityId: string): string[] => {
-  const values = draft?.familyConfiguration[capabilityId]?.values;
-  const selections = values?.selections;
-  return Array.isArray(selections)
-    ? selections.filter((selection): selection is string => typeof selection === 'string' && Boolean(selection.trim()))
-    : [];
-};
-
-const configuredCapabilityLabels = (
-  draft: AgentDraft | undefined,
-  capabilityId: string,
-  fallbackLabels: string[] = [],
-): string[] => {
-  const capability = draft?.familyConfiguration[capabilityId];
-  if (capability?.progress !== 'configured') return [];
-  const selections = capabilitySelectionLabels(draft, capabilityId);
-  if (selections.length > 0) return selections;
-  if (fallbackLabels.length > 0) return fallbackLabels;
-  return [capability.label];
 };
 
 function getConfiguredSummary(agent: Agent, draft?: AgentDraft) {
@@ -404,6 +338,8 @@ function getPreviewTimeLabel() {
 export default function AgentStudioLanding() {
   const { agentId } = useParams();
   const navigate = useNavigate();
+  const { state: upliftWorkspaceState, setSnap } = useUpliftWorkspace();
+  const { getTimeRange, setTimeRange } = useAgentOverviewContext();
   const {
     agents,
     agentDrafts,
@@ -421,7 +357,7 @@ export default function AgentStudioLanding() {
   const [previewExpanded, setPreviewExpanded] = useState(false);
   const [previewInteractionEnded, setPreviewInteractionEnded] = useState(false);
   const [previewWidgetOpen, setPreviewWidgetOpen] = useState(false);
-  const [operationalTimeRange, setOperationalTimeRange] = useState('6h');
+  const operationalTimeRange = getTimeRange(agentId);
   const [connectedViewMode, setConnectedViewMode] = useState<ConnectedViewMode>('metrics');
   const [selectedGuardrailActivity, setSelectedGuardrailActivity] = useState<string | null | undefined>(undefined);
   const [overviewCardOrder, setOverviewCardOrder] = useState<OverviewCardId[]>(
@@ -1116,7 +1052,11 @@ export default function AgentStudioLanding() {
 
   const headerStatus = (
     <div className="agent-studio-agent-metadata" aria-label={`${familyBadgeLabel}; ${lifecycleStatusLabel(lifecycle)}`}>
-      {family && <Badge variant={familyBadgeVariant(family)}>{familyBadgeLabel}</Badge>}
+      {family && (
+        <Badge className="agent-studio-family-badge" variant={familyBadgeVariant(family)}>
+          {familyBadgeLabel}
+        </Badge>
+      )}
       <span className={`agent-studio-lifecycle-status agent-studio-lifecycle-status--${lifecycle}`}>
         <span className="agent-studio-lifecycle-status__dot" aria-hidden="true" />
         <span>{lifecycleStatusLabel(lifecycle)}</span>
@@ -1131,7 +1071,27 @@ export default function AgentStudioLanding() {
       aria-label={`${familyName}; ${lifecycleLabel(lifecycle, version)}; version actions`}
     >
       <Button
+        type="button"
         variant="secondary"
+        size="sm"
+        className="agent-studio-header-action agent-studio-header-action--icon"
+        aria-label={upliftWorkspaceState.productSurface.snap === 'expanded'
+          ? 'Switch AI Agent Studio to split view'
+          : 'Expand AI Agent Studio workspace'}
+        title={upliftWorkspaceState.productSurface.snap === 'expanded'
+          ? 'Split view'
+          : 'Expanded view'}
+        aria-pressed={upliftWorkspaceState.productSurface.snap === 'expanded'}
+        onClick={() => setSnap(
+          upliftWorkspaceState.productSurface.snap === 'expanded' ? 'split' : 'expanded',
+        )}
+      >
+              <Icon name="side-panel" weight="regular" size="sm" />
+      </Button>
+      <Button
+        variant="secondary"
+        size="sm"
+        className="agent-studio-header-action"
         aria-haspopup="dialog"
         aria-expanded={previewWidgetOpen}
         aria-pressed={previewWidgetOpen}
@@ -1142,6 +1102,8 @@ export default function AgentStudioLanding() {
       </Button>
       <Button
         type="button"
+        size="sm"
+        className="agent-studio-header-action"
         disabled={releaseActionDisabled}
         aria-label={`${releaseActionLabel} ${agent.name}`}
         onClick={handleReleaseAction}
@@ -1156,57 +1118,34 @@ export default function AgentStudioLanding() {
   const sessionsPath = `/agents/${encodeURIComponent(agent.id)}/sessions`;
   const observabilityPath = '/observability';
   const showPreviewSessionLink = previewInteractionEnded && (previewCallStatus === 'ended' || previewCallStatus === 'error');
-  const configuredKnowledge = agentDraft
-    ? configuredCapabilityLabels(agentDraft, 'knowledge', summary.knowledgeBases)
-    : summary.knowledgeBases;
-  const configuredMemory = configuredCapabilityLabels(agentDraft, 'memory');
-  const configuredActions = agentDraft
-    ? configuredCapabilityLabels(agentDraft, 'actions', summary.actions)
-    : summary.actions;
-  const configuredHandoff = configuredCapabilityLabels(agentDraft, 'handoff');
-  // Surface triggered guardrails first (e.g. "Large reservation approval"),
-  // ordered by trigger count desc; a stable sort keeps the rest as configured.
-  const configuredSecurity = configuredCapabilityLabels(agentDraft, 'security')
-    .map((item, index) => ({ item, index, count: getCiscoLiveGuardrailTriggerCount(item) }))
-    .sort((a, b) => b.count - a.count || a.index - b.index)
-    .map(entry => entry.item);
-  const configuredOrchestration = [...configuredActions, ...configuredHandoff];
+  const overviewSnapshot = buildAgentOverviewSnapshot({
+    agent,
+    draft: agentDraft,
+    timeRange: operationalTimeRange,
+    fallbackActions: summary.actions,
+  });
+  const {
+    knowledge: configuredKnowledge,
+    memory: configuredMemory,
+    actions: configuredActions,
+    handoff: configuredHandoff,
+    orchestration: configuredOrchestration,
+    security: configuredSecurity,
+  } = overviewSnapshot.configured;
+  const connectedCapabilityTotals = overviewSnapshot.capabilityCounts;
+  const connectedActionPerformance = overviewSnapshot.actionPerformance.items;
+  const averageActionSuccess = overviewSnapshot.actionPerformance.averageSuccess;
+  const connectedGuardrailActivity = overviewSnapshot.guardrailActivity.items;
+  const connectedCapabilitySignals = overviewSnapshot.signals.map(signal => ({
+    ...signal,
+    type: signal.type as ConfigurationCategory,
+  }));
   const connectedCapabilityCount = configuredKnowledge.length
     + configuredMemory.length
     + configuredOrchestration.length
     + configuredSecurity.length;
-  const hasConnectedResources = connectedCapabilityCount > 0;
-  const usesEagleGreenShowcaseMetrics = agent.id === 'golftop-vip-reservations';
-  const actionPerformanceItems = usesEagleGreenShowcaseMetrics
-    ? [
-        'Check bay availability',
-        'Send payment link',
-        'Transfer to concierge',
-        'Get customer info',
-      ]
-    : configuredActions;
-  const connectedActionPerformance = actionPerformanceItems.map(item => {
-    const metric = getCiscoLiveActionMetric(item);
-    return {
-      item,
-      rate: Number.parseFloat(metric.rate),
-      rateLabel: metric.rate,
-      isPositive: metric.isPositive,
-    };
-  });
-  const averageActionSuccess = connectedActionPerformance.length > 0
-    ? connectedActionPerformance.reduce((total, item) => total + item.rate, 0) / connectedActionPerformance.length
-    : 0;
-  const connectedCapabilityTotals = {
-    knowledge: usesEagleGreenShowcaseMetrics ? 14 : configuredKnowledge.length,
-    memory: configuredMemory.length,
-    actions: usesEagleGreenShowcaseMetrics ? 6 : configuredOrchestration.length,
-    guardrails: configuredSecurity.length,
-  } as const;
-  const connectedGuardrailActivity = configuredSecurity.map(item => ({
-    item,
-    count: getCiscoLiveGuardrailTriggerCount(item),
-  }));
+  const hasConnectedResources = overviewSnapshot.hasConnectedResources;
+  const usesEagleGreenShowcaseMetrics = overviewSnapshot.usesEagleGreenShowcaseMetrics;
   const defaultSelectedGuardrailName = connectedGuardrailActivity.find(guardrail => guardrail.count > 0)?.item
     ?? connectedGuardrailActivity[0]?.item
     ?? null;
@@ -1219,42 +1158,8 @@ export default function AgentStudioLanding() {
   const selectedGuardrail = connectedGuardrailActivity.find(
     guardrail => guardrail.item === selectedGuardrailName,
   );
-  const guardrailTriggerTotal = connectedGuardrailActivity.reduce((total, item) => total + item.count, 0);
-  const allAgentSessions = getCiscoLiveSessions(agent.id);
-  const guardedSessionRate = allAgentSessions.length > 0
-    ? Math.round((allAgentSessions.filter(session => session.guardrailTriggered).length / allAgentSessions.length) * 100)
-    : 0;
-  const connectedCapabilitySignals = [
-    {
-      id: 'knowledge',
-      label: 'Knowledge referenced',
-      value: configuredKnowledge.length > 0 ? Math.min(100, 68 + configuredKnowledge.length * 8) : 0,
-      count: connectedCapabilityTotals.knowledge,
-      type: 'knowledge' as ConfigurationCategory,
-    },
-    {
-      id: 'memory',
-      label: 'Memory assisted',
-      value: configuredMemory.length > 0 ? Math.min(100, 54 + configuredMemory.length * 8) : 0,
-      count: connectedCapabilityTotals.memory,
-      type: 'memory' as ConfigurationCategory,
-    },
-    {
-      id: 'actions',
-      label: 'Action success',
-      value: Math.round(averageActionSuccess),
-      count: connectedCapabilityTotals.actions,
-      type: 'action' as ConfigurationCategory,
-    },
-    {
-      id: 'security',
-      label: 'Guardrail intervention',
-      value: configuredSecurity.length > 0 ? guardedSessionRate : 0,
-      count: connectedCapabilityTotals.guardrails,
-      type: 'guardrail' as ConfigurationCategory,
-    },
-  ];
-  const showOperationalStatus = lifecycle !== 'draft';
+  const guardrailTriggerTotal = overviewSnapshot.guardrailActivity.triggerTotal;
+  const showOperationalStatus = overviewSnapshot.operational.available;
   const knownSessionId = previewSessionId || agentDraft?.previewState.sessionId || '';
   // A live preview session stays on this agent; otherwise resolve to the demo
   // session that actually carries the designed transcript (guardrail first) so
@@ -1266,13 +1171,8 @@ export default function AgentStudioLanding() {
   // The banner describes the event that owns the transcript being opened, so its
   // title/meta/description stay in sync with the session "View session" links to.
   const operationalEvent = getCiscoLiveObservability(operationalSessionLocator.agentId);
-  const operationalTimeRangeHours = OPERATIONAL_TIME_RANGE_HOURS[operationalTimeRange] ?? 6;
-  const operationalTimeRangeLabel = OPERATIONAL_TIME_RANGE_OPTIONS.find(
-    option => option.value === operationalTimeRange,
-  )?.label ?? 'Past 6 hours';
-  const operationalSessions = getCiscoLiveSessions(agent.id)
-    .filter(session => sessionAgeHours(session.updated) <= operationalTimeRangeHours)
-    .slice(0, 3);
+  const operationalTimeRangeLabel = overviewSnapshot.timeRange.label;
+  const operationalSessions = overviewSnapshot.operational.recentSessions;
   const studioHeaderAgent = { ...agent, meta: agent.description };
   const previewTranscriptButton = (
     <Button
@@ -1351,12 +1251,18 @@ export default function AgentStudioLanding() {
   );
 
   return (
-    <div className="primary-content agent-studio-landing">
+    <div className="primary-content agent-studio-landing agent-workspace-page">
       <AgentHeader
         agent={studioHeaderAgent}
         activeTab="configure"
         showPublishButton={false}
         showTabs={false}
+        headerTop={(
+          <Link className="agent-studio-back-link" to="/agents">
+            <Icon name="arrow-left" weight="bold" size="xs" />
+            <span>Back to AI Agents</span>
+          </Link>
+        )}
         statusContent={headerStatus}
         headerRight={headerActions}
       />
@@ -1372,8 +1278,11 @@ export default function AgentStudioLanding() {
                   size="compact"
                   leadingIcon="filter"
                   value={operationalTimeRange}
-                  onChange={setOperationalTimeRange}
-                  options={OPERATIONAL_TIME_RANGE_OPTIONS.map(option => ({ ...option }))}
+                  onChange={value => setTimeRange(
+                    agent.id,
+                    getAgentOverviewTimeRange(value).value,
+                  )}
+                  options={AGENT_OVERVIEW_TIME_RANGE_OPTIONS.map(option => ({ ...option }))}
                 />
               </div>
             </div>
@@ -1902,7 +1811,7 @@ export default function AgentStudioLanding() {
                     <div
                       className="agent-studio-health-gauge__dial"
                       role="img"
-                      aria-label={`Aggregate health ${OPERATIONAL_HEALTH.score} percent`}
+                      aria-label={`Aggregate health ${AGENT_OVERVIEW_OPERATIONAL_HEALTH.score} percent`}
                     >
                       <svg viewBox="0 0 208 108" aria-hidden="true">
                         <path
@@ -1918,12 +1827,12 @@ export default function AgentStudioLanding() {
                           fill="none"
                           pathLength="100"
                           strokeWidth="5"
-                          strokeDasharray={`${OPERATIONAL_HEALTH.score} 100`}
+                          strokeDasharray={`${AGENT_OVERVIEW_OPERATIONAL_HEALTH.score} 100`}
                         />
                       </svg>
                       <div className="agent-studio-health-gauge__reading">
                         <span className="agent-studio-health-gauge__reading-inner">
-                          <strong>{OPERATIONAL_HEALTH.score}</strong>
+                          <strong>{AGENT_OVERVIEW_OPERATIONAL_HEALTH.score}</strong>
                           <span className="agent-studio-health-gauge__pct">%</span>
                         </span>
                       </div>
@@ -1932,15 +1841,15 @@ export default function AgentStudioLanding() {
                     <dl className="agent-studio-health-gauge__stats">
                       <div>
                         <dt>Target</dt>
-                        <dd>{OPERATIONAL_HEALTH.target}%</dd>
+                        <dd>{AGENT_OVERVIEW_OPERATIONAL_HEALTH.target}%</dd>
                       </div>
                       <div>
                         <dt>Gap</dt>
-                        <dd className="is-positive">+{OPERATIONAL_HEALTH_GAP}</dd>
+                        <dd className="is-positive">+{AGENT_OVERVIEW_OPERATIONAL_HEALTH_GAP}</dd>
                       </div>
                       <div>
                         <dt>Signals</dt>
-                        <dd>{OPERATIONAL_HEALTH.signals}</dd>
+                        <dd>{AGENT_OVERVIEW_OPERATIONAL_HEALTH.signals}</dd>
                       </div>
                     </dl>
                   </div>
@@ -1955,7 +1864,7 @@ export default function AgentStudioLanding() {
                         </tr>
                       </thead>
                       <tbody>
-                        {OPERATIONAL_HEALTH_METRICS.map(metric => (
+                        {AGENT_OVERVIEW_OPERATIONAL_METRICS.map(metric => (
                           <tr key={metric.id}>
                             <th scope="row">
                               <span className="agent-studio-metric-name">
