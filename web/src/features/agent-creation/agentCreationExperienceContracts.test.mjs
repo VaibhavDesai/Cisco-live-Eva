@@ -978,6 +978,11 @@ test('Uplift shell includes responsive drawers, reduced motion, and accessible c
   );
   assert.match(
     styles,
+    /\.uplift-assistant-base[\s\S]*?\.eva-first-interface--landing[\s\S]*?\.eva-landing-composer[\s\S]*?\.ai-footer__input-row\s*\{[\s\S]*?flex:\s*0 0 auto !important;[\s\S]*?\.ai-footer__textarea\s*\{[\s\S]*?min-height:\s*44px;/,
+    'the full-screen landing composer should retain its original compact prompt height',
+  );
+  assert.match(
+    styles,
     /\.sidebar:not\(\.sidebar--collapsed\):not\(\.uplift-agent-panel\) \.sidenav\s*\{[\s\S]*?width:\s*100%;/,
     'the expanded sidenav should stay within the sidebar content box so pill corners remain visible',
   );

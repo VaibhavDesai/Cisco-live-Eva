@@ -12145,6 +12145,23 @@ button.eva-retail-preview-card::before {
   align-items: stretch;
 }
 
+/* The landing composer keeps the original compact prompt height. AiFooter's
+   fill-container inline flex basis is useful for width, but must not make the
+   empty prompt consume the full vertical space of the Assistant landing. */
+.uplift-assistant-base
+  .eva-first-interface--landing
+  .eva-landing-composer
+  .ai-footer__input-row {
+  flex: 0 0 auto !important;
+}
+
+.uplift-assistant-base
+  .eva-first-interface--landing
+  .eva-landing-composer
+  .ai-footer__textarea {
+  min-height: 44px;
+}
+
 .uplift-assistant-base .eva-ai-footer .ai-footer__type-area {
   min-height: 44px;
   flex: 1 1 auto;
