@@ -297,6 +297,197 @@ html[data-product='ai-agent-studio'] .app-header__menu-row-hint {
   margin-left: 72px;
 }
 
+/* Agent pages use the Uplift floating progress rail. The shell remains full
+   width; only the content below the agent header makes room while the rail is
+   open, matching the Uplift branch's overlay behavior. */
+.app--ai--agent-context {
+  --uplift-core-container-background: rgba(18, 18, 22, 0.58);
+}
+
+.app--ai--agent-context .main {
+  margin-left: 0;
+}
+
+.app--ai--agent-panel-open .main > .primary-content {
+  padding-left: calc(244px + var(--spacing-small));
+}
+
+.app--ai--agent-panel-open .main > .primary-content > .agent-header-sticky {
+  margin-left: calc(-244px - var(--spacing-small));
+}
+
+.uplift-agent-panel {
+  position: absolute !important;
+  inset: 172px auto auto 12px !important;
+  z-index: 30 !important;
+  width: 232px !important;
+  height: calc(100% - 184px) !important;
+  max-height: calc(100% - 184px) !important;
+  box-sizing: border-box !important;
+  padding: 12px 12px 12px 0 !important;
+  overflow: visible !important;
+  border: var(--border-width-small) solid var(--border-color) !important;
+  border-radius: 12px !important;
+  background: var(--bg-glass) !important;
+  color: var(--text-primary);
+  backdrop-filter: blur(22px) saturate(128%) !important;
+  -webkit-backdrop-filter: blur(22px) saturate(128%) !important;
+  box-shadow:
+    inset 0 0 24.95px 0 rgba(255, 255, 255, 0.07),
+    0 16px 36px rgba(0, 0, 0, 0.18) !important;
+}
+
+.uplift-agent-panel__collapse {
+  position: absolute;
+  top: 50%;
+  right: -21px;
+  z-index: 3;
+  display: inline-flex;
+  width: 20px;
+  height: 40px;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  border: 1px solid var(--mds-color-theme-outline-glass-0, rgba(255, 255, 255, 0.11));
+  border-left: 0;
+  border-radius: 0 10px 10px 0;
+  background: var(--uplift-core-container-background);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  color: var(--text-secondary);
+  cursor: pointer;
+  transform: translateY(-50%);
+  box-shadow: 4px 8px 18px rgba(0, 0, 0, 0.2);
+}
+
+.uplift-agent-panel__collapse:hover,
+.uplift-agent-panel__collapse:focus-visible {
+  background: var(--mds-color-theme-background-primary-hover, rgba(255, 255, 255, 0.08));
+  color: var(--text-primary);
+}
+
+.uplift-agent-panel__grabber-dots {
+  display: inline-flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.uplift-agent-panel__grabber-dots > span {
+  width: 3px;
+  height: 3px;
+  border-radius: 50%;
+  background: currentColor;
+}
+
+.uplift-agent-panel .sidebar-main {
+  height: auto;
+  max-height: calc(100dvh - 280px);
+  flex: 0 1 auto;
+  overflow-x: hidden;
+  overflow-y: auto;
+  border-radius: inherit;
+  background: transparent !important;
+}
+
+.uplift-agent-panel .sidebar-agent-nav,
+.uplift-agent-panel .sidebar-agent-nav .sidenav__upper,
+.uplift-agent-panel .sidebar-agent-nav .sidenav__nav {
+  height: auto;
+  flex: 0 0 auto;
+}
+
+.sidebar-agent-back-link {
+  display: inline-flex;
+  width: calc(100% - 16px);
+  min-height: 40px;
+  align-items: center;
+  gap: 8px;
+  box-sizing: border-box;
+  margin: 0 8px 8px;
+  padding: 8px;
+  border-radius: 8px;
+  color: var(--text-secondary);
+  font-size: var(--font-size-body-midsize, 14px);
+  font-weight: var(--font-weight-regular, 400);
+  line-height: var(--font-lineheight-body-midsize, 22px);
+  text-decoration: none;
+}
+
+.sidebar-agent-back-link:hover {
+  background: var(--mds-color-theme-background-primary-hover, rgba(255, 255, 255, 0.08));
+  color: var(--text-primary);
+}
+
+.sidebar-agent-back-link:focus-visible {
+  outline: 2px solid var(--outline-input-active);
+  outline-offset: -2px;
+}
+
+.sidebar-agent-progress-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0 8px 12px;
+  color: var(--text-primary);
+}
+
+.sidebar-agent-progress-title h2 {
+  margin: 0;
+  font-size: var(--font-size-heading-small, 20px);
+  font-weight: var(--font-weight-semibold, 600);
+  line-height: var(--font-lineheight-heading-small, 28px);
+}
+
+.uplift-agent-panel .sidebar-agent-nav .sidenav__item {
+  gap: 12px;
+}
+
+.uplift-agent-panel .sidebar-agent-nav .sidenav__tab {
+  margin-right: 0;
+  padding: 8px;
+}
+
+.uplift-agent-panel-handle {
+  position: absolute;
+  top: 50%;
+  left: 0;
+  z-index: 30;
+  display: inline-flex;
+  width: 20px;
+  height: 40px;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  border: 1px solid var(--mds-color-theme-outline-glass-0, rgba(255, 255, 255, 0.11));
+  border-left: 0;
+  border-radius: 0 10px 10px 0;
+  background: var(--uplift-core-container-background);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  color: var(--text-primary);
+  cursor: pointer;
+  box-shadow: 0 10px 24px rgba(0, 0, 0, 0.24);
+  transform: translateY(-50%);
+}
+
+[data-theme='light'] .uplift-agent-panel {
+  background: color-mix(in srgb, var(--mds-color-theme-background-solid-primary-normal, #fff) 88%, transparent) !important;
+}
+
+@media (max-width: 719px) {
+  .uplift-agent-panel {
+    width: min(280px, calc(100vw - 96px)) !important;
+  }
+
+  .app--ai--agent-panel-open .main > .primary-content {
+    padding-left: var(--spacing-small);
+  }
+
+  .app--ai--agent-panel-open .main > .primary-content > .agent-header-sticky {
+    margin-left: 0;
+  }
+}
+
 .eva-shell {
   overflow: hidden;
 }

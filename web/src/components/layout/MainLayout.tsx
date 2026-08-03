@@ -27,29 +27,45 @@ function LegacyToastBridge() {
 export default function MainLayout() {
   const { isCreateModalOpen, setIsCreateModalOpen } = useApp();
   const [sidebarCollapsed, setSidebarCollapsed] = useState(true);
+  const [agentPanelOpen, setAgentPanelOpen] = useState(true);
   const [aiPanelOpen, setAiPanelOpen] = useState(false);
   const location = useLocation();
 
-  /* The agent-scoped side navigation needs its labels, so auto-expand the
-     sidebar when drilling into a specific agent (excludes the /agents list
-     and the /agents/eva-canvas overlay). Users can still collapse manually. */
+  /* Agent pages use the floating Uplift progress rail. Open it when entering
+     agent context, while preserving its manual collapsed state between the
+     agent's Overview, Configure, and Monitor routes. */
   const isAgentContext =
     /^\/agents\/[^/]+/.test(location.pathname) &&
     !location.pathname.startsWith('/agents/eva-canvas');
 
   useEffect(() => {
-    if (isAgentContext) setSidebarCollapsed(false);
+    if (isAgentContext) {
+      setSidebarCollapsed(false);
+      setAgentPanelOpen(true);
+    }
   }, [isAgentContext]);
 
   return (
     <>
       <div className="app--ai__bg" aria-hidden />
       <Header
-        onMenuClick={() => setSidebarCollapsed(prev => !prev)}
+        onMenuClick={() => {
+          if (isAgentContext) {
+            setAgentPanelOpen(prev => !prev);
+          } else {
+            setSidebarCollapsed(prev => !prev);
+          }
+        }}
         onAiClick={() => setAiPanelOpen(prev => !prev)}
       />
-      <div className={`app app--ai${sidebarCollapsed ? ' app--ai--sidebar-collapsed' : ''}${aiPanelOpen ? ' app--ai--assistant-open' : ''}`}>
-        <Sidebar collapsed={sidebarCollapsed} />
+      <div
+        className={`app app--ai${sidebarCollapsed ? ' app--ai--sidebar-collapsed' : ''}${isAgentContext ? ' app--ai--agent-context' : ''}${isAgentContext && agentPanelOpen ? ' app--ai--agent-panel-open' : ''}${aiPanelOpen ? ' app--ai--assistant-open' : ''}`}
+      >
+        <Sidebar
+          collapsed={sidebarCollapsed}
+          agentPanelOpen={agentPanelOpen}
+          onAgentPanelOpenChange={setAgentPanelOpen}
+        />
         <main className="main">
           <Outlet />
         </main>

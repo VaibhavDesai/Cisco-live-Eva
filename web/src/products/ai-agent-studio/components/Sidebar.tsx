@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react';
-import { useLocation, useNavigate, useSearchParams } from 'react-router-dom';
+import { Link, useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import SideNav from '../../../components/shared/SideNav';
 import { KnowledgeBookIcon } from '../../../components/shared/ConfigurationCategoryIcon';
 import { Icon } from '../../../icons/Icon';
@@ -67,9 +67,15 @@ function parseAgentId(pathname: string): string | null {
 
 interface SidebarProps {
   collapsed?: boolean;
+  agentPanelOpen?: boolean;
+  onAgentPanelOpenChange?: (open: boolean) => void;
 }
 
-export default function Sidebar({ collapsed = false }: SidebarProps) {
+export default function Sidebar({
+  collapsed = false,
+  agentPanelOpen = true,
+  onAgentPanelOpenChange,
+}: SidebarProps) {
   const location = useLocation();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
@@ -78,6 +84,14 @@ export default function Sidebar({ collapsed = false }: SidebarProps) {
 
   const agentId = parseAgentId(location.pathname);
   const agent = agentId ? agents[agentId] : undefined;
+  const openAgentPanel = (restoreFocus = false) => {
+    onAgentPanelOpenChange?.(true);
+    if (restoreFocus) {
+      window.requestAnimationFrame(() => {
+        document.querySelector<HTMLButtonElement>('.uplift-agent-panel__collapse')?.focus();
+      });
+    }
+  };
 
   /* ── Agent-scoped navigation ─────────────────────────────────────── */
   if (agentId && agent) {
@@ -95,42 +109,70 @@ export default function Sidebar({ collapsed = false }: SidebarProps) {
       item => location.pathname === `/agents/${agentId}/${item.path}`,
     )?.path;
 
-    return (
-      <aside className={`sidebar${collapsed ? ' sidebar--collapsed' : ''}`}>
-        <div className="sidebar-main">
-          <SideNav collapsed={collapsed} aria-label="Agent navigation" className="sidebar-agent-nav">
-            <SideNav.Upper>
-              <button
-                type="button"
-                className="sidebar-agent-back"
-                onClick={() => navigate('/agents')}
-                title="Back to AI Agents"
-              >
-                <span className="sidebar-agent-back__icon" aria-hidden>
-                  <Icon name="arrow-left" size={16} />
-                </span>
-                <span className="sidebar-agent-back__label">Back to AI Agents</span>
-              </button>
+    if (!agentPanelOpen) {
+      return (
+        <button
+          type="button"
+          className="uplift-agent-panel-handle"
+          aria-label="Open agent navigation"
+          title="Open agent navigation"
+          onClick={() => openAgentPanel(true)}
+        >
+          <span className="uplift-agent-panel__grabber-dots" aria-hidden>
+            <span />
+            <span />
+            <span />
+          </span>
+        </button>
+      );
+    }
 
-              <button
-                type="button"
-                className={`sidebar-agent-pill${isOverviewRoute ? ' sidebar-agent-pill--active' : ''}`}
+    return (
+      <aside className="sidebar uplift-agent-panel">
+        <button
+          type="button"
+          className="uplift-agent-panel__collapse"
+          aria-label="Collapse agent navigation"
+          title="Collapse agent navigation"
+          onClick={() => {
+            onAgentPanelOpenChange?.(false);
+            window.requestAnimationFrame(() => {
+              document.querySelector<HTMLButtonElement>('.uplift-agent-panel-handle')?.focus();
+            });
+          }}
+        >
+          <span className="uplift-agent-panel__grabber-dots" aria-hidden>
+            <span />
+            <span />
+            <span />
+          </span>
+        </button>
+        <div className="sidebar-main">
+          <Link
+            className="sidebar-agent-back-link"
+            to="/agents"
+            onClick={() => onAgentPanelOpenChange?.(false)}
+          >
+            <Icon name="arrow-left" weight="bold" size="xs" />
+            <span>Back to AI Agents</span>
+          </Link>
+          <div className="sidebar-agent-progress-title">
+            <Icon name="list-menu" weight="bold" size={20} />
+            <h2>Progress</h2>
+          </div>
+          <SideNav aria-label="Agent navigation" className="sidebar-agent-nav">
+            <SideNav.Upper>
+              <SideNav.Item
+                icon="dashboard-bold"
+                label="Overview"
+                active={isOverviewRoute}
                 onClick={() => {
                   selectAgent(agentId);
                   navigate(`/agents/${agentId}`);
                 }}
-                title={`${agent.name} overview`}
-              >
-                <span className="sidebar-agent-pill__avatar" style={{ background: agent.gradient }} aria-hidden>
-                  {agent.initials}
-                </span>
-                <span className="sidebar-agent-pill__text">
-                  <span className="sidebar-agent-pill__name">{agent.name}</span>
-                  <span className="sidebar-agent-pill__meta">CX concierge</span>
-                </span>
-              </button>
+              />
 
-              <SideNav.Section header="Configure" className="sidebar-agent-section--first">
+              <SideNav.Section header="Configure">
                 {configureItems.map(item => (
                   <SideNav.Item
                     key={item.section}
