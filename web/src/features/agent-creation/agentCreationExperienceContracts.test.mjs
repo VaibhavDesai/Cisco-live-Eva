@@ -217,6 +217,21 @@ test('configuration and monitor destinations reuse the Overview page-heading con
     /\.action-config-v2-page\s*\{[^}]*padding-top:\s*var\(--spacing-large\);/,
     'configuration pages should use the same 24px top offset as Overview',
   );
+  assert.match(
+    sharedStyles,
+    /\.action-config-v2-page\s*>\s*\.agent-workspace-page-heading\s*\{[^}]*position:\s*relative;[^}]*z-index:\s*3;/,
+    'configuration page menus should stack above the table content',
+  );
+  assert.match(
+    sharedStyles,
+    /\.action-config-v2-table\s*\{[^}]*min-width:\s*1232px;[\s\S]*?\.action-config-v2-table \.col-description\s*\{\s*width:\s*280px;/,
+    'the Actions table should reserve enough width for readable descriptions',
+  );
+  assert.match(
+    sharedStyles,
+    /\.add-action-menu\s*\{[^}]*isolation:\s*isolate;[^}]*overflow:\s*hidden;[^}]*border:\s*var\(--border-width-small\) solid var\(--border-color\);[^}]*background:\s*rgba\(0,\s*0,\s*0,\s*0\.84\);[^}]*backdrop-filter:\s*blur\(40px\) saturate\(115%\);[^}]*-webkit-backdrop-filter:\s*blur\(40px\) saturate\(115%\);/,
+    'the Add actions menu should retain a complete dark-glass border and strong backdrop blur',
+  );
   assert.doesNotMatch(configureSource, /<h3 className="(?:v2-channels__title|action-config-v2-title)">(?:Channels|Profile|Actions)<\/h3>/);
 });
 
