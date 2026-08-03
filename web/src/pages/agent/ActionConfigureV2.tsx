@@ -1977,7 +1977,7 @@ export default function ActionConfigureV2() {
                           <div className="security-prebuilt-category-copy">
                             <div className="security-prebuilt-category-title">
                               <Icon name="sparkle" weight="bold" size={18} />
-                              <span>Custom guardrails</span>
+                              <span>Adaptive guardrails</span>
                               <Badge variant="success" className="security-tier-badge">Powered by AI Defense</Badge>
                             </div>
                             <span className="security-prebuilt-category-meta">{customProfileAppliedCount} of {customProfileLimit} created</span>
