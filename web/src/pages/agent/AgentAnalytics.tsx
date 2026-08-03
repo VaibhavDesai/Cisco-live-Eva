@@ -1,7 +1,7 @@
 import { useState, type ReactNode } from 'react';
 import { useParams, Navigate } from 'react-router-dom';
 import { useApp } from '../../contexts/AppContext';
-import { AgentHeader } from '../../components/agents';
+import { AgentHeader, AgentWorkspacePageHeading } from '../../components/agents';
 import Tabs, { Tab } from '../../components/shared/Tabs';
 import { TestingOverviewPanel } from '../../features/clus-simulated-testing/components/TestingOverviewPanel';
 import { TestingScenariosSection } from '../../features/clus-simulated-testing/components/TestingScenariosSection';
@@ -48,8 +48,9 @@ export default function AgentAnalytics() {
   if (!agent) return <Navigate to="/agents" replace />;
 
   return (
-    <div className="primary-content">
+    <div className="primary-content agent-workspace-page">
       <AgentHeader agent={agent} activeTab="analytics" showPublishButton={false} showTabs={false} />
+      <AgentWorkspacePageHeading title="Testing" />
 
       <div className="secondary-content agent-testing-page agent-testing-page--builder">
         <ThemeModeProvider>

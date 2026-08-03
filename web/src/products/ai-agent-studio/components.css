@@ -1150,7 +1150,8 @@ html[data-product='ai-agent-studio'] .app-header__menu-row-hint {
   justify-content: center;
 }
 
-.agent-studio-landing {
+.agent-studio-landing,
+.agent-workspace-page {
   display: flex;
   flex-direction: column;
   gap: var(--spacing-medium);
@@ -1166,8 +1167,15 @@ html[data-product='ai-agent-studio'] .app-header__menu-row-hint {
   animation: agent-studio-surface-fade 0.22s ease-out both;
 }
 
+.agent-workspace-page {
+  padding-top: var(--spacing-large);
+  padding-bottom: var(--spacing-x-large);
+}
+
 .agent-studio-landing > .agent-header-sticky,
+.agent-workspace-page > .agent-header-sticky,
 .agent-studio-hero__header,
+.agent-workspace-page-heading,
 .agent-studio-grid > * {
   animation: agent-studio-group-enter 0.46s cubic-bezier(0.16, 1, 0.3, 1) both;
 }
@@ -1177,7 +1185,8 @@ html[data-product='ai-agent-studio'] .app-header__menu-row-hint {
   animation: agent-studio-group-enter 0.72s cubic-bezier(0.16, 1, 0.3, 1) both;
 }
 
-.agent-studio-hero__header {
+.agent-studio-hero__header,
+.agent-workspace-page-heading {
   animation-delay: 0.06s;
 }
 
@@ -1251,12 +1260,30 @@ html[data-product='ai-agent-studio'] .app-header__menu-row-hint {
   min-width: 0;
 }
 
-.agent-studio-overview-heading {
+.agent-studio-overview-heading,
+.agent-workspace-page-heading {
+  display: flex;
   align-items: center;
   flex-direction: row;
   justify-content: space-between;
   gap: var(--spacing-small);
   width: 100%;
+}
+
+.agent-workspace-page-heading__copy {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-xx-small);
+  min-width: 0;
+}
+
+.agent-workspace-page-heading__actions {
+  position: relative;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  flex: 0 0 auto;
 }
 
 .agent-studio-overview-controls {
@@ -1265,15 +1292,18 @@ html[data-product='ai-agent-studio'] .app-header__menu-row-hint {
   flex: 0 0 auto;
 }
 
-.agent-studio-hero h1 {
+.agent-studio-hero h1,
+.agent-workspace-page-heading h1 {
   margin: 0;
   color: var(--text-primary);
   font-size: var(--font-size-heading-midsize);
+  font-weight: var(--font-weight-bold);
   line-height: var(--font-lineheight-heading-midsize);
   letter-spacing: -0.01em;
 }
 
 .agent-studio-hero__content > p,
+.agent-workspace-page-heading__copy > p,
 .agent-studio-section-heading p,
 .agent-studio-step-card p {
   margin: 0;
@@ -3024,7 +3054,7 @@ html[data-product='ai-agent-studio'] .app-header__menu-row-hint {
   display: flex;
   flex-direction: column;
   gap: var(--spacing-small);
-  margin-top: var(--spacing-small);
+  margin-top: 0;
 }
 
 .agent-sessions-heading,

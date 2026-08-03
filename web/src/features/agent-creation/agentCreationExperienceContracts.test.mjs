@@ -180,6 +180,46 @@ test('agent navigation uses the floating Uplift rail with collapse and expand ha
   );
 });
 
+test('configuration and monitor destinations reuse the Overview page-heading contract', () => {
+  const headingSource = readSource('../../components/agents/AgentWorkspacePageHeading.tsx');
+  const configureSource = readSource('../../pages/agent/ActionConfigureV2.tsx');
+  const testingSource = readSource('../../pages/agent/AgentAnalytics.tsx');
+  const sessionsSource = readSource('../../pages/agent/AgentSessions.tsx');
+  const historySource = readSource('../../pages/agent/AgentHistory.tsx');
+  const productStyles = readSource('../../products/ai-agent-studio/components.css');
+  const sharedStyles = readSource('../../components.css');
+
+  assert.match(
+    headingSource,
+    /className="agent-workspace-page-heading"[\s\S]*?<h1 id=\{id\}>\{title\}<\/h1>[\s\S]*?agent-workspace-page-heading__actions/,
+    'each destination should render one reusable page-level heading and action row',
+  );
+  assert.match(
+    configureSource,
+    /CONFIGURATION_PAGE_TITLES[\s\S]*?Knowledge:\s*['"]Knowledge & Memory['"][\s\S]*?Action:\s*['"]Actions['"][\s\S]*?className="primary-content action-config-v2-page agent-workspace-page"[\s\S]*?<AgentWorkspacePageHeading title=\{pageTitle\} actions=\{pageActions\}/,
+    'all configuration destinations should use the shared title contract',
+  );
+  assert.match(testingSource, /className="primary-content agent-workspace-page"[\s\S]*?<AgentWorkspacePageHeading title="Testing"/);
+  assert.match(sessionsSource, /className="primary-content agent-workspace-page"[\s\S]*?<AgentWorkspacePageHeading[\s\S]*?title="Sessions"/);
+  assert.match(historySource, /className="primary-content agent-workspace-page"[\s\S]*?<AgentWorkspacePageHeading title="History"/);
+  assert.match(
+    productStyles,
+    /\.agent-studio-landing,\s*\.agent-workspace-page\s*\{[^}]*gap:\s*var\(--spacing-medium\);/,
+    'Overview and the other agent pages should share the same vertical rhythm',
+  );
+  assert.match(
+    productStyles,
+    /\.agent-studio-hero h1,\s*\.agent-workspace-page-heading h1\s*\{[^}]*font-size:\s*var\(--font-size-heading-midsize\);[^}]*font-weight:\s*var\(--font-weight-bold\);[^}]*line-height:\s*var\(--font-lineheight-heading-midsize\);[^}]*letter-spacing:\s*-0\.01em;/,
+    'all destination titles should inherit the exact Overview typography declaration',
+  );
+  assert.match(
+    sharedStyles,
+    /\.action-config-v2-page\s*\{[^}]*padding-top:\s*var\(--spacing-large\);/,
+    'configuration pages should use the same 24px top offset as Overview',
+  );
+  assert.doesNotMatch(configureSource, /<h3 className="(?:v2-channels__title|action-config-v2-title)">(?:Channels|Profile|Actions)<\/h3>/);
+});
+
 test('overview suggestions stay hidden while the section is paused', () => {
   const overviewSource = readSource('../../pages/agent/AgentStudioLanding.tsx');
   assert.match(

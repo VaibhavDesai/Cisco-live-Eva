@@ -12432,7 +12432,7 @@ img.app-header__wordmark-logo {
 /* ── Action Configure V2 page ── */
 
 .action-config-v2-page {
-  padding-top: calc(var(--spacing-large) + var(--spacing-medium));
+  padding-top: var(--spacing-large);
 }
 
 .action-config-v2-shell {
@@ -19441,8 +19441,16 @@ img.app-header__wordmark-logo {
   height: var(--spacing-x-large);
   min-height: var(--spacing-x-large);
   padding: 0;
+  border-color: transparent;
   border-radius: 50%;
+  background: transparent;
+  box-shadow: none;
   flex-shrink: 0;
+}
+
+.guardrails-search-toggle.btn:hover {
+  border-color: transparent;
+  background: var(--button-secondary-hover);
 }
 
 

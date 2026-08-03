@@ -2,7 +2,7 @@ import { useState, useRef, useEffect, useMemo, useCallback, type ReactNode, type
 import { createPortal } from 'react-dom';
 import { Navigate, useParams, Link, useSearchParams } from 'react-router-dom';
 import { useApp } from '../../contexts/AppContext';
-import { AgentHeader } from '../../components/agents';
+import { AgentHeader, AgentWorkspacePageHeading } from '../../components/agents';
 import Button from '../../components/shared/Button';
 import Tabs, { Tab, SegmentControl, SegmentItem } from '../../components/shared/Tabs';
 import Toggle from '../../components/shared/Toggle';
@@ -279,6 +279,16 @@ const FAMILY_SECTION_LABELS: Record<AgentFamily, Partial<Record<ConfigurationSec
     Action: 'Actions and skills',
     Security: 'Security and audit',
   },
+};
+
+const CONFIGURATION_PAGE_TITLES: Record<ConfigurationSection, string> = {
+  Profile: 'Profile',
+  Channels: 'Channels',
+  Instructions: 'Instructions',
+  Knowledge: 'Knowledge & Memory',
+  Action: 'Actions',
+  Security: 'Security',
+  Language: 'Languages',
 };
 
 const PROFILE_LANGUAGE_OPTIONS = [
@@ -590,6 +600,7 @@ export default function ActionConfigureV2() {
     }
   }, [searchParams]);
   const activeSection = availableSections.includes(selectedSection) ? selectedSection : 'Profile';
+  const pageTitle = CONFIGURATION_PAGE_TITLES[activeSection];
 
   // Profile form state
   const [profileForm, setProfileForm] = useState(() => ({
@@ -1508,9 +1519,79 @@ export default function ActionConfigureV2() {
     </div>
   );
 
+  const actionPageActions = activeSection === 'Action' ? (
+    <div className="add-action-menu-wrapper" ref={addMenuRef}>
+      <button
+        type="button"
+        className="action-config-v2-add-btn"
+        onClick={() => setShowAddMenu(!showAddMenu)}
+      >
+        <Icon name="plus" weight="bold" size={20} />
+        Add actions
+      </button>
+      {showAddMenu && (
+        <div className="add-action-menu">
+          <div className="add-action-menu-section">
+            <div className="add-action-menu-header">Browse actions</div>
+            <button
+              className="add-action-menu-item"
+              onClick={() => { setShowAddMenu(false); setShowAddCapabilityModal(true); }}
+            >
+              <Icon name="extension-mobility" weight="bold" size={20} />
+              Select available
+            </button>
+          </div>
+          <div className="add-action-menu-divider" />
+          <div className="add-action-menu-section">
+            <div className="add-action-menu-header">Create new action</div>
+            <button className="add-action-menu-item" onClick={() => setShowAddMenu(false)}>
+              <Icon name="next" weight="bold" size={20} />
+              Transfer
+            </button>
+            <button className="add-action-menu-item" onClick={() => { setShowAddMenu(false); setShowFulfillmentModal(true); }}>
+              <Icon name="automation" weight="bold" size={20} />
+              Fulfillment
+            </button>
+          </div>
+        </div>
+      )}
+    </div>
+  ) : undefined;
+
+  const securityPageActions = activeSection === 'Security' ? (
+    searchOpen ? (
+      <div className="security-prebuilt-search guardrails-header-search">
+        <Input
+          type="search"
+          value={prebuiltSearch}
+          onChange={(e) => setPrebuiltSearch(e.target.value)}
+          placeholder="Search guardrails by name"
+          aria-label="Search guardrails by name"
+          leadingIcon="search"
+          clearable
+          autoFocus
+          onClear={() => { setPrebuiltSearch(''); setSearchOpen(false); }}
+          onBlur={() => { if (!prebuiltSearch.trim()) setSearchOpen(false); }}
+        />
+      </div>
+    ) : (
+      <Button
+        variant="secondary"
+        className="guardrails-search-toggle"
+        aria-label="Search guardrails"
+        onClick={() => setSearchOpen(true)}
+      >
+        <Icon name="search" weight="regular" size={16} />
+      </Button>
+    )
+  ) : undefined;
+
+  const pageActions = actionPageActions ?? securityPageActions;
+
   return (
-    <div className="primary-content action-config-v2-page">
+    <div className="primary-content action-config-v2-page agent-workspace-page">
       <AgentHeader agent={agent} activeTab="configure" showPublishButton={false} showTabs={false} headerRight={headerActions} />
+      <AgentWorkspacePageHeading title={pageTitle} actions={pageActions} />
 
       <div className="action-config-v2-shell">
         <div className="action-config-v2-card">
@@ -1518,7 +1599,6 @@ export default function ActionConfigureV2() {
           {activeSection === 'Channels' && (
             <div className="v2-channels">
               <div className="v2-channels__intro">
-                <h3 className="v2-channels__title">Channels</h3>
                 <p className="v2-channels__desc">Choose the customer channels this agent supports.</p>
               </div>
               <div className="v2-channels__grid">
@@ -1551,7 +1631,6 @@ export default function ActionConfigureV2() {
 
           {activeSection === 'Profile' && (
             <>
-            <h3 className="action-config-v2-title">Profile</h3>
             <div className="v2-profile-layout">
               <div className="v2-profile-form">
                 <Input
@@ -1719,7 +1798,6 @@ export default function ActionConfigureV2() {
             <div className="instructions-section">
             <div className="instructions-layout">
               <aside className="instructions-sidebar">
-                <h3 className="instructions-sidebar-title">Instructions <span className="instructions-required">(required)</span></h3>
                 <ul className="instructions-guidelines">
                   <li>Describe what the agent does and which actions it can take.</li>
                   <li>Use markdown headers to organize role, goals, guardrails, and output rules.</li>
@@ -1810,39 +1888,6 @@ export default function ActionConfigureV2() {
           {activeSection === 'Security' && (
             <div className="guardrails-layout">
               <div className="guardrails-header">
-                <div className="guardrails-header-top">
-                  <h1 className="guardrails-title">
-                    <span>Guardrails</span>
-                    <Badge variant="success" className="security-tier-badge">Powered by AI Defense</Badge>
-                  </h1>
-                  <div className="guardrails-header-right">
-                    {searchOpen ? (
-                      <div className="security-prebuilt-search guardrails-header-search">
-                        <Input
-                          type="search"
-                          value={prebuiltSearch}
-                          onChange={(e) => setPrebuiltSearch(e.target.value)}
-                          placeholder="Search guardrails by name"
-                          aria-label="Search guardrails by name"
-                          leadingIcon="search"
-                          clearable
-                          autoFocus
-                          onClear={() => { setPrebuiltSearch(''); setSearchOpen(false); }}
-                          onBlur={() => { if (!prebuiltSearch.trim()) setSearchOpen(false); }}
-                        />
-                      </div>
-                    ) : (
-                      <Button
-                        variant="secondary"
-                        className="guardrails-search-toggle"
-                        aria-label="Search guardrails"
-                        onClick={() => setSearchOpen(true)}
-                      >
-                        <Icon name="search" weight="regular" size={16} />
-                      </Button>
-                    )}
-                  </div>
-                </div>
                 <p className="guardrails-subtitle">
                   Configure protection rules to control agent behavior, enforce safety policies, and prevent misuse. Triggered guardrails appear in Sessions. Monitor logs the interaction for review. Block rejects the prompt while keeping the conversation active.
                 </p>
@@ -1855,7 +1900,7 @@ export default function ActionConfigureV2() {
                     <div className="security-tier-card-inner">
                       <Icon name="sparkle" weight="bold" size={24} />
                       <div className="security-tier-card-text">
-                        <span className="security-tier-card-title">Custom guardrails</span>
+                        <span className="security-tier-card-title">Adaptive guardrails</span>
                         <span className="security-tier-card-desc">Rules tailored to this agent&apos;s business logic and policy exceptions.</span>
                         <span className="security-tier-card-count">{customProfileAppliedCount} of {customProfileLimit} enabled</span>
                       </div>
@@ -1933,6 +1978,7 @@ export default function ActionConfigureV2() {
                             <div className="security-prebuilt-category-title">
                               <Icon name="sparkle" weight="bold" size={18} />
                               <span>Custom guardrails</span>
+                              <Badge variant="success" className="security-tier-badge">Powered by AI Defense</Badge>
                             </div>
                             <span className="security-prebuilt-category-meta">{customProfileAppliedCount} of {customProfileLimit} created</span>
                             <span className="security-prebuilt-category-desc">
@@ -2296,48 +2342,6 @@ export default function ActionConfigureV2() {
               }
               onDismiss={() => setShowMcpBanner(false)}
             />
-          )}
-
-          {activeSection === 'Action' && (
-            <div className="action-config-v2-toolbar">
-              <h3 className="action-config-v2-title">Actions</h3>
-              <div className="add-action-menu-wrapper" ref={addMenuRef}>
-                <button
-                  type="button"
-                  className="action-config-v2-add-btn"
-                  onClick={() => setShowAddMenu(!showAddMenu)}
-                >
-                  <Icon name="plus" weight="bold" size={20} />
-                  Add actions
-                </button>
-                {showAddMenu && (
-                  <div className="add-action-menu">
-                    <div className="add-action-menu-section">
-                      <div className="add-action-menu-header">Browse actions</div>
-                      <button
-                        className="add-action-menu-item"
-                        onClick={() => { setShowAddMenu(false); setShowAddCapabilityModal(true); }}
-                      >
-                        <Icon name="extension-mobility" weight="bold" size={20} />
-                        Select available
-                      </button>
-                    </div>
-                    <div className="add-action-menu-divider" />
-                    <div className="add-action-menu-section">
-                      <div className="add-action-menu-header">Create new action</div>
-                      <button className="add-action-menu-item" onClick={() => setShowAddMenu(false)}>
-                        <Icon name="next" weight="bold" size={20} />
-                        Transfer
-                      </button>
-                      <button className="add-action-menu-item" onClick={() => { setShowAddMenu(false); setShowFulfillmentModal(true); }}>
-                        <Icon name="automation" weight="bold" size={20} />
-                        Fulfillment
-                      </button>
-                    </div>
-                  </div>
-                )}
-              </div>
-            </div>
           )}
 
           {activeSection === 'Action' && (
