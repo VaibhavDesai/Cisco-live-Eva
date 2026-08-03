@@ -138,6 +138,48 @@ test('overview and navigation reuse the same capability icon language', () => {
   );
 });
 
+test('agent navigation uses the floating Uplift rail with collapse and expand handles', () => {
+  const sidebarSource = readSource('../../products/ai-agent-studio/components/Sidebar.tsx');
+  const layoutSource = readSource('../../components/layout/MainLayout.tsx');
+  const styles = readSource('../../products/ai-agent-studio/components.css');
+
+  assert.match(
+    sidebarSource,
+    /className="sidebar uplift-agent-panel"[\s\S]*?aria-label="Collapse agent navigation"[\s\S]*?className="sidebar-agent-back-link"[\s\S]*?<Icon name="list-menu" weight="bold" size=\{20\}[\s\S]*?<h2>Progress<\/h2>/,
+    'the expanded agent rail should preserve the Uplift hierarchy and collapse control',
+  );
+  assert.match(
+    sidebarSource,
+    /className="uplift-agent-panel-handle"[\s\S]*?aria-label="Open agent navigation"[\s\S]*?openAgentPanel\(true\)/,
+    'the collapsed rail should leave a discoverable expand handle',
+  );
+  assert.match(
+    sidebarSource,
+    /icon="dashboard-bold"[\s\S]*?label="Overview"[\s\S]*?active=\{isOverviewRoute\}/,
+    'Overview should use the same icon and selected state as the Uplift rail',
+  );
+  assert.doesNotMatch(
+    sidebarSource,
+    /sidebar-agent-pill__name|sidebar-agent-pill__meta/,
+    'the agent identity belongs in the page header instead of competing with navigation',
+  );
+  assert.match(
+    styles,
+    /\.uplift-agent-panel\s*\{[^}]*position:\s*absolute\s*!important;[^}]*width:\s*232px\s*!important;[^}]*border-radius:\s*12px\s*!important;/,
+    'the rail should use the Uplift floating glass-card contract',
+  );
+  assert.match(
+    styles,
+    /\.uplift-agent-panel-handle\s*\{[^}]*width:\s*20px;[^}]*height:\s*40px;/,
+    'the collapsed handle should retain the Uplift dimensions',
+  );
+  assert.match(
+    layoutSource,
+    /agentPanelOpen[\s\S]*?app--ai--agent-panel-open[\s\S]*?agentPanelOpen=\{agentPanelOpen\}[\s\S]*?onAgentPanelOpenChange=\{setAgentPanelOpen\}/,
+    'the application shell should own and expose the floating rail state',
+  );
+});
+
 test('overview suggestions stay hidden while the section is paused', () => {
   const overviewSource = readSource('../../pages/agent/AgentStudioLanding.tsx');
   assert.match(
