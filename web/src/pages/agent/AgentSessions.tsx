@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Navigate, useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { useApp } from '../../contexts/AppContext';
-import { AgentHeader } from '../../components/agents';
+import { AgentHeader, AgentWorkspacePageHeading } from '../../components/agents';
 import { Card } from '../../components/shared/Card';
 import Badge from '../../components/shared/Badge';
 import Button from '../../components/shared/Button';
@@ -229,13 +229,26 @@ export default function AgentSessions() {
   };
 
   return (
-    <div className="primary-content">
+    <div className="primary-content agent-workspace-page">
       <AgentHeader
         agent={agent}
         activeTab="sessions"
         showPublishButton={false}
         showTabs={false}
       />
+
+      {!activeSession && (
+        <AgentWorkspacePageHeading
+          title="Sessions"
+          description="Review interactions, handoffs, errors, and policy triggers for this agent."
+          actions={(
+            <Button variant="secondary" size="sm">
+              <Icon name="refresh" weight="bold" size="sm" />
+              Refresh
+            </Button>
+          )}
+        />
+      )}
 
       <div className={`agent-sessions-page${activeSession ? '' : ' secondary-content'}`}>
         {activeSession ? (
@@ -251,17 +264,6 @@ export default function AgentSessions() {
           />
         ) : (
           <>
-            <div className="agent-sessions-heading">
-              <div>
-                <h1>Sessions</h1>
-                <p>Review interactions, handoffs, errors, and policy triggers for this agent.</p>
-              </div>
-              <Button variant="secondary" size="sm">
-                <Icon name="refresh" weight="bold" size="sm" />
-                Refresh
-              </Button>
-            </div>
-
             {sourceQuery === 'observability' && (
               <div className="agent-sessions-preview-callout">
                 <div>

@@ -1,6 +1,6 @@
 import { useParams, Navigate } from 'react-router-dom';
 import { useApp } from '../../contexts/AppContext';
-import { AgentHeader } from '../../components/agents';
+import { AgentHeader, AgentWorkspacePageHeading } from '../../components/agents';
 import { Card } from '../../components/shared/Card';
 import Button from '../../components/shared/Button';
 import Badge from '../../components/shared/Badge';
@@ -57,8 +57,9 @@ export default function AgentHistory() {
   if (!agent) return <Navigate to="/agents" replace />;
 
   return (
-    <div className="primary-content">
+    <div className="primary-content agent-workspace-page">
       <AgentHeader agent={agent} activeTab="history" showPublishButton={false} showTabs={false} />
+      <AgentWorkspacePageHeading title="History" />
 
       <div className="secondary-content">
         <Card style={{ padding: 0 }}>
