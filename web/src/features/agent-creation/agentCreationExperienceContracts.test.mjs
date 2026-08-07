@@ -1497,6 +1497,16 @@ test('AI agent list cards keep a visible 16px grid gap', () => {
   );
 });
 
+test('AI agent list imports the design-variation hook it invokes', () => {
+  const source = readSource('../eva/EvaAgentsTable.tsx');
+
+  assert.match(
+    source,
+    /import \{ useDesignVariation \} from ['"]\.\.\/\.\.\/contexts\/DesignVariationContext['"];?/,
+  );
+  assert.match(source, /const \{ setVariation \} = useDesignVariation\(\);/);
+});
+
 test('Dashboard home starts the first conversational creation landing', () => {
   const dashboardSource = readSource('../../pages/Dashboard.tsx');
   const sidebarSource = readSource('../../products/ai-agent-studio/components/Sidebar.tsx');
