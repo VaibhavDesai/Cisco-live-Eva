@@ -1505,6 +1505,11 @@ test('AI agent list imports the design-variation hook it invokes', () => {
     /import \{ useDesignVariation \} from ['"]\.\.\/\.\.\/contexts\/DesignVariationContext['"];?/,
   );
   assert.match(source, /const \{ setVariation \} = useDesignVariation\(\);/);
+  assert.doesNotMatch(
+    source,
+    /previewTile|previewCallActive|previewCloseRef|closePreview/,
+    'the removed inline preview panel must not leave unresolved runtime references',
+  );
 });
 
 test('Dashboard home starts the first conversational creation landing', () => {
