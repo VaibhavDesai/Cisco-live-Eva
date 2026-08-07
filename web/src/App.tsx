@@ -1,4 +1,4 @@
-import { BrowserRouter, Routes, Route } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, Navigate, useParams } from 'react-router-dom';
 import { AppProvider } from './contexts/AppContext';
 import { DesignVariationProvider } from './contexts/DesignVariationContext';
 import { MainLayout } from './components/layout';
@@ -18,6 +18,14 @@ import {
 } from './pages';
 import { ActionConfigureV2, AgentStudioLanding, AgentSessions, AgentHistory, AgentAnalytics } from './pages/agent';
 import PolicyStudioV2 from './pages/agent/PolicyStudioV2';
+
+/* The agent Overview lives at the canonical bare /agents/:agentId URL. Any
+   lingering /studio links funnel back to it so there is a single Overview
+   entry point. */
+function AgentStudioRedirect() {
+  const { agentId } = useParams();
+  return <Navigate to={`/agents/${agentId}`} replace />;
+}
 import '@momentum-design/fonts/dist/css/fonts.css';
 import '@momentum-design/tokens/dist/css/theme/webex/dark-stable.css';
 import '@momentum-design/tokens/dist/css/theme/webex/light-stable.css';
@@ -53,8 +61,8 @@ function App() {
                           while still preserving deep-linkability of the URL. */}
                       <Route path="agents/eva-canvas" element={<Agents />} />
                       <Route path="assistant-skills" element={<AssistantSkills />} />
-                      <Route path="agents/:agentId" element={<ActionConfigureV2 />} />
-                      <Route path="agents/:agentId/studio" element={<AgentStudioLanding />} />
+                      <Route path="agents/:agentId" element={<AgentStudioLanding />} />
+                      <Route path="agents/:agentId/studio" element={<AgentStudioRedirect />} />
                       <Route path="agents/:agentId/configure" element={<ActionConfigureV2 />} />
                       <Route path="agents/:agentId/sessions" element={<AgentSessions />} />
                       <Route path="agents/:agentId/history" element={<AgentHistory />} />

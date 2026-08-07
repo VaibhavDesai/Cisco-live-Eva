@@ -21,7 +21,7 @@ export interface BannerAction {
 export interface BannerProps {
   /** Banner tone (icon and color treatment) */
   type?: BannerType;
-  /** Override the semantic tone's default icon */
+  /** Optional icon override */
   icon?: IconName;
   /** Primary heading text */
   title: string;

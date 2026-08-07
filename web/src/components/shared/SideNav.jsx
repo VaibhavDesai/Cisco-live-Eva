@@ -120,7 +120,7 @@ function Divider({ className = '' }) {
  * When `hasChildren` is true and `children` are provided, clicking toggles a positioned fly-out menu.
  *
  * @param {Object} props
- * @param {string} [props.icon] — Momentum icon name rendered at 24px in the row
+ * @param {string|*} [props.icon] — Momentum icon name or custom icon node rendered at 24px in the row
  * @param {string} props.label — visible text label for the item
  * @param {boolean} [props.active=false] — current-page styling and `aria-current="page"` when true
  * @param {boolean} [props.disabled=false] — disables interaction and dims the row when true
@@ -228,7 +228,7 @@ function Item({
       >
         {icon && (
           <span className="sidenav__tab-icon">
-            <Icon name={icon} size={24} />
+            {typeof icon === 'string' ? <Icon name={icon} size={24} /> : icon}
           </span>
         )}
         <span className="sidenav__tab-label">{label}</span>

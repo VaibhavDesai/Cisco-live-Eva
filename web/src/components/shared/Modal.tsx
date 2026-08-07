@@ -1,4 +1,10 @@
-import { type ReactNode, type MouseEvent } from 'react';
+import {
+  type KeyboardEvent as ReactKeyboardEvent,
+  type MouseEvent,
+  type ReactNode,
+  useEffect,
+  useRef,
+} from 'react';
 import { createPortal } from 'react-dom';
 import { Icon } from '../../icons';
 
@@ -19,6 +25,8 @@ export interface ModalProps {
   overlayClassName?: string;
   /** When true the backdrop click does not close */
   preventBackdropClose?: boolean;
+  /** Accessible name for the dialog when no external labelled-by id is supplied */
+  ariaLabel?: string;
 }
 
 /**
@@ -35,10 +43,57 @@ export function Modal({
   className = '',
   overlayClassName = '',
   preventBackdropClose = false,
+  ariaLabel,
 }: ModalProps) {
+  const dialogRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const previouslyFocused = document.activeElement instanceof HTMLElement
+      ? document.activeElement
+      : null;
+    const dialog = dialogRef.current;
+    if (!dialog) return undefined;
+
+    const frame = window.requestAnimationFrame(() => {
+      const firstFocusable = dialog.querySelector<HTMLElement>(
+        'button:not([disabled]), [href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])',
+      );
+      (firstFocusable ?? dialog).focus();
+    });
+
+    return () => {
+      window.cancelAnimationFrame(frame);
+      if (previouslyFocused && document.contains(previouslyFocused)) previouslyFocused.focus();
+    };
+  }, []);
+
   const onBackdrop = (e: MouseEvent<HTMLDivElement>) => {
     if (preventBackdropClose) return;
     if (e.target === e.currentTarget) onClose?.();
+  };
+
+  const trapFocus = (event: ReactKeyboardEvent<HTMLDivElement>) => {
+    if (event.key !== 'Tab') return;
+    const dialog = dialogRef.current;
+    if (!dialog) return;
+    const focusable = Array.from(dialog.querySelectorAll<HTMLElement>(
+      'button:not([disabled]), [href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])',
+    )).filter(element => element.offsetParent !== null);
+    if (focusable.length === 0) {
+      event.preventDefault();
+      dialog.focus();
+      return;
+    }
+
+    const first = focusable[0];
+    const last = focusable[focusable.length - 1];
+    if (event.shiftKey && document.activeElement === first) {
+      event.preventDefault();
+      last.focus();
+    } else if (!event.shiftKey && document.activeElement === last) {
+      event.preventDefault();
+      first.focus();
+    }
   };
 
   return createPortal(
@@ -48,9 +103,13 @@ export function Modal({
       role="presentation"
     >
       <div
+        ref={dialogRef}
         className={`modal modal--${size} ${className}`.trim()}
         role="dialog"
         aria-modal="true"
+        aria-label={ariaLabel}
+        tabIndex={-1}
+        onKeyDown={trapFocus}
         onClick={(ev) => ev.stopPropagation()}
       >
         {children}

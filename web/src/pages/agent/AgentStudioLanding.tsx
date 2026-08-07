@@ -1,12 +1,51 @@
-import { useEffect, useRef, useState } from 'react';
-import { Navigate, useNavigate, useParams } from 'react-router-dom';
+import {
+  useEffect,
+  useRef,
+  useState,
+  type DragEvent as ReactDragEvent,
+  type KeyboardEvent as ReactKeyboardEvent,
+  type ReactNode,
+} from 'react';
+import { Link, Navigate, useNavigate, useParams } from 'react-router-dom';
+import { IconProvider, ThemeProvider } from '@momentum-design/components/react';
+import { ThemeModeProvider, useThemeMode } from '../../app/ThemeContext';
+import { publicAssetUrl } from '../../app/publicAsset';
 import { AgentHeader } from '../../components/agents';
-import { ThemeModeProvider } from '../../app/ThemeContext';
-import { Badge, Banner, Button, Card, CardBody, CardHeader, Divider, Modal, ModalBody, ModalHeader, TextLink, Tooltip } from '../../components/shared';
-import ConfigurationCategoryIcon from '../../components/shared/ConfigurationCategoryIcon';
+import {
+  Badge,
+  Banner,
+  Button,
+  Card,
+  CardBody,
+  CardHeader,
+  Modal,
+  ModalBody,
+  ModalHeader,
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+  TextLink,
+} from '../../components/shared';
+import Dropdown from '../../components/shared/Dropdown';
+import ConfigurationCategoryIcon, {
+  KnowledgeBookIcon,
+  type ConfigurationCategory,
+} from '../../components/shared/ConfigurationCategoryIcon';
 import { useApp, type Agent } from '../../contexts/AppContext';
 import { useDesignVariation } from '../../contexts/DesignVariationContext';
 import { getElevenLabsConversationSignedUrl, getVoicePreviewErrorMessage } from '../../api/ciscoAi';
+import {
+  getCiscoLiveActionMetric,
+  getCiscoLiveActionControlDecisions,
+  getCiscoLiveGuardrailTriggerCount,
+  getCiscoLiveObservability,
+  getCiscoLiveSessionLocator,
+  getCiscoLiveSessions,
+  summarizeCiscoLiveActionControlDecisions,
+} from '../../demo/ciscoLiveDemo';
 import {
   buildInstructionPrompt,
   buildWelcomeMessage,
@@ -20,23 +59,155 @@ import {
 } from '../../features/eva/evaFormConfig';
 import { EVA_TEMPLATES } from '../../features/eva/evaTemplates';
 import {
-  buildCiscoLiveEvaSession,
-  getCiscoLiveAgentDefinition,
-} from '../../features/eva/ciscoLiveEvaSession';
-import { buildClusKpiDashboardAgentFilterSearch } from '../../features/clus-kpi-dashboard/agentHashNavigation';
-import { KPICard } from '../../features/clus-kpi-dashboard/components/KPICard';
-import { KPIChart } from '../../features/clus-kpi-dashboard/components/KPIChart';
-import {
-  kpiDataWithSparklinesForRange,
-  type KPIData,
-} from '../../features/clus-kpi-dashboard/components/kpiData';
-import { kpiExpandedChartAxisProps } from '../../features/clus-kpi-dashboard/kpiChartAxis';
+  FAMILY_METADATA,
+  type AgentDraft,
+  type AgentFamily,
+  type AgentLifecycle,
+} from '../../features/agent-creation/agentCreationModel';
 import { Icon } from '../../icons';
 import {
   getCiscoLiveObservability,
 } from '../../demo/ciscoLiveDemo';
 
 type PreviewCallStatus = 'idle' | 'connecting' | 'listening' | 'speaking' | 'paused' | 'ended' | 'error';
+type ConnectedViewMode = 'metrics' | 'resources';
+type OverviewIntervention = 'action_control' | 'guardrail';
+type OverviewTileGroup = 'cards' | 'summary' | 'charts';
+type OverviewCardId = 'capability' | 'operational';
+type OverviewSummaryTileId = 'knowledge' | 'memory' | 'actions' | 'guardrails';
+type OverviewChartTileId = 'signals' | 'actions' | 'guardrails';
+type OverviewConfigurationSection = 'Knowledge' | 'Action' | 'Security';
+type OverviewReleaseState = {
+  savedRevision: string;
+  pendingPublishRevision: string | null;
+};
+
+const DEFAULT_OVERVIEW_SUMMARY_ORDER: OverviewSummaryTileId[] = [
+  'knowledge',
+  'memory',
+  'actions',
+  'guardrails',
+];
+const DEFAULT_OVERVIEW_CARD_ORDER: OverviewCardId[] = [
+  'capability',
+  'operational',
+];
+const DEFAULT_OVERVIEW_CHART_ORDER: OverviewChartTileId[] = [
+  'signals',
+  'actions',
+  'guardrails',
+];
+const OVERVIEW_SUMMARY_CONFIGURATION_SECTION: Record<OverviewSummaryTileId, OverviewConfigurationSection> = {
+  knowledge: 'Knowledge',
+  memory: 'Knowledge',
+  actions: 'Action',
+  guardrails: 'Security',
+};
+const SHOW_CONNECTED_SUGGESTIONS = false;
+
+function overviewLayoutStorageKey(agentId: string, group: OverviewTileGroup) {
+  return `eva-agent-overview-layout-v1:${agentId}:${group}`;
+}
+
+function overviewReleaseStorageKey(agentId: string) {
+  return `eva-agent-overview-release-v1:${agentId}`;
+}
+
+function readOverviewReleaseState(
+  agentId: string | undefined,
+  currentRevision: string,
+): OverviewReleaseState {
+  const fallback = {
+    savedRevision: currentRevision,
+    pendingPublishRevision: null,
+  };
+  if (!agentId || typeof window === 'undefined') return fallback;
+
+  try {
+    const stored = JSON.parse(window.localStorage.getItem(overviewReleaseStorageKey(agentId)) || 'null');
+    if (
+      stored
+      && typeof stored.savedRevision === 'string'
+      && (stored.pendingPublishRevision === null || typeof stored.pendingPublishRevision === 'string')
+    ) {
+      return stored as OverviewReleaseState;
+    }
+  } catch {
+    // Ignore unavailable or invalid browser storage and use the current revision.
+  }
+
+  return fallback;
+}
+
+function persistOverviewReleaseState(agentId: string, state: OverviewReleaseState) {
+  try {
+    window.localStorage.setItem(overviewReleaseStorageKey(agentId), JSON.stringify(state));
+  } catch {
+    // The release control still works for this session when storage is unavailable.
+  }
+}
+
+function readOverviewTileOrder<T extends string>(
+  agentId: string | undefined,
+  group: OverviewTileGroup,
+  fallback: T[],
+): T[] {
+  if (!agentId || typeof window === 'undefined') return [...fallback];
+
+  try {
+    const stored = JSON.parse(window.localStorage.getItem(overviewLayoutStorageKey(agentId, group)) || 'null');
+    if (
+      Array.isArray(stored)
+      && stored.length === fallback.length
+      && fallback.every(tileId => stored.includes(tileId))
+    ) {
+      return stored as T[];
+    }
+  } catch {
+    // Ignore unavailable or invalid browser storage and use the shared default.
+  }
+
+  return [...fallback];
+}
+
+function persistOverviewTileOrder<T extends string>(
+  agentId: string,
+  group: OverviewTileGroup,
+  order: T[],
+) {
+  try {
+    window.localStorage.setItem(overviewLayoutStorageKey(agentId, group), JSON.stringify(order));
+  } catch {
+    // The layout still updates for this session when browser storage is unavailable.
+  }
+}
+
+function reorderOverviewTiles<T extends string>(order: T[], sourceId: T, targetId: T) {
+  const sourceIndex = order.indexOf(sourceId);
+  const targetIndex = order.indexOf(targetId);
+  if (sourceIndex < 0 || targetIndex < 0 || sourceIndex === targetIndex) return order;
+
+  const nextOrder = [...order];
+  const [movedTile] = nextOrder.splice(sourceIndex, 1);
+  nextOrder.splice(targetIndex, 0, movedTile);
+  return nextOrder;
+}
+
+function EmbeddedObservabilityProviders({ children }: { children: ReactNode }) {
+  const { themeClass } = useThemeMode();
+
+  return (
+    <ThemeProvider themeclass={themeClass}>
+      <IconProvider
+        iconSet="custom-icons"
+        url={publicAssetUrl('icons').replace(/\/$/, '')}
+        fileExtension="svg"
+      >
+        {children}
+      </IconProvider>
+    </ThemeProvider>
+  );
+}
 
 const OBSERVABILITY_KPI_CATALOG = kpiDataWithSparklinesForRange('24h');
 
@@ -68,130 +239,132 @@ type PreviewSocketMessage = {
   };
 };
 
-type StudioStep = {
+const familyBadgeVariant = (family: AgentFamily) => {
+  if (family === 'calling') return 'warning' as const;
+  if (family === 'contact_center') return 'success' as const;
+  return 'info' as const;
+};
+
+const lifecycleLabel = (lifecycle: AgentLifecycle, version: number) => {
+  if (lifecycle === 'draft') return 'Draft';
+  if (lifecycle === 'published') return `Published version ${version}`;
+  if (lifecycle === 'deployed') return `Version ${version} deployed`;
+  return `Version ${version} live`;
+};
+
+const lifecycleStatusLabel = (lifecycle: AgentLifecycle) => {
+  if (lifecycle === 'draft') return 'Draft';
+  if (lifecycle === 'published') return 'Published';
+  if (lifecycle === 'deployed') return 'Deployed';
+  return 'Live';
+};
+
+const OPERATIONAL_HEALTH = {
+  score: 95.8,
+  target: 85,
+  signals: 7,
+} as const;
+
+const OPERATIONAL_HEALTH_GAP = Number(
+  (OPERATIONAL_HEALTH.score - OPERATIONAL_HEALTH.target).toFixed(1),
+);
+
+interface OperationalHealthMetric {
   id: string;
-  title: string;
-  description: string;
-  section: string;
-  guidedStep: EvaConversationStep;
-  icon: 'bot-customer-assistant' | 'bookmark' | 'document' | 'files' | 'tools' | 'shield' | 'play' | 'phone';
-};
-
-const studioSteps: StudioStep[] = [
-  {
-    id: 'instructions',
-    title: "Ground agent's behavior",
-    description: 'Review the role, goals, tone, and escalation guidance before customers use it.',
-    section: 'Instructions',
-    guidedStep: 'instructions',
-    icon: 'bot-customer-assistant',
-  },
-  {
-    id: 'knowledge',
-    title: 'Stay accurate with Knowledge',
-    description: 'Check the sources the agent can use so responses stay accurate and on policy.',
-    section: 'Knowledge',
-    guidedStep: 'knowledge',
-    icon: 'bookmark',
-  },
-  {
-    id: 'actions',
-    title: 'Execute with tools',
-    description: 'Review the tools the agent can call when it needs to look up data or complete a task.',
-    section: 'Action',
-    guidedStep: 'actions',
-    icon: 'tools',
-  },
-  {
-    id: 'security',
-    title: 'Add guardrails',
-    description: 'Set boundaries for privacy, escalation, and safe behavior before publishing.',
-    section: 'Security',
-    guidedStep: 'security',
-    icon: 'shield',
-  },
-  {
-    id: 'testing',
-    title: 'Evaluation agent performance',
-    description: 'Run readiness checks and realistic scenarios to validate quality before launch.',
-    section: 'Testing',
-    guidedStep: 'testing',
-    icon: 'play',
-  },
-];
-
-const CONNECTED_CHIP_LABELS: Record<string, string> = {
-  'Gofie locations and availability': 'Locations & availability',
-  'VIP customer profiles': 'VIP profiles',
-  'Event booking policy': 'Booking policy',
-  'Communication preferences': 'Contact preferences',
-  'Secure payment assistance': 'Secure payment',
-  'VIP event handoff': 'Event handoff',
-  'Check bay availability': 'Check availability',
-  'Send secure payment link': 'Send payment link',
-  'Transfer to VIP event concierge': 'Transfer to concierge',
-  'Large reservation approval': 'Large booking approval',
-  'Payment data protection': 'Payment protection',
-  'Credit card redaction': 'Card redaction',
-};
-
-function getConnectedChipLabel(label: string) {
-  return CONNECTED_CHIP_LABELS[label] ?? label;
+  label: string;
+  value: string;
+  change: string;
 }
 
-function getConfiguredSummary(agent: Agent, evaSession?: EvaSessionState | null) {
-  const ciscoLiveAgent = getCiscoLiveAgentDefinition(agent.id, agent.name);
-  const matchesSession = Boolean(
-    evaSession && (evaSession.sourceAgentId === agent.id || evaSession.agentName === agent.name),
+const OPERATIONAL_HEALTH_METRICS: OperationalHealthMetric[] = [
+  { id: 'knowledge-coverage', label: 'Knowledge coverage', value: '94.8%', change: '+4.6%' },
+  { id: 'guardrails-trigger-flag', label: 'Guardrails trigger flag', value: '0.8%', change: '-0.7%' },
+  { id: 'containment-rate', label: 'Containment rate', value: '91.6%', change: '+5.2%' },
+  { id: 'action-intent-success-rate', label: 'Action/intent success rate', value: '97.8%', change: '+2.4%' },
+  { id: 'autocsat-improvement', label: 'AutoCSAT improvement', value: '8.6%', change: '+3.4%' },
+  { id: 'csat-predictor', label: 'CSAT predictor (AutoCSAT)', value: '4.7/5', change: '+8.1%' },
+  { id: 'fulfilment-latency-p95', label: 'Fulfilment latency P95', value: '1,240ms', change: '-18%' },
+];
+
+const OPERATIONAL_TIME_RANGE_OPTIONS = [
+  { value: '1h', label: 'Past 1 hour' },
+  { value: '6h', label: 'Past 6 hours' },
+  { value: '24h', label: 'Past 24 hours' },
+  { value: '7d', label: 'Past 7 days' },
+  { value: '30d', label: 'Past 30 days' },
+] as const;
+
+const OPERATIONAL_TIME_RANGE_HOURS: Record<string, number> = {
+  '1h': 1,
+  '6h': 6,
+  '24h': 24,
+  '7d': 24 * 7,
+  '30d': 24 * 30,
+};
+
+const sessionAgeHours = (updated: string): number => {
+  const normalized = updated.trim().toLowerCase();
+  if (normalized === 'just now') return 0;
+  const match = normalized.match(/^(\d+)\s+(minute|minutes|hour|hours|day|days)/);
+  if (!match) return Number.POSITIVE_INFINITY;
+  const value = Number(match[1]);
+  if (match[2].startsWith('minute')) return value / 60;
+  if (match[2].startsWith('day')) return value * 24;
+  return value;
+};
+
+const actionControlDecisionAgeHours = (occurredAt: string): number => {
+  const occurredAtMs = Date.parse(occurredAt);
+  if (Number.isNaN(occurredAtMs)) return Number.POSITIVE_INFINITY;
+  return Math.max(0, (Date.now() - occurredAtMs) / (60 * 60 * 1000));
+};
+
+const sessionOutcomeVariant = (outcome: string): 'success' | 'warning' | 'info' => {
+  if (outcome === 'Transferred') return 'warning';
+  if (outcome === 'Resolved') return 'success';
+  return 'info';
+};
+
+const capabilitySelectionLabels = (draft: AgentDraft | undefined, capabilityId: string): string[] => {
+  const values = draft?.familyConfiguration[capabilityId]?.values;
+  const selections = values?.selections;
+  return Array.isArray(selections)
+    ? selections.filter((selection): selection is string => typeof selection === 'string' && Boolean(selection.trim()))
+    : [];
+};
+
+const configuredCapabilityLabels = (
+  draft: AgentDraft | undefined,
+  capabilityId: string,
+  fallbackLabels: string[] = [],
+): string[] => {
+  const capability = draft?.familyConfiguration[capabilityId];
+  if (capability?.progress !== 'configured') return [];
+  const selections = capabilitySelectionLabels(draft, capabilityId);
+  if (selections.length > 0) return selections;
+  if (fallbackLabels.length > 0) return fallbackLabels;
+  return [capability.label];
+};
+
+function getConfiguredSummary(agent: Agent, draft?: AgentDraft) {
+  const knowledgeBases = agent.knowledgeBases ?? [];
+  const actionSelections = draft?.familyConfiguration.actions?.values?.selections;
+  const actions = Array.isArray(actionSelections)
+    ? actionSelections.filter((selection): selection is string => typeof selection === 'string')
+    : [];
+  const connectedPhone = draft?.deploymentReferences.find(
+    reference => reference.kind === 'phone_number' && reference.status === 'connected',
   );
-  const knowledgeBases = matchesSession
-    ? evaSession?.selectedKnowledgeBases ?? []
-    : ciscoLiveAgent?.knowledgeSources.map(source => source.name)
-      ?? (agent.knowledgeBases?.length ? agent.knowledgeBases : ['Starter knowledge sources']);
-  const actions = matchesSession
-    ? evaSession?.selectedActions ?? []
-    : ciscoLiveAgent?.actions ?? (agent.actions?.length ? agent.actions : ['Starter action set']);
-  const memories = matchesSession
-    ? evaSession?.selectedPreferenceMemories ?? []
-    : ciscoLiveAgent?.memorySources.map(memory => memory.name) ?? [];
-  const enabledScenarioIds = matchesSession
-    ? new Set(evaSession?.enabledOrchestrationScenarioIds ?? [])
-    : null;
-  const orchestrationScenarios = ciscoLiveAgent?.orchestrationScenarios
-    .filter(scenario => enabledScenarioIds === null || enabledScenarioIds.has(scenario.id))
-    .map(scenario => scenario.name) ?? [];
-  const guardrailCatalog = [
-    ...EVA_STANDARD_GUARDRAILS,
-    ...EVA_ADVANCED_GUARDRAIL_GROUPS.flatMap(group => group.items),
-  ];
-  const prebuiltGuardrails = matchesSession
-    ? [
-        ...(evaSession?.standardGuardrails ?? []),
-        ...(evaSession?.advancedGuardrailGroups ?? []).flatMap(group => group.items),
-      ].filter(guardrail => guardrail.enabled).map(guardrail => guardrail.name)
-    : ciscoLiveAgent?.prebuiltGuardrailIds
-      .map(id => guardrailCatalog.find(guardrail => guardrail.id === id)?.name)
-      .filter((name): name is string => Boolean(name)) ?? [];
-  const customGuardrails = matchesSession
-    ? (evaSession?.customRules ?? []).map(rule => (
-        ciscoLiveAgent?.customGuardrails.find(guardrail => guardrail.description === rule)?.name ?? rule
-      ))
-    : ciscoLiveAgent?.customGuardrails.map(guardrail => guardrail.name) ?? [];
-  const guardrails = Array.from(new Set([...customGuardrails, ...prebuiltGuardrails]));
-  const channel = ciscoLiveAgent?.selectedChannels.includes('voice')
-    ? 'Voice channel connected'
-    : ciscoLiveAgent?.selectedChannels.includes('digital')
-      ? 'Digital workflow connected'
-      : 'Primary channel ready to review';
+  const isRetailReceptionist = agent.name.toLowerCase().includes('acme electronics');
 
   return {
-    channel,
-    endpoint: ciscoLiveAgent?.selectedChannels.includes('digital')
-      ? ciscoLiveAgent.digitalChannelAddress ?? 'Digital channel connected'
-      : '+1 415 555 0198',
+    endpoint: draft ? connectedPhone?.label : '+1 629 263 5773',
     aiEngine: 'Webex AI Pro 1.0',
-    handoff: ciscoLiveAgent?.customGuardrails[0]?.name ?? 'Escalation behavior ready to review',
-    actions,
+    actions: draft
+      ? actions
+      : isRetailReceptionist
+      ? ['Inventory lookup', 'Create support case']
+      : ['Starter action set'],
     knowledgeBases,
     memories,
     orchestrationScenarios,
@@ -256,13 +429,47 @@ function getPreviewTimeLabel() {
 export default function AgentStudioLanding() {
   const { agentId } = useParams();
   const navigate = useNavigate();
-  const { agents, selectAgent } = useApp();
+  const {
+    agents,
+    agentDrafts,
+    publishAgentVersion,
+    selectAgent,
+    showToast,
+  } = useApp();
   const { setVariation } = useDesignVariation();
   const agent = agentId ? agents[agentId] : null;
+  const currentAgentRevision = agentId
+    ? agentDrafts[agentId]?.updatedAt ?? agents[agentId]?.updatedAt ?? ''
+    : '';
   const [previewCallStatus, setPreviewCallStatus] = useState<PreviewCallStatus>('idle');
   const [previewCallError, setPreviewCallError] = useState('');
   const [previewExpanded, setPreviewExpanded] = useState(false);
   const [previewInteractionEnded, setPreviewInteractionEnded] = useState(false);
+  const [previewWidgetOpen, setPreviewWidgetOpen] = useState(false);
+  const [operationalTimeRange, setOperationalTimeRange] = useState('6h');
+  const [connectedViewMode, setConnectedViewMode] = useState<ConnectedViewMode>('metrics');
+  const [selectedGuardrailActivity, setSelectedGuardrailActivity] = useState<string | null | undefined>(undefined);
+  const [selectedOverviewIntervention, setSelectedOverviewIntervention] = useState<OverviewIntervention | null>(null);
+  const [overviewCardOrder, setOverviewCardOrder] = useState<OverviewCardId[]>(
+    () => readOverviewTileOrder(agentId, 'cards', DEFAULT_OVERVIEW_CARD_ORDER),
+  );
+  const [overviewSummaryOrder, setOverviewSummaryOrder] = useState<OverviewSummaryTileId[]>(
+    () => readOverviewTileOrder(agentId, 'summary', DEFAULT_OVERVIEW_SUMMARY_ORDER),
+  );
+  const [overviewChartOrder, setOverviewChartOrder] = useState<OverviewChartTileId[]>(
+    () => readOverviewTileOrder(agentId, 'charts', DEFAULT_OVERVIEW_CHART_ORDER),
+  );
+  const [overviewReleaseState, setOverviewReleaseState] = useState<OverviewReleaseState>(
+    () => readOverviewReleaseState(agentId, currentAgentRevision),
+  );
+  const [draggedOverviewTile, setDraggedOverviewTile] = useState<{
+    group: OverviewTileGroup;
+    id: string;
+  } | null>(null);
+  const [overviewDropTarget, setOverviewDropTarget] = useState<{
+    group: OverviewTileGroup;
+    id: string;
+  } | null>(null);
   const [previewSessionId, setPreviewSessionId] = useState('');
   const [previewTranscript, setPreviewTranscript] = useState<PreviewTranscriptEntry[]>([]);
   const [previewPaused, setPreviewPaused] = useState(false);
@@ -286,34 +493,41 @@ export default function AgentStudioLanding() {
   const previewPausedRef = useRef(false);
   const previewConnectionTimerRef = useRef<number | null>(null);
 
+  useEffect(() => {
+    setOverviewCardOrder(readOverviewTileOrder(agentId, 'cards', DEFAULT_OVERVIEW_CARD_ORDER));
+    setOverviewSummaryOrder(readOverviewTileOrder(agentId, 'summary', DEFAULT_OVERVIEW_SUMMARY_ORDER));
+    setOverviewChartOrder(readOverviewTileOrder(agentId, 'charts', DEFAULT_OVERVIEW_CHART_ORDER));
+    setDraggedOverviewTile(null);
+    setOverviewDropTarget(null);
+  }, [agentId]);
+
+  useEffect(() => {
+    if (!agentId) return;
+    const nextState = readOverviewReleaseState(agentId, currentAgentRevision);
+    setOverviewReleaseState(nextState);
+    persistOverviewReleaseState(agentId, nextState);
+    // currentAgentRevision changes when configuration changes; the saved
+    // revision intentionally remains stable until the user chooses Save.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [agentId]);
+
   if (!agentId || !agent) {
     return <Navigate to="/agents" replace />;
   }
 
-  const ciscoLiveAgent = getCiscoLiveAgentDefinition(agent.id, agent.name);
-  const storedEvaSession = readEvaSessionState();
-  const summary = getConfiguredSummary(agent, storedEvaSession);
-  const observability = getCiscoLiveObservability(agent.id);
-  const observabilityKpis = observability.metrics.flatMap((metric): KPIData[] => {
-    const dashboardMetric = OBSERVABILITY_KPI_CATALOG.find(item => item.id === metric.metricId);
-    if (!dashboardMetric) return [];
-
-    return [{
-      ...dashboardMetric,
-      value: metric.value,
-      unit: metric.unit ?? dashboardMetric.unit,
-      change: metric.change,
-      isPositive: metric.isPositive,
-      thresholdStatus: metric.thresholdStatus,
-      sparklineData: dashboardMetric.sparklineData,
-    }];
-  });
-  const activeObservabilityKpi = observabilityKpis.find(
-    metric => metric.id === activeObservabilityKpiId,
-  );
-  const activeObservabilityChartId = activeObservabilityKpi
-    ? `agent-studio-observability-chart-${activeObservabilityKpi.id}`
-    : undefined;
+  const agentDraft = agentDrafts[agent.id];
+  const family = agentDraft?.family ?? agent.family;
+  const lifecycle = agentDraft?.lifecycle ?? agent.lifecycle ?? 'draft';
+  const version = agentDraft?.version ?? agent.version ?? 1;
+  const familyName = family ? FAMILY_METADATA[family].label : 'Agent family not assigned';
+  // The header chip shows the agent-type name; contact_center is presented as
+  // "CX Concierge" to match the label used on the /agents cards.
+  const familyBadgeLabel = family
+    ? family === 'contact_center'
+      ? 'CX Concierge'
+      : FAMILY_METADATA[family].label
+    : familyName;
+  const summary = getConfiguredSummary(agent, agentDraft);
   const existingEvaSession = readEvaSessionState();
   const phoneNumberDeferred = Boolean(
     existingEvaSession?.phoneNumberDeferred && existingEvaSession.agentName === agent.name,
@@ -322,6 +536,106 @@ export default function AgentStudioLanding() {
   const goToSection = (section: string) => {
     selectAgent(agent.id);
     navigate(`/agents/${agent.id}/configure?section=${section}`);
+  };
+  const moveOverviewTile = (
+    group: OverviewTileGroup,
+    sourceId: string,
+    targetId: string,
+  ) => {
+    if (sourceId === targetId) return;
+
+    if (group === 'cards') {
+      const nextOrder = reorderOverviewTiles(
+        overviewCardOrder,
+        sourceId as OverviewCardId,
+        targetId as OverviewCardId,
+      );
+      if (nextOrder === overviewCardOrder) return;
+      setOverviewCardOrder(nextOrder);
+      persistOverviewTileOrder(agent.id, group, nextOrder);
+    } else if (group === 'summary') {
+      const nextOrder = reorderOverviewTiles(
+        overviewSummaryOrder,
+        sourceId as OverviewSummaryTileId,
+        targetId as OverviewSummaryTileId,
+      );
+      if (nextOrder === overviewSummaryOrder) return;
+      setOverviewSummaryOrder(nextOrder);
+      persistOverviewTileOrder(agent.id, group, nextOrder);
+    } else {
+      const nextOrder = reorderOverviewTiles(
+        overviewChartOrder,
+        sourceId as OverviewChartTileId,
+        targetId as OverviewChartTileId,
+      );
+      if (nextOrder === overviewChartOrder) return;
+      setOverviewChartOrder(nextOrder);
+      persistOverviewTileOrder(agent.id, group, nextOrder);
+    }
+
+    showToast('Overview layout saved');
+  };
+  const moveOverviewTileByOffset = (
+    group: OverviewTileGroup,
+    tileId: string,
+    offset: -1 | 1,
+  ) => {
+    const order: readonly string[] = group === 'cards'
+      ? overviewCardOrder
+      : group === 'summary'
+        ? overviewSummaryOrder
+        : overviewChartOrder;
+    const currentIndex = order.indexOf(tileId);
+    const targetIndex = Math.min(order.length - 1, Math.max(0, currentIndex + offset));
+    if (currentIndex < 0 || currentIndex === targetIndex) return;
+    moveOverviewTile(group, tileId, order[targetIndex]);
+  };
+  const handleOverviewTileKeyDown = (
+    event: ReactKeyboardEvent<HTMLButtonElement>,
+    group: OverviewTileGroup,
+    tileId: string,
+  ) => {
+    const previousKeys = ['ArrowLeft', 'ArrowUp'];
+    const nextKeys = ['ArrowRight', 'ArrowDown'];
+    if (!previousKeys.includes(event.key) && !nextKeys.includes(event.key)) return;
+
+    event.preventDefault();
+    moveOverviewTileByOffset(group, tileId, previousKeys.includes(event.key) ? -1 : 1);
+  };
+  const handleOverviewTileDragStart = (
+    event: ReactDragEvent<HTMLElement>,
+    group: OverviewTileGroup,
+    tileId: string,
+  ) => {
+    event.dataTransfer.effectAllowed = 'move';
+    event.dataTransfer.setData('text/plain', `${group}:${tileId}`);
+    setDraggedOverviewTile({ group, id: tileId });
+  };
+  const handleOverviewTileDragOver = (
+    event: ReactDragEvent<HTMLElement>,
+    group: OverviewTileGroup,
+    tileId: string,
+  ) => {
+    if (draggedOverviewTile?.group !== group || draggedOverviewTile.id === tileId) return;
+    event.preventDefault();
+    event.dataTransfer.dropEffect = 'move';
+    setOverviewDropTarget({ group, id: tileId });
+  };
+  const handleOverviewTileDrop = (
+    event: ReactDragEvent<HTMLElement>,
+    group: OverviewTileGroup,
+    tileId: string,
+  ) => {
+    event.preventDefault();
+    if (draggedOverviewTile?.group === group) {
+      moveOverviewTile(group, draggedOverviewTile.id, tileId);
+    }
+    setDraggedOverviewTile(null);
+    setOverviewDropTarget(null);
+  };
+  const handleOverviewTileDragEnd = () => {
+    setDraggedOverviewTile(null);
+    setOverviewDropTarget(null);
   };
 
   const openObservabilityDashboard = () => {
@@ -337,61 +651,106 @@ export default function AgentStudioLanding() {
       goals: [agent.description || `Help customers with ${agent.name.toLowerCase()}`],
     };
     const existing = readEvaSessionState();
-    const sessionState = ciscoLiveAgent
-      ? buildCiscoLiveEvaSession({
-          ...ciscoLiveAgent,
-          name: agent.name,
-          description: agent.description,
-          actions: agent.actions ?? ciscoLiveAgent.actions,
-          knowledgeSources: agent.knowledgeBases
-            ? ciscoLiveAgent.knowledgeSources.filter(source => agent.knowledgeBases?.includes(source.name))
-            : ciscoLiveAgent.knowledgeSources,
-        }, targetStep ?? 'review')
-      : {
-          ...existing,
-          landingMode: 'build' as const,
-          selectedTemplateId: existing?.selectedTemplateId ?? 'customer-support' as const,
-          draft: existing?.draft?.name === agent.name ? existing.draft : nextDraft,
-          messages: existing?.messages ?? [],
-          guidanceVisible: true,
-          orchestrationSuggested: false,
-          freeChatActive: false,
-          conversationalOnboardingStep: 'idle' as const,
-          evaStep: targetStep ?? (existing?.agentName === agent.name ? existing.evaStep : 'profile'),
-          agentName: agent.name,
-          agentDescription: agent.description,
-          avatarUrl: existing?.avatarUrl ?? 'https://us.webexbotbuilder.com/static/assets/i...',
-          timezone: existing?.timezone ?? 'America/Los_Angeles',
-          aiEngine: existing?.aiEngine ?? 'Webex AI Pro 1.0',
-          welcomeMessage: existing?.agentName === agent.name ? existing.welcomeMessage : buildWelcomeMessage(nextDraft),
-          instructionPrompt: existing?.agentName === agent.name ? existing.instructionPrompt : buildInstructionPrompt(nextDraft),
-          selectedKnowledgeBases: agent.knowledgeBases ?? existing?.selectedKnowledgeBases ?? nextDraft.knowledgeBases.slice(0, 2).map(kb => kb.name),
-          selectedActions: existing?.selectedActions ?? getConfiguredSummary(agent).actions,
-          optimizeAccepted: existing?.optimizeAccepted ?? false,
-          preOptimizeText: existing?.preOptimizeText ?? '',
-          optimizeSummary: existing?.optimizeSummary ?? { changes: [], reasoning: [] },
-          securityTier: existing?.securityTier ?? 'standard' as const,
-          channelType: existing?.channelType ?? 'voice' as const,
-          selectedChannels: existing?.agentName === agent.name ? existing?.selectedChannels ?? ['voice'] : ['voice'],
-          digitalChannel: existing?.digitalChannel ?? 'chat' as const,
-          selectedDigitalChannels: existing?.selectedDigitalChannels ?? ['chat'],
-          digitalChannelAddress: existing?.digitalChannelAddress ?? '',
-          channelPhoneNumber: existing?.channelPhoneNumber ?? getConfiguredSummary(agent).endpoint,
-          phoneNumberDeferred,
-          standardGuardrails: existing?.standardGuardrails ?? EVA_STANDARD_GUARDRAILS,
-          advancedGuardrailGroups: existing?.advancedGuardrailGroups ?? EVA_ADVANCED_GUARDRAIL_GROUPS,
-          expandedAdvancedGroups: existing?.expandedAdvancedGroups ?? EVA_ADVANCED_GUARDRAIL_GROUPS.map(group => group.id),
-          personality: existing?.personality ?? {
-            llm: 'Webex AI Pro 1.0',
-            voice: 'ava',
-            language: 'en-US',
-            gender: 'neutral',
-          },
-          customRules: existing?.customRules ?? [],
-        };
+    const sessionMatchesAgent = existing?.agentName === agent.name;
+    const channelValues = agentDraft?.familyConfiguration.channels?.values;
+    const storedChannels = Array.isArray(channelValues?.selectedChannels)
+      ? channelValues.selectedChannels.filter(
+          (channel): channel is 'voice' | 'digital' | 'video' =>
+            channel === 'voice' || channel === 'digital' || channel === 'video',
+        )
+      : [];
+    const configuredChannels = storedChannels.length > 0
+      ? storedChannels
+      : sessionMatchesAgent && existing?.selectedChannels?.length
+        ? existing.selectedChannels
+        : ['voice'];
+    const primaryChannel = configuredChannels.includes('voice') ? 'voice' : 'digital';
+    const storedGreetings = channelValues?.greetings && typeof channelValues.greetings === 'object'
+      ? channelValues.greetings as Record<string, unknown>
+      : {};
+    const configuredGreeting = typeof storedGreetings[primaryChannel] === 'string'
+      ? storedGreetings[primaryChannel]
+      : typeof storedGreetings.voice === 'string'
+        ? storedGreetings.voice
+        : typeof storedGreetings.digital === 'string'
+          ? storedGreetings.digital
+          : '';
+    const restoredWelcomeMessage = sessionMatchesAgent
+      ? existing?.welcomeMessage
+      : configuredGreeting || buildWelcomeMessage(nextDraft);
+    const restoredInstructions = sessionMatchesAgent
+      ? existing?.instructionPrompt
+      : agentDraft?.instructions.content || buildInstructionPrompt(nextDraft);
+    const restoredDigitalChannels = Array.isArray(channelValues?.digitalChannels)
+      ? channelValues.digitalChannels.filter((channel): channel is 'chat' | 'email' | 'messaging' =>
+          channel === 'chat' || channel === 'email' || channel === 'messaging')
+      : [];
 
     try {
-      window.sessionStorage.setItem(EVA_SESSION_STORAGE_KEY, JSON.stringify(sessionState));
+      window.sessionStorage.setItem(EVA_SESSION_STORAGE_KEY, JSON.stringify({
+        ...existing,
+        configurationMode: 'edit',
+        landingMode: 'build',
+        selectedTemplateId: existing?.selectedTemplateId ?? 'customer-support',
+        draft: existing?.draft?.name === agent.name ? existing.draft : nextDraft,
+        messages: existing?.messages ?? [],
+        guidanceVisible: true,
+        orchestrationSuggested: false,
+        freeChatActive: false,
+        conversationalOnboardingStep: 'idle',
+        evaStep: targetStep ?? (sessionMatchesAgent ? existing?.evaStep : 'instructions'),
+        agentName: agent.name,
+        agentDescription: agent.description,
+        avatarUrl: existing?.avatarUrl ?? 'https://us.webexbotbuilder.com/static/assets/i...',
+        timezone: existing?.timezone ?? 'America/Los_Angeles',
+        aiEngine: existing?.aiEngine ?? 'Webex AI Pro 1.0',
+        welcomeMessage: restoredWelcomeMessage,
+        instructionPrompt: restoredInstructions,
+        selectedKnowledgeBases: agent.knowledgeBases ?? existing?.selectedKnowledgeBases ?? nextDraft.knowledgeBases.slice(0, 2).map(kb => kb.name),
+        selectedActions: existing?.selectedActions ?? getConfiguredSummary(agent, agentDraft).actions,
+        optimizeAccepted: existing?.optimizeAccepted ?? false,
+        preOptimizeText: existing?.preOptimizeText ?? '',
+        optimizeSummary: existing?.optimizeSummary ?? { changes: [], reasoning: [] },
+        securityTier: existing?.securityTier ?? 'standard',
+        channelType: sessionMatchesAgent ? existing?.channelType ?? primaryChannel : primaryChannel,
+        selectedChannels: configuredChannels,
+        digitalChannel: sessionMatchesAgent
+          ? existing?.digitalChannel ?? restoredDigitalChannels[0] ?? 'chat'
+          : restoredDigitalChannels[0] ?? 'chat',
+        selectedDigitalChannels: sessionMatchesAgent
+          ? existing?.selectedDigitalChannels ?? restoredDigitalChannels
+          : restoredDigitalChannels,
+        digitalChannelAddress: existing?.digitalChannelAddress ?? '',
+        channelPhoneNumber: existing?.channelPhoneNumber ?? getConfiguredSummary(agent, agentDraft).endpoint ?? '',
+        phoneNumberDeferred,
+        standardGuardrails: existing?.standardGuardrails ?? EVA_STANDARD_GUARDRAILS,
+        advancedGuardrailGroups: existing?.advancedGuardrailGroups ?? EVA_ADVANCED_GUARDRAIL_GROUPS,
+        expandedAdvancedGroups: existing?.expandedAdvancedGroups ?? EVA_ADVANCED_GUARDRAIL_GROUPS.map(group => group.id),
+        personality: existing?.personality ?? {
+          llm: 'Webex AI Pro 1.0',
+          voice: 'ava',
+          language: 'en-US',
+          gender: 'neutral',
+        },
+        customRules: existing?.customRules ?? [],
+        selectedAgentFamily: family ?? existing?.selectedAgentFamily ?? null,
+        familyIntakeAnswers: existing?.familyIntakeAnswers ?? {},
+        familyProposal: agentDraft ? {
+          name: agentDraft.basics.name,
+          purpose: agentDraft.basics.purpose,
+          description: agentDraft.basics.description,
+          language: agentDraft.language.defaultLanguage,
+          instructions: agentDraft.instructions.content,
+          selectedChannels: configuredChannels,
+          greeting: restoredWelcomeMessage,
+          greetings: {
+            voice: typeof storedGreetings.voice === 'string' ? storedGreetings.voice : restoredWelcomeMessage,
+            digital: typeof storedGreetings.digital === 'string' ? storedGreetings.digital : restoredWelcomeMessage,
+          },
+        } : existing?.familyProposal ?? null,
+        familyProposalApplied: Boolean(agentDraft) || existing?.familyProposalApplied,
+        activeDraftAgentId: agentDraft?.id ?? existing?.activeDraftAgentId ?? null,
+      }));
       if (options.autoStartPreview) {
         window.sessionStorage.setItem(EVA_AUTO_START_VOICE_PREVIEW_KEY, '1');
       }
@@ -402,6 +761,56 @@ export default function AgentStudioLanding() {
     selectAgent(agent.id);
     setVariation('landing');
     navigate('/agents');
+  };
+
+  const handlePublishVersion = () => {
+    const publishedDraft = publishAgentVersion(agent.id);
+    if (!publishedDraft) {
+      showToast('Complete the required profile fields before publishing.', 'error');
+      return null;
+    }
+
+    showToast(
+      `Published version ${publishedDraft.version}. Deployment and live traffic remain separate.`,
+      'success',
+    );
+    return publishedDraft;
+  };
+
+  const hasUnsavedConfigurationChanges =
+    Boolean(currentAgentRevision)
+    && currentAgentRevision !== overviewReleaseState.savedRevision;
+  const hasSavedConfigurationReadyToPublish =
+    !hasUnsavedConfigurationChanges
+    && Boolean(currentAgentRevision)
+    && overviewReleaseState.pendingPublishRevision === currentAgentRevision;
+  const releaseActionLabel = hasSavedConfigurationReadyToPublish ? 'Publish' : 'Save';
+  const releaseActionDisabled =
+    !hasUnsavedConfigurationChanges
+    && !hasSavedConfigurationReadyToPublish;
+
+  const handleReleaseAction = () => {
+    if (hasUnsavedConfigurationChanges) {
+      const nextState = {
+        savedRevision: currentAgentRevision,
+        pendingPublishRevision: currentAgentRevision,
+      };
+      setOverviewReleaseState(nextState);
+      persistOverviewReleaseState(agent.id, nextState);
+      showToast('Configuration saved', 'success');
+      return;
+    }
+
+    if (!hasSavedConfigurationReadyToPublish) return;
+    const publishedDraft = handlePublishVersion();
+    if (!publishedDraft) return;
+
+    const nextState = {
+      savedRevision: publishedDraft.updatedAt,
+      pendingPublishRevision: null,
+    };
+    setOverviewReleaseState(nextState);
+    persistOverviewReleaseState(agent.id, nextState);
   };
 
   const stopPreviewCall = (nextStatus: PreviewCallStatus = 'ended') => {
@@ -737,250 +1146,1152 @@ export default function AgentStudioLanding() {
     transcriptNode.scrollTop = transcriptNode.scrollHeight;
   }, [previewExpanded, previewTranscript]);
 
-  const continueSetupTarget: EvaConversationStep = agent.status.toLowerCase() === 'published'
-    ? 'review'
-    : 'instructions';
+  const headerStatus = (
+    <div className="agent-studio-agent-metadata" aria-label={`${familyBadgeLabel}; ${lifecycleStatusLabel(lifecycle)}`}>
+      {family && <Badge variant={familyBadgeVariant(family)}>{familyBadgeLabel}</Badge>}
+      <span className={`agent-studio-lifecycle-status agent-studio-lifecycle-status--${lifecycle}`}>
+        <span className="agent-studio-lifecycle-status__dot" aria-hidden="true" />
+        <span>{lifecycleStatusLabel(lifecycle)}</span>
+      </span>
+    </div>
+  );
+
   const headerActions = (
-    <div className="agent-studio-header-actions">
-      <Button onClick={() => openGuidedSetup(continueSetupTarget)}>
-        <Icon name="sparkle" weight="bold" size="sm" />
-        View configurations
+    <div
+      className="agent-studio-header-actions"
+      role="group"
+      aria-label={`${familyName}; ${lifecycleLabel(lifecycle, version)}; version actions`}
+    >
+      <Button
+        variant="secondary"
+        aria-haspopup="dialog"
+        aria-expanded={previewWidgetOpen}
+        aria-pressed={previewWidgetOpen}
+        onClick={() => setPreviewWidgetOpen(open => !open)}
+      >
+        <Icon name="play" weight="bold" size="xs" />
+        Preview
+      </Button>
+      <Button
+        type="button"
+        disabled={releaseActionDisabled}
+        aria-label={`${releaseActionLabel} ${agent.name}`}
+        onClick={handleReleaseAction}
+      >
+        {releaseActionLabel}
       </Button>
     </div>
   );
   const sessionsDeepLink = previewSessionId
     ? `/agents/${agent.id}/sessions?sessionId=${encodeURIComponent(previewSessionId)}&source=preview`
     : `/agents/${agent.id}/sessions?source=preview`;
+  const sessionsPath = `/agents/${encodeURIComponent(agent.id)}/sessions`;
+  const observabilityPath = `/observability?agent=${encodeURIComponent(agent.name)}`;
   const showPreviewSessionLink = previewInteractionEnded && (previewCallStatus === 'ended' || previewCallStatus === 'error');
-  const observabilitySessionLink = `/agents/${agent.id}/sessions?sessionId=${encodeURIComponent(observability.sessionId)}&source=observability`;
+  const configuredKnowledge = agentDraft
+    ? configuredCapabilityLabels(agentDraft, 'knowledge', summary.knowledgeBases)
+    : summary.knowledgeBases;
+  const configuredMemory = configuredCapabilityLabels(agentDraft, 'memory');
+  const configuredActions = agentDraft
+    ? configuredCapabilityLabels(agentDraft, 'actions', summary.actions)
+    : summary.actions;
+  const configuredHandoff = configuredCapabilityLabels(agentDraft, 'handoff');
+  // Surface triggered guardrails first; a stable sort keeps the rest as configured.
+  const configuredSecurity = configuredCapabilityLabels(agentDraft, 'security')
+    .map((item, index) => ({ item, index, count: getCiscoLiveGuardrailTriggerCount(item, agent.id) }))
+    .sort((a, b) => b.count - a.count || a.index - b.index)
+    .map(entry => entry.item);
+  const configuredOrchestration = [...configuredActions, ...configuredHandoff];
+  const connectedCapabilityCount = configuredKnowledge.length
+    + configuredMemory.length
+    + configuredOrchestration.length
+    + configuredSecurity.length;
+  const hasConnectedResources = connectedCapabilityCount > 0;
+  const usesEagleGreenShowcaseMetrics = agent.id === 'golftop-vip-reservations';
+  const actionPerformanceItems = usesEagleGreenShowcaseMetrics
+    ? [
+        'Check Availability',
+        'Send payment link',
+        'Transfer to VIP team',
+      ]
+    : configuredActions;
+  const connectedActionPerformance = actionPerformanceItems.map(item => {
+    const metric = getCiscoLiveActionMetric(item);
+    return {
+      item,
+      rate: Number.parseFloat(metric.rate),
+      rateLabel: metric.rate,
+      isPositive: metric.isPositive,
+    };
+  });
+  const averageActionSuccess = connectedActionPerformance.length > 0
+    ? connectedActionPerformance.reduce((total, item) => total + item.rate, 0) / connectedActionPerformance.length
+    : 0;
+  const connectedCapabilityTotals = {
+    knowledge: usesEagleGreenShowcaseMetrics ? 14 : configuredKnowledge.length,
+    memory: configuredMemory.length,
+    actions: usesEagleGreenShowcaseMetrics ? 3 : configuredOrchestration.length,
+    guardrails: configuredSecurity.length,
+  } as const;
+  const connectedGuardrailActivity = configuredSecurity.map(item => ({
+    item,
+    count: getCiscoLiveGuardrailTriggerCount(item, agent.id),
+  }));
+  const defaultSelectedGuardrailName = connectedGuardrailActivity.find(guardrail => guardrail.count > 0)?.item
+    ?? connectedGuardrailActivity[0]?.item
+    ?? null;
+  const selectedGuardrailName = usesEagleGreenShowcaseMetrics
+    && selectedOverviewIntervention !== 'guardrail'
+    ? null
+    : selectedGuardrailActivity === undefined
+      ? defaultSelectedGuardrailName
+      : selectedGuardrailActivity
+        && connectedGuardrailActivity.some(guardrail => guardrail.item === selectedGuardrailActivity)
+        ? selectedGuardrailActivity
+        : null;
+  const selectedGuardrail = connectedGuardrailActivity.find(
+    guardrail => guardrail.item === selectedGuardrailName,
+  );
+  const showSelectedGuardrailDecision = selectedOverviewIntervention === 'guardrail'
+    && Boolean(selectedGuardrail && selectedGuardrail.count > 0);
+  const guardrailTriggerTotal = connectedGuardrailActivity.reduce((total, item) => total + item.count, 0);
+  const actionConfigurationValues = agentDraft?.familyConfiguration.actions?.values;
+  const allAgentSessions = getCiscoLiveSessions(agent.id, actionConfigurationValues);
+  const operationalTimeRangeHours = OPERATIONAL_TIME_RANGE_HOURS[operationalTimeRange] ?? 6;
+  const actionControlDecisions = (usesEagleGreenShowcaseMetrics
+    ? getCiscoLiveActionControlDecisions(agent.id, actionConfigurationValues)
+    : [])
+    .filter(decision => actionControlDecisionAgeHours(decision.occurredAt) <= operationalTimeRangeHours);
+  const actionControlFlow = summarizeCiscoLiveActionControlDecisions(actionControlDecisions);
+  const actionControlMatchedOutcomes = [
+    { id: 'observed', label: 'Observed', value: actionControlFlow.observed },
+    { id: 'steered', label: 'Steered', value: actionControlFlow.steered },
+    { id: 'denied', label: 'Denied', value: actionControlFlow.denied },
+  ].filter(outcome => outcome.value > 0);
+  const actionControlSpotlightDecision = [...actionControlDecisions]
+    .filter(decision => decision.matched)
+    .sort((a, b) => Date.parse(b.occurredAt) - Date.parse(a.occurredAt))[0];
+  const showSelectedActionControlDecision = selectedOverviewIntervention === 'action_control'
+    && Boolean(actionControlSpotlightDecision);
+  const actionControlSpotlightEvidence = actionControlSpotlightDecision?.evidence.find(evidence => (
+    typeof evidence.actual === 'number'
+  ));
+  const actionControlSpotlightUnlockedName = actionControlSpotlightDecision?.unlockedActionNames[0] ?? '';
+  const actionControlSpotlightUnlocked = Boolean(actionControlSpotlightUnlockedName);
+  const actionControlFlowLabel = `${actionControlFlow.evaluated} controls were evaluated. ${actionControlFlow.actionRan} attached action${actionControlFlow.actionRan === 1 ? '' : 's'} completed. ${actionControlFlow.matched} matched and ${actionControlFlow.notMatched} did not match; ${actionControlFlow.steered} redirected the next step and ${actionControlFlow.unlocked} gated action${actionControlFlow.unlocked === 1 ? '' : 's'} unlocked. Match rate ${actionControlFlow.matchRate} percent.`;
+  const guardedSessionRate = allAgentSessions.length > 0
+    ? Math.round((allAgentSessions.filter(session => session.guardrailTriggered).length / allAgentSessions.length) * 100)
+    : 0;
+  const connectedCapabilitySignals = [
+    {
+      id: 'knowledge',
+      label: 'Knowledge referenced',
+      value: configuredKnowledge.length > 0 ? Math.min(100, 68 + configuredKnowledge.length * 8) : 0,
+      count: connectedCapabilityTotals.knowledge,
+      type: 'knowledge' as ConfigurationCategory,
+    },
+    {
+      id: 'memory',
+      label: 'Memory assisted',
+      value: configuredMemory.length > 0 ? Math.min(100, 54 + configuredMemory.length * 8) : 0,
+      count: connectedCapabilityTotals.memory,
+      type: 'memory' as ConfigurationCategory,
+    },
+    {
+      id: 'actions',
+      label: 'Action success',
+      value: Math.round(averageActionSuccess),
+      count: connectedCapabilityTotals.actions,
+      type: 'action' as ConfigurationCategory,
+    },
+    {
+      id: 'security',
+      label: 'Guardrail intervention',
+      value: configuredSecurity.length > 0 ? guardedSessionRate : 0,
+      count: connectedCapabilityTotals.guardrails,
+      type: 'guardrail' as ConfigurationCategory,
+    },
+  ];
+  const showOperationalStatus = lifecycle !== 'draft';
+  const knownSessionId = previewSessionId || agentDraft?.previewState.sessionId || '';
+  // A live preview session stays on this agent; otherwise resolve to the demo
+  // session that actually carries the designed transcript (guardrail first) so
+  // "View session" always opens the transcript with its guardrail markers.
+  const operationalSessionLocator = knownSessionId
+    ? { agentId: agent.id, sessionId: knownSessionId }
+    : getCiscoLiveSessionLocator(agent.id, getCiscoLiveObservability(agent.id).sessionId);
+  const operationalSessionPath = `/agents/${encodeURIComponent(operationalSessionLocator.agentId)}/sessions?sessionId=${encodeURIComponent(operationalSessionLocator.sessionId)}&source=observability`;
+  const eagleActionControlSessionPath = actionControlSpotlightDecision
+    ? `${sessionsPath}?sessionId=${encodeURIComponent(actionControlSpotlightDecision.sessionId)}&source=overview`
+    : sessionsPath;
+  const eagleGuardrailSessionPath = `${sessionsPath}?sessionId=SES-GT-1045&source=observability`;
+  // The banner describes the event that owns the transcript being opened, so its
+  // title/meta/description stay in sync with the session "View session" links to.
+  const operationalEvent = getCiscoLiveObservability(operationalSessionLocator.agentId);
+  const operationalTimeRangeLabel = OPERATIONAL_TIME_RANGE_OPTIONS.find(
+    option => option.value === operationalTimeRange,
+  )?.label ?? 'Past 6 hours';
+  const operationalSessions = getCiscoLiveSessions(agent.id, actionConfigurationValues)
+    .filter(session => sessionAgeHours(session.updated) <= operationalTimeRangeHours)
+    .slice(0, 3);
+  const studioHeaderAgent = { ...agent, meta: agent.description };
+  const previewTranscriptButton = (
+    <Button
+      type="button"
+      variant={previewExpanded ? 'secondary' : 'tertiary'}
+      size="sm"
+      className="agent-studio-preview-expand-btn"
+      aria-expanded={previewExpanded}
+      aria-pressed={previewExpanded}
+      aria-haspopup="dialog"
+      onClick={() => setPreviewExpanded(true)}
+    >
+      <Icon name="transcript" weight="bold" size="sm" />
+      Text transcript
+    </Button>
+  );
+  const previewExperience = (
+    <div
+      className={`agent-studio-preview-soundbar${previewCallStatus === 'connecting' || previewCallStatus === 'listening' || previewCallStatus === 'speaking' ? ' agent-studio-preview-soundbar--active' : ''}`}
+      aria-label="Preview configured greeting"
+    >
+      <div className="eva-voice-preview__visualizer" aria-hidden="true">
+        {Array.from({ length: 18 }).map((_, index) => (
+          <span key={index} style={{ animationDelay: `${index * 55}ms` }} />
+        ))}
+      </div>
+      {previewCallStatus === 'error' && (
+        <span>{previewCallError || 'Voice preview failed.'}</span>
+      )}
+      {previewCallStatus === 'connecting' && <span>Connecting voice preview...</span>}
+      {previewCallStatus === 'listening' && <span>Listening...</span>}
+      {previewCallStatus === 'speaking' && <span>Agent is speaking...</span>}
+      {previewCallStatus === 'paused' && (
+        <span>Call paused. Resume to continue sending caller audio.</span>
+      )}
+      <div className="agent-studio-preview-actions">
+        <Button
+          type="button"
+          size="sm"
+          disabled={previewCallStatus === 'connecting' || previewCallStatus === 'listening' || previewCallStatus === 'speaking' || previewCallStatus === 'paused'}
+          onClick={() => { void startPreviewCall(); }}
+        >
+          <Icon name="phone" weight="bold" size="sm" />
+          {previewCallStatus === 'ended' ? 'Restart call' : 'Start Call'}
+        </Button>
+        <Button
+          type="button"
+          variant="secondary"
+          size="sm"
+          disabled={previewCallStatus !== 'connecting' && previewCallStatus !== 'listening' && previewCallStatus !== 'speaking' && previewCallStatus !== 'paused'}
+          onClick={() => stopPreviewCall('ended')}
+        >
+          End Call
+        </Button>
+      </div>
+      {showPreviewSessionLink && (
+        <div className="agent-studio-preview-session-link">
+          <Icon name="transcript" weight="regular" size="sm" />
+          <span>
+            Preview ended.{' '}
+            <TextLink
+              variant="inline"
+              size="sm"
+              href={sessionsDeepLink}
+              onClick={event => {
+                event.preventDefault();
+                navigate(sessionsDeepLink);
+              }}
+            >
+              Open this interaction in Sessions
+            </TextLink>
+          </span>
+        </div>
+      )}
+    </div>
+  );
 
   return (
     <div className="primary-content agent-studio-landing">
-      <AgentHeader agent={agent} activeTab="configure" showPublishButton={false} showTabs={false} headerRight={headerActions} />
+      <AgentHeader
+        agent={studioHeaderAgent}
+        activeTab="configure"
+        showPublishButton={false}
+        showTabs={false}
+        statusContent={headerStatus}
+        headerRight={headerActions}
+      />
 
       <section className="agent-studio-hero" aria-labelledby="agent-studio-title">
         <div className="agent-studio-hero__header">
           <div className="agent-studio-hero__main">
-            <div className="agent-studio-hero__content">
+            <div className="agent-studio-hero__content agent-studio-overview-heading">
               <h1 id="agent-studio-title">Overview</h1>
-              <p>{agent.description}</p>
+              <div className="agent-studio-overview-controls" role="group" aria-label="Overview filters">
+                <Dropdown
+                  className="agent-studio-operational-timerange"
+                  size="compact"
+                  leadingIcon="filter"
+                  value={operationalTimeRange}
+                  onChange={setOperationalTimeRange}
+                  options={OPERATIONAL_TIME_RANGE_OPTIONS.map(option => ({ ...option }))}
+                />
+              </div>
             </div>
           </div>
         </div>
 
-        <div className="agent-studio-grid">
-          <Card className="agent-studio-card agent-studio-card--summary">
+        <div className="agent-studio-grid agent-studio-grid--published">
+          {overviewCardOrder.map((cardId, index) => cardId === 'capability' ? (
+          <Card
+            key={cardId}
+            className={[
+              'agent-studio-card agent-studio-card--summary agent-studio-card--connections',
+              'agent-studio-overview-card agent-studio-overview-tile',
+              draggedOverviewTile?.group === 'cards' && draggedOverviewTile.id === cardId
+                ? 'is-dragging'
+                : '',
+              overviewDropTarget?.group === 'cards' && overviewDropTarget.id === cardId
+                ? 'is-drop-target'
+                : '',
+            ].filter(Boolean).join(' ')}
+            draggable={showOperationalStatus}
+            onDragStart={event => handleOverviewTileDragStart(event, 'cards', cardId)}
+            onDragOver={event => handleOverviewTileDragOver(event, 'cards', cardId)}
+            onDrop={event => handleOverviewTileDrop(event, 'cards', cardId)}
+            onDragEnd={handleOverviewTileDragEnd}
+          >
+            {showOperationalStatus && (
+              <button
+                type="button"
+                className="agent-studio-overview-card__drag-handle"
+                aria-label={`Reorder Capability usage. Position ${index + 1} of ${overviewCardOrder.length}`}
+                title="Drag to reorder. Use arrow keys to move this card."
+                onKeyDown={event => handleOverviewTileKeyDown(event, 'cards', cardId)}
+              >
+                <Icon name="dragger-vertical" weight="bold" size="sm" />
+              </button>
+            )}
             <CardHeader>
               <div className="agent-studio-card-heading">
                 <span className="agent-studio-card-heading__icon">
                   <Icon name="check-circle-filled" weight="bold" size="sm" />
                 </span>
                 <span>
-                  <strong>Profile</strong>
-                  <small>From the conversational setup</small>
+                  <strong>Capability usage</strong>
+                  <small>
+                    {hasConnectedResources
+                      ? 'Knowledge, memory, actions, and protection'
+                      : 'Nothing connected yet'}
+                  </small>
                 </span>
               </div>
-              <Button variant="secondary" size="sm" onClick={() => goToSection('Profile')}>
-                Edit
-              </Button>
-            </CardHeader>
-            <CardBody>
-              <div className="agent-studio-summary-list">
-                {(!phoneNumberDeferred || ciscoLiveAgent?.selectedChannels.includes('digital')) && (
-                  <span>
-                    <strong>{ciscoLiveAgent?.selectedChannels.includes('digital') ? 'Channel' : 'Phone'}</strong>
-                    <span className="agent-studio-summary-value">
-                      {summary.endpoint}
-                      <Badge variant="info" className="agent-studio-service-badge">
-                        {ciscoLiveAgent?.selectedChannels.includes('digital') ? 'Digital' : 'Voice'}
-                      </Badge>
-                    </span>
-                  </span>
-                )}
-                <span><strong>Ai Engine</strong>{summary.aiEngine}</span>
-                <span><strong>Language</strong>English (US)</span>
-                <span><strong>Timezone</strong>America/Los_Angeles</span>
-              </div>
-              <div className="agent-studio-profile-preview" aria-labelledby="agent-studio-profile-preview-title">
-                <div className="agent-studio-profile-preview__header">
-                  <div>
-                    <strong id="agent-studio-profile-preview-title">Preview</strong>
-                    <small>Try what is already configured</small>
-                  </div>
-                  {previewTranscript.length > 0 && (
-                    <Button
-                      type="button"
-                      variant={previewExpanded ? 'secondary' : 'tertiary'}
-                      size="sm"
-                      className="agent-studio-preview-expand-btn"
-                      aria-expanded={previewExpanded}
-                      aria-pressed={previewExpanded}
-                      aria-haspopup="dialog"
-                      onClick={() => setPreviewExpanded(true)}
-                    >
-                      <Icon name="transcript" weight="bold" size="sm" />
-                      Text transcript
-                    </Button>
-                  )}
+              <div className="agent-studio-connected-toolbar">
+                <div className="agent-studio-connected-view-switcher" role="group" aria-label="Capability usage view">
+                  <button
+                    type="button"
+                    aria-pressed={connectedViewMode === 'metrics'}
+                    aria-controls="agent-studio-connected-content"
+                    onClick={() => setConnectedViewMode('metrics')}
+                  >
+                    <Icon name="multiline-chart" weight="bold" size="xs" />
+                    Chart
+                  </button>
+                  <button
+                    type="button"
+                    aria-pressed={connectedViewMode === 'resources'}
+                    aria-controls="agent-studio-connected-content"
+                    onClick={() => setConnectedViewMode('resources')}
+                  >
+                    <Icon name="apps" weight="bold" size="xs" />
+                    List
+                  </button>
                 </div>
-                <div
-                  className={`agent-studio-preview-soundbar${previewCallStatus === 'connecting' || previewCallStatus === 'listening' || previewCallStatus === 'speaking' ? ' agent-studio-preview-soundbar--active' : ''}`}
-                  aria-label="Preview configured greeting"
-                >
-                  <div className="eva-voice-preview__visualizer" aria-hidden="true">
-                    {Array.from({ length: 18 }).map((_, index) => (
-                      <span key={index} style={{ animationDelay: `${index * 55}ms` }} />
-                    ))}
-                  </div>
-                  {previewCallStatus === 'error' && (
-                    <span>{previewCallError || 'Voice preview failed.'}</span>
-                  )}
-                  {previewCallStatus === 'connecting' && (
-                    <span>Connecting voice preview...</span>
-                  )}
-                  {previewCallStatus === 'listening' && (
-                    <span>Listening...</span>
-                  )}
-                  {previewCallStatus === 'speaking' && (
-                    <span>Agent is speaking...</span>
-                  )}
-                  {previewCallStatus === 'paused' && (
-                    <span>Call paused. Resume to continue sending caller audio.</span>
-                  )}
-                  <div className="agent-studio-preview-actions">
-                    <Button
-                      type="button"
-                      size="sm"
-                      disabled={previewCallStatus === 'connecting' || previewCallStatus === 'listening' || previewCallStatus === 'speaking' || previewCallStatus === 'paused'}
-                      onClick={() => { void startPreviewCall(); }}
-                    >
-                      <Icon name="phone" weight="bold" size="sm" />
-                      {previewCallStatus === 'ended' ? 'Restart call' : 'Start Call'}
-                    </Button>
-                    <Button
-                      type="button"
-                      variant="secondary"
-                      size="sm"
-                      disabled={previewCallStatus !== 'connecting' && previewCallStatus !== 'listening' && previewCallStatus !== 'speaking' && previewCallStatus !== 'paused'}
-                      onClick={() => stopPreviewCall('ended')}
-                    >
-                      End Call
-                    </Button>
-                  </div>
-                  {showPreviewSessionLink && (
-                    <div className="agent-studio-preview-session-link">
-                      <Icon name="transcript" weight="regular" size="sm" />
-                      <span>
-                        Preview ended.{' '}
-                        <TextLink
-                          variant="inline"
-                          size="sm"
-                          href={sessionsDeepLink}
-                          onClick={event => {
-                            event.preventDefault();
-                            navigate(sessionsDeepLink);
-                          }}
+              </div>
+            </CardHeader>
+            <CardBody id="agent-studio-connected-content">
+              {connectedViewMode === 'metrics' ? (
+                  <div className="agent-studio-connected-metrics">
+                    <div className="agent-studio-connected-summary" aria-label="Capability usage summary">
+                      {[
+                        {
+                          id: 'knowledge' as OverviewSummaryTileId,
+                          label: 'Knowledge',
+                          value: connectedCapabilityTotals.knowledge,
+                          status: configuredKnowledge.length > 0 ? 'All sources synced · 8 min ago' : null,
+                          type: 'knowledge' as ConfigurationCategory,
+                        },
+                        {
+                          id: 'memory' as OverviewSummaryTileId,
+                          label: 'AI memory',
+                          value: connectedCapabilityTotals.memory,
+                          status: null,
+                          type: 'memory' as ConfigurationCategory,
+                        },
+                        {
+                          id: 'actions' as OverviewSummaryTileId,
+                          label: 'Actions',
+                          value: connectedCapabilityTotals.actions,
+                          status: usesEagleGreenShowcaseMetrics
+                            ? '2 MCPs · 1 active Galileo control'
+                            : configuredOrchestration.length > 0
+                              ? `${configuredActions.length} actions · ${configuredHandoff.length} MCPs`
+                              : null,
+                          type: 'action' as ConfigurationCategory,
+                        },
+                        {
+                          id: 'guardrails' as OverviewSummaryTileId,
+                          label: 'Guardrails',
+                          value: connectedCapabilityTotals.guardrails,
+                          status: usesEagleGreenShowcaseMetrics
+                            ? '2 custom · 2 prebuilt'
+                            : configuredSecurity.length > 0
+                              ? `${configuredSecurity.length} configured`
+                              : null,
+                          type: 'guardrail' as ConfigurationCategory,
+                        },
+                      ]
+                        .sort((a, b) => overviewSummaryOrder.indexOf(a.id) - overviewSummaryOrder.indexOf(b.id))
+                        .map((item, index) => (
+                        <div
+                          key={item.id}
+                          className={[
+                            'agent-studio-connected-summary__item',
+                            `agent-studio-connected-summary__item--${item.type}`,
+                            'agent-studio-overview-tile',
+                            draggedOverviewTile?.group === 'summary' && draggedOverviewTile.id === item.id
+                              ? 'is-dragging'
+                              : '',
+                            overviewDropTarget?.group === 'summary' && overviewDropTarget.id === item.id
+                              ? 'is-drop-target'
+                              : '',
+                          ].filter(Boolean).join(' ')}
+                          onDragOver={event => handleOverviewTileDragOver(event, 'summary', item.id)}
+                          onDrop={event => handleOverviewTileDrop(event, 'summary', item.id)}
                         >
-                          Open this interaction in Sessions
-                        </TextLink>
-                      </span>
+                          <button
+                            type="button"
+                            className="agent-studio-overview-tile__drag-handle"
+                            aria-label={`Reorder ${item.label}. Position ${index + 1} of ${overviewSummaryOrder.length}`}
+                            title="Drag to reorder. Use arrow keys to move this tile."
+                            draggable
+                            onDragStart={event => handleOverviewTileDragStart(event, 'summary', item.id)}
+                            onDragEnd={handleOverviewTileDragEnd}
+                            onKeyDown={event => handleOverviewTileKeyDown(event, 'summary', item.id)}
+                          >
+                            <Icon name="dragger-vertical" weight="bold" size="sm" />
+                          </button>
+                          <Link
+                            className="agent-studio-connected-summary__link"
+                            to={`/agents/${agent.id}/configure?section=${OVERVIEW_SUMMARY_CONFIGURATION_SECTION[item.id]}`}
+                            aria-label={`Open ${item.label} configuration`}
+                            title={`Open ${item.label} configuration`}
+                            draggable={false}
+                            onClick={() => selectAgent(agent.id)}
+                          >
+                            <span className="agent-studio-connected-summary__icon" aria-hidden="true">
+                              <ConfigurationCategoryIcon type={item.type} />
+                            </span>
+                            <span>
+                              <strong>{item.value}</strong>
+                              <small>{item.label}</small>
+                              {item.status && (
+                                <span className="agent-studio-connected-summary__status">{item.status}</span>
+                              )}
+                            </span>
+                          </Link>
+                        </div>
+                      ))}
                     </div>
-                  )}
-                </div>
-              </div>
-            </CardBody>
-          </Card>
 
-          <Card className="agent-studio-card agent-studio-card--summary agent-studio-card--connected">
-            <CardHeader>
-              <div className="agent-studio-card-heading">
-                <span className="agent-studio-card-heading__icon">
-                  <Icon name="check-circle-filled" weight="bold" size="sm" />
-                </span>
-                <span>
-                  <strong>Connected</strong>
-                  <small>Knowledge, memory, orchestration, actions, and guardrails</small>
-                </span>
-              </div>
-              <Button variant="secondary" size="sm" onClick={() => goToSection('Knowledge')}>
-                Edit
-              </Button>
-            </CardHeader>
-            <CardBody>
-              <div className="agent-studio-connected-group">
-                <strong className="agent-studio-connected-group__label">Knowledge</strong>
-                <div className="agent-studio-chip-group" aria-label="Connected knowledge bases">
-                  {summary.knowledgeBases.map(item => (
-                    <Badge key={item} variant="default" className="agent-studio-service-badge agent-studio-service-badge--knowledge">
-                      <ConfigurationCategoryIcon type="knowledge" />
-                      {getConnectedChipLabel(item)}
-                    </Badge>
-                  ))}
-                </div>
-              </div>
-              {summary.memories.length > 0 && (
-                <div className="agent-studio-connected-group">
-                  <strong className="agent-studio-connected-group__label">AI Memory</strong>
-                  <div className="agent-studio-chip-group" aria-label="Enabled AI memory">
-                    {summary.memories.map(item => (
-                      <Badge key={item} variant="default" className="agent-studio-service-badge agent-studio-service-badge--memory">
-                        <ConfigurationCategoryIcon type="memory" />
-                        {getConnectedChipLabel(item)}
-                      </Badge>
-                    ))}
-                  </div>
-                </div>
-              )}
-              {(summary.orchestrationScenarios.length > 0 || summary.actions.length > 0) && (
-                <div className="agent-studio-connected-group">
-                  <strong className="agent-studio-connected-group__label">Orchestration &amp; actions</strong>
-                  <div className="agent-studio-chip-group" aria-label="Enabled orchestration scenarios and connected agent actions">
-                    {summary.orchestrationScenarios.map(item => (
-                      <Badge key={item} variant="default" className="agent-studio-service-badge agent-studio-service-badge--scenario">
-                        <ConfigurationCategoryIcon type="orchestration" />
-                        {getConnectedChipLabel(item)}
-                      </Badge>
-                    ))}
-                    {summary.actions.map(item => (
-                      <Badge key={item} variant="default" className="agent-studio-service-badge agent-studio-service-badge--action">
-                        <ConfigurationCategoryIcon type="action" />
-                        {getConnectedChipLabel(item)}
-                      </Badge>
-                    ))}
-                  </div>
-                </div>
-              )}
-              {summary.guardrails.length > 0 && (
-                <div className="agent-studio-connected-group">
-                  <strong className="agent-studio-connected-group__label">Guardrails</strong>
-                  <div className="agent-studio-chip-group" aria-label="Enabled guardrails">
-                    {summary.guardrails.slice(0, 4).map(item => (
-                      <Badge key={item} variant="default" className="agent-studio-service-badge agent-studio-service-badge--guardrail">
-                        <ConfigurationCategoryIcon type="guardrail" />
-                        {getConnectedChipLabel(item)}
-                      </Badge>
-                    ))}
-                    {summary.guardrails.length > 4 && (
-                      <Tooltip
-                        content={`All guardrails: ${summary.guardrails.map(getConnectedChipLabel).join(', ')}`}
-                        placement="top"
-                      >
-                        <span
-                          className="agent-studio-guardrail-overflow"
-                          tabIndex={0}
-                          aria-label={`${summary.guardrails.length - 4} more guardrails. Focus or hover to view the complete list.`}
+                    <div className="agent-studio-connected-chart-grid">
+                      {overviewChartOrder.map((tileId, index) => {
+                        const tileLabel = tileId === 'signals'
+                          ? 'Capability signals'
+                          : tileId === 'actions'
+                            ? usesEagleGreenShowcaseMetrics
+                              ? 'Action control activity'
+                              : 'Action performance'
+                            : 'Guardrail activity';
+                        const labelledBy = `agent-studio-${tileId}-chart-title`;
+                        return (
+                          <section
+                            key={tileId}
+                            className={[
+                              'agent-studio-connected-chart',
+                              'agent-studio-overview-tile',
+                              draggedOverviewTile?.group === 'charts' && draggedOverviewTile.id === tileId
+                                ? 'is-dragging'
+                                : '',
+                              overviewDropTarget?.group === 'charts' && overviewDropTarget.id === tileId
+                                ? 'is-drop-target'
+                                : '',
+                            ].filter(Boolean).join(' ')}
+                            aria-labelledby={labelledBy}
+                            draggable
+                            onDragStart={event => handleOverviewTileDragStart(event, 'charts', tileId)}
+                            onDragOver={event => handleOverviewTileDragOver(event, 'charts', tileId)}
+                            onDrop={event => handleOverviewTileDrop(event, 'charts', tileId)}
+                            onDragEnd={handleOverviewTileDragEnd}
+                          >
+                            <button
+                              type="button"
+                              className="agent-studio-overview-tile__drag-handle"
+                              aria-label={`Reorder ${tileLabel}. Position ${index + 1} of ${overviewChartOrder.length}`}
+                              title="Drag to reorder. Use arrow keys to move this tile."
+                              onKeyDown={event => handleOverviewTileKeyDown(event, 'charts', tileId)}
+                            >
+                              <Icon name="dragger-vertical" weight="bold" size="sm" />
+                            </button>
+
+                            {tileId === 'signals' && (
+                              <>
+                                <div className="agent-studio-connected-chart__header">
+                                  <div>
+                                    <h3 id={labelledBy}>Capability signals</h3>
+                                    <p>Primary signal for each capability</p>
+                                  </div>
+                                </div>
+                                <div className="agent-studio-capability-signals">
+                                  {connectedCapabilitySignals.map(signal => (
+                                    <div key={signal.id} className="agent-studio-capability-signal">
+                                      <div className="agent-studio-capability-signal__label">
+                                        <span>
+                                          <ConfigurationCategoryIcon type={signal.type} />
+                                          {signal.label}
+                                        </span>
+                                        <strong>{signal.value}%</strong>
+                                      </div>
+                                      <div
+                                        className={`agent-studio-capability-signal__track agent-studio-capability-signal__track--${signal.type}`}
+                                        role="progressbar"
+                                        aria-label={`${signal.label}: ${signal.value} percent`}
+                                        aria-valuemin={0}
+                                        aria-valuemax={100}
+                                        aria-valuenow={signal.value}
+                                      >
+                                        <span style={{ width: `${signal.value}%` }} />
+                                      </div>
+                                      <small>{signal.count} configured</small>
+                                    </div>
+                                  ))}
+                                </div>
+                              </>
+                            )}
+
+                            {tileId === 'actions' && (
+                              <>
+                                <div className="agent-studio-connected-chart__header">
+                                  <div>
+                                    <h3 id={labelledBy}>
+                                      {usesEagleGreenShowcaseMetrics ? 'Action control activity' : 'Action performance'}
+                                    </h3>
+                                    <p>
+                                      {usesEagleGreenShowcaseMetrics
+                                        ? `Galileo decisions during the ${operationalTimeRangeLabel.toLowerCase()}`
+                                        : 'Success rate against a 95% target'}
+                                    </p>
+                                  </div>
+                                  {!usesEagleGreenShowcaseMetrics && (
+                                    <strong className="agent-studio-connected-chart__headline">
+                                      {averageActionSuccess.toFixed(1)}%
+                                    </strong>
+                                  )}
+                                </div>
+                                {usesEagleGreenShowcaseMetrics ? (
+                                  <figure
+                                    className="agent-studio-action-control-flow"
+                                    aria-labelledby="agent-studio-action-control-flow-caption"
+                                  >
+                                    <figcaption
+                                      id="agent-studio-action-control-flow-caption"
+                                      className="agent-studio-action-control-flow__caption"
+                                    >
+                                      {actionControlFlowLabel}
+                                    </figcaption>
+                                    <div className="agent-studio-action-control-flow__summary" aria-hidden="true">
+                                      <span className="agent-studio-action-control-flow__summary-icon">
+                                        <Icon name="automation" weight="bold" size="sm" />
+                                      </span>
+                                      <span className="agent-studio-action-control-flow__summary-copy">
+                                        <small>Control checks</small>
+                                        <strong>Evaluated</strong>
+                                      </span>
+                                      <strong className="agent-studio-action-control-flow__summary-value">
+                                        {actionControlFlow.evaluated}
+                                      </strong>
+                                    </div>
+
+                                    <div className="agent-studio-action-control-flow__rows">
+                                      <button
+                                        type="button"
+                                        className={`agent-studio-action-control-flow__row agent-studio-action-control-flow__matched-trigger is-matched${showSelectedActionControlDecision ? ' is-selected' : ''}`}
+                                        aria-expanded={showSelectedActionControlDecision}
+                                        aria-controls="agent-studio-action-control-decision-banner"
+                                        aria-label={`${showSelectedActionControlDecision ? 'Hide' : 'Show'} latest matching decision`}
+                                        disabled={!actionControlSpotlightDecision}
+                                        onClick={() => {
+                                          setSelectedOverviewIntervention(current => (
+                                            current === 'action_control' ? null : 'action_control'
+                                          ));
+                                        }}
+                                      >
+                                        <span className="agent-studio-action-control-flow__decision">
+                                          <span className="agent-studio-action-control-flow__metric">
+                                            <strong>{actionControlFlow.matched}</strong>
+                                          </span>
+                                          <span className="agent-studio-action-control-flow__label">
+                                            Matched
+                                          </span>
+                                        </span>
+
+                                        <span className="agent-studio-action-control-flow__line" aria-hidden="true" />
+
+                                        <span className="agent-studio-action-control-flow__outcomes">
+                                          {actionControlMatchedOutcomes.map(outcome => {
+                                            const showsUnlockedAction = outcome.id === 'steered'
+                                              && actionControlFlow.unlocked > 0;
+
+                                            return (
+                                              <span
+                                                key={outcome.id}
+                                                className={`agent-studio-action-control-flow__outcome${showsUnlockedAction ? ' is-unlocked' : ''}`}
+                                              >
+                                                <span className="agent-studio-action-control-flow__outcome-primary">
+                                                  <span>{outcome.label}</span>
+                                                </span>
+                                                {showsUnlockedAction && (
+                                                  <>
+                                                    <span className="agent-studio-action-control-flow__outcome-connector" aria-hidden="true" />
+                                                    <span className="agent-studio-action-control-flow__outcome-detail">
+                                                      Gated action unlocked
+                                                    </span>
+                                                  </>
+                                                )}
+                                              </span>
+                                            );
+                                          })}
+                                        </span>
+                                      </button>
+                                    </div>
+                                  </figure>
+                                ) : (
+                                  <div className="agent-studio-action-performance">
+                                    {connectedActionPerformance.length > 0 ? connectedActionPerformance.map(action => (
+                                      <div key={action.item} className="agent-studio-action-performance__row">
+                                        <div>
+                                          <span title={action.item}>{action.item}</span>
+                                          <strong className={action.isPositive ? 'is-positive' : 'is-negative'}>
+                                            {action.rateLabel}
+                                            <Icon name={action.isPositive ? 'trending' : 'trending-down'} weight="regular" size="xs" />
+                                          </strong>
+                                        </div>
+                                        <div
+                                          className="agent-studio-action-performance__track"
+                                          role="progressbar"
+                                          aria-label={`${action.item} success rate: ${action.rateLabel}`}
+                                          aria-valuemin={0}
+                                          aria-valuemax={100}
+                                          aria-valuenow={action.rate}
+                                        >
+                                          <span className="agent-studio-action-performance__target" aria-hidden="true" />
+                                          <span className="agent-studio-action-performance__value" style={{ width: `${action.rate}%` }} />
+                                        </div>
+                                      </div>
+                                    )) : (
+                                      <p className="agent-studio-connected-chart__empty">Connect an action to see performance.</p>
+                                    )}
+                                  </div>
+                                )}
+                              </>
+                            )}
+
+                            {tileId === 'guardrails' && (
+                              <>
+                                <div className="agent-studio-connected-chart__header">
+                                  <div>
+                                    <h3 id={labelledBy}>Guardrail activity</h3>
+                                    <p>Triggers during the {operationalTimeRangeLabel.toLowerCase()}</p>
+                                  </div>
+                                  <strong className="agent-studio-connected-chart__headline">{guardrailTriggerTotal}</strong>
+                                </div>
+                                {connectedGuardrailActivity.length > 0 ? (
+                                  <div className="agent-studio-guardrail-chart">
+                                    {connectedGuardrailActivity.map(guardrail => {
+                                      const maxCount = Math.max(1, ...connectedGuardrailActivity.map(item => item.count));
+                                      const width = (guardrail.count / maxCount) * 100;
+                                      return (
+                                        <div
+                                          key={guardrail.item}
+                                          className={`agent-studio-guardrail-chart__item${selectedGuardrailName === guardrail.item ? ' is-selected' : ''}`}
+                                        >
+                                          <small title={guardrail.item}>{guardrail.item}</small>
+                                          <button
+                                            type="button"
+                                            className="agent-studio-guardrail-chart__plot"
+                                            aria-label={`${guardrail.item}: ${guardrail.count} trigger${guardrail.count === 1 ? '' : 's'}`}
+                                            aria-pressed={selectedGuardrailName === guardrail.item}
+                                            onClick={() => {
+                                              const nextGuardrail = selectedGuardrailName === guardrail.item
+                                                ? null
+                                                : guardrail.item;
+                                              setSelectedGuardrailActivity(nextGuardrail);
+                                              if (usesEagleGreenShowcaseMetrics) {
+                                                setSelectedOverviewIntervention(nextGuardrail ? 'guardrail' : null);
+                                              }
+                                            }}
+                                          >
+                                            <span>{guardrail.count}</span>
+                                            <i style={{ width: `${width}%` }} />
+                                          </button>
+                                        </div>
+                                      );
+                                    })}
+                                  </div>
+                                ) : (
+                                  <p className="agent-studio-connected-chart__empty">Configure a guardrail to see activity.</p>
+                                )}
+                              </>
+                            )}
+                          </section>
+                        );
+                      })}
+                    </div>
+
+                    {usesEagleGreenShowcaseMetrics ? (
+                      (showSelectedGuardrailDecision || showSelectedActionControlDecision)
+                      && (
+                        <div
+                          id={showSelectedActionControlDecision
+                            ? 'agent-studio-action-control-decision-banner'
+                            : undefined}
                         >
-                          <Badge variant="default" className="agent-studio-service-badge agent-studio-service-badge--guardrail">
-                            +{summary.guardrails.length - 4} more
-                          </Badge>
+                          <Banner
+                            type={showSelectedGuardrailDecision ? 'warning' : 'info'}
+                            icon={showSelectedGuardrailDecision ? 'shield' : 'automation'}
+                            className="agent-studio-operational-event-banner agent-studio-connected-event-banner"
+                            title={showSelectedGuardrailDecision
+                              ? 'VIP event details protected'
+                              : actionControlSpotlightUnlocked
+                                ? 'Large event transfer unlocked'
+                                : 'Standard path redirected'}
+                            subtitle={!showSelectedGuardrailDecision ? (
+                              <>
+                                <span className="agent-studio-operational-event-meta">
+                                  {actionControlSpotlightDecision?.sessionId} · {actionControlSpotlightDecision?.timestamp} · {actionControlSpotlightDecision?.timing === 'post_tool'
+                                    ? `Evaluated after ${actionControlSpotlightDecision.actionName}`
+                                    : `Evaluated before ${actionControlSpotlightDecision?.actionName}`}
+                                </span>
+                                <span>
+                                  {actionControlSpotlightDecision?.timing === 'post_tool'
+                                    && `${actionControlSpotlightDecision.actionName} completed. `}
+                                  {actionControlSpotlightUnlocked
+                                    ? `${actionControlSpotlightUnlockedName} was unlocked`
+                                    : actionControlSpotlightDecision?.toolExecuted
+                                      ? `${actionControlSpotlightDecision?.actionName} continued`
+                                      : `${actionControlSpotlightDecision?.actionName} was skipped`}
+                                  {actionControlSpotlightEvidence
+                                    ? ` after ${actionControlSpotlightEvidence.field} ${Number(actionControlSpotlightEvidence.actual).toLocaleString('en-US')} exceeded ${Number(actionControlSpotlightEvidence.expected).toLocaleString('en-US')}.`
+                                    : ' after the configured control matched.'}
+                                  {actionControlSpotlightDecision?.timing === 'post_tool'
+                                    && actionControlSpotlightDecision.matched
+                                    && ' The standard automated path stopped.'}
+                                  {!actionControlSpotlightUnlocked && ' No gated action was unlocked.'}
+                                </span>
+                              </>
+                            ) : (
+                              <>
+                                <span className="agent-studio-operational-event-meta">SES-GT-1045 · 9:47 AM · Custom guardrail blocked response</span>
+                                <span>No guest, schedule, or access information was shared with the unverified caller.</span>
+                              </>
+                            )}
+                            actions={[{
+                              label: 'View session →',
+                              onClick: () => navigate(
+                                showSelectedGuardrailDecision
+                                  ? eagleGuardrailSessionPath
+                                  : eagleActionControlSessionPath,
+                              ),
+                              variant: 'outline',
+                            }]}
+                            dismissable={false}
+                          />
+                        </div>
+                      )
+                    ) : selectedGuardrail && selectedGuardrail.count > 0 ? (
+                      <Banner
+                        type="success"
+                        icon="shield"
+                        className="agent-studio-operational-event-banner agent-studio-connected-event-banner"
+                        title={operationalEvent.eventTitle}
+                        subtitle={(
+                          <>
+                            <span className="agent-studio-operational-event-meta">{operationalEvent.eventMeta}</span>
+                            <span>{operationalEvent.eventDescription}</span>
+                          </>
+                        )}
+                        actions={[{
+                          label: 'View session →',
+                          onClick: () => navigate(operationalSessionPath),
+                          variant: 'outline',
+                        }]}
+                        dismissable={false}
+                      />
+                    ) : null}
+
+                    {SHOW_CONNECTED_SUGGESTIONS && (
+                    <section className="agent-studio-connected-insights" aria-labelledby="connected-insights-title">
+                      <div className="agent-studio-connected-insights__heading">
+                        <span className="agent-studio-card-heading__icon agent-studio-connected-insights__bulb" aria-hidden="true">
+                          <svg viewBox="0 0 20 20" fill="none">
+                            <path d="M10 2.25a5.75 5.75 0 0 0-3.55 10.27c.7.55 1.05 1.3 1.05 2.23h5c0-.93.35-1.68 1.05-2.23A5.75 5.75 0 0 0 10 2.25Z" />
+                            <path d="M7.75 16.25h4.5M8.5 18h3M8.25 9.25 10 11l1.75-1.75M10 11v3.75" />
+                          </svg>
                         </span>
-                      </Tooltip>
+                        <div>
+                          <h3 id="connected-insights-title">Suggestions</h3>
+                          <p>Signals worth checking before the next configuration change</p>
+                        </div>
+                      </div>
+                      <div className="agent-studio-connected-insights__list">
+                        <button type="button" onClick={() => goToSection('Action')}>
+                          <span className="agent-studio-connected-insights__status">
+                            <Icon name="tools" weight="bold" size="sm" />
+                          </span>
+                          <span>
+                            <strong>
+                              {connectedActionPerformance.length > 0
+                                ? 'Keep action success above target'
+                                : 'Connect an action'}
+                            </strong>
+                            <small>
+                              {connectedActionPerformance.length > 0
+                                ? `All ${connectedActionPerformance.length} connected actions are at or above the 95% target.`
+                                : 'Add an action to track success and availability.'}
+                            </small>
+                          </span>
+                          <Icon name="arrow-right" weight="bold" size="sm" />
+                        </button>
+                        <button type="button" onClick={() => goToSection('Knowledge')}>
+                          <span className="agent-studio-connected-insights__status">
+                            <KnowledgeBookIcon size={16} />
+                          </span>
+                          <span>
+                            <strong>
+                              {connectedCapabilityCount > 0 ? 'Maintain healthy coverage' : 'Connect knowledge'}
+                            </strong>
+                            <small>
+                              {connectedCapabilityCount > 0
+                                ? `All ${connectedCapabilityCount} resources are connected with no availability issues.`
+                                : 'Add a knowledge source to start measuring coverage.'}
+                            </small>
+                          </span>
+                          <Icon name="arrow-right" weight="bold" size="sm" />
+                        </button>
+                      </div>
+                    </section>
                     )}
                   </div>
-                </div>
-              )}
+                ) : (
+                  <div className="agent-studio-connected-columns">
+                  {([
+                    [
+                      {
+                        label: 'Knowledge',
+                        empty: 'Not connected',
+                        chips: configuredKnowledge.map(item => ({ item, type: 'knowledge' as ConfigurationCategory })),
+                      },
+                      {
+                        label: 'AI memory',
+                        empty: 'Not configured',
+                        chips: configuredMemory.map(item => ({ item, type: 'memory' as ConfigurationCategory })),
+                      },
+                    ],
+                    [
+                      {
+                        label: 'Orchestration and actions',
+                        empty: 'Not connected',
+                        showActionMetric: true,
+                        chips: [
+                          ...configuredActions.map(item => ({ item, type: 'action' as ConfigurationCategory })),
+                          ...configuredHandoff.map(item => ({ item, type: 'orchestration' as ConfigurationCategory })),
+                        ],
+                      },
+                    ],
+                    [
+                      {
+                        label: 'Security',
+                        empty: 'Not configured',
+                        showGuardrailCount: true,
+                        chips: configuredSecurity.map(item => ({ item, type: 'guardrail' as ConfigurationCategory })),
+                      },
+                    ],
+                  ]).map((column, columnIndex) => (
+                    <div key={columnIndex} className="agent-studio-connected-column">
+                      {column.map(group => (
+                        <div key={group.label} className="agent-studio-connected-group">
+                          <strong>{group.label}</strong>
+                          <div className="agent-studio-chip-group" aria-label={`Connected ${group.label.toLowerCase()}`}>
+                            {group.chips.length > 0
+                              ? group.chips.map(chip => {
+                                  const actionMetric = 'showActionMetric' in group && group.showActionMetric
+                                    ? getCiscoLiveActionMetric(chip.item)
+                                    : null;
+                                  const triggerCount = 'showGuardrailCount' in group && group.showGuardrailCount
+                                    ? getCiscoLiveGuardrailTriggerCount(chip.item, agent.id)
+                                    : 0;
+                                  return (
+                                    <Badge key={`${group.label}-${chip.item}`} variant="default" className={`agent-studio-service-badge agent-studio-service-badge--${chip.type}`}>
+                                      <ConfigurationCategoryIcon type={chip.type} />
+                                      <span>{chip.item}</span>
+                                      {actionMetric ? (
+                                        <span
+                                          className={`agent-studio-chip-metric${actionMetric.isPositive ? ' is-positive' : ' is-negative'}`}
+                                          title={`Action success rate ${actionMetric.rate}`}
+                                        >
+                                          {actionMetric.rate}
+                                          <Icon name={actionMetric.isPositive ? 'trending' : 'trending-down'} weight="regular" size="xs" />
+                                        </span>
+                                      ) : triggerCount > 0 ? (
+                                        <span
+                                          className="agent-studio-chip-count"
+                                          title={`Triggered ${triggerCount} time${triggerCount === 1 ? '' : 's'}`}
+                                        >
+                                          {triggerCount}
+                                        </span>
+                                      ) : (
+                                        <span className="agent-studio-chip-health-dot" title="Healthy connection" />
+                                      )}
+                                    </Badge>
+                                  );
+                                })
+                              : <span className="agent-studio-connected-empty">{group.empty}</span>}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  ))}
+                  </div>
+                )}
             </CardBody>
           </Card>
+          ) : cardId === 'operational' && showOperationalStatus ? (
+            <Card
+              key={cardId}
+              className={[
+                'agent-studio-card agent-studio-card--summary agent-studio-card--operational',
+                'agent-studio-overview-card agent-studio-overview-tile',
+                draggedOverviewTile?.group === 'cards' && draggedOverviewTile.id === cardId
+                  ? 'is-dragging'
+                  : '',
+                overviewDropTarget?.group === 'cards' && overviewDropTarget.id === cardId
+                  ? 'is-drop-target'
+                  : '',
+              ].filter(Boolean).join(' ')}
+              draggable
+              onDragStart={event => handleOverviewTileDragStart(event, 'cards', cardId)}
+              onDragOver={event => handleOverviewTileDragOver(event, 'cards', cardId)}
+              onDrop={event => handleOverviewTileDrop(event, 'cards', cardId)}
+              onDragEnd={handleOverviewTileDragEnd}
+            >
+              <button
+                type="button"
+                className="agent-studio-overview-card__drag-handle"
+                aria-label={`Reorder Operational status. Position ${index + 1} of ${overviewCardOrder.length}`}
+                title="Drag to reorder. Use arrow keys to move this card."
+                onKeyDown={event => handleOverviewTileKeyDown(event, 'cards', cardId)}
+              >
+                <Icon name="dragger-vertical" weight="bold" size="sm" />
+              </button>
+              <CardHeader>
+                <div className="agent-studio-card-heading">
+                  <span className="agent-studio-card-heading__icon">
+                    <Icon name="multiline-chart" weight="bold" size="sm" />
+                  </span>
+                  <span>
+                    <strong>Operational status</strong>
+                    <small>Published version and runtime availability</small>
+                  </span>
+                </div>
+                <div className="agent-studio-operational-toolbar" role="group" aria-label="Operational tools">
+                  <Button variant="secondary" size="sm" onClick={() => navigate(observabilityPath)}>
+                    <Icon name="multiline-chart" weight="bold" size="sm" />
+                    View observability dashboard
+                  </Button>
+                </div>
+              </CardHeader>
+              <CardBody className="agent-studio-operational-body">
+                <div
+                  className="agent-studio-operational-overview"
+                  aria-label="Aggregate health and observability metrics"
+                >
+                  <div className="agent-studio-health-gauge">
+                    <div
+                      className="agent-studio-health-gauge__dial"
+                      role="img"
+                      aria-label={`Aggregate health ${OPERATIONAL_HEALTH.score} percent`}
+                    >
+                      <svg viewBox="0 0 208 108" aria-hidden="true">
+                        <path
+                          className="agent-studio-health-gauge__track"
+                          d="M 12 104 A 92 92 0 0 1 196 104"
+                          fill="none"
+                          pathLength="100"
+                          strokeWidth="5"
+                        />
+                        <path
+                          className="agent-studio-health-gauge__value-arc"
+                          d="M 12 104 A 92 92 0 0 1 196 104"
+                          fill="none"
+                          pathLength="100"
+                          strokeWidth="5"
+                          strokeDasharray={`${OPERATIONAL_HEALTH.score} 100`}
+                        />
+                      </svg>
+                      <div className="agent-studio-health-gauge__reading">
+                        <span className="agent-studio-health-gauge__reading-inner">
+                          <strong>{OPERATIONAL_HEALTH.score}</strong>
+                          <span className="agent-studio-health-gauge__pct">%</span>
+                        </span>
+                      </div>
+                    </div>
+                    <p className="agent-studio-health-gauge__label">Aggregate health</p>
+                    <dl className="agent-studio-health-gauge__stats">
+                      <div>
+                        <dt>Target</dt>
+                        <dd>{OPERATIONAL_HEALTH.target}%</dd>
+                      </div>
+                      <div>
+                        <dt>Gap</dt>
+                        <dd className="is-positive">+{OPERATIONAL_HEALTH_GAP}</dd>
+                      </div>
+                      <div>
+                        <dt>Signals</dt>
+                        <dd>{OPERATIONAL_HEALTH.signals}</dd>
+                      </div>
+                    </dl>
+                  </div>
+
+                  <div className="agent-studio-operational-metrics-table-wrap">
+                    <table className="agent-studio-operational-metrics-table">
+                      <thead>
+                        <tr>
+                          <th scope="col">Metric</th>
+                          <th scope="col">Value</th>
+                          <th scope="col">Change</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {OPERATIONAL_HEALTH_METRICS.map(metric => (
+                          <tr key={metric.id}>
+                            <th scope="row">
+                              <span className="agent-studio-metric-name">
+                                <span className="agent-studio-metric-dot" aria-hidden="true" />
+                                {metric.label}
+                              </span>
+                            </th>
+                            <td className="agent-studio-metric-value">{metric.value}</td>
+                            <td
+                              className={`agent-studio-metric-change${metric.change.startsWith('+') ? ' is-positive' : ''}`}
+                            >
+                              {metric.change}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+                <section
+                  className="agent-studio-session-events"
+                  aria-labelledby="agent-studio-session-events-title"
+                >
+                  <div className="agent-studio-session-events__header">
+                    <div>
+                      <strong id="agent-studio-session-events-title">Session events</strong>
+                      <span>{operationalTimeRangeLabel}</span>
+                    </div>
+                    <div className="agent-studio-session-events__actions">
+                      <Button
+                        variant="secondary"
+                        size="sm"
+                        onClick={() => navigate(`${sessionsPath}?source=observability`)}
+                      >
+                        <Icon name="transcript" weight="bold" size="sm" />
+                        Open Sessions
+                      </Button>
+                    </div>
+                  </div>
+                  <Table className="agent-studio-session-events__table">
+                    <TableHead>
+                      <TableRow>
+                        <TableHeader>Channel</TableHeader>
+                        <TableHeader>Session ID</TableHeader>
+                        <TableHeader>Customer</TableHeader>
+                        <TableHeader>Messages</TableHeader>
+                        <TableHeader>Updated</TableHeader>
+                        <TableHeader>Outcome</TableHeader>
+                        <TableHeader>Event</TableHeader>
+                      </TableRow>
+                    </TableHead>
+                    <TableBody
+                      empty={operationalSessions.length === 0}
+                      emptyTitle="No sessions in this time range"
+                      emptyDescription="Choose a longer time range to see recent sessions."
+                      colSpan={7}
+                    >
+                      {operationalSessions.map(session => (
+                        <TableRow
+                          key={session.id}
+                          onClick={() => navigate(
+                            `${sessionsPath}?sessionId=${encodeURIComponent(session.id)}&source=observability`,
+                          )}
+                        >
+                          <TableCell>
+                            <span className="agent-session-channel">
+                              <Icon name={session.channel === 'Voice' ? 'phone' : 'chat'} weight="regular" size="sm" />
+                              {session.channel}
+                            </span>
+                          </TableCell>
+                          <TableCell><strong>{session.id}</strong><small>{session.topic}</small></TableCell>
+                          <TableCell>{session.customer}</TableCell>
+                          <TableCell>{session.messages}</TableCell>
+                          <TableCell>{session.updated}</TableCell>
+                          <TableCell>
+                            <Badge variant={sessionOutcomeVariant(session.outcome)}>{session.outcome}</Badge>
+                          </TableCell>
+                          <TableCell>
+                            <span className="agent-session-metadata-icons">
+                              {session.actionControlTriggered && (
+                                <Badge
+                                  variant="info"
+                                  className="agent-session-metadata-icons__action-control"
+                                >
+                                  <Icon name="automation" weight="bold" size="sm" />
+                                  Action control
+                                </Badge>
+                              )}
+                              {session.guardrailTriggered && (
+                                <Badge variant="warning">
+                                  <Icon name="shield" weight="bold" size="sm" />
+                                  Guardrail
+                                </Badge>
+                              )}
+                              {session.transferred && (
+                                <span title="Human transfer">
+                                  <Icon name="headset" weight="bold" size="sm" />
+                                </span>
+                              )}
+                            </span>
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </section>
+              </CardBody>
+            </Card>
+          ) : null)}
         </div>
       </section>
 
@@ -1050,151 +2361,33 @@ export default function AgentStudioLanding() {
         </Modal>
       )}
 
-      {showOperationalStatus && (
-        <>
-      <section className="agent-studio-observability" aria-labelledby="agent-studio-observability-title">
-        <div className="agent-studio-observability__header">
-          <div>
-            <h2 id="agent-studio-observability-title">Operational status</h2>
-            <p>Review outcomes, fulfilment, escalations, and guardrail activity before changing the agent.</p>
+      {previewWidgetOpen && (
+        <div
+          className="agent-studio-preview-widget"
+          role="dialog"
+          aria-label={`Preview ${agent.name}`}
+          aria-labelledby="agent-studio-preview-widget-title"
+        >
+          <div className="agent-studio-preview-widget__header">
+            <div className="agent-studio-preview-widget__heading">
+              <strong id="agent-studio-preview-widget-title">Preview</strong>
+              <small>Try what is already configured</small>
+            </div>
+            <div className="agent-studio-preview-widget__header-actions">
+              {previewTranscriptButton}
+              <button
+                type="button"
+                className="agent-studio-preview-widget__close"
+                onClick={() => setPreviewWidgetOpen(false)}
+                aria-label="Close preview"
+              >
+                <Icon name="cancel" weight="bold" size="sm" />
+              </button>
+            </div>
           </div>
-          <div className="agent-studio-observability__actions">
-            <Badge variant="default">{observability.timeframe}</Badge>
-            <Button variant="secondary" size="sm" onClick={() => navigate(`/agents/${agent.id}/sessions`)}>
-              <Icon name="transcript" weight="bold" size="sm" />
-              Open sessions
-            </Button>
-            <Button variant="secondary" size="sm" onClick={openObservabilityDashboard}>
-              <Icon name="multiline-chart" weight="bold" size="sm" />
-              View observability dashboard
-            </Button>
-          </div>
+          {previewExperience}
         </div>
-
-        <div className="agent-studio-observability__metrics">
-          {observabilityKpis.map((metric) => (
-            <KPICard
-              key={metric.id}
-              data={metric}
-              isActive={activeObservabilityKpiId === metric.id}
-              onClick={() => {
-                setActiveObservabilityKpiId(currentId => currentId === metric.id ? null : metric.id);
-              }}
-              ariaExpanded={activeObservabilityKpiId === metric.id}
-              ariaControls={activeObservabilityKpiId === metric.id ? activeObservabilityChartId : undefined}
-            />
-          ))}
-        </div>
-
-        {activeObservabilityKpi && activeObservabilityChartId && (
-          <div
-            id={activeObservabilityChartId}
-            className="agent-studio-observability__expanded-chart"
-            role="region"
-            aria-label={`${activeObservabilityKpi.heading} trend details`}
-          >
-            <ThemeModeProvider>
-              <KPIChart
-                key={activeObservabilityKpi.id}
-                heading={activeObservabilityKpi.heading}
-                description={activeObservabilityKpi.description}
-                chartType={activeObservabilityKpi.chartType}
-                dateRange="24h"
-                sparklineData={activeObservabilityKpi.sparklineData}
-                unit={activeObservabilityKpi.unit}
-                value={activeObservabilityKpi.value}
-                {...kpiExpandedChartAxisProps(activeObservabilityKpi)}
-                curveType={activeObservabilityKpi.curveType}
-              />
-            </ThemeModeProvider>
-          </div>
-        )}
-
-        {agent.id === 'golftop-vip-reservations' && (
-          <Banner
-            type="success"
-            icon="shield"
-            className="agent-studio-observability__event-banner"
-            title={observability.eventTitle}
-            subtitle={(
-              <>
-                <span className="agent-studio-observability__event-meta">
-                  {observability.eventMeta}
-                </span>
-                <span>{observability.eventDescription}</span>
-              </>
-            )}
-            actions={[{
-              label: 'View session →',
-              onClick: () => navigate(observabilitySessionLink),
-              variant: 'outline',
-            }]}
-            dismissable={false}
-          />
-        )}
-      </section>
-
-      <Divider variant="gradient" aria-hidden="true" />
-        </>
       )}
-
-      <div className="agent-studio-next__header">
-        <div className="agent-studio-section-heading">
-          <h1 id="agent-studio-next-title">Make the agent smarter</h1>
-          <p>Pick one plain-language step. Each one opens the detailed configuration only when you choose it.</p>
-        </div>
-      </div>
-
-      <div className="agent-studio-step-grid">
-        {phoneNumberDeferred && (
-          <Card clickable className="agent-studio-step-card" onClick={() => openGuidedSetup('channels')}>
-            <CardHeader>
-              <div className="agent-studio-card-heading">
-                <span className="agent-studio-card-heading__icon agent-studio-card-heading__icon--muted">
-                  <Icon className="agent-studio-step-icon" name="phone" weight="regular" size="md" />
-                </span>
-                <span>
-                  <strong>Connect phone number</strong>
-                  <small>Make the agent live</small>
-                </span>
-              </div>
-            </CardHeader>
-            <CardBody>
-              <div className="agent-studio-step-card__content">
-                <p>Choose an available voice number before publishing so customers can call this agent.</p>
-                <span className="agent-studio-step-card__link">
-                  Open Channel
-                  <Icon name="next" weight="bold" size="xs" />
-                </span>
-              </div>
-            </CardBody>
-          </Card>
-        )}
-        {studioSteps.map(step => (
-          <Card key={step.id} clickable className="agent-studio-step-card" onClick={() => openGuidedSetup(step.guidedStep)}>
-            <CardHeader>
-              <div className="agent-studio-card-heading">
-                <span className="agent-studio-card-heading__icon agent-studio-card-heading__icon--muted">
-                  <Icon className="agent-studio-step-icon" name={step.icon} weight="regular" size="md" />
-                </span>
-                <span>
-                  <strong>{step.title}</strong>
-                  <small>{step.section}</small>
-                </span>
-              </div>
-            </CardHeader>
-            <CardBody>
-              <div className="agent-studio-step-card__content">
-                <p>{step.description}</p>
-                <span className="agent-studio-step-card__link">
-                  Open {step.section}
-                  <Icon name="next" weight="bold" size="xs" />
-                </span>
-              </div>
-            </CardBody>
-          </Card>
-        ))}
-      </div>
     </div>
   );
 }

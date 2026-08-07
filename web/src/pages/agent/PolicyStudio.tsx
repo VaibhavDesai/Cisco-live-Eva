@@ -32,6 +32,7 @@ export interface PolicyStudioResult {
   description: string;
   overview: PolicyOverview;
   publishMode: PublishMode;
+  policyText?: string;
 }
 
 export interface PolicyVersionOption {

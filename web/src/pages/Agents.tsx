@@ -1,4 +1,5 @@
 import { useDesignVariation } from '../contexts/DesignVariationContext';
+import { useApp } from '../contexts/AppContext';
 import EvaChatExperience from '../features/eva/EvaChatExperience';
 import EvaAgentsTable from '../features/eva/EvaAgentsTable';
 import EvaCanvasOverlay from '../features/eva/EvaCanvasOverlay';
@@ -6,13 +7,18 @@ import EvaFormBuilder from '../features/eva/EvaFormBuilder';
 
 export default function Agents() {
   const { variation } = useDesignVariation();
+  const { agents, agentDrafts } = useApp();
+  const hasFamilyAgents = Object.keys(agentDrafts).length > 0
+    || Object.values(agents).some(agent => Boolean(agent.family));
 
-  /* The chat-based experience owns its orchestration canvas so switching
-     routes replaces only the working zone and keeps the conversation rail
-     mounted. Legacy table/form variations still use the standalone overlay. */
+  /* Preserve the established variation surfaces. The three-family
+     creation model is introduced inside the canonical dashboard chat,
+     rather than replacing this page with another shell. */
   let variationView;
   if (variation === 'dashboard') {
-    variationView = <EvaAgentsTable />;
+    variationView = hasFamilyAgents
+      ? <EvaAgentsTable />
+      : <EvaChatExperience voiceTranscribePath="/elevenlabs/transcribe" />;
   } else if (variation === 'form-bases') {
     variationView = <EvaFormBuilder />;
   } else {

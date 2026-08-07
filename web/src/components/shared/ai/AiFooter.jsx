@@ -80,8 +80,6 @@ function AiFooter({
   const audioAnalyserRef = useRef(null)
   const voiceMeterFrameRef = useRef(null)
   const voiceMeterRef = useRef(null)
-  const voiceMeterLevelRef = useRef(0)
-  const voiceBarLevelsRef = useRef([0.18, 0.18, 0.18, 0.18, 0.18])
   const recorderChunksRef = useRef([])
   const recorderRestartTimerRef = useRef(null)
   const recordingSessionActiveRef = useRef(false)
@@ -210,18 +208,8 @@ function AiFooter({
     audioAnalyserRef.current = analyser
 
     const samples = new Uint8Array(analyser.fftSize)
-    const seeds = [0.31, 2.17, 4.03, 5.89, 7.41]
-
-    voiceMeterLevelRef.current = 0
-    voiceBarLevelsRef.current = [0.18, 0.18, 0.18, 0.18, 0.18]
-
-    const pseudoRandomWave = (timestamp, index) => {
-      const time = timestamp / 1000
-      const seed = seeds[index]
-      const primary = Math.sin(time * (6.7 + index * 0.71) + seed)
-      const secondary = Math.sin(time * (11.9 + index * 0.43) + seed * 2.3)
-      return (primary + secondary + 2) / 4
-    }
+    const ratios = [0.42, 0.72, 1, 0.76, 0.48]
+    const phases = [0.2, 1.7, 2.9, 4.4, 5.8]
 
     const tick = (timestamp) => {
       if (!recordingSessionActiveRef.current || !voiceMeterRef.current || audioAnalyserRef.current !== analyser) {
@@ -236,22 +224,11 @@ function AiFooter({
       }
 
       const rms = Math.sqrt(sum / samples.length)
-      const rawLevel = Math.min(1, Math.max(0, (rms - 0.01) * 7.8))
-      const previousLevel = voiceMeterLevelRef.current
-      const levelEase = rawLevel > previousLevel ? 0.42 : 0.2
-      const outputLevel = previousLevel + (rawLevel - previousLevel) * levelEase
-      voiceMeterLevelRef.current = outputLevel
-      voiceMeterRef.current.style.setProperty('--voice-output-level', outputLevel.toFixed(3))
+      const level = Math.min(1, rms * 5.5)
 
-      voiceBarLevelsRef.current.forEach((previousBarLevel, index) => {
-        const wave = pseudoRandomWave(timestamp, index)
-        const spread = 0.38 + wave * 0.88
-        const listeningPulse = 0.08 + wave * 0.22
-        const quietLift = outputLevel * (0.04 + wave * 0.08)
-        const target = Math.max(0.18, Math.min(1, 0.12 + listeningPulse + quietLift + outputLevel * spread))
-        const barEase = target > previousBarLevel ? 0.52 : 0.28
-        const barLevel = previousBarLevel + (target - previousBarLevel) * barEase
-        voiceBarLevelsRef.current[index] = barLevel
+      ratios.forEach((ratio, index) => {
+        const wobble = 0.84 + Math.sin(timestamp / (135 + index * 27) + phases[index]) * 0.16
+        const barLevel = Math.max(0.18, Math.min(1, level * ratio * wobble))
         voiceMeterRef.current.style.setProperty(`--voice-bar-${index}`, barLevel.toFixed(3))
       })
 
@@ -360,6 +337,7 @@ function AiFooter({
     audioStreamRef.current = stream
     recordingSessionActiveRef.current = true
     recorderChunksRef.current = []
+    startVoiceLevelMeter(stream)
 
     const mimeType = pickRecorderMimeType()
 
@@ -464,11 +442,6 @@ function AiFooter({
     }
     setIsRecording(true)
     onVoiceToggle?.(true)
-    window.requestAnimationFrame(() => {
-      if (recordingSessionActiveRef.current && audioStreamRef.current) {
-        startVoiceLevelMeter(audioStreamRef.current)
-      }
-    })
     return true
   }, [
     appendTranscript,
@@ -616,16 +589,6 @@ function AiFooter({
     .filter(Boolean)
     .join(' ')
 
-  const micButtonContent = showTranscribing ? (
-    <span className="ai-footer__voice-spinner" aria-hidden="true">
-      <svg viewBox="0 0 24 24" focusable="false">
-        <circle cx="12" cy="12" r="8" />
-      </svg>
-    </span>
-  ) : (
-    <Icon name={micIcon} size={16} />
-  )
-
   return (
     <div className={`ai-footer ${className}`} style={fillContainerStyle}>
       {suggestions.length > 0 && !processing && (
@@ -710,7 +673,7 @@ function AiFooter({
                         disabled={disabled || (isTranscribing && !isRecording)}
                         onClick={handleMicClick}
                       >
-                        {micButtonContent}
+                        <Icon name={micIcon} size={16} />
                       </button>
                     </>
                   )}

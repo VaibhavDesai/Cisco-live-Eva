@@ -1,3 +1,13 @@
+import {
+  createDefaultGalileoActionControlState,
+  evaluateGalileoActionInvocation,
+  GALILEO_ACTION_IDS,
+  readGalileoActionControlState,
+  type GalileoActionControlBehavior,
+  type GalileoActionControlEvaluationResult,
+  type GalileoActionControlTiming,
+} from '../pages/agent/ActionControls';
+
 export const CISCO_LIVE_PRIMARY_AGENT_ID = 'golftop-vip-reservations';
 export const CISCO_LIVE_PRIMARY_AGENT_NAME = 'EAGLE GREEN VIP Reservations';
 
@@ -5,6 +15,8 @@ export interface CiscoLiveGuardrailDefinition {
   id: string;
   name: string;
   description: string;
+  action: 'monitor' | 'steer' | 'block';
+  direction: 'prompt' | 'response' | 'both';
   createdBy: string;
   createdAt: string;
   overview: {
@@ -14,26 +26,33 @@ export interface CiscoLiveGuardrailDefinition {
   };
 }
 
-export const CISCO_LIVE_LARGE_RESERVATION_GUARDRAIL: CiscoLiveGuardrailDefinition = {
-  id: 'custom-large-reservation-approval',
-  name: 'Large reservation approval',
-  description: 'Requires human approval before the agent confirms reservations for more than 100 guests or more than 20 bays.',
+export const CISCO_LIVE_VIP_EVENT_CONFIDENTIALITY_GUARDRAIL: CiscoLiveGuardrailDefinition = {
+  id: 'custom-vip-event-confidentiality',
+  name: 'VIP event confidentiality',
+  description: 'Prevents the agent from confirming or sharing protected guest attendance, schedules, locations, access routes, security arrangements, or reservation details with unverified or unauthorized requesters.',
+  action: 'block',
+  direction: 'both',
   createdBy: 'Vinod Muthukrishnan',
   createdAt: 'Jul 13, 2026',
   overview: {
     blocked: [
-      { text: 'Automatically confirm a reservation for more than 100 guests' },
-      { text: 'Override venue capacity, staffing, or fire-code limits' },
-      { text: 'Split a large request into smaller bookings to bypass approval' },
+      { text: 'Confirm or deny whether a protected guest is attending an event' },
+      { text: 'Share a guest list or identify protected guests' },
+      { text: 'Reveal exact arrival or departure times, private locations, entrances, access routes, or security arrangements' },
+      { text: 'Share reservation details with an unverified or unauthorized requester' },
+      { text: 'Help a requester reconstruct protected event details across multiple questions' },
     ],
     allowed: [
-      { text: 'Check availability and collect event requirements' },
-      { text: 'Prepare a transcript and summary for the event concierge' },
-      { text: 'Transfer the verified caller to an authorized approver' },
+      { text: 'Share public venue and event information' },
+      { text: 'Share authorized reservation details with a verified organizer within the approved scope' },
+      { text: 'Give verified vendors only the task-specific logistics required for their work' },
+      { text: 'Offer secure verification or contact the organizer using the approved number on file' },
     ],
     edgeCases: [
-      { text: 'VIP requests at or near the approval threshold' },
-      { text: 'Existing contracts that include preapproved large events' },
+      { text: 'If public event information is mixed with a protected guest request, answer only the public portion' },
+      { text: 'If a verified vendor asks beyond the assigned task, share only approved logistics and redirect them to the organizer' },
+      { text: 'Treat yes-or-no questions that confirm attendance as protected disclosure' },
+      { text: 'Review related requests across the conversation before deciding whether a response could reveal protected details' },
     ],
   },
 };
@@ -42,6 +61,8 @@ export const CISCO_LIVE_PAYMENT_DATA_GUARDRAIL: CiscoLiveGuardrailDefinition = {
   id: 'custom-payment-data-protection',
   name: 'Payment data protection',
   description: 'Stops the agent from collecting full card details in conversation and sends the caller to the approved secure payment flow.',
+  action: 'block',
+  direction: 'both',
   createdBy: 'Kristin Gioberto',
   createdAt: 'Jul 12, 2026',
   overview: {
@@ -60,7 +81,7 @@ export const CISCO_LIVE_PAYMENT_DATA_GUARDRAIL: CiscoLiveGuardrailDefinition = {
 };
 
 export const CISCO_LIVE_PRIMARY_GUARDRAILS = [
-  CISCO_LIVE_LARGE_RESERVATION_GUARDRAIL,
+  CISCO_LIVE_VIP_EVENT_CONFIDENTIALITY_GUARDRAIL,
   CISCO_LIVE_PAYMENT_DATA_GUARDRAIL,
 ];
 
@@ -68,6 +89,8 @@ export const CISCO_LIVE_EVENT_OPERATIONS_GUARDRAIL: CiscoLiveGuardrailDefinition
   id: 'custom-venue-capacity-compliance',
   name: 'Venue capacity and compliance approval',
   description: 'Requires confirmed capacity, staffing, catering, and facilities approval before the agent commits resources for a large event.',
+  action: 'block',
+  direction: 'both',
   createdBy: 'Amit Barave',
   createdAt: 'Jul 13, 2026',
   overview: {
@@ -92,6 +115,8 @@ export const CISCO_LIVE_SERVICENOW_GUARDRAIL: CiscoLiveGuardrailDefinition = {
   id: 'custom-authorized-fulfillment-routing',
   name: 'Authorized fulfillment routing',
   description: 'Limits ServiceNow creation and routing to approved event work, preserves ownership, and escalates fulfillment risk without changing approvals.',
+  action: 'block',
+  direction: 'both',
   createdBy: 'Vinod Muthukrishnan',
   createdAt: 'Jul 12, 2026',
   overview: {
@@ -119,14 +144,14 @@ export const CISCO_LIVE_ALL_GUARDRAILS = [
 ];
 
 export const CISCO_LIVE_ACTION_CATALOG: Record<string, string> = {
-  'Check bay availability': 'Check live bay inventory for the requested Gofie location, date, party size, and duration.',
-  'Send secure payment link': 'Send the approved PCI-compliant payment link without collecting card data in the conversation.',
-  'Transfer to VIP event concierge': 'Transfer the verified caller with the transcript, customer context, and event summary attached.',
+  'Check Availability': 'Check live bay inventory for the requested Gofie location, date, party size, and duration.',
+  'Send payment link': 'Send the approved PCI-compliant payment link without collecting card data in the conversation.',
+  'Transfer to VIP team': 'Transfer an approved large-event request with the verified caller profile, transcript reference, customer context, and event summary attached.',
   'Check venue capacity': 'Evaluate bay capacity, guest thresholds, and facilities constraints for a proposed large event.',
   'Coordinate staffing': 'Coordinate staffing, catering, beverage, and facilities owners against the approved event plan.',
-  'Open fulfillment workstream': 'Create the shared cross-team fulfillment plan after required approvals are recorded.',
+  'Open workstream': 'Create the shared cross-team fulfillment plan after required approvals are recorded.',
   'Create ServiceNow ticket': 'Create a scoped ServiceNow work item with required event context and approval references.',
-  'Assign fulfillment team': 'Route approved work to the responsible Gofie fulfillment team and named owner.',
+  'Assign team': 'Route approved work to the responsible Gofie fulfillment team and named owner.',
   'Track SLA risk': 'Monitor due dates and notify the authorized owner when a fulfillment commitment is at risk.',
 };
 
@@ -203,20 +228,20 @@ export const CISCO_LIVE_AGENTS: CiscoLiveAgentDefinition[] = [
     messages: '9,462',
     avgResponse: '1.1s',
     meta: 'VIP reservations and secure human handoff • Last updated 2 hours ago',
-    knowledgeBases: ['Gofie locations and availability', 'VIP customer profiles', 'Event booking policy'],
+    knowledgeBases: ['Gofie locations', 'VIP profiles', 'Booking policy'],
     knowledgeSources: [
       {
-        name: 'Gofie locations and availability',
+        name: 'Gofie locations',
         description: 'Live bay inventory, venue hours, amenities, and reservation availability across Gofie locations.',
         sources: 38,
       },
       {
-        name: 'VIP customer profiles',
+        name: 'VIP profiles',
         description: 'Verified loyalty status, visit preferences, and approved personalization for Gofie VIP guests.',
         sources: 12,
       },
       {
-        name: 'Event booking policy',
+        name: 'Booking policy',
         description: 'Reservation thresholds, payment handling, approvals, and human handoff policy for large events.',
         sources: 21,
       },
@@ -241,7 +266,7 @@ export const CISCO_LIVE_AGENTS: CiscoLiveAgentDefinition[] = [
         name: 'Secure payment assistance',
         description: 'Consult the approved payment flow without exposing card data in the conversation.',
         collaboration: 'Consult Secure Payments',
-        actions: ['Send secure payment link'],
+        actions: ['Send payment link'],
         collaborator: {
           id: 'gofie-secure-payments',
           name: 'EAGLE GREEN Secure Payments',
@@ -255,7 +280,7 @@ export const CISCO_LIVE_AGENTS: CiscoLiveAgentDefinition[] = [
         name: 'VIP event handoff',
         description: 'Hand over the request with the customer profile, transcript, and booking context attached.',
         collaboration: 'Create event coordination tickets',
-        actions: ['Transfer to VIP event concierge'],
+        actions: ['Transfer to VIP team'],
         collaborator: {
           id: 'golftop-event-operations',
           agentId: 'golftop-event-operations',
@@ -266,7 +291,7 @@ export const CISCO_LIVE_AGENTS: CiscoLiveAgentDefinition[] = [
         },
       },
     ],
-    actions: ['Check bay availability', 'Send secure payment link', 'Transfer to VIP event concierge'],
+    actions: ['Check Availability', 'Send payment link', 'Transfer to VIP team'],
     goals: [
       'Recognize verified VIP callers and personalize the reservation experience',
       'Check live bay availability and complete eligible reservations',
@@ -276,7 +301,7 @@ export const CISCO_LIVE_AGENTS: CiscoLiveAgentDefinition[] = [
     securityRules: [
       'Verify identity before using a VIP customer profile',
       'Never collect or repeat full payment card details',
-      'Require human approval for more than 100 guests or more than 20 bays',
+      'Protect VIP guest, schedule, access, security, and reservation details from unverified requesters',
       'Preserve the conversation context during every human handoff',
     ],
     welcomeMessage: 'Welcome to Gofie. I can help with availability, VIP reservations, and secure payment updates. How can I help today?',
@@ -302,15 +327,15 @@ export const CISCO_LIVE_AGENTS: CiscoLiveAgentDefinition[] = [
     messages: '624',
     avgResponse: '1.6s',
     meta: 'Cross-team event orchestration • Last updated 4 hours ago',
-    knowledgeBases: ['Las Vegas venue capacity', 'Catering and staffing playbooks', 'Facilities compliance'],
+    knowledgeBases: ['Venue capacity', 'Catering & staffing', 'Facilities compliance'],
     knowledgeSources: [
       {
-        name: 'Las Vegas venue capacity',
+        name: 'Venue capacity',
         description: 'Bay layouts, guest thresholds, accessibility details, and live capacity for the Las Vegas venue.',
         sources: 17,
       },
       {
-        name: 'Catering and staffing playbooks',
+        name: 'Catering & staffing',
         description: 'Seafood catering, beverage inventory, staffing ratios, and team ownership for large events.',
         sources: 42,
       },
@@ -354,7 +379,7 @@ export const CISCO_LIVE_AGENTS: CiscoLiveAgentDefinition[] = [
         name: 'Facilities approval',
         description: 'Hand off capacity and safety exceptions to the responsible facilities approver.',
         collaboration: 'Hand over to facilities approver',
-        actions: ['Check venue capacity', 'Open fulfillment workstream'],
+        actions: ['Check venue capacity', 'Open workstream'],
         collaborator: {
           id: 'golftop-servicenow-coordinator',
           agentId: 'golftop-servicenow-coordinator',
@@ -365,7 +390,7 @@ export const CISCO_LIVE_AGENTS: CiscoLiveAgentDefinition[] = [
         },
       },
     ],
-    actions: ['Check venue capacity', 'Coordinate staffing', 'Open fulfillment workstream'],
+    actions: ['Check venue capacity', 'Coordinate staffing', 'Open workstream'],
     goals: [
       'Coordinate venue capacity, catering, beverage, staffing, and facilities work',
       'Collect every required approval before committing event resources',
@@ -402,20 +427,20 @@ export const CISCO_LIVE_AGENTS: CiscoLiveAgentDefinition[] = [
     messages: '1,108',
     avgResponse: '0.9s',
     meta: 'ServiceNow actions and fulfillment tracking • Last updated 5 hours ago',
-    knowledgeBases: ['ServiceNow fulfillment catalog', 'Gofie support teams', 'Event response SLAs'],
+    knowledgeBases: ['Fulfillment catalog', 'Support teams', 'Response SLAs'],
     knowledgeSources: [
       {
-        name: 'ServiceNow fulfillment catalog',
+        name: 'Fulfillment catalog',
         description: 'Approved ticket types, required fields, assignment groups, and fulfillment workflows.',
         sources: 54,
       },
       {
-        name: 'Gofie support teams',
+        name: 'Support teams',
         description: 'Ownership map for venue operations, facilities, catering, staffing, and event support.',
         sources: 24,
       },
       {
-        name: 'Event response SLAs',
+        name: 'Response SLAs',
         description: 'Response targets, escalation thresholds, and owner notification rules for event work.',
         sources: 16,
       },
@@ -455,7 +480,7 @@ export const CISCO_LIVE_AGENTS: CiscoLiveAgentDefinition[] = [
         name: 'Ownership routing',
         description: 'Consult the Gofie ownership map and route work to the responsible fulfillment team.',
         collaboration: 'Consult Gofie support ownership',
-        actions: ['Assign fulfillment team'],
+        actions: ['Assign team'],
         collaborator: {
           id: 'gofie-support-routing',
           name: 'EAGLE GREEN Support Routing',
@@ -479,7 +504,7 @@ export const CISCO_LIVE_AGENTS: CiscoLiveAgentDefinition[] = [
         },
       },
     ],
-    actions: ['Create ServiceNow ticket', 'Assign fulfillment team', 'Track SLA risk'],
+    actions: ['Create ServiceNow ticket', 'Assign team', 'Track SLA risk'],
     goals: [
       'Create complete ServiceNow work items without manual entry',
       'Route approved event work to the responsible fulfillment team',
@@ -533,10 +558,10 @@ const OBSERVABILITY_BY_AGENT: Record<string, CiscoLiveObservabilitySnapshot> = {
       { metricId: 'sec-policy-violation-guardrail-block-rate', value: '0.4', unit: '%', change: '-0.1%', isPositive: true, thresholdStatus: 'good' },
       { metricId: 'bi-autocsat-improvement', value: '5.00', unit: '%', change: '+0.03%', isPositive: true, thresholdStatus: 'good' },
     ],
-    eventLabel: 'Guardrail working as designed',
-    eventTitle: '1,000-person reservation routed to a human',
-    eventDescription: 'The large reservation approval guardrail stopped automated booking and transferred Kristin to another agent with the transcript and summary attached.',
-    eventMeta: 'Guardrail triggered • 9:42 AM',
+    eventLabel: 'Galileo action control',
+    eventTitle: 'Large event transfer unlocked',
+    eventDescription: 'Check Availability completed. Galileo matched the large-event threshold and unlocked Transfer to VIP team with the availability result and caller context attached.',
+    eventMeta: 'Evaluated after Check Availability • 9:42 AM',
     sessionId: 'SES-GT-1042',
   },
   'golftop-event-operations': {
@@ -574,7 +599,35 @@ export function getCiscoLiveObservability(agentId: string): CiscoLiveObservabili
 }
 
 export type CiscoLiveSessionOutcome = 'Resolved' | 'Transferred' | 'In progress';
-export type CiscoLiveSessionEventKind = 'customer' | 'agent' | 'system' | 'guardrail' | 'handoff';
+export type CiscoLiveSessionEventKind = 'customer' | 'agent' | 'system' | 'action_control' | 'guardrail' | 'handoff';
+
+export type CiscoLiveActionControlBehavior = GalileoActionControlBehavior;
+export type CiscoLiveActionControlTiming = GalileoActionControlTiming;
+export type CiscoLiveActionControlResult = 'observed' | 'steered' | 'denied' | 'not_matched';
+
+export interface CiscoLiveActionControlEvidence {
+  field: string;
+  operator: 'greater_than' | 'equals' | 'in';
+  expected: number | string | string[];
+  actual: number | string | string[];
+}
+
+export interface CiscoLiveActionControlDecision {
+  controlId: string;
+  controlTitle: string;
+  actionId: string;
+  actionName: string;
+  timing: CiscoLiveActionControlTiming;
+  behavior: CiscoLiveActionControlBehavior;
+  invoked: true;
+  matched: boolean;
+  evidence: CiscoLiveActionControlEvidence[];
+  result: CiscoLiveActionControlResult;
+  toolExecuted: boolean;
+  unlockedActionIds: string[];
+  unlockedActionNames: string[];
+  latencyMs: number;
+}
 
 export interface CiscoLiveSessionEvent {
   id: string;
@@ -584,6 +637,7 @@ export interface CiscoLiveSessionEvent {
   time: string;
   title?: string;
   detail?: string;
+  actionControl?: CiscoLiveActionControlDecision;
 }
 
 export interface CiscoLiveSession {
@@ -598,18 +652,157 @@ export interface CiscoLiveSession {
   duration: string;
   outcome: CiscoLiveSessionOutcome;
   guardrailTriggered: boolean;
+  actionControlTriggered?: boolean;
   transferred: boolean;
   summary: string;
   guardrail?: {
+    id: string;
     name: string;
     policy: string;
     detected: string;
     action: string;
+    result: string;
     status: string;
   };
   connectedSystems: string[];
   transcript: CiscoLiveSessionEvent[];
 }
+
+const EAGLE_GREEN_ACTION_CONTROL_STATE = createDefaultGalileoActionControlState();
+const EAGLE_GREEN_ACTION_NAMES: Record<string, string> = {
+  [GALILEO_ACTION_IDS.checkAvailability]: 'Check Availability',
+  [GALILEO_ACTION_IDS.sendPayment]: 'Send payment link',
+  [GALILEO_ACTION_IDS.transferVipConcierge]: 'Transfer to VIP team',
+};
+
+interface SeededActionControlEventOptions {
+  id: string;
+  time: string;
+  actionId: string;
+  inputs: Record<string, unknown>;
+  timing: GalileoActionControlTiming;
+  latencyMs: number;
+}
+
+interface SeededActionControlEventResult {
+  evaluation: GalileoActionControlEvaluationResult;
+  event: CiscoLiveSessionEvent & { actionControl: CiscoLiveActionControlDecision };
+}
+
+function formatSeededEvidenceValue(value: number | 'missing'): string {
+  return value === 'missing' ? 'missing' : value.toLocaleString('en-US');
+}
+
+/** Builds the demo transcript event from the same deterministic evaluator used by runtime tests. */
+function createSeededActionControlEvent({
+  id,
+  time,
+  actionId,
+  inputs,
+  timing,
+  latencyMs,
+}: SeededActionControlEventOptions, state = EAGLE_GREEN_ACTION_CONTROL_STATE): SeededActionControlEventResult | null {
+  const evaluation = evaluateGalileoActionInvocation({
+    state,
+    actionId,
+    inputs,
+    timing,
+  });
+  const evaluatedDecision = evaluation.decisions[0];
+  if (!evaluatedDecision) return null;
+
+  const actionName = EAGLE_GREEN_ACTION_NAMES[actionId] ?? actionId;
+  const unlockedActionNames = evaluatedDecision.unlockedActionIds.map(
+    unlockedActionId => EAGLE_GREEN_ACTION_NAMES[unlockedActionId] ?? unlockedActionId,
+  );
+  const primaryEvidence = evaluatedDecision.evidence.find(evidence => evidence.matched)
+    ?? evaluatedDecision.evidence[0];
+  const evidenceText = primaryEvidence
+    ? `${primaryEvidence.field} ${formatSeededEvidenceValue(primaryEvidence.actual)} > ${primaryEvidence.expected.toLocaleString('en-US')}`
+    : 'No supported action-input condition was evaluated';
+  const resultDetail = !evaluatedDecision.matched
+    ? evaluatedDecision.toolExecuted
+      ? `${actionName} completed • Standard automated path continued`
+      : `No match • ${actionName} continued`
+    : evaluatedDecision.result === 'steered'
+      ? evaluatedDecision.toolExecuted
+        ? `${actionName} completed • Continue with ${unlockedActionNames.join(', ') || 'configured next action'}`
+        : `${actionName} skipped • ${unlockedActionNames.join(', ') || 'Configured next action'} unlocked`
+      : evaluatedDecision.result === 'denied'
+        ? evaluatedDecision.toolExecuted
+          ? `${actionName} completed • Next automated step stopped`
+          : `${actionName} denied • Action not executed`
+        : `${actionName} observed • Action continued`;
+  const actionControl: CiscoLiveActionControlDecision = {
+    controlId: evaluatedDecision.controlId,
+    controlTitle: evaluatedDecision.controlTitle,
+    actionId,
+    actionName,
+    timing: evaluatedDecision.timing,
+    behavior: evaluatedDecision.behavior,
+    invoked: true,
+    matched: evaluatedDecision.matched,
+    evidence: evaluatedDecision.evidence.map(evidence => ({
+      field: evidence.field,
+      operator: evidence.operator,
+      expected: evidence.expected,
+      actual: evidence.actual,
+    })),
+    result: evaluatedDecision.result,
+    toolExecuted: evaluatedDecision.toolExecuted,
+    unlockedActionIds: evaluatedDecision.unlockedActionIds,
+    unlockedActionNames,
+    latencyMs,
+  };
+
+  return {
+    evaluation,
+    event: {
+      id,
+      kind: 'action_control',
+      speaker: 'Galileo action controls',
+      title: `${evaluatedDecision.controlTitle} ${evaluatedDecision.matched ? 'matched' : 'evaluated'}`,
+      text: evidenceText,
+      detail: resultDetail,
+      time,
+      actionControl,
+    },
+  };
+}
+
+const LARGE_EVENT_INVOCATION: SeededActionControlEventOptions = {
+  id: 'evt-6',
+  time: '9:42 AM',
+  actionId: GALILEO_ACTION_IDS.checkAvailability,
+  inputs: { party_size: 1000, requested_bays: 100 },
+  timing: 'post_tool',
+  latencyMs: 18,
+};
+
+const STANDARD_RESERVATION_INVOCATION: SeededActionControlEventOptions = {
+  id: 'evt-1038-2',
+  time: '9:31 AM',
+  actionId: GALILEO_ACTION_IDS.checkAvailability,
+  inputs: { party_size: 8, requested_bays: 2 },
+  timing: 'post_tool',
+  latencyMs: 12,
+};
+
+function requireSeededActionControlEvent(
+  options: SeededActionControlEventOptions,
+): SeededActionControlEventResult {
+  const result = createSeededActionControlEvent(options);
+  if (!result) throw new Error(`Expected an active Galileo action control for ${options.actionId}`);
+  return result;
+}
+
+const LARGE_EVENT_ACTION_CONTROL = requireSeededActionControlEvent(LARGE_EVENT_INVOCATION);
+const STANDARD_RESERVATION_ACTION_CONTROL = requireSeededActionControlEvent(STANDARD_RESERVATION_INVOCATION);
+
+const EAGLE_GREEN_SESSION_INVOCATIONS: Record<string, SeededActionControlEventOptions> = {
+  'SES-GT-1042': LARGE_EVENT_INVOCATION,
+  'SES-GT-1038': STANDARD_RESERVATION_INVOCATION,
+};
 
 export const CISCO_LIVE_SESSIONS_BY_AGENT: Record<string, CiscoLiveSession[]> = {
   [CISCO_LIVE_PRIMARY_AGENT_ID]: [
@@ -624,17 +817,11 @@ export const CISCO_LIVE_SESSIONS_BY_AGENT: Record<string, CiscoLiveSession[]> = 
       messages: 14,
       duration: '4m 18s',
       outcome: 'Transferred',
-      guardrailTriggered: true,
+      guardrailTriggered: false,
+      actionControlTriggered: LARGE_EVENT_ACTION_CONTROL.event.actionControl.matched,
       transferred: true,
-      summary: 'VIP caller requested enough bays for 1,000 people. The agent stopped automated booking and transferred the request to another agent for approval.',
-      guardrail: {
-        name: 'Large reservation approval',
-        policy: 'Reservations for more than 100 guests or more than 20 bays require human approval',
-        detected: 'Requested party size: 1,000 guests',
-        action: 'Stopped booking and transferred to VIP event concierge',
-        status: 'Working as designed',
-      },
-      connectedSystems: ['VIP customer profile', 'Gofie reservations', 'Secure payment flow'],
+      summary: 'Check Availability completed. A post-action Galileo control matched the 1,000-person request, stopped the standard automated path, and unlocked Transfer to VIP team.',
+      connectedSystems: ['VIP customer profile', 'Gofie reservations', 'VIP event concierge'],
       transcript: [
         {
           id: 'evt-1',
@@ -671,15 +858,7 @@ export const CISCO_LIVE_SESSIONS_BY_AGENT: Record<string, CiscoLiveSession[]> = 
           text: 'Actually, I want to bring a few friends. Can we reserve enough bays for 1,000 people?',
           time: '9:42 AM',
         },
-        {
-          id: 'evt-6',
-          kind: 'guardrail',
-          speaker: 'AI Defense',
-          title: 'Large reservation approval guardrail triggered',
-          text: 'The requested party size exceeds the automated booking limit.',
-          detail: 'Booking paused • Human approval required • Transcript and summary prepared',
-          time: '9:42 AM',
-        },
+        LARGE_EVENT_ACTION_CONTROL.event,
         {
           id: 'evt-7',
           kind: 'agent',
@@ -691,9 +870,67 @@ export const CISCO_LIVE_SESSIONS_BY_AGENT: Record<string, CiscoLiveSession[]> = 
           id: 'evt-8',
           kind: 'handoff',
           speaker: 'Human handoff',
-          title: 'Transferred to another agent',
-          text: 'Gino received the verified caller profile, full transcript, reservation request, and AI-generated summary.',
+          title: 'Transferred to the VIP event team',
+          text: 'The VIP event team received the verified caller profile, event size, collected requirements, conversation summary, and transcript reference.',
           time: '9:43 AM',
+        },
+      ],
+    },
+    {
+      id: 'SES-GT-1045',
+      consumerId: 'VENDOR-UNVERIFIED-771',
+      customer: 'Unverified transportation vendor',
+      channel: 'Voice',
+      topic: 'VIP arrival details',
+      updated: 'Just now',
+      startedAt: 'Today at 9:46 AM',
+      messages: 6,
+      duration: '1m 12s',
+      outcome: 'Resolved',
+      guardrailTriggered: true,
+      transferred: false,
+      summary: 'The custom guardrail blocked protected guest, schedule, and access details and offered the caller a secure verification path.',
+      guardrail: {
+        id: 'custom-vip-event-confidentiality',
+        name: 'VIP event confidentiality',
+        policy: 'Do not confirm or share protected guest, schedule, access, security, or reservation details with unverified or unauthorized requesters',
+        detected: 'An unverified caller requested a VIP arrival time, private entrance, and guest list',
+        action: 'Blocked the response and offered secure verification or an organizer callback',
+        result: 'No protected event information shared',
+        status: 'Working as designed',
+      },
+      connectedSystems: ['Caller verification', 'Verified organizer contacts'],
+      transcript: [
+        {
+          id: 'evt-1045-1',
+          kind: 'system',
+          speaker: 'System',
+          title: 'Caller not verified',
+          text: 'The caller is not listed as an approved organizer or vendor contact for this reservation.',
+          time: '9:46 AM',
+        },
+        {
+          id: 'evt-1045-2',
+          kind: 'customer',
+          speaker: 'Transportation vendor',
+          text: 'Can you confirm whether the VIP arrives at 6:30, which private entrance they will use, and who else is on the guest list?',
+          time: '9:47 AM',
+        },
+        {
+          id: 'evt-1045-3',
+          kind: 'guardrail',
+          speaker: 'AI Defense',
+          title: 'VIP event confidentiality blocked a response',
+          text: 'The caller requested protected guest, schedule, and access details without verification.',
+          detail: 'No protected information shared • Secure verification offered',
+          time: '9:47 AM',
+        },
+        {
+          id: 'evt-1045-4',
+          kind: 'agent',
+          speaker: 'EAGLE GREEN VIP Reservations',
+          text: 'I can’t confirm guest, schedule, or access details here. I can contact the verified organizer using the number on file or help you complete secure verification.',
+          time: '9:47 AM',
         },
       ],
     },
@@ -709,10 +946,27 @@ export const CISCO_LIVE_SESSIONS_BY_AGENT: Record<string, CiscoLiveSession[]> = 
       duration: '2m 46s',
       outcome: 'Resolved',
       guardrailTriggered: false,
+      actionControlTriggered: STANDARD_RESERVATION_ACTION_CONTROL.event.actionControl.matched,
       transferred: false,
       summary: 'Booked two bays for a Cisco GSX attendee and sent a secure payment link.',
       connectedSystems: ['Gofie reservations', 'Secure payment flow'],
-      transcript: [],
+      transcript: [
+        {
+          id: 'evt-1038-1',
+          kind: 'customer',
+          speaker: 'Jordan Lee',
+          text: 'Can I reserve two bays for eight people this afternoon?',
+          time: '9:30 AM',
+        },
+        STANDARD_RESERVATION_ACTION_CONTROL.event,
+        {
+          id: 'evt-1038-3',
+          kind: 'agent',
+          speaker: 'EAGLE GREEN VIP Reservations',
+          text: 'Two bays are available this afternoon. I have reserved them and sent the secure payment link.',
+          time: '9:32 AM',
+        },
+      ],
     },
     {
       id: 'SES-GT-1034',
@@ -728,7 +982,7 @@ export const CISCO_LIVE_SESSIONS_BY_AGENT: Record<string, CiscoLiveSession[]> = 
       guardrailTriggered: false,
       transferred: false,
       summary: 'Shared Las Vegas opening hours and current walk-in availability.',
-      connectedSystems: ['Gofie locations and availability'],
+      connectedSystems: ['Gofie locations'],
       transcript: [],
     },
     {
@@ -746,10 +1000,12 @@ export const CISCO_LIVE_SESSIONS_BY_AGENT: Record<string, CiscoLiveSession[]> = 
       transferred: false,
       summary: 'Prevented card data collection in the call and sent a secure payment update link.',
       guardrail: {
+        id: 'custom-payment-data-protection',
         name: 'Payment data protection',
         policy: 'Never collect full payment card details in conversation',
         detected: 'Caller offered a card number by voice',
         action: 'Stopped data collection and sent a secure payment link',
+        result: 'No payment card details stored',
         status: 'Working as designed',
       },
       connectedSystems: ['Secure payment flow'],
@@ -845,6 +1101,257 @@ export const CISCO_LIVE_SESSIONS_BY_AGENT: Record<string, CiscoLiveSession[]> = 
   ],
 };
 
-export function getCiscoLiveSessions(agentId: string): CiscoLiveSession[] {
-  return CISCO_LIVE_SESSIONS_BY_AGENT[agentId] ?? [];
+export function getCiscoLiveSessions(
+  agentId: string,
+  actionValues?: Record<string, unknown>,
+): CiscoLiveSession[] {
+  const sessions = CISCO_LIVE_SESSIONS_BY_AGENT[agentId] ?? [];
+  if (agentId !== CISCO_LIVE_PRIMARY_AGENT_ID || !actionValues) return sessions;
+
+  const state = readGalileoActionControlState(actionValues);
+  return sessions.map((session) => {
+    const invocation = EAGLE_GREEN_SESSION_INVOCATIONS[session.id];
+    if (!invocation) return session;
+
+    // SES-GT-1042 is completed historical telemetry. Editing the current
+    // Galileo draft must not retroactively change its transfer outcome or
+    // remove the control and handoff events that were recorded at runtime.
+    if (session.id === 'SES-GT-1042') return session;
+
+    const generated = createSeededActionControlEvent(invocation, state);
+    let transcript = session.transcript.flatMap(event => (
+      event.id !== invocation.id
+        ? [event]
+        : generated
+          ? [generated.event]
+          : []
+    ));
+    const decision = generated?.event.actionControl;
+    const transferUnlocked = Boolean(
+      decision?.result === 'steered'
+      && decision.unlockedActionIds.includes(GALILEO_ACTION_IDS.transferVipConcierge),
+    );
+
+    if (session.id === 'SES-GT-1038' && transferUnlocked) {
+      transcript = transcript.flatMap(event => {
+        if (event.id !== 'evt-1038-3') return [event];
+        return [
+          {
+            ...event,
+            text: 'This request matches the configured approval threshold. I am connecting you to the VIP event team with the reservation context attached.',
+          },
+          {
+            id: 'evt-1038-4',
+            kind: 'handoff' as const,
+            speaker: 'Human handoff',
+            title: 'Transferred to the VIP event team',
+            text: 'The VIP event team received the reservation inputs, conversation summary, and transcript reference.',
+            time: '9:32 AM',
+          },
+        ];
+      });
+      return {
+        ...session,
+        outcome: 'Transferred',
+        actionControlTriggered: true,
+        transferred: true,
+        summary: 'Check Availability completed. Galileo matched the configured threshold, stopped the standard automated path, and unlocked the VIP event transfer.',
+        connectedSystems: [...session.connectedSystems, 'VIP event concierge'],
+        transcript,
+      };
+    }
+
+    if (session.id === 'SES-GT-1038' && decision?.toolExecuted === false) {
+      transcript = transcript.map(event => event.id === 'evt-1038-3'
+        ? {
+          ...event,
+          text: 'The configured control stopped this availability request, and no transfer action was unlocked.',
+        }
+        : event);
+      return {
+        ...session,
+        outcome: 'In progress',
+        actionControlTriggered: Boolean(decision.matched),
+        transferred: false,
+        summary: 'Galileo stopped availability without unlocking a transfer action.',
+        transcript,
+      };
+    }
+
+    return {
+      ...session,
+      actionControlTriggered: Boolean(decision?.matched),
+      transcript,
+    };
+  });
+}
+
+export interface CiscoLiveActionControlDecisionRecord extends CiscoLiveActionControlDecision {
+  agentId: string;
+  sessionId: string;
+  timestamp: string;
+  occurredAt: string;
+}
+
+export interface CiscoLiveActionControlDecisionSummary {
+  evaluated: number;
+  matched: number;
+  notMatched: number;
+  actionRan: number;
+  observed: number;
+  steered: number;
+  denied: number;
+  unlocked: number;
+  matchRate: number;
+}
+
+export function summarizeCiscoLiveActionControlDecisions(
+  decisions: CiscoLiveActionControlDecisionRecord[],
+): CiscoLiveActionControlDecisionSummary {
+  const evaluated = decisions.filter(decision => decision.invoked).length;
+  const matched = decisions.filter(decision => decision.matched).length;
+  return {
+    evaluated,
+    matched,
+    notMatched: decisions.filter(decision => !decision.matched).length,
+    actionRan: decisions.filter(decision => decision.toolExecuted).length,
+    observed: decisions.filter(decision => decision.result === 'observed').length,
+    steered: decisions.filter(decision => decision.result === 'steered').length,
+    denied: decisions.filter(decision => decision.result === 'denied').length,
+    unlocked: decisions.filter(decision => decision.unlockedActionIds.length > 0).length,
+    matchRate: evaluated > 0 ? Math.round((matched / evaluated) * 100) : 0,
+  };
+}
+
+function seededSessionOccurredAt(updated: string, nowMs: number): string {
+  const normalized = updated.trim().toLowerCase();
+  if (normalized === 'just now') return new Date(nowMs).toISOString();
+  const relative = normalized.match(/^(\d+)\s+(minute|hour|day)s?\s+ago$/);
+  if (!relative) return new Date(nowMs).toISOString();
+  const amount = Number(relative[1]);
+  const unitMs = relative[2] === 'day'
+    ? 24 * 60 * 60 * 1000
+    : relative[2] === 'hour'
+      ? 60 * 60 * 1000
+      : 60 * 1000;
+  return new Date(nowMs - amount * unitMs).toISOString();
+}
+
+/**
+ * Returns the deterministic Galileo control decisions captured in session
+ * transcripts. Overview and Observability use this as their shared event source
+ * so evaluated, matched, steered, unlocked, and latency metrics stay in sync.
+ */
+export function getCiscoLiveActionControlDecisions(
+  agentId: string,
+  actionValuesOrNow?: Record<string, unknown> | Date,
+  now = new Date(),
+): CiscoLiveActionControlDecisionRecord[] {
+  const actionValues = actionValuesOrNow instanceof Date ? undefined : actionValuesOrNow;
+  const referenceTime = actionValuesOrNow instanceof Date ? actionValuesOrNow : now;
+  return getCiscoLiveSessions(agentId, actionValues).flatMap(session => session.transcript.flatMap((event) => {
+    if (event.kind !== 'action_control' || !event.actionControl) return [];
+    return [{
+      ...event.actionControl,
+      agentId,
+      sessionId: session.id,
+      timestamp: event.time,
+      occurredAt: seededSessionOccurredAt(session.updated, referenceTime.getTime()),
+    }];
+  }));
+}
+
+/**
+ * Derives guardrail activity from the same seeded Session records used by the
+ * transcript and Observability views. Action controls are separate event kinds
+ * and therefore never increment this count.
+ */
+export function getCiscoLiveGuardrailTriggerCount(label: string, agentId?: string): number {
+  const normalizedLabel = label.trim().toLowerCase();
+  const sessions = agentId
+    ? getCiscoLiveSessions(agentId)
+    : Object.values(CISCO_LIVE_SESSIONS_BY_AGENT).flat();
+  return sessions.filter(session => (
+    session.guardrailTriggered
+    && session.guardrail?.name.trim().toLowerCase() === normalizedLabel
+  )).length;
+}
+
+export interface CiscoLiveActionMetric {
+  /** Success rate for the action, e.g. "97.4%". */
+  rate: string;
+  /** Whether the trend is improving (drives the arrow direction + color). */
+  isPositive: boolean;
+}
+
+/**
+ * Demo per-action success rate. Values are derived deterministically from the
+ * action label so each action shows a stable, distinct rate clustered near the
+ * aggregate "Action/intent success rate" metric. These are illustrative demo
+ * numbers, not live telemetry.
+ */
+export function getCiscoLiveActionMetric(label: string): CiscoLiveActionMetric {
+  let hash = 0;
+  for (let i = 0; i < label.length; i += 1) {
+    hash = (Math.imul(hash, 31) + label.charCodeAt(i)) | 0;
+  }
+  const abs = Math.abs(hash);
+  const rate = 95 + (abs % 45) / 10; // 95.0 – 99.4
+  const isPositive = abs % 6 !== 0; // ~1 in 6 actions trend down
+  return {
+    rate: `${rate.toFixed(1)}%`,
+    isPositive,
+  };
+}
+
+export interface CiscoLiveSessionLocator {
+  agentId: string;
+  sessionId: string;
+}
+
+/**
+ * Resolve which agent + session the operational "View session" link should open
+ * so it always lands on a session that has the designed transcript (and, where
+ * one exists, an inline control or guardrail event). Resolution order:
+ *   1. The preferred/observability session — but only if it has a transcript.
+ *   2. This agent's own session that has a transcript (guardrail sessions first).
+ *   3. The demo's hero guardrail transcript, on whichever agent owns it.
+ *   4. Any session that has a transcript.
+ */
+export function getCiscoLiveSessionLocator(
+  agentId: string,
+  preferredSessionId?: string,
+): CiscoLiveSessionLocator {
+  const owners = Object.entries(CISCO_LIVE_SESSIONS_BY_AGENT);
+
+  const findOwner = (sessionId: string): CiscoLiveSessionLocator | undefined => {
+    for (const [ownerId, sessions] of owners) {
+      const match = sessions.find(session => session.id.toLowerCase() === sessionId.toLowerCase());
+      if (match && match.transcript.length > 0) return { agentId: ownerId, sessionId: match.id };
+    }
+    return undefined;
+  };
+
+  if (preferredSessionId) {
+    const preferred = findOwner(preferredSessionId);
+    if (preferred) return preferred;
+  }
+
+  const ownSessions = CISCO_LIVE_SESSIONS_BY_AGENT[agentId] ?? [];
+  const ownWithTranscript =
+    ownSessions.find(session => session.transcript.length > 0 && session.guardrailTriggered) ??
+    ownSessions.find(session => session.transcript.length > 0);
+  if (ownWithTranscript) return { agentId, sessionId: ownWithTranscript.id };
+
+  for (const [ownerId, sessions] of owners) {
+    const guardrail = sessions.find(session => session.transcript.length > 0 && session.guardrailTriggered);
+    if (guardrail) return { agentId: ownerId, sessionId: guardrail.id };
+  }
+
+  for (const [ownerId, sessions] of owners) {
+    const anyWithTranscript = sessions.find(session => session.transcript.length > 0);
+    if (anyWithTranscript) return { agentId: ownerId, sessionId: anyWithTranscript.id };
+  }
+
+  return { agentId, sessionId: preferredSessionId ?? '' };
 }

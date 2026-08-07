@@ -3,6 +3,7 @@ import { CAPABILITIES } from '../../pages/agent/actionConfigShared';
 import { CISCO_LIVE_ACTION_CATALOG } from '../../demo/ciscoLiveDemo';
 import { EVA_TEMPLATES } from './evaTemplates';
 import type { EvaAgentDraft, EvaMessage, EvaTemplateId } from './types';
+import type { AgentFamily, StarterProposal } from '../agent-creation/agentCreationModel';
 
 export type EvaConversationStep =
   | 'profile'
@@ -201,7 +202,7 @@ export const PROFILE_VOICE_OPTIONS = [
 ];
 
 export const CHANNEL_PHONE_NUMBER_OPTIONS = [
-  { value: '+1 415 555 0198', label: '+1 415 555 0198' },
+  { value: '+1 629 263 5773', label: '+1 629 263 5773' },
   { value: '+1 512 555 0142', label: '+1 512 555 0142' },
   { value: '+44 20 7946 0958', label: '+44 20 7946 0958' },
 ];
@@ -288,7 +289,7 @@ export const DIGITAL_CHANNEL_DETAILS: Record<
   },
   sms: {
     label: 'SMS number',
-    placeholder: '+1 415 555 0198',
+    placeholder: '+1 629 263 5773',
     hint: 'Use the SMS-capable number for inbound customer messages.',
     inputType: 'tel',
   },
@@ -584,7 +585,8 @@ export const EVA_ADVANCED_GUARDRAIL_GROUPS: Array<{
 ];
 
 export interface EvaSessionState {
-  sourceAgentId?: string;
+  /** Distinguishes first-time creation from editing an agent opened from All Agents. */
+  configurationMode?: 'create' | 'edit';
   landingMode: EvaLandingMode;
   selectedTemplateId: EvaTemplateId | null;
   draft: EvaAgentDraft;
@@ -629,6 +631,21 @@ export interface EvaSessionState {
   expandedAdvancedGroups: string[];
   personality: { llm: string; voice: string; language: string; gender: string };
   customRules: string[];
+  /** Three-family creation state. Optional for compatibility with older sessions. */
+  selectedAgentFamily?: AgentFamily | null;
+  familyIntakeAnswers?: Record<string, string>;
+  familyProposal?: StarterProposal | null;
+  familyProposalApplied?: boolean;
+  activeDraftAgentId?: string | null;
+  /** Keeps the current ranked recommendation journey stable while the user works through it. */
+  recommendationJourneyAgentId?: string | null;
+  recommendationJourneyIds?: string[];
+  /** Places the remaining recommendation cards directly after the section opened from Set up. */
+  recommendationAnchorStep?: EvaConversationStep;
+  /** Hides the dock while the selected recommendation's section is still being configured. */
+  recommendationPendingId?: string | null;
+  /** Routes the final navigator-recommended task to Review instead of the normal section sequence. */
+  recommendationReviewStep?: EvaConversationStep | null;
 }
 
 const replacePersistedEvaCopy = (value: string) => value

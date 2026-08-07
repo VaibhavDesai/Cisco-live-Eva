@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Navigate, useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { useApp } from '../../contexts/AppContext';
-import { AgentHeader } from '../../components/agents';
+import { AgentHeader, AgentWorkspacePageHeading } from '../../components/agents';
 import { Card } from '../../components/shared/Card';
 import Badge from '../../components/shared/Badge';
 import Button from '../../components/shared/Button';
@@ -11,6 +11,8 @@ import { Banner } from '../../components/shared/Banner';
 import { Icon } from '../../icons';
 import {
   getCiscoLiveSessions,
+  CISCO_LIVE_PRIMARY_AGENT_ID,
+  type CiscoLiveActionControlDecision,
   type CiscoLiveSession,
   type CiscoLiveSessionOutcome,
 } from '../../demo/ciscoLiveDemo';
@@ -20,6 +22,85 @@ function outcomeVariant(outcome: CiscoLiveSessionOutcome) {
   if (outcome === 'Transferred') return 'success';
   return 'info';
 }
+
+function actionControlTimingLabel(timing: 'pre_tool' | 'post_tool') {
+  return timing === 'pre_tool' ? 'Before action runs (pre-tool)' : 'After action returns (post-action)';
+}
+
+function actionControlBehaviorLabel(behavior: 'observe' | 'steer' | 'deny') {
+  return behavior.charAt(0).toUpperCase() + behavior.slice(1);
+}
+
+function actionControlDecisionLabel(actionControl: CiscoLiveActionControlDecision): string {
+  if (actionControl.timing === 'post_tool' && actionControl.toolExecuted) {
+    if (!actionControl.matched) return `${actionControl.actionName} completed · Standard path continued`;
+    if (actionControl.result === 'steered') return `${actionControl.actionName} completed · Next path steered`;
+    if (actionControl.result === 'denied') return `${actionControl.actionName} completed · Next step stopped`;
+    return `${actionControl.actionName} completed · Match observed`;
+  }
+  return actionControl.toolExecuted
+    ? `${actionControl.actionName} continued`
+    : `${actionControl.actionName} skipped`;
+}
+
+function getSessionActionControlDecision(session: CiscoLiveSession): CiscoLiveActionControlDecision | null {
+  const decisions = session.transcript.flatMap(event => (
+    event.kind === 'action_control' && event.actionControl ? [event.actionControl] : []
+  ));
+  return decisions.find(decision => decision.matched) ?? decisions[0] ?? null;
+}
+
+function sessionHasMatchedActionControl(session: CiscoLiveSession): boolean {
+  return session.transcript.some(event => (
+    event.kind === 'action_control' && Boolean(event.actionControl?.matched)
+  ));
+}
+
+function actionControlEvidenceLabel(decision: CiscoLiveActionControlDecision) {
+  const evidence = decision.evidence.find(item => {
+    if (item.operator !== 'greater_than') return false;
+    return typeof item.actual === 'number'
+      && typeof item.expected === 'number'
+      && item.actual > item.expected;
+  }) ?? decision.evidence[0];
+  if (!evidence) return 'No matching evidence recorded';
+
+  const formatValue = (value: number | string | string[]) => {
+    if (Array.isArray(value)) return value.join(', ');
+    return typeof value === 'number' ? value.toLocaleString() : value;
+  };
+  const expected = formatValue(evidence.expected);
+  const actual = formatValue(evidence.actual);
+  const operator = evidence.operator === 'greater_than'
+    ? '>'
+    : evidence.operator === 'equals'
+      ? '='
+      : 'is one of';
+
+  return `${evidence.field} ${actual} ${operator} ${expected}`;
+}
+
+function SessionDetail({
+  session,
+  backLabel,
+  onBack,
+  onReviewGuardrail,
+  onReviewActionControl,
+}: {
+  session: CiscoLiveSession;
+  backLabel: string;
+  onBack: () => void;
+  onReviewGuardrail: (guardrailId: string) => void;
+  onReviewActionControl: (controlId: string, actionId: string) => void;
+}) {
+  const actionControl = getSessionActionControlDecision(session);
+  const actionControlResultLabel = !actionControl?.matched
+    ? 'Conditions not matched'
+    : actionControl.result === 'steered'
+      ? 'Steered to the configured action'
+      : actionControl.result === 'denied'
+        ? 'Action denied'
+        : 'Observed';
 
 function SessionDetail({
   session,
@@ -47,7 +128,10 @@ function SessionDetail({
           <div className="agent-session-detail-title-row">
             <h1>{session.topic}</h1>
             <Badge variant={outcomeVariant(session.outcome)}>{session.outcome}</Badge>
-            {session.guardrailTriggered && <Badge variant="warning">Guardrail triggered</Badge>}
+            {actionControl?.matched && (
+              <Badge variant="info">Action control · {actionControlBehaviorLabel(actionControl.behavior)}</Badge>
+            )}
+            {session.guardrailTriggered && <Badge variant="warning">Guardrail · Block</Badge>}
           </div>
           <p>{session.summary}</p>
         </div>
@@ -65,6 +149,27 @@ function SessionDetail({
 
           <div className="agent-session-transcript" aria-label="Session conversation transcript">
             {session.transcript.length > 0 ? session.transcript.map((event) => {
+              if (event.kind === 'action_control') {
+                return (
+                  <Banner
+                    key={event.id}
+                    type="info"
+                    icon="automation"
+                    title={`${event.title} · ${event.time}`}
+                    subtitle={(
+                      <span className="agent-session-guardrail-banner__body">
+                        <span>{event.text}</span>
+                        {event.detail && (
+                          <span className="agent-session-guardrail-banner__detail">{event.detail}</span>
+                        )}
+                      </span>
+                    )}
+                    dismissable={false}
+                    className="agent-session-action-control-banner"
+                  />
+                );
+              }
+
               if (event.kind === 'guardrail') {
                 return (
                   <Banner
@@ -140,7 +245,36 @@ function SessionDetail({
             </dl>
           </Card>
 
-          {session.guardrail ? (
+          {actionControl ? (
+            <Card className="agent-session-policy-card agent-session-policy-card--action-control">
+              <div className="agent-session-policy-card__header">
+                <span aria-hidden="true"><Icon name="automation" weight="bold" size="md" /></span>
+                <div>
+                  <h2>{actionControl.controlTitle}</h2>
+                </div>
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  className="agent-session-policy-card__review"
+                  onClick={() => onReviewActionControl(
+                    actionControl.controlId,
+                    actionControl.actionId,
+                  )}
+                >
+                  Review control
+                </Button>
+              </div>
+              <dl className="agent-session-policy-list">
+                <div><dt>Attached action</dt><dd>{actionControl.actionName}</dd></div>
+                <div><dt>Timing</dt><dd>{actionControlTimingLabel(actionControl.timing)}</dd></div>
+                <div><dt>Behavior</dt><dd>{actionControlBehaviorLabel(actionControl.behavior)}</dd></div>
+                <div><dt>Evaluated input</dt><dd>{actionControlEvidenceLabel(actionControl)}</dd></div>
+                <div><dt>Decision</dt><dd>{actionControlDecisionLabel(actionControl)}</dd></div>
+                <div><dt>Unlocked action</dt><dd>{actionControl.unlockedActionNames.join(', ') || 'None'}</dd></div>
+                <div><dt>Result</dt><dd>{actionControlResultLabel}</dd></div>
+              </dl>
+            </Card>
+          ) : session.guardrail ? (
             <Card className="agent-session-policy-card">
               <div className="agent-session-policy-card__header">
                 <span aria-hidden="true"><Icon name="shield" weight="bold" size="md" /></span>
@@ -151,7 +285,7 @@ function SessionDetail({
                   variant="secondary"
                   size="sm"
                   className="agent-session-policy-card__review"
-                  onClick={onReviewGuardrail}
+                  onClick={() => onReviewGuardrail(session.guardrail!.id)}
                 >
                   Review guardrail
                 </Button>
@@ -160,6 +294,7 @@ function SessionDetail({
                 <div><dt>Policy</dt><dd>{session.guardrail.policy}</dd></div>
                 <div><dt>Detected</dt><dd>{session.guardrail.detected}</dd></div>
                 <div><dt>Action</dt><dd>{session.guardrail.action}</dd></div>
+                <div><dt>Result</dt><dd>{session.guardrail.result}</dd></div>
               </dl>
             </Card>
           ) : (
@@ -189,12 +324,13 @@ export default function AgentSessions() {
   const { agentId } = useParams();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
-  const { agents, currentAgent, selectAgent } = useApp();
+  const { agents, agentDrafts, currentAgent, selectAgent } = useApp();
   const sessionIdQuery = searchParams.get('sessionId')?.trim() ?? '';
   const sourceQuery = searchParams.get('source')?.trim() ?? '';
   const [searchTerm, setSearchTerm] = useState('');
   const [outcomeFilter, setOutcomeFilter] = useState('all');
   const [guardrailOnly, setGuardrailOnly] = useState(false);
+  const [actionControlOnly, setActionControlOnly] = useState(false);
   const [transfersOnly, setTransfersOnly] = useState(false);
 
   const agent = agentId ? agents[agentId] : undefined;
@@ -207,10 +343,26 @@ export default function AgentSessions() {
 
   if (!agent) return <Navigate to="/agents" replace />;
 
-  const sessions = getCiscoLiveSessions(agent.id);
+  const actionValues = agentDrafts[agent.id]?.familyConfiguration.actions?.values;
+  const agentSessions = getCiscoLiveSessions(agent.id, actionValues);
+  const sessions = agentSessions.length > 0 ? agentSessions : getCiscoLiveSessions(CISCO_LIVE_PRIMARY_AGENT_ID);
   const activeSession = sessionIdQuery
     ? sessions.find((session) => session.id.toLowerCase() === sessionIdQuery.toLowerCase())
     : undefined;
+  const sessionBackNavigation = sourceQuery === 'observability'
+    ? {
+        label: 'Back to observability',
+        path: `/observability?agent=${encodeURIComponent(agent.name)}`,
+      }
+    : sourceQuery === 'overview'
+      ? {
+          label: 'Back to overview',
+          path: `/agents/${encodeURIComponent(agent.id)}`,
+        }
+      : {
+          label: 'All sessions',
+          path: `/agents/${encodeURIComponent(agent.id)}/sessions`,
+        };
 
   const normalizedSearch = searchTerm.trim().toLowerCase();
   const filteredSessions = sessions.filter((session) => {
@@ -218,8 +370,9 @@ export default function AgentSessions() {
       .some((value) => value.toLowerCase().includes(normalizedSearch));
     const matchesOutcome = outcomeFilter === 'all' || session.outcome.toLowerCase() === outcomeFilter;
     const matchesGuardrail = !guardrailOnly || session.guardrailTriggered;
+    const matchesActionControl = !actionControlOnly || sessionHasMatchedActionControl(session);
     const matchesTransfer = !transfersOnly || session.transferred;
-    return matchesSearch && matchesOutcome && matchesGuardrail && matchesTransfer;
+    return matchesSearch && matchesOutcome && matchesGuardrail && matchesActionControl && matchesTransfer;
   });
 
   const openSession = (sessionId: string) => {
@@ -227,39 +380,42 @@ export default function AgentSessions() {
   };
 
   return (
-    <div className="primary-content">
+    <div className="primary-content agent-workspace-page">
       <AgentHeader
         agent={agent}
         activeTab="sessions"
         showPublishButton={false}
-        showTabs={!activeSession}
+        showTabs={false}
       />
+
+      {!activeSession && (
+        <AgentWorkspacePageHeading
+          title="Sessions"
+          description="Review interactions, handoffs, errors, guardrail events, and action control decisions for this agent."
+          actions={(
+            <Button variant="secondary" size="sm">
+              <Icon name="refresh" weight="bold" size="sm" />
+              Refresh
+            </Button>
+          )}
+        />
+      )}
 
       <div className={`agent-sessions-page${activeSession ? '' : ' secondary-content'}`}>
         {activeSession ? (
           <SessionDetail
             session={activeSession}
-            backLabel={sourceQuery === 'observability' ? 'Back to agent overview' : 'All sessions'}
-            onBack={() => navigate(
-              sourceQuery === 'observability'
-                ? `/agents/${agent.id}/studio`
-                : `/agents/${agent.id}/sessions`,
+            backLabel={sessionBackNavigation.label}
+            onBack={() => navigate(sessionBackNavigation.path)}
+            onReviewGuardrail={(guardrailId) => navigate(
+              `/agents/${agent.id}/configure?section=Security&tier=advanced&guardrailId=${encodeURIComponent(guardrailId)}`,
             )}
-            onReviewGuardrail={() => navigate(`/agents/${agent.id}/configure?section=Security&tier=advanced`)}
+            onReviewActionControl={(controlId, actionId) => navigate(
+              `/agents/${agent.id}/configure?section=Action&actionId=${encodeURIComponent(actionId)}&controlId=${encodeURIComponent(controlId)}`,
+            )}
           />
         ) : (
           <>
-            <div className="agent-sessions-heading">
-              <div>
-                <h1>Sessions</h1>
-                <p>Review interactions, handoffs, errors, and policy triggers for this agent.</p>
-              </div>
-              <Button variant="secondary" size="sm">
-                <Icon name="refresh" weight="bold" size="sm" />
-                Refresh
-              </Button>
-            </div>
-
             {sourceQuery === 'observability' && (
               <div className="agent-sessions-preview-callout">
                 <div>
@@ -305,6 +461,10 @@ export default function AgentSessions() {
                     <span>Guardrail triggered</span>
                   </label>
                   <label>
+                    <input type="checkbox" checked={actionControlOnly} onChange={(event) => setActionControlOnly(event.target.checked)} />
+                    <span>Action control matched</span>
+                  </label>
+                  <label>
                     <input type="checkbox" checked={transfersOnly} onChange={(event) => setTransfersOnly(event.target.checked)} />
                     <span>Human transfer</span>
                   </label>
@@ -316,6 +476,7 @@ export default function AgentSessions() {
                     setSearchTerm('');
                     setOutcomeFilter('all');
                     setGuardrailOnly(false);
+                    setActionControlOnly(false);
                     setTransfersOnly(false);
                   }}
                 >
@@ -359,6 +520,11 @@ export default function AgentSessions() {
                         <TableCell><Badge variant={outcomeVariant(session.outcome)}>{session.outcome}</Badge></TableCell>
                         <TableCell>
                           <span className="agent-session-metadata-icons">
+                            {sessionHasMatchedActionControl(session) && (
+                              <span className="agent-session-metadata-icons__action-control" title="Action control matched">
+                                <Icon name="automation" weight="bold" size="sm" />
+                              </span>
+                            )}
                             {session.guardrailTriggered && <span title="Guardrail triggered"><Icon name="shield" weight="bold" size="sm" /></span>}
                             {session.transferred && <span title="Human transfer"><Icon name="headset" weight="bold" size="sm" /></span>}
                           </span>

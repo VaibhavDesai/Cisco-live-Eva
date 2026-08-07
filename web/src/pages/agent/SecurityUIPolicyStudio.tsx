@@ -1,11 +1,10 @@
 import { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import type { ReactNode } from 'react';
-import { Card, CardBody, CardHeader } from '../../components/shared/Card';
+import { Modal, ModalHeader, ModalBody, ModalFooter } from '../../components/shared/Modal';
 import Button from '../../components/shared/Button';
-import { Input, FormHelperRow, FormHint } from '../../components/shared/FormInput';
+import { Input } from '../../components/shared/FormInput';
 import { Radio, RadioGroup } from '../../components/shared/Radio';
-import { Divider } from '../../components/shared/Decorator';
 import { Icon } from '../../icons';
 import type { PolicyStudioResult } from './PolicyStudio';
 import atomIcon from '../../assets/Magnetic icons/Atom.svg';
@@ -24,12 +23,19 @@ import securityIcon from '../../assets/Magnetic icons/Security.svg';
 import uploadSimpleIcon from '../../assets/Magnetic icons/UploadSimple.svg';
 import vectorIcon from '../../assets/Magnetic icons/Vector.svg';
 import type { PolicyOverview } from './PolicyStudio';
+import { CISCO_LIVE_VIP_EVENT_CONFIDENTIALITY_GUARDRAIL } from '../../demo/ciscoLiveDemo';
+
+export type SecurityUIGuardrailDirection = 'prompt' | 'response' | 'both';
+export interface SecurityUIPolicyStudioResult extends PolicyStudioResult {
+  direction: SecurityUIGuardrailDirection;
+}
 
 interface SecurityUIPolicyStudioProps {
   onClose: () => void;
-  onPublish: (result: PolicyStudioResult) => void;
+  onPublish: (result: SecurityUIPolicyStudioResult) => void;
   initialBasicStep?: boolean;
   initialProfileName?: string;
+  initialDirection?: SecurityUIGuardrailDirection;
   initialData?: Omit<PolicyStudioResult, 'publishMode'>;
   captureFlowStep?: string;
   captureInline?: boolean;
@@ -37,43 +43,13 @@ interface SecurityUIPolicyStudioProps {
 
 type StudioStage = 'empty' | 'creating' | 'created' | 'upload' | 'thinking' | 'insights' | 'evaluation' | 'source';
 
-const POLICY_OVERVIEW = {
-  blocked: [
-    { text: 'Providing medical, clinical, or prescription advice.' },
-    { text: 'Diagnosing medical conditions.' },
-    { text: 'Recommending medications, dosages, or treatment plans.' },
-    { text: 'Advising users to start, stop, or change medications or treatments.' },
-    { text: 'Interpreting symptoms as evidence of a specific condition.' },
-    { text: 'Comparing prescription options for an individual user.' },
-    { text: 'Suggesting that professional medical care is unnecessary.' },
-    { text: 'Providing instructions that conflict with a clinician’s guidance.' },
-    { text: 'Presenting emergency medical guidance as a substitute for emergency services.' },
-  ],
-  allowed: [
-    { text: 'General health and wellness information in non-diagnostic terms.' },
-    { text: 'High-level educational content from reputable public health sources.' },
-    { text: 'Encouraging healthy habits (e.g. sleep, hydration, exercise).' },
-    { text: 'Referring users to licensed healthcare professionals or pharmacists.' },
-    { text: 'Helping users schedule, change, or cancel an appointment.' },
-    { text: 'Explaining how to prepare for a scheduled appointment.' },
-    { text: 'Sharing published clinic hours, locations, and contact information.' },
-    { text: 'Providing neutral definitions of common medical terminology.' },
-    { text: 'Directing users to approved patient education resources.' },
-  ],
-  edgeCases: [
-    { text: 'If the situation appears urgent or life-threatening, advise contacting emergency services immediately or escalate to an agent.' },
-    { text: 'If a user asks about a prescribed medication, provide neutral label information and refer them to a clinician or pharmacist.' },
-    { text: 'If a request mixes scheduling with medical advice, complete only the scheduling portion and redirect the advice request.' },
-    { text: 'If intent is ambiguous, ask a clarifying question before deciding whether to block or allow the response.' },
-  ],
-};
-
-const PROFILE_DESCRIPTION = 'Defines and restricts medical, clinical, and prescription-related guidance. Clarifies what content should be blocked, allowed, or treated as an edge case to ensure the AI assistant does not provide medical advice.';
+const POLICY_OVERVIEW: PolicyOverview = CISCO_LIVE_VIP_EVENT_CONFIDENTIALITY_GUARDRAIL.overview;
+const PROFILE_DESCRIPTION = CISCO_LIVE_VIP_EVENT_CONFIDENTIALITY_GUARDRAIL.description;
 
 const SUGGESTIONS = [
-  'Upload samples or documents to refine policy',
-  'Analyze policy to identify improvement opportunities',
-  'Evaluate policy efficiency',
+  'Upload policy documents or examples',
+  'Analyze for coverage gaps',
+  'Evaluate with test samples',
 ];
 
 const DRAFTING_STEPS = [
@@ -88,8 +64,8 @@ const REFINEMENT_STEPS = [
   'Updating the policy draft...',
 ];
 
-const DEFAULT_POLICY_PROMPT = 'Block medical advice, diagnoses, and medication guidance. Allow scheduling, wellness info, and clinician referrals.';
-const DEFAULT_CUSTOM_GUARDRAIL_NAME = 'Medical & Prescription Safety Policy';
+const DEFAULT_POLICY_PROMPT = 'Block protected VIP guest, schedule, location, access, security, and reservation details when the requester is not verified or authorized. Allow public event information and task-specific logistics for verified organizers and vendors.';
+const DEFAULT_CUSTOM_GUARDRAIL_NAME = 'VIP event confidentiality';
 const ASSISTANT_STEP_INTERVAL_MS = 350;
 const DRAFT_CREATION_DELAY_MS = 900;
 const REFINEMENT_DELAY_MS = 900;
@@ -107,12 +83,12 @@ function formatPolicyText(data: Omit<PolicyStudioResult, 'publishMode'>) {
     'Purpose',
     data.description,
     '',
-    'Detects',
+    'Blocked behaviors',
     ...(data.overview.blocked.length > 0
       ? data.overview.blocked.map(rule => `- ${rule.text}`)
       : ['- Add detection criteria here.']),
     '',
-    'Allows',
+    'Allowed behaviors',
     ...(data.overview.allowed.length > 0
       ? data.overview.allowed.map(rule => `- ${rule.text}`)
       : ['- Add allowed behaviors here.']),
@@ -159,7 +135,7 @@ function parsePolicyText(
       section = 'description';
       return;
     }
-    if (/^detects$/i.test(text)) {
+    if (/^(detects|blocks|blocked)$/i.test(text)) {
       section = 'blocked';
       return;
     }
@@ -193,14 +169,14 @@ function parsePolicyText(
   };
 }
 
-const DEFAULT_MEDICAL_POLICY: Omit<PolicyStudioResult, 'publishMode'> = {
-  name: 'Medical & Prescription Safety Policy',
+const DEFAULT_VIP_EVENT_POLICY: Omit<PolicyStudioResult, 'publishMode'> = {
+  name: DEFAULT_CUSTOM_GUARDRAIL_NAME,
   description: PROFILE_DESCRIPTION,
   overview: POLICY_OVERVIEW,
 };
 
-const DRAFT_MEDICAL_POLICY: Omit<PolicyStudioResult, 'publishMode'> = {
-  name: 'Medical & Prescription Safety Policy',
+const DRAFT_VIP_EVENT_POLICY: Omit<PolicyStudioResult, 'publishMode'> = {
+  name: DEFAULT_CUSTOM_GUARDRAIL_NAME,
   description: PROFILE_DESCRIPTION,
   overview: POLICY_OVERVIEW,
 };
@@ -377,7 +353,7 @@ function StudioHeader({
   return (
     <header className="security-ui-studio-header">
       <div className="security-ui-studio-bar">
-        <button className="security-ui-icon-text" onClick={onBack} aria-label="Back to basic information">
+        <button className="security-ui-icon-text" onClick={onBack} aria-label="Back to guardrails">
           <MagneticIcon src={backIcon} className="security-ui-magnetic-icon--back" />
           <span>Policy Studio</span>
         </button>
@@ -386,7 +362,7 @@ function StudioHeader({
           <input
             ref={nameInputRef}
             className="security-ui-studio-name-input"
-            aria-label="Policy profile name"
+            aria-label="Guardrail name"
             value={nameDraft}
             onChange={event => setNameDraft(event.target.value)}
             onBlur={commitName}
@@ -408,7 +384,7 @@ function StudioHeader({
           <button
             type="button"
             className="security-ui-ghost-icon"
-            aria-label="Rename profile"
+            aria-label="Rename guardrail"
             onClick={() => setEditingName(true)}
           >
             <MagneticIcon src={pencilSimpleIcon} />
@@ -472,27 +448,27 @@ function PolicySummary({
           <h2>Policy details</h2>
           <p>{data.description}</p>
         </div>
-        <span className="security-ui-source-link">View source text</span>
+        <span className="security-ui-source-summary">All rules shown below</span>
       </div>
 
       <div className="security-ui-stat-grid">
         <article className="security-ui-stat-card">
           <div><strong>Status</strong><span>v1</span></div>
-          <p>The profile now covers discovered patterns and improved general detection based on your insights verdicts</p>
+          <p>This draft includes the blocked, allowed, and edge-case behaviors listed here.</p>
         </article>
         <article className="security-ui-stat-card">
           <div>
             <strong><MagneticIcon src={lightbulbFilamentIcon} />Insights</strong>
             <span className="security-ui-stat-icon"><MagneticIcon src={infoIcon} /></span>
           </div>
-          <p>Analyze your profile to discover patterns and get actionable insights.</p>
+          <p>Analyze this guardrail to find missing rules or unclear edge cases.</p>
         </article>
         <article className="security-ui-stat-card">
           <div>
             <strong>Evaluation</strong>
             <span className="security-ui-stat-icon"><MagneticIcon src={infoIcon} /></span>
           </div>
-          <p>Policy not evaluated</p>
+          <p>Not evaluated yet</p>
         </article>
       </div>
 
@@ -505,16 +481,16 @@ function PolicySummary({
             <MagneticIcon src={dropdownCaretDownIcon} className="security-ui-magnetic-icon--caret-up" />
           </div>
           <div className="security-ui-overview-pills">
-            <span className="security-ui-pill security-ui-pill--blocked"><MagneticIcon src={policyStatusBlockIcon} />{blockedCount} blocked behaviour{blockedCount === 1 ? '' : 's'}</span>
-            <span className="security-ui-pill security-ui-pill--allowed"><MagneticIcon src={policyStatusCheckIcon} />{allowedCount} allowed behaviour{allowedCount === 1 ? '' : 's'}</span>
+            <span className="security-ui-pill security-ui-pill--blocked"><MagneticIcon src={policyStatusBlockIcon} />{blockedCount} blocked behavior{blockedCount === 1 ? '' : 's'}</span>
+            <span className="security-ui-pill security-ui-pill--allowed"><MagneticIcon src={policyStatusCheckIcon} />{allowedCount} allowed behavior{allowedCount === 1 ? '' : 's'}</span>
             <span className="security-ui-pill security-ui-pill--edge"><MagneticIcon src={magnifyingGlassIcon} />{edgeCount} edge case{edgeCount === 1 ? '' : 's'} defined</span>
           </div>
-          <RuleSection title="Blocked behaviours" tone="blocked" items={data.overview.blocked.map(item => item.text)} />
-          <RuleSection title="Allows" tone="allowed" items={data.overview.allowed.map(item => item.text)} />
+          <RuleSection title="Blocked behaviors" tone="blocked" items={data.overview.blocked.map(item => item.text)} />
+          <RuleSection title="Allowed behaviors" tone="allowed" items={data.overview.allowed.map(item => item.text)} />
           <RuleSection
             title="Edge cases"
             tone="edge"
-          items={data.overview.edgeCases.length > 0 ? data.overview.edgeCases.slice(0, 3).map(item => item.text) : ['No edge cases defined']}
+            items={data.overview.edgeCases.length > 0 ? data.overview.edgeCases.map(item => item.text) : ['No edge cases defined']}
           />
         </div>
       )}
@@ -526,15 +502,15 @@ function InsightsPanel() {
   const insights = [
     {
       severity: 'Critical',
-      summary: 'Policies with no conditional rules for edge cases often lead to more “needs review” classifications, as the system lacks guidance for ambiguous scenarios.',
-      detail: 'Add conditional rules for common ambiguous patterns, such as hypothetical scenarios, comparative questions, mixed-intent multi-step requests, and educational framing used to seek actionable advice.',
-      response: 'Agreed, but please consider educational framing and other ambiguous medical-advice edge cases.',
+      summary: 'The guardrail covers direct disclosures but does not explicitly address details reconstructed across multiple questions.',
+      detail: 'Evaluate related requests across the conversation before allowing a response that could reveal protected guest, schedule, or access details.',
+      response: 'Agreed. Treat related questions as one request when they could reconstruct protected event details.',
       verdict: 'Agreed',
     },
     {
       severity: 'Medium',
-      summary: 'The policy defines only 3 conditional rules (edge cases). Policies with fewer edge case definitions tend to produce more “needs review” classifications during evaluation.',
-      detail: 'Add conditional rules for common ambiguous patterns such as hypothetical scenarios, comparative questions, multi-step requests that mix allowed and flagged intents, and requests that use educational framing to seek actionable advice.',
+      summary: 'Verified vendors may need limited logistics, but the current rule does not state how to handle requests beyond their assigned task.',
+      detail: 'Allow only the logistics required for the verified vendor’s task and redirect broader requests to the verified organizer.',
       verdict: 'Disagreed',
     },
   ];
@@ -542,7 +518,7 @@ function InsightsPanel() {
   return (
     <section className="security-ui-insights-panel">
       <header>
-        <strong><MagneticIcon src={atomIcon} />2 Policy insights discovered</strong>
+        <strong><MagneticIcon src={atomIcon} />2 policy insights found</strong>
         <MagneticIcon src={dropdownCaretDownIcon} />
       </header>
       <div className="security-ui-insight-list">
@@ -571,12 +547,12 @@ function ReviewInsightsCard() {
     <section className="security-ui-review-card">
       <button className="security-ui-card-close" type="button" aria-label="Dismiss insights">×</button>
       <strong>Review insights</strong>
-      <p>Agree or disagree to refine your profile and better align it with your intent. Choose dismiss to ignore the insight without making any changes.</p>
+      <p>Accept an insight to update the guardrail, or dismiss it without changing the policy.</p>
       <div className="security-ui-review-choices">
-        <div><span className="is-agreed">Agreed</span><span>The system sometimes misses when advice is framed as education</span><button type="button" aria-label="Dismiss insight">×</button></div>
-        <div><span className="is-disagreed">Disagreed</span><span>The policy defines only 3 conditional rules</span><button type="button" aria-label="Dismiss insight">×</button></div>
+        <div><span className="is-agreed">Agreed</span><span>Related questions can reconstruct protected event details</span><button type="button" aria-label="Dismiss insight">×</button></div>
+        <div><span className="is-disagreed">Disagreed</span><span>Allow venue details for any vendor with an event reference</span><button type="button" aria-label="Dismiss insight">×</button></div>
       </div>
-      <button className="security-ui-rewrite-button" type="button">Rewrite policy (2 insights reviewed)</button>
+      <button className="security-ui-rewrite-button" type="button">Update policy with 2 reviewed insights</button>
     </section>
   );
 }
@@ -586,7 +562,7 @@ function EvaluationSettingsCard() {
     <section className="security-ui-evaluation-card">
       <button className="security-ui-card-close" type="button" aria-label="Close evaluation settings">×</button>
       <strong>Evaluation settings</strong>
-      <p>Policy profile will be evaluated by applying it as a guardrail against standard models such as oss-mp4,gpt-5. <button type="button">Learn more</button></p>
+      <p>Policy Studio will test this guardrail against the selected datasets and models. <button type="button">Learn more</button></p>
       <div className="security-ui-evaluation-section">
         <h3>Existing datasets <MagneticIcon src={infoIcon} /></h3>
         {['spectrum:2026-02-03', 'spectrum:2026-02-03', 'spectrum:2026-02-03', 'spectrum:2026-02-03'].map((dataset, index) => (
@@ -598,14 +574,14 @@ function EvaluationSettingsCard() {
       </div>
       <div className="security-ui-evaluation-section security-ui-import-section">
         <h3>Import samples</h3>
-        <p>Upload CSV file containing evaluate prompts that you want to use for this evaluate.</p>
+        <p>Upload a CSV file with prompts and expected outcomes for this evaluation.</p>
         <button className="security-ui-upload-link" type="button"><MagneticIcon src={uploadSimpleIcon} />Upload</button>
       </div>
       <div className="security-ui-synthetic-row">
         <button className="security-ui-toggle" type="button" role="switch" aria-checked="false"><span /></button>
         <div>
-          <strong>Evaluate using synthetic samples (optional) <MagneticIcon src={infoIcon} /></strong>
-          <p>Use a generated synthetic sample set to evaluate your profile</p>
+          <strong>Use synthetic samples (optional) <MagneticIcon src={infoIcon} /></strong>
+          <p>Generate additional samples to test this guardrail.</p>
         </div>
       </div>
       <button className="security-ui-run-evaluation" type="button">Run evaluation</button>
@@ -624,7 +600,7 @@ function RuleSection({ title, items, tone }: { title: string; items: string[]; t
     <section className={`security-ui-rule-section security-ui-rule-section--${tone}`}>
       <h3><MagneticIcon src={marker} />{title}</h3>
       <ul>
-        {items.slice(0, 3).map(item => <li key={item}>{item}</li>)}
+        {items.map(item => <li key={item}>{item}</li>)}
       </ul>
     </section>
   );
@@ -635,16 +611,17 @@ export default function SecurityUIPolicyStudio({
   onPublish,
   initialBasicStep = true,
   initialProfileName = DEFAULT_CUSTOM_GUARDRAIL_NAME,
+  initialDirection = 'both',
   initialData,
   captureFlowStep,
   captureInline = false,
 }: SecurityUIPolicyStudioProps) {
   const capturePolicyName = initialProfileName || DEFAULT_CUSTOM_GUARDRAIL_NAME;
-  const captureDraftPolicyText = formatPolicyText({ ...DRAFT_MEDICAL_POLICY, name: capturePolicyName });
-  const captureFullPolicyText = formatPolicyText({ ...DEFAULT_MEDICAL_POLICY, name: capturePolicyName });
+  const captureDraftPolicyText = formatPolicyText({ ...DRAFT_VIP_EVENT_POLICY, name: capturePolicyName });
+  const captureFullPolicyText = formatPolicyText({ ...DEFAULT_VIP_EVENT_POLICY, name: capturePolicyName });
   const captureStudioStep = captureFlowStep && captureFlowStep !== 'basic-info';
   const capturePolicyCreatedStep = ['draft-created', 'refined-policy', 'insights', 'evaluation'].includes(captureFlowStep ?? '');
-  const fallbackPolicyData = initialData ?? DEFAULT_MEDICAL_POLICY;
+  const fallbackPolicyData = initialData ?? DEFAULT_VIP_EVENT_POLICY;
   const initialPolicyText = initialData
     ? (initialData.policyText ?? formatPolicyText(initialData))
     : capturePolicyCreatedStep
@@ -652,7 +629,7 @@ export default function SecurityUIPolicyStudio({
       : '';
   const [basicStep, setBasicStep] = useState(captureStudioStep ? false : initialBasicStep);
   const [profileName, setProfileName] = useState(initialData?.name ?? initialProfileName ?? '');
-  const [direction, setDirection] = useState('responses');
+  const [direction, setDirection] = useState<SecurityUIGuardrailDirection>(initialDirection);
   const [stage, setStage] = useState<StudioStage>(() => {
     if (captureFlowStep === 'drafting') return 'creating';
     if (captureFlowStep === 'refining') return 'thinking';
@@ -673,7 +650,19 @@ export default function SecurityUIPolicyStudio({
   );
   const [reasoningVisible, setReasoningVisible] = useState(true);
   const [assistantStepIndex, setAssistantStepIndex] = useState(0);
-  const overlayRef = useDialogFocus(onClose, `${basicStep}-${stage}-${uploadOpen}`, captureInline);
+  const overlayRef = useDialogFocus(onClose, `${basicStep}-${stage}-${uploadOpen}`, captureInline || basicStep);
+
+  useEffect(() => {
+    if (!basicStep) return undefined;
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        event.preventDefault();
+        onClose();
+      }
+    };
+    document.addEventListener('keydown', onKeyDown, true);
+    return () => document.removeEventListener('keydown', onKeyDown, true);
+  }, [basicStep, onClose]);
 
   useEffect(() => {
     const isAssistantWorking = stage === 'creating' || stage === 'thinking';
@@ -695,8 +684,8 @@ export default function SecurityUIPolicyStudio({
     if (stage !== 'creating') return;
 
     const timer = window.setTimeout(() => {
-      const generatedName = profileName.trim() || DEFAULT_MEDICAL_POLICY.name;
-      setPolicyText(formatPolicyText({ ...DEFAULT_MEDICAL_POLICY, name: generatedName }));
+      const generatedName = profileName.trim() || DEFAULT_VIP_EVENT_POLICY.name;
+      setPolicyText(formatPolicyText({ ...DEFAULT_VIP_EVENT_POLICY, name: generatedName }));
       setStage('created');
     }, DRAFT_CREATION_DELAY_MS);
 
@@ -707,8 +696,8 @@ export default function SecurityUIPolicyStudio({
     if (stage !== 'thinking') return;
 
     const timer = window.setTimeout(() => {
-      const generatedName = profileName.trim() || DEFAULT_MEDICAL_POLICY.name;
-      setPolicyText(formatPolicyText({ ...DEFAULT_MEDICAL_POLICY, name: generatedName }));
+      const generatedName = profileName.trim() || DEFAULT_VIP_EVENT_POLICY.name;
+      setPolicyText(formatPolicyText({ ...DEFAULT_VIP_EVENT_POLICY, name: generatedName }));
       setStage('created');
     }, REFINEMENT_DELAY_MS);
 
@@ -722,7 +711,7 @@ export default function SecurityUIPolicyStudio({
     : null;
   const effectiveProfileName = profileName.trim()
     || parsedPolicyData?.name
-    || 'Unnamed profile';
+    || 'Unnamed guardrail';
   const currentPolicyData = policyCreated && parsedPolicyData
     ? {
       ...parsedPolicyData,
@@ -761,6 +750,7 @@ export default function SecurityUIPolicyStudio({
       overview: currentPolicyData.overview,
       publishMode: 'new',
       policyText: currentPolicyData.policyText,
+      direction,
     });
   };
 
@@ -780,129 +770,94 @@ export default function SecurityUIPolicyStudio({
   const modal = (
     <div
       ref={overlayRef}
-      className={`security-ui-overlay${basicStep ? '' : ' security-ui-overlay--studio'}`}
+      className={`security-ui-overlay${basicStep ? ' security-ui-overlay--basic' : ' security-ui-overlay--studio'}`}
       tabIndex={-1}
     >
       {basicStep ? (
-        <section className="security-ui-basic-modal" role="dialog" aria-modal="true" aria-label="Create custom guardrail">
-          <header className="security-ui-basic-header">
-            <div>
-              <h1>Create custom guardrail</h1>
-              <p>Create a business-specific guardrail for this agent. In the next step, you’ll define its logic in Policy Studio. Custom guardrails are powered by policies authored in Policy Studio.</p>
-            </div>
-            <Button
-              variant="tertiary"
-              size="sm"
-              className="security-ui-close"
-              onClick={onClose}
-              aria-label="Close"
-              type="button"
+        <Modal size="md" onClose={onClose} className="create-guardrail-modal">
+          <ModalHeader
+            title="Create custom guardrail"
+            description="Define what this agent must block and where the guardrail evaluates content. You can review and refine the policy in Policy Studio."
+            onClose={onClose}
+          />
+          <ModalBody className="create-guardrail-modal-body">
+            <Input
+              label="Guardrail name (optional)"
+              value={profileName}
+              onChange={event => setProfileName(event.target.value)}
+              hint="Enter a name, or let Policy Studio use the suggested name."
+            />
+            <RadioGroup
+              name="guardrail-direction"
+              label="Guardrail direction"
+              required
+              value={direction}
+              onChange={value => setDirection(value as SecurityUIGuardrailDirection)}
+              helperText="Apply this guardrail to customer prompts, agent responses, or both."
             >
-              <Icon name="cancel" weight="bold" size="md" />
-            </Button>
-          </header>
-          <main className="security-ui-basic-panel">
-            <h2>Basic information</h2>
-            <div className="security-ui-basic-grid">
-              <div className="security-ui-basic-stack">
-                <Card className="security-ui-basic-card">
-                  <CardBody>
-                    <Input
-                      label="Guardrail name (optional)"
-                      value={profileName}
-                      onChange={event => setProfileName(event.target.value)}
-                      hint="Give this custom guardrail a name, or let Policy Studio suggest one."
-                      data-dialog-initial-focus
-                    />
-                    <Divider className="security-ui-card-divider" aria-hidden />
-                    <RadioGroup
-                      name="guardrail-direction"
-                      label="Guardrail direction"
-                      required
-                      value={direction}
-                      onChange={setDirection}
-                      helperText="Choose where this profile applies: prompts, responses, or both."
-                      className="security-ui-direction-group"
-                    >
-                      <Radio value="responses" label="Responses (Recommended)" />
-                      <Radio value="prompts" label="Prompts" />
-                      <Radio value="both" label="Both prompts and responses" />
-                    </RadioGroup>
-                  </CardBody>
-                </Card>
-              </div>
-              <Card className="security-ui-basic-card security-ui-next-card">
-                <CardHeader title="What happens next?" />
-                <CardBody>
-                  <FormHelperRow>
-                    <ol className="security-ui-next-list">
-                      <li>Create the custom guardrail here</li>
-                      <li>Define its policy logic in Policy Studio</li>
-                      <li>Publish and apply it back to this agent</li>
-                    </ol>
-                  </FormHelperRow>
-                </CardBody>
-              </Card>
-            </div>
-          </main>
-          <footer className="security-ui-basic-footer">
-            <button className="security-ui-secondary" onClick={onClose}>Cancel</button>
-            <button className="security-ui-primary" onClick={() => setBasicStep(false)}>Launch policy studio</button>
-          </footer>
-        </section>
+              <Radio value="response" label="Responses" />
+              <Radio value="prompt" label="Prompts" />
+              <Radio value="both" label="Both prompts and responses (Recommended)" />
+            </RadioGroup>
+          </ModalBody>
+          <ModalFooter>
+            <Button variant="secondary" onClick={onClose}>Cancel</Button>
+            <Button variant="primary" onClick={() => setBasicStep(false)}>Open Policy Studio</Button>
+          </ModalFooter>
+        </Modal>
       ) : (
         <section className="security-ui-studio" role="dialog" aria-modal="true" aria-label="Policy Studio">
           <StudioHeader
             policyName={policyName}
             canPublish={policyCreated}
-            onBack={() => setBasicStep(true)}
+            onBack={onClose}
             onPublish={publish}
             onRename={renameProfile}
           />
           <main className="security-ui-workspace">
             <section className="security-ui-chat">
-              <header>Policy Studio Assistant</header>
+              <header>Policy Studio assistant</header>
               <div className={`security-ui-chat-scroll${stage === 'created' || stage === 'insights' || stage === 'evaluation' ? ' security-ui-chat-scroll--top' : ''}`}>
                 {stage === 'empty' ? (
                   <div className="security-ui-get-started">
                     <MagneticIcon src={securityIcon} className="security-ui-shield" />
-                    <h2>Get started with a new profile</h2>
-                    <p>I’ll help you define, evaluate and refine your guardrail profile. Describe what behaviors you want to prevent or upload any compliance documents, policies or sample sets with ground truth.</p>
+                    <h2>Create a custom guardrail</h2>
+                    <p>Describe what the agent must block and what it can share. You can also upload policies or labeled examples.</p>
                     <span>Suggested next steps:</span>
-                    <button onClick={() => setInput(DEFAULT_POLICY_PROMPT)}>Describe the policy you want to create</button>
+                    <button onClick={() => setInput(DEFAULT_POLICY_PROMPT)}>Describe the protection rules</button>
                     <button onClick={() => {
                       setUploadFileSelected(false);
                       setUploadOpen(true);
-                    }}>Upload any documents, internal regulations, sample sets with ground truth</button>
+                    }}>Upload a policy document</button>
                     <button onClick={() => {
                       setUploadFileSelected(false);
                       setUploadOpen(true);
-                    }}>Upload sample set with ground truth</button>
+                    }}>Upload labeled examples</button>
                   </div>
                 ) : (
                   <>
                     {stage === 'evaluation' ? (
                       <div className="security-ui-evaluation-response">
-                        <p>Let’s evaluate your policy against samples to evaluate its performance. You can use datasets created from your previously uploaded data, upload new samples or optionally generate synthetic samples.</p>
+                        <p>Test this guardrail with an existing dataset, upload new samples, or generate synthetic samples.</p>
                         <EvaluationSettingsCard />
                       </div>
                     ) : stage === 'insights' ? (
                       <>
                         <ChatMessage sender="Policy studio">
                           <p>Updated policy <strong>{currentPolicyData.name}</strong> (v2)</p>
-                          <p>I’ve updated the policy based on your input. The policy now includes specific guardrails for the concerns you mentioned.</p>
-                          <p>I’ve added 3 new blocks, 1 allowed behaviour, and 4 conditional rules.</p>
-                          <p>You can continue iterating on the policy by providing additional prompts or files or you can run the analysis mode to refine the policy based on discovered policy insights.</p>
+                          <p>The policy now protects against multi-turn reconstruction and limits vendor access to task-specific logistics.</p>
+                          <p>I added one blocked behavior, one allowed behavior, and two edge-case rules.</p>
+                          <p>Review the changes, add more examples, or evaluate the policy with test samples.</p>
                         </ChatMessage>
                         <ChatMessage sender="Policy studio">
-                          <p><strong>Analysis complete. 2 policy insight discovered.</strong> You can review them in the Insights panel on the right and accept/dismiss them to refine the policy.</p>
+                          <p><strong>Analysis complete. 2 policy insights found.</strong> Review each insight and choose whether to update the policy.</p>
                         </ChatMessage>
                         <ReviewInsightsCard />
                       </>
                     ) : initialData ? (
                       <ChatMessage sender="Policy studio">
                         <p>Loaded policy <strong>{currentPolicyData.name}</strong> (current version)</p>
-                        <p>The policy overview is preserved on the right. Review the behaviors, then publish a new version when it is ready.</p>
+                        <p>Review the blocked, allowed, and edge-case behaviors. Publish when the policy is ready.</p>
                       </ChatMessage>
                     ) : (
                       <>
@@ -911,7 +866,7 @@ export default function SecurityUIPolicyStudio({
                             {submittedPrompt && <p>{submittedPrompt}</p>}
                             {attachmentSubmitted && (
                               <div className="security-ui-file-tags">
-                                <span><MagneticIcon src={paperclipIcon} />AI-medical-advice-policy.pdf</span>
+                                <span><MagneticIcon src={paperclipIcon} />vip-event-confidentiality-policy.pdf</span>
                               </div>
                             )}
                           </ChatMessage>
@@ -936,15 +891,15 @@ export default function SecurityUIPolicyStudio({
                             {attachmentSubmitted ? (
                               <>
                                 <p>Created policy <strong>{currentPolicyData.name}</strong> (v1)</p>
-                                <p>Defines and restricts medical, clinical, and prescription-related guidance. Clarifies what content should be blocked, allowed, or treated as an edge case to ensure the AI assistant does not provide medical advice.</p>
-                                <p>To improve this policy, add additional instructions, ground-truth examples, or internal compliance guidelines.</p>
+                                <p>{currentPolicyData.description}</p>
+                                <p>Add authorized-access rules or labeled examples to refine this policy.</p>
                               </>
                             ) : (
                               <>
                                 <p>Created policy <strong>{currentPolicyData.name}</strong> (v1)</p>
-                                <p>Clarifies what constitutes medical advice, diagnosis, prescription guidance, and recommendation. Defines what gets blocked, allowed, or treated as an edge case.</p>
-                                <p>To enhance the policy you can either continue prompting, upload ground-truth samples, or add relevant files such as internal policy guidelines and best practices for your use case.</p>
-                                <p>When finished, run the analysis mode to refine the policy based on discovered insights.</p>
+                                <p>{currentPolicyData.description}</p>
+                                <p>Add policy documents or labeled examples to refine the rules.</p>
+                                <p>When the draft is ready, analyze it for coverage gaps or evaluate it with test samples.</p>
                               </>
                             )}
                           </ChatMessage>
@@ -973,11 +928,11 @@ export default function SecurityUIPolicyStudio({
                             <p><em>Analyzing uploaded files...</em></p>
                             <div className="security-ui-reasoning">
                               <strong>Generating plan</strong>
-                              <p><em>Looking for patterns that should be blocked, allowed or reviewed as edge cases.</em></p>
+                              <p><em>Looking for protected disclosures, authorized requests, and unclear access scenarios.</em></p>
                               <ul>
-                                <li>General medical advice (explaining what the flu is)</li>
-                                <li>Factual information without recommendations</li>
-                                <li>Describing healthcare services</li>
+                                <li>Guest attendance or identity confirmation</li>
+                                <li>Arrival times, private entrances, and access routes</li>
+                                <li>Verified vendor requests beyond the assigned task</li>
                               </ul>
                             </div>
                           </>
@@ -1000,7 +955,7 @@ export default function SecurityUIPolicyStudio({
                   value={input}
                   disabled={stage === 'thinking' || isCreatingPolicy}
                   onChange={event => setInput(event.target.value)}
-                  placeholder="Describe your policy requirements"
+                  placeholder="Describe what the agent must block or allow"
                 />
                 <div>
                   <button
@@ -1030,7 +985,7 @@ export default function SecurityUIPolicyStudio({
                   showInsights={stage === 'insights'}
                 />
               ) : (
-                <p>Your policy will appear here</p>
+                <p>Your guardrail policy will appear here</p>
               )}
             </section>
           </main>
@@ -1041,8 +996,8 @@ export default function SecurityUIPolicyStudio({
         <div className="security-ui-upload-backdrop" role="presentation">
           <section className="security-ui-upload-modal" role="dialog" aria-modal="true" aria-label="Upload files">
             <h2>Upload files</h2>
-            <p>Upload a sample policy document to help Policy Studio create or refine this profile.</p>
-            <p>Upload up to 4 files (maximum 2 MB each) in .txt, .xlsx, .csv, .md, .json or .pdf format.</p>
+            <p>Upload policies or labeled examples to create or refine this guardrail.</p>
+            <p>Upload up to 4 files, 2 MB each, in .txt, .xlsx, .csv, .md, .json, or .pdf format.</p>
             <button
               className={`security-ui-dropzone${uploadFileSelected ? ' security-ui-dropzone--uploaded' : ''}`}
               onClick={() => setUploadFileSelected(true)}
@@ -1051,7 +1006,7 @@ export default function SecurityUIPolicyStudio({
             >
               {uploadFileSelected ? (
                 <span className="security-ui-dropzone-file">
-                  <MagneticIcon src={paperclipIcon} />One attachment: AI-medical-advice-policy.pdf
+                  <MagneticIcon src={paperclipIcon} />One attachment: vip-event-confidentiality-policy.pdf
                 </span>
               ) : (
                 <>
