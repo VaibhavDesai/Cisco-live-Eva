@@ -46,8 +46,6 @@ export interface Agent {
   avgResponse: string;
   meta: string;
   knowledgeBases?: string[];
-  actions?: string[];
-  updatedBy?: string;
   createdAt?: string;
   updatedAt?: string;
   agentType?: 'Autonomous agent' | 'Scripted agent';

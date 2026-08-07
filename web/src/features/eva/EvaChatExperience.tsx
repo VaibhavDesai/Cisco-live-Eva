@@ -14,10 +14,6 @@ import {
   EVA_CANVAS_ORIGIN_PATH_KEY,
   EVA_CANVAS_PATHS,
 } from './EvaCanvasOverlay';
-import EvaCanvasSurface from './canvas/EvaCanvasSurface';
-import SecurityUIPolicyStudio from '../../pages/agent/SecurityUIPolicyStudio';
-import CreateFulfillmentModal from '../../pages/agent/CreateFulfillmentModal';
-import { AVAILABLE_ACTIONS, INTEGRATIONS, MCP_SERVERS } from '../../pages/agent/actionConfigShared';
 import { EVA_TEMPLATES } from './evaTemplates';
 import type { EvaAgentDraft, EvaFieldSuggestion, EvaKnowledgeRecommendation, EvaMessage, EvaTemplateId } from './types';
 import { formatRelative } from '../../pages/knowledge/utils';
@@ -1097,16 +1093,14 @@ const defaultGuidedCustomProfile: GuidedCustomProfile = {
   },
 };
 
-const ciscoLiveGuidedProfiles: GuidedCustomProfile[] = CISCO_LIVE_ALL_GUARDRAILS.map(guardrail => ({
-  ...guardrail,
-  enabled: true,
-}));
-
 const guidedCustomProfileLimit = 3;
+const guidedCustomProfileDescriptions = [
+  defaultGuidedCustomProfile.description,
+  'Detects escalation-specific requests and ensures urgent customer issues follow approved handoff rules.',
+  'Detects policy exception requests and keeps agent responses aligned to approved business workflows.',
+] as const;
 
 const summarizeGuardrailChipLabel = (label: string) => {
-  const ciscoLiveProfile = ciscoLiveGuidedProfiles.find(profile => profile.description === label);
-  if (ciscoLiveProfile) return ciscoLiveProfile.name;
   if (label === defaultGuidedCustomProfile.description) return defaultGuidedCustomProfile.name;
   if (/escalate urgent customer/i.test(label)) return 'Escalation rules';
   if (label.length <= 42) return label;
@@ -1361,7 +1355,6 @@ export default function EvaChatExperience({
     restoredEvaSession?.recommendationReviewStep ?? null,
   );
   const [agentName, setAgentName] = useState(restoredEvaSession?.agentName ?? EVA_TEMPLATES[0].draft.name);
-  const [agentNameAiUpdateValue, setAgentNameAiUpdateValue] = useState<string | null>(null);
   const [agentDescription, setAgentDescription] = useState(restoredEvaSession?.agentDescription ?? EVA_TEMPLATES[0].draft.description);
   const [avatarUrl, setAvatarUrl] = useState(restoredEvaSession?.avatarUrl ?? 'https://us.webexbotbuilder.com/static/assets/i...');
   const [timezone, setTimezone] = useState(restoredEvaSession?.timezone ?? 'Europe/London');
@@ -1390,43 +1383,19 @@ export default function EvaChatExperience({
   const [digitalChannel, setDigitalChannel] = useState<EvaDigitalChannel>(restoredEvaSession?.digitalChannel ?? 'chat');
   const [digitalChannelAddress, setDigitalChannelAddress] = useState(restoredEvaSession?.digitalChannelAddress ?? '');
   const [channelPhoneNumber, setChannelPhoneNumber] = useState(restoredEvaSession?.channelPhoneNumber ?? CHANNEL_PHONE_NUMBER_OPTIONS[0].value);
-  const initialStandardGuardrails = restoredEvaSession?.standardGuardrails ?? EVA_STANDARD_GUARDRAILS;
-  const initialAdvancedGuardrailGroups = restoredEvaSession?.advancedGuardrailGroups ?? EVA_ADVANCED_GUARDRAIL_GROUPS;
-  const [standardGuardrails, setStandardGuardrails] = useState(initialStandardGuardrails);
-  const [advancedGuardrailGroups, setAdvancedGuardrailGroups] = useState(initialAdvancedGuardrailGroups);
+  const [standardGuardrails, setStandardGuardrails] = useState(restoredEvaSession?.standardGuardrails ?? EVA_STANDARD_GUARDRAILS);
+  const [advancedGuardrailGroups, setAdvancedGuardrailGroups] = useState(restoredEvaSession?.advancedGuardrailGroups ?? EVA_ADVANCED_GUARDRAIL_GROUPS);
   const [expandedAdvancedGroups, setExpandedAdvancedGroups] = useState<Set<string>>(
     () => new Set(restoredEvaSession?.expandedAdvancedGroups ?? EVA_ADVANCED_GUARDRAIL_GROUPS.map(group => group.id)),
   );
-  const [expandedPrebuiltGuardrailGroups, setExpandedPrebuiltGuardrailGroups] = useState<Set<string>>(() => new Set(
-    initialAdvancedGuardrailGroups
-      .filter(group => {
-        const hasEnabledCoreRule = initialStandardGuardrails.some(item => {
-          if (!item.enabled) return false;
-          if (group.id === 'security') return item.id.includes('jailbreak');
-          if (group.id === 'safety') return !item.id.includes('jailbreak');
-          return false;
-        });
-
-        return hasEnabledCoreRule || group.items.some(item => item.enabled);
-      })
-      .map(group => group.id),
-  ));
+  const [expandedPrebuiltGuardrailGroups, setExpandedPrebuiltGuardrailGroups] = useState<Set<string>>(() => new Set());
   const [personality, setPersonality] = useState(restoredEvaSession?.personality ?? {
     llm: 'Webex AI Pro 1.0',
     voice: 'ava',
     language: 'en-US',
     gender: 'neutral',
   });
-  const [customRules, setCustomRules] = useState<string[]>(() => {
-    const restoredRules = restoredEvaSession?.customRules ?? [];
-    if (restoredRules.length > 0) return restoredRules;
-    const ciscoLiveAgent = CISCO_LIVE_AGENTS.find(agent =>
-      agent.id === restoredEvaSession?.sourceAgentId || agent.name === restoredEvaSession?.agentName,
-    );
-    return ciscoLiveAgent?.customGuardrails.map(guardrail => guardrail.description) ?? [];
-  });
-  const [showGuidedPolicyStudio, setShowGuidedPolicyStudio] = useState(false);
-  const [policyStudioGuidedProfiles, setPolicyStudioGuidedProfiles] = useState<GuidedCustomProfile[]>([]);
+  const [customRules, setCustomRules] = useState<string[]>(restoredEvaSession?.customRules ?? []);
   const [disabledCustomRules, setDisabledCustomRules] = useState<Set<string>>(() => new Set());
   const [expandedProfileDescs, setExpandedProfileDescs] = useState<Set<string>>(() => new Set());
   const [previewMessages, setPreviewMessages] = useState<EvaMessage[]>([]);
@@ -1481,16 +1450,8 @@ export default function EvaChatExperience({
   const thinkingTimerRef = useRef<number | null>(null);
   const planningIntervalRef = useRef<number | null>(null);
   const sidePanelProgressIntervalRef = useRef<number | null>(null);
-  const generatedSidePanelRef = useRef<HTMLElement | null>(null);
-  const configurationCanvasRef = useRef<HTMLElement | null>(null);
-  const agentNameInputRef = useRef<HTMLInputElement | null>(null);
-  const agentNameAiFocusTimerRef = useRef<number | null>(null);
-  const agentNameAiUpdateTimerRef = useRef<number | null>(null);
   const sidePanelPreviewCardRef = useRef<HTMLElement | null>(null);
   const pendingPreviewScrollRef = useRef(false);
-  const pendingConfigurationScrollStepRef = useRef<EvaConversationStep | null>(
-    restoredEvaSession?.scrollFocusedStep ?? restoredEvaSession?.evaStep ?? null,
-  );
   const retailDiscoveryTimerRef = useRef<number | null>(null);
   const logisticsDiscoveryTimerRef = useRef<number | null>(null);
   const retailPhoneSelectorRef = useRef<HTMLDivElement | null>(null);
@@ -1527,7 +1488,6 @@ export default function EvaChatExperience({
       freeChatActive,
       conversationalOnboardingStep,
       evaStep,
-      scrollFocusedStep,
       agentName,
       agentDescription,
       avatarUrl,
@@ -1536,8 +1496,6 @@ export default function EvaChatExperience({
       welcomeMessage,
       instructionPrompt,
       selectedKnowledgeBases,
-      selectedPreferenceMemories,
-      enabledOrchestrationScenarioIds,
       selectedActions,
       optimizeAccepted,
       preOptimizeText,
@@ -1660,9 +1618,12 @@ export default function EvaChatExperience({
 
   const openEvaCanvas = (overrides: Partial<EvaSessionState> = {}) => {
     persistEvaSession(overrides);
-    /* Remember the route the user is opening orchestration from so the
-       Configuration control can return to the same workspace without
-       losing the current build state. */
+    /* Remember the route the user is opening the canvas from so the
+       canvas's "Chat view" / "New thread" buttons can return them
+       there. Without this, opening the canvas from /dashboard (the
+       "Chat-based in Dashboard" variation) and clicking Chat view
+       would dump the user on /agents (EvaAgentsTable's landing
+       screen) with the impression their build state was lost. */
     try {
       if (location.pathname && !EVA_CANVAS_PATHS.includes(location.pathname)) {
         window.sessionStorage.setItem(EVA_CANVAS_ORIGIN_PATH_KEY, location.pathname);
@@ -1670,31 +1631,15 @@ export default function EvaChatExperience({
     } catch {
       /* sessionStorage unavailable — falls back to /agents on close. */
     }
-    /* Pick the orchestration route that lives under the same parent as the
+    /* Pick the canvas route that lives under the same parent as the
        user's current page. From / (Dashboard) we navigate to
        /eva-canvas so the Dashboard sidebar item stays highlighted; from
-       anywhere else (notably /agents) we use /agents/eva-canvas. */
+       anywhere else (notably /agents) we use /agents/eva-canvas. The
+       overlay component recognises both as "open" via EVA_CANVAS_PATHS. */
     const canvasPath = location.pathname === '/'
       ? EVA_CANVAS_DASHBOARD_PATH
       : EVA_CANVAS_AGENTS_PATH;
     navigate(canvasPath);
-  };
-
-  const closeEvaCanvas = () => {
-    /* The canvas route replaces the configuration working zone, so the
-       configuration scroll container is recreated when the user returns.
-       Remember the Progress rail's focused section and realign the new
-       container after it mounts. */
-    pendingConfigurationScrollStepRef.current = scrollFocusedStep;
-    let originPath = location.pathname === EVA_CANVAS_DASHBOARD_PATH ? '/' : '/agents';
-    try {
-      const storedOrigin = window.sessionStorage.getItem(EVA_CANVAS_ORIGIN_PATH_KEY);
-      if (storedOrigin && !EVA_CANVAS_PATHS.includes(storedOrigin)) originPath = storedOrigin;
-      window.sessionStorage.removeItem(EVA_CANVAS_ORIGIN_PATH_KEY);
-    } catch {
-      /* sessionStorage unavailable — use the route-derived fallback. */
-    }
-    navigate(originPath);
   };
 
   const toggleSelectedChannel = (channel: EvaChannelSelection) => {
@@ -1777,12 +1722,6 @@ export default function EvaChatExperience({
     if (studioTransitionTimerRef.current) {
       window.clearTimeout(studioTransitionTimerRef.current);
     }
-    if (agentNameAiFocusTimerRef.current) {
-      window.clearTimeout(agentNameAiFocusTimerRef.current);
-    }
-    if (agentNameAiUpdateTimerRef.current) {
-      window.clearTimeout(agentNameAiUpdateTimerRef.current);
-    }
     stopVoiceCall(null);
   }, []);
 
@@ -1813,14 +1752,9 @@ export default function EvaChatExperience({
   const latestUserMessageText = [...messages].reverse().find(m => m.role === 'user')?.text ?? null;
 
   useEffect(() => {
-    if (isEvaCanvasView || !guidanceVisible || evaThinking) return;
-    const targetStep = pendingConfigurationScrollStepRef.current ?? evaStep;
-    let alignmentFrameId: number | undefined;
-    let activeScrollContainer: HTMLElement | null = null;
+    if (!guidanceVisible || evaThinking) return;
     const frameId = window.requestAnimationFrame(() => {
-      const stepAnchor = configurationCanvasRef.current?.querySelector<HTMLElement>(
-        `.eva-step-anchor[data-eva-step="${targetStep}"]`,
-      );
+      const stepAnchor = document.querySelector<HTMLElement>(`[data-eva-step="${evaStep}"]`);
       if (!stepAnchor) return;
       stepAnchor.focus({ preventScroll: true });
       /* Scroll only the dialogue scroll container (the closest legitimate
@@ -1829,42 +1763,26 @@ export default function EvaChatExperience({
          transition back to landing and leaks blank space at the bottom. */
       const scrollContainer = stepAnchor.closest<HTMLElement>('.eva-dialogue') ?? stepAnchor.parentElement;
       if (scrollContainer) {
-        activeScrollContainer = scrollContainer;
-        scrollContainer.style.removeProperty('padding-bottom');
-        const stepSection = stepAnchor.nextElementSibling as HTMLElement | null;
-        const scrollTarget = stepSection ?? stepAnchor;
-        const containerRect = scrollContainer.getBoundingClientRect();
-        const targetRect = scrollTarget.getBoundingClientRect();
-        const targetBottom = scrollContainer.scrollTop + targetRect.bottom - containerRect.top;
-        const contentAfterTarget = Math.max(0, scrollContainer.scrollHeight - targetBottom);
-        const spaceNeededAfterTarget = Math.max(0, scrollContainer.clientHeight - targetRect.height);
-        const endSpace = Math.max(0, spaceNeededAfterTarget - contentAfterTarget);
-
-        if (endSpace > 0) {
-          scrollContainer.style.paddingBottom = `${endSpace}px`;
-        }
-
-        alignmentFrameId = window.requestAnimationFrame(() => {
-          const alignedContainerRect = scrollContainer.getBoundingClientRect();
-          const alignedTargetRect = scrollTarget.getBoundingClientRect();
-          const offset = scrollContainer.scrollTop + alignedTargetRect.top - alignedContainerRect.top;
-          scrollContainer.scrollTo({ top: Math.max(0, offset), behavior: 'auto' });
-          setScrollFocusedStep(targetStep);
-          pendingConfigurationScrollStepRef.current = null;
-        });
+        const offset = stepAnchor.offsetTop - scrollContainer.offsetTop;
+        scrollContainer.scrollTo({ top: Math.max(0, offset), behavior: 'auto' });
       }
     });
 
-    return () => {
-      window.cancelAnimationFrame(frameId);
-      if (alignmentFrameId !== undefined) window.cancelAnimationFrame(alignmentFrameId);
-      activeScrollContainer?.style.removeProperty('padding-bottom');
-    };
-  }, [evaStep, guidanceVisible, evaThinking, isEvaCanvasView]);
+    return () => window.cancelAnimationFrame(frameId);
+  }, [evaStep, guidanceVisible, evaThinking]);
 
-  /* Keep conversation activity focused in its owning surface. Guided
-     configuration messages live in the left thread; free-chat messages
-     remain in the full-width conversation view. */
+  /* Mid-step scroll: when the user asks Eva a question during the
+     waterfall (or Eva's reply lands), the new user/thinking/reply
+     bubbles render BELOW the active step's form (see the
+     `{renderUserPromptForStep(...)}` call placed after each
+     `</AiResponseMessage>`). Scrolling to the step anchor would still
+     leave those bubbles below the viewport, so we explicitly scroll
+     the dialogue to its bottom — bringing the latest user prompt and
+     Eva's reply right above the sticky composer.
+
+     Also runs for free-chat/prototype message growth so chip/card
+     selections and hardcoded assistant replies stay focused without the
+     user manually scrolling. */
   useEffect(() => {
     const frameId = window.requestAnimationFrame(() => {
       const generatedWorkspaceActive = !freeChatActive && (
@@ -1932,10 +1850,6 @@ export default function EvaChatExperience({
           : 0;
         const offset = Math.max(baseOffset, scrollContainer.scrollTop + Math.max(0, actionClearance));
         scrollContainer.scrollTo({ top: Math.max(0, offset), behavior: 'smooth' });
-        return;
-      }
-      if (guidanceVisible) {
-        scrollContainer.scrollTo({ top: scrollContainer.scrollHeight, behavior: 'smooth' });
         return;
       }
       const hasActiveStepPrompt = messages.some(
@@ -3263,41 +3177,15 @@ export default function EvaChatExperience({
     setLandingMode('build');
   };
 
-  const handleSaveConfigurations = () => {
-    const sourceAgentId = [
-      restoredEvaSession?.sourceAgentId,
-      currentAgent?.id,
-      Object.values(agents).find(agent => agent.name === draft.name)?.id,
-      initialCiscoLiveAgent?.id,
-    ].find(candidate => candidate && agents[candidate]);
-    const updatedDraft = { ...draft, name: agentName, description: agentDescription };
-
-    setDraft(updatedDraft);
-    persistEvaSession({
-      sourceAgentId,
-      draft: updatedDraft,
-      agentName,
-      agentDescription,
-      evaStep,
-      scrollFocusedStep,
-    });
-
-    if (sourceAgentId) {
-      updateAgent(sourceAgentId, {
-        name: agentName,
-        description: agentDescription,
-        knowledgeBases: selectedKnowledgeBases,
-        actions: selectedActions,
-        meta: `${agentDescription} • Updated just now`,
-      });
-    }
-
-    showToast('Configurations updated.', 'success');
-  };
-
-  /* A standalone canvas variation can request a new thread via a one-shot
-     sessionStorage flag before returning to configuration. Watch the route
-     so that handoff is consumed only after leaving orchestration. */
+  /* When the user clicks "New thread" on the canvas overlay header, the
+     overlay sets a one-shot sessionStorage flag and navigates back to
+     the route they came from (which may be /agents OR /dashboard when
+     the chat experience is mounted via the "Chat-based in Dashboard"
+     variation). Because the canvas overlay only changes pathname rather
+     than unmounting EvaChatExperience on the /agents path, watching
+     `location.pathname` lets us consume the flag every time we land on
+     a non-canvas route — and we ignore the canvas path itself so the
+     handoff doesn't accidentally fire while the canvas is opening. */
   useEffect(() => {
     if (EVA_CANVAS_PATHS.includes(location.pathname)) return;
     let shouldStart = false;
@@ -4147,47 +4035,13 @@ export default function EvaChatExperience({
     const trimmed = text.trim();
     if (!trimmed) return;
     const normalized = trimmed.toLowerCase();
-    const requestedAgentName = extractAgentNameUpdateIntent(trimmed);
     /* Tag the user message with the active step so the mid-step
        thread renderer can scope it to the right section. Untagged
        user messages (e.g. the template-selection trigger pushed by
        `handleTemplateSelect`) intentionally don't appear below the
        form — they belong to the planning hero. */
-    setMessages(prev => [...prev, { role: 'user', text: trimmed, originStep: requestedAgentName ? 'profile' : evaStep }]);
+    setMessages(prev => [...prev, { role: 'user', text: trimmed, originStep: evaStep }]);
     setOrchestrationSuggested(false);
-
-    if (requestedAgentName) {
-      if (agentNameAiFocusTimerRef.current) window.clearTimeout(agentNameAiFocusTimerRef.current);
-      if (agentNameAiUpdateTimerRef.current) window.clearTimeout(agentNameAiUpdateTimerRef.current);
-
-      pendingConfigurationScrollStepRef.current = 'profile';
-      setEvaStep('profile');
-      setScrollFocusedStep('profile');
-      setAgentNameAiUpdateValue(requestedAgentName);
-
-      agentNameAiFocusTimerRef.current = window.setTimeout(() => {
-        agentNameInputRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
-        agentNameInputRef.current?.focus({ preventScroll: true });
-        agentNameAiFocusTimerRef.current = null;
-      }, 120);
-
-      agentNameAiUpdateTimerRef.current = window.setTimeout(() => {
-        setAgentName(requestedAgentName);
-        setDraft(previous => ({ ...previous, name: requestedAgentName }));
-        setAgentNameAiUpdateValue(null);
-        setMessages(previous => [
-          ...previous,
-          {
-            role: 'assistant',
-            text: `Updated the agent name to ${requestedAgentName}.`,
-            originStep: 'profile',
-          },
-        ]);
-        showToast('Agent name updated.', 'success');
-        agentNameAiUpdateTimerRef.current = null;
-      }, 1800);
-      return;
-    }
 
     if (evaStep === 'testing' && handleTestingStepChat(trimmed, normalized)) {
       return;
@@ -5058,9 +4912,11 @@ ${previewTranscript}`,
   };
 
   /* Calls the Cisco LLM with a step-aware system prompt and pushes
-     AI Assistant's reply into the left configuration thread. Errors
-     surface there as an assistant message so the user can see why an
-     update did not happen.
+     Eva's reply onto the messages list. The reply renders in the
+     active step's section via `renderUserPromptForStep` (which now
+     also picks up the assistant message that follows the user's
+     latest prompt). Errors surface as an assistant message so the
+     user can see why nothing happened.
 
      Uses `waterfallThinking` (not `evaThinking`) so the build flow
      stays visible while the LLM is in flight; `evaThinking` is
@@ -5115,22 +4971,6 @@ ${previewTranscript}`,
   };
 
   const getGuidedCustomProfile = (rule: string, index: number): GuidedCustomProfile => {
-    const policyStudioProfile = policyStudioGuidedProfiles.find(profile => profile.description === rule);
-    if (policyStudioProfile) {
-      return {
-        ...policyStudioProfile,
-        enabled: !disabledCustomRules.has(rule),
-      };
-    }
-
-    const ciscoLiveProfile = ciscoLiveGuidedProfiles.find(profile => profile.description === rule);
-    if (ciscoLiveProfile) {
-      return {
-        ...ciscoLiveProfile,
-        enabled: !disabledCustomRules.has(rule),
-      };
-    }
-
     if (rule === defaultGuidedCustomProfile.description) {
       return {
         ...defaultGuidedCustomProfile,
@@ -5172,6 +5012,24 @@ ${previewTranscript}`,
     });
   };
 
+  const addGuidedCustomProfile = () => {
+    const nextRule = customRules.length < guidedCustomProfileLimit
+      ? guidedCustomProfileDescriptions.find(rule => !customRules.includes(rule))
+      : undefined;
+    if (!nextRule) return;
+
+    setCustomRules(prev => {
+      if (prev.length >= guidedCustomProfileLimit) return prev;
+      if (prev.includes(nextRule)) return prev;
+      return [...prev, nextRule];
+    });
+    setDisabledCustomRules(prev => {
+      const next = new Set(prev);
+      next.delete(nextRule);
+      return next;
+    });
+  };
+
   const handleReviewPreviewAction = () => {
     if (visibleSteps.includes('preview')) {
       setEvaStep('testing');
@@ -5182,16 +5040,6 @@ ${previewTranscript}`,
     setShowEvaGeneratedSidePanel(true);
     setEvaStep('preview');
   };
-
-  const publishedDemoAgent = CISCO_LIVE_AGENTS.find(agent =>
-    agent.id === restoredEvaSession?.sourceAgentId || agent.name === agentName,
-  );
-  const isPublishedDemoAgent = publishedDemoAgent?.status === 'Published';
-  const canvasAgentDefinition = publishedDemoAgent ?? CISCO_LIVE_AGENTS[0];
-  const headerAgentDefinition = isEvaCanvasView ? canvasAgentDefinition : publishedDemoAgent;
-  const isHeaderAgentPublished = headerAgentDefinition?.status === 'Published';
-  const activeMemorySources = publishedDemoAgent?.memorySources ?? DEFAULT_MEMORY_SOURCES;
-  const orchestrationScenarios = publishedDemoAgent?.orchestrationScenarios ?? DEFAULT_ORCHESTRATION_SCENARIOS;
 
   const generatedName = draft.name.includes('Customer')
     ? 'ClaimClarity'
@@ -5256,7 +5104,6 @@ ${previewTranscript}`,
      erasing the assistant's reply. The chat-thread render below is gated
      on the same flag. */
   const showLandingOptions = !guidanceVisible && !evaThinking && !orchestrationSuggested && !freeChatActive;
-  const showLandingShell = showLandingOptions && !isEvaCanvasView;
   const showBuildFlow = landingMode === 'build' || guidanceVisible || evaThinking || orchestrationSuggested || freeChatActive;
   const shouldShowEvaThreadPanel = showEvaThreadPanel && !showLandingOptions;
   const conversationPlaceholder = familyProposalChangeRequested
@@ -5585,65 +5432,7 @@ ${previewTranscript}`,
     setEvaThinking(false);
     setGuidanceVisible(true);
     setOrchestrationSuggested(false);
-    setScrollFocusedStep(step);
     setEvaStep(step);
-    window.requestAnimationFrame(() => {
-      generatedSidePanelRef.current?.scrollTo({ top: 0, behavior: 'smooth' });
-    });
-  };
-
-  const resizeGeneratedChatPanel = (width: number) => {
-    const availableWidth = Math.max(
-      GENERATED_CHAT_PANEL_MIN_WIDTH,
-      window.innerWidth - 720,
-    );
-    setGeneratedChatPanelWidth(Math.min(
-      Math.max(width, GENERATED_CHAT_PANEL_MIN_WIDTH),
-      Math.min(GENERATED_CHAT_PANEL_MAX_WIDTH, availableWidth),
-    ));
-  };
-
-  const handleChatPanelResizePointerDown = (event: PointerEvent<HTMLDivElement>) => {
-    if (generatedChatPanelMode !== 'rail') return;
-    event.preventDefault();
-    const startX = event.clientX;
-    const startWidth = generatedChatPanelWidth;
-    const handle = event.currentTarget;
-    handle.setPointerCapture(event.pointerId);
-    document.body.style.cursor = 'col-resize';
-    document.body.style.userSelect = 'none';
-
-    const handlePointerMove = (moveEvent: globalThis.PointerEvent) => {
-      resizeGeneratedChatPanel(startWidth + startX - moveEvent.clientX);
-    };
-    const finishResize = () => {
-      handle.removeEventListener('pointermove', handlePointerMove);
-      handle.removeEventListener('pointerup', finishResize);
-      handle.removeEventListener('pointercancel', finishResize);
-      document.body.style.removeProperty('cursor');
-      document.body.style.removeProperty('user-select');
-    };
-
-    handle.addEventListener('pointermove', handlePointerMove);
-    handle.addEventListener('pointerup', finishResize);
-    handle.addEventListener('pointercancel', finishResize);
-  };
-
-  const handleChatPanelResizeKeyDown = (event: KeyboardEvent<HTMLDivElement>) => {
-    const keyboardStep = event.shiftKey ? 32 : 8;
-    if (event.key === 'ArrowLeft') {
-      event.preventDefault();
-      resizeGeneratedChatPanel(generatedChatPanelWidth + keyboardStep);
-    } else if (event.key === 'ArrowRight') {
-      event.preventDefault();
-      resizeGeneratedChatPanel(generatedChatPanelWidth - keyboardStep);
-    } else if (event.key === 'Home') {
-      event.preventDefault();
-      resizeGeneratedChatPanel(GENERATED_CHAT_PANEL_MIN_WIDTH);
-    } else if (event.key === 'End') {
-      event.preventDefault();
-      resizeGeneratedChatPanel(GENERATED_CHAT_PANEL_MAX_WIDTH);
-    }
   };
   const resizeGeneratedChatPanel = (width: number) => {
     const availableWidth = Math.max(
@@ -5700,21 +5489,7 @@ ${previewTranscript}`,
   };
   const selectedActionSet = new Set(selectedActions);
   const selectedKnowledgeBaseSet = new Set(selectedKnowledgeBases);
-  const guidedCatalogActionRows = AVAILABLE_ACTIONS
-    .filter(action => selectedActionSet.has(action.name))
-    .map(action => ({
-      id: `guided-${action.id}`,
-      name: action.name,
-      description: action.description,
-      actionType: action.type,
-      providerType: action.source,
-      createdBy: action.source,
-      lastUpdated: 'Just now',
-    }));
-  const visibleActionRows = [...EVA_ACTION_ROWS, ...guidedCatalogActionRows].filter(action =>
-    !isPublishedDemoAgent || selectedActionSet.has(action.name),
-  );
-  const sidePanelActions = visibleActionRows.map(action => ({
+  const sidePanelActions = EVA_ACTION_ROWS.map(action => ({
     id: action.id,
     name: action.name,
     enabled: selectedActionSet.has(action.name),
@@ -6077,19 +5852,14 @@ ${previewTranscript}`,
     <AccordionItem
       title={(
         <span className="eva-planning-accordion__title">
-          <Icon name="list" weight="bold" size="sm" />
-          View configuration updates
+          <Icon name="sparkle" weight="bold" size="sm" />
+          View AI Assistant’s thinking trace
         </span>
       )}
       className="eva-planning-accordion"
       size="small"
-      styleVariant="borderless"
     >
-      {renderEvaPlanningRows(
-        evaThinking ? evaPlanningProgress : evaPlanningRows.length,
-        evaThinking,
-        !evaThinking,
-      )}
+      {renderEvaPlanningRows(evaPlanningRows.length, false, true)}
     </AccordionItem>
   );
 
@@ -6099,31 +5869,6 @@ ${previewTranscript}`,
         ? prev.filter(item => item !== knowledgeBase)
         : [...prev, knowledgeBase],
     );
-  };
-
-  const togglePreferenceMemory = (memoryName: string) => {
-    setSelectedPreferenceMemories(prev =>
-      prev.includes(memoryName)
-        ? prev.filter(item => item !== memoryName)
-        : [...prev, memoryName],
-    );
-  };
-
-  const toggleOrchestrationScenario = (scenarioId: string) => {
-    setEnabledOrchestrationScenarioIds(prev =>
-      prev.includes(scenarioId)
-        ? prev.filter(item => item !== scenarioId)
-        : [...prev, scenarioId],
-    );
-  };
-
-  const toggleOrchestrationScenarioDetails = (scenarioId: string) => {
-    setExpandedOrchestrationScenarioIds(prev => {
-      const next = new Set(prev);
-      if (next.has(scenarioId)) next.delete(scenarioId);
-      else next.add(scenarioId);
-      return next;
-    });
   };
 
   const toggleAction = (action: string) => {
@@ -6470,7 +6215,7 @@ ${previewTranscript}`,
       )}
 
       <div
-        className={`eva-first-interface${showLandingShell ? ' eva-first-interface--landing eva-landing-shell' : ''}${!freeChatActive && (guidanceVisible || evaThinking || orchestrationSuggested || isEvaCanvasView) ? ' eva-first-interface--generated' : ''}${freeChatActive && !guidanceVisible && !orchestrationSuggested ? ' eva-first-interface--free-chat' : ''}`}
+        className={`eva-first-interface${showLandingOptions ? ' eva-first-interface--landing eva-landing-shell' : ''}${!freeChatActive && (guidanceVisible || evaThinking || orchestrationSuggested) ? ' eva-first-interface--generated' : ''}${freeChatActive && !guidanceVisible && !orchestrationSuggested ? ' eva-first-interface--free-chat' : ''}`}
       >
         {showLandingOptions && (
           <section className="eva-first-interface__hero" aria-labelledby="eva-landing-title">
@@ -6486,7 +6231,7 @@ ${previewTranscript}`,
             one entry-point design. The "real" composer rendered below
             (the sticky/footer one) is suppressed while we're in the
             landing state to avoid two composers stacking. */}
-        {showLandingShell && landingMode === 'build' && (
+        {showLandingOptions && landingMode === 'build' && (
           <div className="eva-landing-composer" aria-label="Talk to AI Assistant">
             <AiFooter
               className="eva-ai-footer"
@@ -6504,7 +6249,7 @@ ${previewTranscript}`,
           </div>
         )}
 
-        {showLandingShell && landingMode === 'build' && (
+        {showLandingOptions && landingMode === 'build' && (
           <div className="eva-landing-divider eva-landing-template-divider" role="separator" aria-label="quick start with">
             <span className="eva-landing-divider-line" aria-hidden="true" />
             <span className="eva-landing-divider-text">Quick start with</span>
@@ -6512,7 +6257,7 @@ ${previewTranscript}`,
           </div>
         )}
 
-        {showLandingShell && landingMode === 'build' && (
+        {showLandingOptions && landingMode === 'build' && (
           <section className="eva-prompt-examples" aria-label="Quick templates">
             {starterPrompts.slice(0, 4).map(prompt => (
               <button
@@ -6540,7 +6285,7 @@ ${previewTranscript}`,
         {/* Secondary entry points — same pattern used on the form-builder
             landing. The "Or" divider separates the templated/free-text
             path above from the two direct shortcuts below. */}
-        {showLandingShell && landingMode === 'build' && (
+        {showLandingOptions && landingMode === 'build' && (
           <>
             <div className="eva-landing-divider" role="separator" aria-label="or">
               <span className="eva-landing-divider-line" aria-hidden="true" />
@@ -7735,308 +7480,27 @@ ${previewTranscript}`,
                     assistantState="processing"
                     content={null}
                   >
-                    <Icon name="arrow-right" weight="bold" size="sm" />
-                  </Button>
-                  <Button
-                    type="button"
-                    variant="tertiary"
-                    size="sm"
-                    className="eva-generated-chat-panel__view-control"
-                    onClick={() => setGeneratedChatPanelMode(
-                      generatedChatPanelMode === 'expanded' ? 'rail' : 'expanded',
-                    )}
-                    aria-label={generatedChatPanelMode === 'expanded'
-                      ? 'Restore conversation panel'
-                      : 'Expand conversation to full view'}
-                    title={generatedChatPanelMode === 'expanded'
-                      ? 'Restore conversation panel'
-                      : 'Expand conversation to full view'}
-                  >
-                    <Icon
-                      name={generatedChatPanelMode === 'expanded' ? 'fullscreen-exit' : 'fullscreen'}
-                      weight="bold"
-                      size="sm"
-                    />
-                  </Button>
-                </div>
-              )}
-              <div className="eva-generated-chat-panel__stream" aria-live="polite">
-                <div className="eva-generated-chat-transcript">
-                  {generatedChatMessages.map(({ message, messageIndex }) => {
-                    const key = `${message.role}-${message.timestamp ?? messageIndex}`;
-
-                    if (message.role === 'user') {
-                      return (
-                        <Fragment key={key}>
-                          <AiUserMessage
-                            className="eva-generated-chat-turn eva-generated-chat-turn--user"
-                            text={message.text}
-                          />
-                          {messageIndex === firstGeneratedUserMessageOriginalIndex && (
-                            <article className="eva-generated-thread-update">
-                              <div className="eva-generated-thread-update__header">
-                                <Icon name="sparkle" weight="bold" size="sm" />
-                                <div>
-                                  <strong>{evaThinking ? 'Creating the configuration plan' : 'Configuration plan ready'}</strong>
-                                  <p>{evaThinking ? `Preparing ${generatedName}` : `${generatedName} is ready to configure`}</p>
-                                </div>
-                              </div>
-                              {renderEvaPlanningProcess()}
-                            </article>
-                          )}
-                        </Fragment>
-                      );
-                    }
-
-                    return (
-                      <AiResponseMessage
-                        key={key}
-                        className="eva-ai-response eva-generated-chat-turn eva-generated-chat-turn--assistant"
-                        assistantName=""
-                        content={message.text}
-                        showActions={false}
-                      >
-                        {message.suggestion && (
-                          <div className="eva-generated-chat-suggestion">
-                            <span>Suggested {getFieldSuggestionLabel(message.suggestion.field)}</span>
-                            <blockquote>{message.suggestion.value}</blockquote>
-                            <div>
-                              <Button
-                                size="sm"
-                                onClick={() => applyFieldSuggestion(message.suggestion!, messageIndex)}
-                                disabled={message.suggestionAccepted}
-                              >
-                                {message.suggestionAccepted ? 'Accepted' : 'Accept'}
-                              </Button>
-                              <Button
-                                variant="secondary"
-                                size="sm"
-                                onClick={() => tryAnotherFieldSuggestion(message.suggestion!)}
-                              >
-                                Try another
-                              </Button>
-                            </div>
-                          </div>
-                        )}
-                      </AiResponseMessage>
-                    );
-                  })}
-                  {waterfallThinking && (
-                    <AiResponseMessage
-                      className="eva-ai-response eva-generated-chat-turn eva-generated-chat-turn--assistant"
-                      assistantName=""
-                      content="Updating this configuration…"
-                      showActions={false}
-                      role="status"
-                    />
-                  )}
-                </div>
-                {generatedChatMessages.length === 0 && (
-                  <div className="eva-generated-chat-panel__empty">
-                    <Icon name="chat" weight="bold" size="md" />
-                    <p>Ask about this configuration and the conversation will stay beside your work.</p>
-                  </div>
-                )}
-                <div className="eva-generated-chat-panel__activity" role="status">
-                  <Icon name={evaThinking ? 'sparkle' : 'check-circle'} weight="bold" size="sm" />
-                  <span>
-                    {evaThinking
-                      ? 'Updating the configuration'
-                      : optimizeSummary.changes.at(-1)
-                        ?? (isPublishedDemoAgent
-                          ? 'Loaded the approved published configuration.'
-                          : 'Configuration changes saved.')}
-                  </span>
-                </div>
-                {visibleSteps.includes('review') && !isPublishedDemoAgent && !isEvaCanvasView && (
-                  <div className="eva-next-step-block eva-next-step-block--chat" aria-label="Suggested next steps">
-                    <div className="eva-next-step-block__header">
-                      <span>{phoneNumberDeferred ? 'Make the agent live' : 'What would you like to add next?'}</span>
-                    </div>
-                    {phoneNumberDeferred ? (
-                      <>
-                        <div className="eva-next-step-card__content">
-                          <strong>
-                            <Icon name="phone" weight="bold" size="sm" />
-                            Connect a phone number
-                          </strong>
-                          <p>Choose an available voice number before publishing so customers can call this agent.</p>
-                        </div>
-                        <Button
-                          size="sm"
-                          className="eva-next-step-block__action"
-                          onClick={() => {
-                            setChannelType('voice');
-                            setEvaStep('channels');
-                          }}
-                        >
-                          Connect phone number
-                        </Button>
-                      </>
-                    ) : (
-                      <div className="eva-next-step-block__chips">
-                        {[
-                          'Include a guide on filing a claim',
-                          'Add tips for choosing the right insurance plan',
-                          'Explain deductible and co-pay concepts',
-                          'Provide updates on ongoing claims',
-                          'Create a FAQ on common policy terms',
-                        ].map(option => (
-                          <button key={option} type="button" onClick={() => handleNextStepSuggestion(option)}>
-                            {option}
-                          </button>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-                )}
-                {isEvaCanvasView && (
-                  <div className="eva-generated-chat-panel__canvas-actions" aria-label="Canvas assistant actions">
-                    <Button
-                      type="button"
-                      variant="secondary"
-                      size="sm"
-                      onClick={() => window.dispatchEvent(new Event('eva-canvas-load-example'))}
-                    >
-                      <Icon name="sparkle" weight="bold" size="sm" />
-                      Load example
-                    </Button>
-                  </div>
-                )}
-              </div>
-
-              {showBuildFlow && (
-                <section
-                  className="eva-first-interface__chat eva-first-interface__chat--sticky eva-generated-composer"
-                  aria-label="Ask about this configuration"
-                >
-                  <div className="eva-generated-composer__surface">
-                    <AiFooter
-                      className="eva-ai-footer"
-                      fillContainer
-                      onSend={guidanceVisible ? handleWaterfallFollowup : handleSend}
-                      processing={false}
-                      disabled={evaThinking || waterfallThinking || evaStep === 'preview'}
-                      placeholder="Ask about this configuration"
-                      suggestions={[]}
-                      voiceActive={voiceActive}
-                      onVoiceToggle={() => setVoiceActive(prev => !prev)}
-                      transcribePath={voiceTranscribePath}
-                    />
-                  </div>
+                    {renderEvaPlanningRows(evaPlanningProgress, true)}
+                  </AiResponseMessage>
                 </section>
               )}
-              {generatedChatPanelMode === 'rail' && (
-                <div
-                  className="eva-generated-chat-panel__resize-handle"
-                  role="separator"
-                  aria-label="Resize conversation panel"
-                  aria-orientation="vertical"
-                  aria-valuemin={GENERATED_CHAT_PANEL_MIN_WIDTH}
-                  aria-valuemax={GENERATED_CHAT_PANEL_MAX_WIDTH}
-                  aria-valuenow={generatedChatPanelWidth}
-                  tabIndex={0}
-                  onPointerDown={handleChatPanelResizePointerDown}
-                  onKeyDown={handleChatPanelResizeKeyDown}
-                  onDoubleClick={() => resizeGeneratedChatPanel(GENERATED_CHAT_PANEL_DEFAULT_WIDTH)}
-                />
-              )}
-            </aside>
 
-            <div className="eva-generated-workspace">
-              {(guidanceVisible || isEvaCanvasView) && !evaThinking && (
-                <div className="eva-view-actions">
-                  <div className="eva-view-header agent-header">
-                    <div className="agent-avatar" style={{ background: headerAgentDefinition?.gradient ?? gradient }}>
-                      {headerAgentDefinition?.initials ?? profileInitials}
-                    </div>
-                    <div className="agent-info">
-                      <div className="agent-name-row">
-                        <span className="agent-name">{isEvaCanvasView ? canvasAgentDefinition.name : agentName}</span>
-                        <Badge variant={isHeaderAgentPublished ? 'success' : 'warning'}>
-                          {isHeaderAgentPublished ? 'Published' : 'Draft'}
-                        </Badge>
-                      </div>
-                      <div className="agent-meta">
-                        {headerAgentDefinition?.meta ?? `${agentDescription} • Last updated just now`}
-                      </div>
-                    </div>
-                  </div>
-                  <div className="eva-view-actions__controls">
-                    <Button
-                      variant="secondary"
-                      size="sm"
-                      className="eva-view-actions__icon-btn"
-                      onClick={handleViewSummary}
-                      aria-label="View agent summary"
-                      title="Agent summary"
-                    >
-                      <Icon name="meeting-summary" weight="bold" size={18} />
-                    </Button>
-                    <Button
-                      variant="secondary"
-                      size="sm"
-                      className="eva-view-actions__icon-btn"
-                      onClick={() => (isEvaCanvasView ? closeEvaCanvas() : openEvaCanvas())}
-                      aria-label={isEvaCanvasView ? 'Open configuration view' : 'Open canvas view'}
-                      title={isEvaCanvasView ? 'Configuration' : 'Canvas view'}
-                    >
-                      <Icon name={isEvaCanvasView ? 'tools' : 'workflow-deployments'} weight="bold" size={18} />
-                    </Button>
-                    {!isEvaCanvasView && (
-                      <Button
-                        type="button"
-                        variant="secondary"
-                        size="sm"
-                        className="eva-view-actions__icon-btn"
-                        onClick={() => setShowEvaGeneratedSidePanel(prev => !prev)}
-                        aria-label={showEvaGeneratedSidePanel ? 'Expand canvas' : 'Show summary'}
-                        title={showEvaGeneratedSidePanel ? 'Expand' : 'Show summary'}
-                        aria-pressed={!showEvaGeneratedSidePanel}
-                      >
-                        <Icon name="side-panel" weight="bold" size={18} />
-                      </Button>
-                    )}
-                    <Button variant="primary" size="sm" onClick={handleSaveConfigurations}>
-                      Update configurations
-                    </Button>
-                  </div>
-                </div>
-              )}
-
-              <div className={`eva-generated-workspace__content${isEvaCanvasView ? ' eva-generated-workspace__content--orchestration' : ''}`}>
-                <div className={`eva-generated-layout__main${isEvaCanvasView ? ' eva-generated-layout__main--orchestration' : ''}`}>
-              {isEvaCanvasView ? (
-                <>
-                  <header className="eva-generated-canvas-header">
-                    <div>
-                      <small>Working zone</small>
-                      <h2>Orchestration</h2>
-                      <p>Build and review how agents collaborate across the workflow.</p>
-                    </div>
-                  </header>
-                  <EvaCanvasSurface
-                    embedded
-                    agentDefinition={canvasAgentDefinition}
-                    onBack={closeEvaCanvas}
-                    onNewThread={handleNewEvaThread}
-                  />
-                </>
-              ) : (
-                <>
         {orchestrationSuggested && !guidanceVisible && !evaThinking && (
-          <section className="eva-dialogue" aria-label="Orchestration configuration">
-            <section className="eva-workspace-section" aria-labelledby="eva-orchestration-section-title">
-              <header className="eva-workspace-section__header">
-                <h3 id="eva-orchestration-section-title">Orchestration</h3>
-              </header>
+          <section className="eva-dialogue" aria-label="AI Assistant conversation flow">
+            {latestUserMessage && <AiUserMessage text={latestUserMessage.text} />}
+            <AiResponseMessage
+              className="eva-ai-response"
+              showActions={false}
+              assistantName="AI Assistant"
+              content="AI Assistant Canvas is the visual workspace for mapping agent orchestration, connecting nodes, defining handoffs, and coordinating flows. I can open it for you while preserving this chat."
+            >
               <div className="eva-dialogue__actions">
                 <Button onClick={() => openEvaCanvas()}>Open AI Assistant Canvas</Button>
                 <Button variant="secondary" onClick={() => setOrchestrationSuggested(false)}>
                   Build a single agent instead
                 </Button>
               </div>
-            </section>
+            </AiResponseMessage>
           </section>
         )}
 
@@ -8048,33 +7512,16 @@ ${previewTranscript}`,
             {visibleSteps.includes('profile') && !hideConversationalOnboardingForms && (
               <>
                 <div className="eva-step-anchor" data-eva-step="profile" tabIndex={-1} />
-                <section
-                  className="eva-workspace-section"
-                  aria-labelledby="eva-profile-section-title"
+                <AiResponseMessage
+                  className="eva-ai-response"
+                  showActions={false}
+                  assistantName="AI Assistant"
+                  content={`Plan complete. I collapsed the setup plan below, and we can start configuring ${generatedName} step by step.`}
                 >
-                  <header className="eva-workspace-section__header">
-                    <h3 id="eva-profile-section-title">Profile</h3>
-                  </header>
                   <div className="eva-config-block">
+                    {renderEvaPlanningProcess()}
                     <div className="eva-config-grid eva-config-grid--responsive-two">
-                      <div className={`eva-agent-name-ai-update${agentNameAiUpdateValue ? ' eva-agent-name-ai-update--active' : ''}`}>
-                        <Input
-                          ref={agentNameInputRef}
-                          label="Agent name"
-                          required
-                          value={agentName}
-                          onChange={event => setAgentName(event.target.value)}
-                        />
-                        {agentNameAiUpdateValue && (
-                          <span
-                            className="eva-agent-name-ai-update__indicator"
-                            role="status"
-                            aria-label={`AI is updating the agent name to ${agentNameAiUpdateValue}`}
-                          >
-                            <Icon name="sparkle" weight="bold" size="sm" />
-                          </span>
-                        )}
-                      </div>
+                      <Input label="Agent name" required value={agentName} onChange={event => setAgentName(event.target.value)} />
                       <div className="v2-profile-avatar-row">
                         <div className="v2-profile-avatar-preview">
                           <div className="agent-avatar" style={{ background: gradient, width: 48, height: 48, fontSize: 16 }}>
@@ -8210,9 +7657,6 @@ ${previewTranscript}`,
                     ? 'Configure the in-Studio voice experience here. Phone numbers, routing, and Calling queues stay in Webex Calling and are connected only after you publish a version.'
                     : 'Next, add the customer channels where this agent should be available. Start with one channel; the others remain optional.'}
                 >
-                  <header className="eva-workspace-section__header">
-                    <h3 id="eva-channels-section-title">Channels</h3>
-                  </header>
                   <div className="eva-config-block">
                     <div className="eva-security-tier-selector eva-channel-type-selector" role="group" aria-label="Channels to add">
                       {EVA_CHANNEL_SELECTION_OPTIONS.filter(option => selectedAgentFamily !== 'calling' || option.value === 'voice').map(option => {
@@ -8313,13 +7757,12 @@ ${previewTranscript}`,
             {visibleSteps.includes('instructions') && (
               <>
                 <div className="eva-step-anchor" data-eva-step="instructions" tabIndex={-1} />
-                <section
-                  className="eva-workspace-section"
-                  aria-labelledby="eva-instructions-section-title"
+                <AiResponseMessage
+                  className="eva-ai-response"
+                  showActions={false}
+                  assistantName="AI Assistant"
+                  content="Next I drafted the instruction prompt from your request, selected profile, goals, and guardrails. Use this step to clarify what the agent can do, organize role, goals, guardrails, and output rules with markdown headers, define tone and escalation paths, and add dynamic content with {{variable}} syntax."
                 >
-                  <header className="eva-workspace-section__header">
-                    <h3 id="eva-instructions-section-title">Instructions</h3>
-                  </header>
                   <div className="eva-config-block">
                     <div className="eva-instructions-layout">
                       <div className="instructions-editor">
@@ -8371,6 +7814,29 @@ ${previewTranscript}`,
                         )}
                       </div>
                     </div>
+
+                    {optimizeAccepted && (
+                      <div className="eva-instruction-optimize-summary">
+                        <div className="instructions-optimize-header">
+                          <Icon name="sparkle" weight="bold" size={20} />
+                          <h3 className="instructions-optimize-title">Optimize summary</h3>
+                          <Button variant="secondary" size="sm" onClick={handleEvaUndoOptimize}>
+                            <Icon name="undo" weight="bold" size={16} />
+                            Undo
+                          </Button>
+                        </div>
+                        <div className="instructions-optimize-results">
+                          <div className="optimize-results-section">
+                            <h4>What's been changed:</h4>
+                            <ul>{optimizeSummary.changes.map((change, index) => <li key={index}>{change}</li>)}</ul>
+                          </div>
+                          <div className="optimize-results-section">
+                            <h4>Reasoning behind changes:</h4>
+                            <ul>{optimizeSummary.reasoning.map((reason, index) => <li key={index}>{reason}</li>)}</ul>
+                          </div>
+                        </div>
+                      </div>
+                    )}
 
                     {showInstructionExamples && createPortal(
                       <div className="example-modal-overlay" onClick={() => setShowInstructionExamples(false)}>
@@ -8469,15 +7935,6 @@ ${previewTranscript}`,
                   assistantName="AI Assistant"
                   content="Knowledge is optional for publishing. These knowledge bases already have connected sources and are ready to enable. Select the approved collections this agent can use for trusted or frequently changing information."
                 >
-                  <header className="eva-workspace-section__header">
-                    <div>
-                      <h3 id="eva-knowledge-section-title">Knowledge &amp; Memory</h3>
-                      <p>Resources this agent can reference and customer preferences it can remember</p>
-                    </div>
-                    <span className="eva-workspace-section__count">
-                      {selectedKnowledgeBases.length + selectedPreferenceMemories.length} selected
-                    </span>
-                  </header>
                   <div className="eva-config-block">
                     {knowledgeInventoryError && (
                       <Banner
@@ -8492,7 +7949,7 @@ ${previewTranscript}`,
                       />
                     )}
                     {/* Mirrors the Knowledge page collections table (Name · Description · Sources ·
-                        Last updated). Selection lives inline on the Name cell — same
+                        Used by · Last updated). Selection lives inline on the Name cell — same
                         toggle pattern used by the Actions table on the next step. */}
                     <Table>
                       <TableHead>
@@ -8500,6 +7957,7 @@ ${previewTranscript}`,
                           <TableHeader>Name</TableHeader>
                           <TableHeader>Description</TableHeader>
                           <TableHeader>Sources</TableHeader>
+                          <TableHeader>Used by</TableHeader>
                           <TableHeader>Last updated</TableHeader>
                         </TableRow>
                       </TableHead>
@@ -8529,30 +7987,8 @@ ${previewTranscript}`,
                                 {source.description}
                               </TableCell>
                               <TableCell>{source.sources}</TableCell>
+                              <TableCell>{source.usedBy || '—'}</TableCell>
                               <TableCell>{formatRelative(source.lastUpdatedAt)}</TableCell>
-                            </TableRow>
-                          );
-                        })}
-                        {activeMemorySources.map(memory => {
-                          const selected = selectedPreferenceMemories.includes(memory.name);
-                          return (
-                            <TableRow key={`memory-${memory.name}`} selected={selected}>
-                              <TableCell>
-                                <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
-                                  <Toggle
-                                    size="compact"
-                                    checked={selected}
-                                    onChange={() => togglePreferenceMemory(memory.name)}
-                                    aria-label={`${selected ? 'Deselect' : 'Select'} ${memory.name}`}
-                                  />
-                                  <strong>{memory.name}</strong>
-                                </span>
-                              </TableCell>
-                              <TableCell style={{ maxWidth: 320, whiteSpace: 'normal' }}>
-                                {memory.description}
-                              </TableCell>
-                              <TableCell><Badge variant="info">Memory</Badge></TableCell>
-                              <TableCell>Live</TableCell>
                             </TableRow>
                           );
                         })}
@@ -8609,147 +8045,55 @@ ${previewTranscript}`,
                   assistantName="AI Assistant"
                   content="Actions are optional for publishing. Connect one only when the agent must complete or update work; otherwise explicitly mark this section as not needed."
                 >
-                  <header className="eva-workspace-section__header">
-                    <div>
-                      <h3 id="eva-orchestration-section-title">Orchestration</h3>
-                      <p>Coordinate multi-agent workflows, then choose the actions this agent executes.</p>
-                    </div>
-                    <span className="eva-workspace-section__count">
-                      {enabledOrchestrationScenarioIds.length} scenarios · {selectedActions.length} actions
-                    </span>
-                  </header>
                   <div className="eva-config-block">
-                    <section className="eva-orchestration-layer" aria-labelledby="eva-orchestration-scenarios-title">
-                      <div className="eva-orchestration-layer__header">
-                        <div>
-                          <h4 id="eva-orchestration-scenarios-title">Multi-agent scenarios</h4>
-                          <p>Delegation, consultation, and handoffs across collaborating agents.</p>
-                        </div>
-                        <div className="eva-orchestration-layer__header-actions">
-                          <Button
-                            variant="secondary"
-                            size="sm"
-                            onClick={() => openEvaCanvas()}
-                          >
-                            <Icon name="workflow-deployments" weight="bold" size={16} />
-                            Canvas view
-                          </Button>
-                          <Button
-                            variant="secondary"
-                            size="sm"
-                            onClick={() => showToast('Scenario creation is ready for the next prototype step.', 'info')}
-                          >
-                            <Icon name="plus" weight="bold" size={16} />
-                            Add scenario
-                          </Button>
-                        </div>
-                      </div>
-                      <div className="eva-orchestration-scenarios">
-                        {orchestrationScenarios.map(scenario => {
-                          const enabled = enabledOrchestrationScenarioIds.includes(scenario.id);
-                          const expanded = expandedOrchestrationScenarioIds.has(scenario.id);
+                    {/* Mirror the Knowledge table above (same Momentum
+                        primitives) so the two recommendation tables read
+                        as a consistent pattern: Name column hosts the
+                        selection toggle inline, the rest are read-only
+                        metadata. The previous div-grid implementation
+                        rendered with different padding, dividers, and
+                        font weights than the Knowledge table — switching
+                        to Table/TableRow/TableCell unifies all of that
+                        through the shared component's styles. */}
+                    <Table>
+                      <TableHead>
+                        <TableRow>
+                          <TableHeader>Action name</TableHeader>
+                          <TableHeader>Created by</TableHeader>
+                          <TableHeader>Description</TableHeader>
+                          <TableHeader>Last updated</TableHeader>
+                          <TableHeader>Action type</TableHeader>
+                          <TableHeader>Provider type</TableHeader>
+                        </TableRow>
+                      </TableHead>
+                      <TableBody empty={EVA_ACTION_ROWS.length === 0} emptyTitle="No recommended actions">
+                        {EVA_ACTION_ROWS.map(action => {
+                          const selected = selectedActions.includes(action.name);
                           return (
-                            <article className="eva-orchestration-scenario" key={scenario.id}>
-                              <Toggle
-                                size="compact"
-                                checked={enabled}
-                                onChange={() => toggleOrchestrationScenario(scenario.id)}
-                                aria-label={`${enabled ? 'Disable' : 'Enable'} ${scenario.name}`}
-                              />
-                              <div className="eva-orchestration-scenario__copy">
-                                <strong>{scenario.name}</strong>
-                                <span>{scenario.description}</span>
-                                <small>{scenario.collaboration}</small>
-                                {expanded && (
-                                  <div className="eva-orchestration-scenario__actions" aria-label={`Expected actions for ${scenario.name}`}>
-                                    <span>Expected actions</span>
-                                    {scenario.actions.map(action => (
-                                      <Badge key={action} variant="default" className="eva-config-summary__chip--action">{action}</Badge>
-                                    ))}
-                                  </div>
-                                )}
-                              </div>
-                              <div className="eva-orchestration-scenario__controls">
-                                <button
-                                  type="button"
-                                  className="eva-orchestration-icon-button"
-                                  aria-label={`Edit ${scenario.name}`}
-                                  onClick={() => showToast(`${scenario.name} is ready to edit in the next prototype step.`, 'info')}
-                                >
-                                  <Icon name="edit" weight="regular" size={18} />
-                                </button>
-                                <button
-                                  type="button"
-                                  className="eva-orchestration-icon-button"
-                                  aria-label={`${expanded ? 'Hide' : 'Show'} expected actions for ${scenario.name}`}
-                                  aria-expanded={expanded}
-                                  onClick={() => toggleOrchestrationScenarioDetails(scenario.id)}
-                                >
-                                  <Icon name="arrow-down" weight="bold" size={18} />
-                                </button>
-                              </div>
-                            </article>
+                            <TableRow key={action.id} selected={selected}>
+                              <TableCell>
+                                <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
+                                  <Toggle
+                                    size="compact"
+                                    checked={selected}
+                                    onChange={() => toggleAction(action.name)}
+                                    aria-label={`${selected ? 'Disable' : 'Enable'} ${action.name}`}
+                                  />
+                                  <strong>{action.name}</strong>
+                                </span>
+                              </TableCell>
+                              <TableCell>{action.createdBy}</TableCell>
+                              <TableCell style={{ maxWidth: 320, whiteSpace: 'normal' }}>
+                                {action.description}
+                              </TableCell>
+                              <TableCell>{action.lastUpdated}</TableCell>
+                              <TableCell>{action.actionType}</TableCell>
+                              <TableCell>{action.providerType}</TableCell>
+                            </TableRow>
                           );
                         })}
-                      </div>
-                    </section>
-                    <section className="eva-orchestration-layer" aria-labelledby="eva-agent-actions-title">
-                      <div className="eva-orchestration-layer__header">
-                        <div>
-                          <h4 id="eva-agent-actions-title">Agent actions</h4>
-                          <p>Tools this agent can execute within each orchestration.</p>
-                        </div>
-                      </div>
-                    {visibleActionRows.length > 0 ? (
-                      <Table>
-                        <TableHead>
-                          <TableRow>
-                            <TableHeader>Action name</TableHeader>
-                            <TableHeader>Created by</TableHeader>
-                            <TableHeader>Description</TableHeader>
-                            <TableHeader>Last updated</TableHeader>
-                            <TableHeader>Action type</TableHeader>
-                          </TableRow>
-                        </TableHead>
-                        <TableBody>
-                          {visibleActionRows.map(action => {
-                            const selected = selectedActions.includes(action.name);
-                            return (
-                              <TableRow key={action.id} selected={selected}>
-                                <TableCell>
-                                  <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
-                                    <Toggle
-                                      size="compact"
-                                      checked={selected}
-                                      onChange={() => toggleAction(action.name)}
-                                      aria-label={`${selected ? 'Disable' : 'Enable'} ${action.name}`}
-                                    />
-                                    <strong>{action.name}</strong>
-                                  </span>
-                                </TableCell>
-                                <TableCell>{action.createdBy}</TableCell>
-                                <TableCell style={{ maxWidth: 320, whiteSpace: 'normal' }}>
-                                  {action.description}
-                                </TableCell>
-                                <TableCell>{action.lastUpdated}</TableCell>
-                                <TableCell>{action.actionType}</TableCell>
-                              </TableRow>
-                            );
-                          })}
-                        </TableBody>
-                      </Table>
-                    ) : (
-                      <div className="eva-workspace-empty-state" role="status">
-                        <span className="eva-workspace-empty-state__icon" aria-hidden="true">
-                          <Icon name="tools" weight="bold" size="md" />
-                        </span>
-                        <div>
-                          <strong>Actions not configured</strong>
-                          <p>Add an action when this agent needs to complete a task.</p>
-                        </div>
-                      </div>
-                    )}
-                    </section>
+                      </TableBody>
+                    </Table>
                     {evaStep === 'actions' && (
                       <div className="eva-dialogue__actions">
                         <Button variant="secondary" onClick={() => navigate('/assistant-skills')}>
@@ -8773,15 +8117,29 @@ ${previewTranscript}`,
             {visibleSteps.includes('security') && (
               <>
                 <div className="eva-step-anchor" data-eva-step="security" tabIndex={-1} />
-                <section className="eva-workspace-section eva-workspace-section--content-only" aria-label="Guardrails">
+                <AiResponseMessage
+                  className="eva-ai-response"
+                  showActions={false}
+                  assistantName="AI Assistant"
+                  content="For security, I broke the configuration into the same sections as the Security page: choose a guardrail tier, review observability behavior, tune standard guardrails, and optionally enable advanced AI Defense categories or custom profiles."
+                >
                   <div className="guardrails-layout eva-guided-guardrails">
+                    <div className="guardrails-header">
+                      <div className="guardrails-header-left">
+                        <h1 className="guardrails-title">Guardrails</h1>
+                        <p className="guardrails-subtitle">
+                          Start with custom profiles for this agent&apos;s business rules, then add baseline guardrails for common risks. Triggered guardrails are logged in Sessions. Monitor logs the interaction for review. Block rejects the prompt while keeping the conversation active.
+                        </p>
+                      </div>
+                    </div>
+
                     <section className="security-custom-profiles-section security-custom-profiles-section--hero">
                       <div className="security-custom-profiles-header security-custom-profiles-header--hero">
                         <div className="security-custom-profiles-title-row">
                           <div className="security-group-header security-group-header--hero">
                             <div className="security-custom-profiles-title-stack">
                               <div className="security-custom-profiles-heading-line">
-                                <span>Custom guardrail</span>
+                                <span>Custom profiles</span>
                                 <Badge variant="success" className="security-tier-badge security-custom-profiles-chip">Business-specific</Badge>
                               </div>
                               {customRules.length > 0 && (
@@ -8860,7 +8218,7 @@ ${previewTranscript}`,
                         size="sm"
                         className="security-custom-profiles-create-button"
                         disabled={customRules.length >= customProfileLimit}
-                        onClick={() => setShowGuidedPolicyStudio(true)}
+                        onClick={addGuidedCustomProfile}
                       >
                         <Icon name="plus" weight="bold" size={16} />
                         Create custom profile
@@ -8870,6 +8228,7 @@ ${previewTranscript}`,
                     <section className="security-prebuilt-section">
                       <div className="security-prebuilt-header">
                         <div>
+                          <span className="security-prebuilt-eyebrow">Baseline coverage</span>
                           <div className="security-prebuilt-title-row">
                             <div className="security-prebuilt-title-stack">
                               <h4 className="security-prebuilt-title">Prebuilt guardrails</h4>
@@ -8879,7 +8238,7 @@ ${previewTranscript}`,
                             </div>
                           </div>
                           <p className="security-prebuilt-desc">
-                            Add broad protections that complement custom profiles. Enabled categories open by default so active protections are easy to review.
+                            Add broad protections that complement custom profiles. Categories stay collapsed so custom profiles stay easy to scan.
                           </p>
                         </div>
                       </div>
@@ -8917,6 +8276,7 @@ ${previewTranscript}`,
                                         <h4>Core coverage</h4>
                                         <p>Always-available protections for common risks in this category.</p>
                                       </div>
+                                      <Badge variant="default">{standardItems.filter(item => item.enabled).length} out of {standardItems.length} rules enabled</Badge>
                                     </div>
                                     <AccordionGroup type="borderless" className="security-prebuilt-rail-list">
                                       {standardItems.map(renderStandardPrebuiltGuardrail)}
@@ -8930,6 +8290,7 @@ ${previewTranscript}`,
                                       <h4>AI Defense rules</h4>
                                       <p>Advanced protections powered by Cisco AI Defense.</p>
                                     </div>
+                                    <Badge variant="default">{group.items.filter(item => item.enabled).length} out of {group.items.length} rules enabled</Badge>
                                   </div>
                                   <AccordionGroup type="borderless" className="security-prebuilt-rail-list">
                                     {group.items.map(item => renderAdvancedPrebuiltGuardrail(group, item))}
@@ -9001,9 +8362,6 @@ ${previewTranscript}`,
                   assistantName="AI Assistant"
                   content={`${agentName} now has the minimum reusable configuration: a licensed family, name, purpose, applied instructions, and default language. Optional capabilities do not block publishing.`}
                 >
-                  <header className="eva-workspace-section__header">
-                    <h3 id="eva-review-section-title">Review</h3>
-                  </header>
                   <div className="eva-config-block">
                     <div className={`eva-config-summary${selectedAgentFamily === 'internal_assistant' ? ' eva-config-summary--internal' : ''}`}>
                       <article className="eva-config-summary__item eva-config-summary__item--welcome">
@@ -9027,19 +8385,10 @@ ${previewTranscript}`,
                         <p>{agentCharacterSummary}</p>
                       </article>
                       <article className="eva-config-summary__item eva-config-summary__item--knowledge">
-                        <strong><span className="eva-config-summary__icon eva-config-summary__icon--knowledge" aria-hidden="true" />Knowledge &amp; Memory</strong>
-                        <div className="eva-config-summary__chips" aria-label="Selected knowledge and memory sources">
-                          {(selectedKnowledgeBases.length ? selectedKnowledgeBases : ['No knowledge selected']).map(item => (
-                            <Badge key={item} variant="default" className="eva-config-summary__chip--knowledge">
-                              <ConfigurationCategoryIcon type="knowledge" />
-                              {item}
-                            </Badge>
-                          ))}
-                          {selectedPreferenceMemories.map(item => (
-                            <Badge key={item} variant="default" className="eva-config-summary__chip--memory">
-                              <ConfigurationCategoryIcon type="memory" />
-                              {item}
-                            </Badge>
+                        <strong><span className="eva-config-summary__icon eva-config-summary__icon--knowledge" aria-hidden="true" />Knowledge</strong>
+                        <div className="eva-config-summary__chips" aria-label="Selected knowledge sources">
+                          {(selectedKnowledgeBases.length ? selectedKnowledgeBases : ['No sources selected']).map(item => (
+                            <Badge key={item} variant="default">{item}</Badge>
                           ))}
                         </div>
                       </article>
@@ -9098,7 +8447,7 @@ ${previewTranscript}`,
               </>
             )}
 
-            {visibleSteps.includes('preview') && !readinessReport && (
+            {visibleSteps.includes('preview') && (
               <>
                 <div className="eva-step-anchor" data-eva-step="preview" tabIndex={-1} />
                 <AiResponseMessage
@@ -9138,13 +8487,17 @@ ${previewTranscript}`,
             {visibleSteps.includes('testing') && (
               <>
                 <div className="eva-step-anchor" data-eva-step="testing" tabIndex={-1} />
-                <section
-                  className="eva-workspace-section"
-                  aria-labelledby="eva-testing-section-title"
+                <AiResponseMessage
+                  className="eva-ai-response"
+                  showActions={false}
+                  assistantName="AI Assistant"
+                  assistantState={readinessTesting ? 'processing' : 'static'}
+                  content={
+                    readinessReport
+                      ? 'Testing and observability report is ready. Review the score and checks before creating the agent.'
+                      : activeTestingScenarioCopy.question
+                  }
                 >
-                  <header className="eva-workspace-section__header">
-                    <h3 id="eva-testing-section-title">Testing and observability</h3>
-                  </header>
                   <div className="eva-config-block">
                     <div className="eva-readiness-panel" aria-label="Testing and observability report">
                       <div className="eva-testing-scenario-panel" aria-label="Guided test scenario setup">
@@ -9817,6 +9170,7 @@ ${previewTranscript}`,
                     </ModalFooter>
                   </Modal>
                 ) : null}
+                {renderUserPromptForStep('testing')}
               </>
             )}
                 </section>
@@ -9839,7 +9193,7 @@ ${previewTranscript}`,
                   </span>
                   <h2>Progress</h2>
                 </div>
-                {sideProgressExpanded && <div className="eva-generation-progress-groups">
+                <div className="eva-generation-progress-groups">
                   {groupedProgressSections.map(section => (
                     <section key={section.title} className="eva-generation-progress-group">
                       <h3>{section.title}</h3>
@@ -9910,7 +9264,7 @@ ${previewTranscript}`,
                 </div>
               </section>
 
-              <section className="eva-side-card eva-side-card--agent-summary">
+              <section className="eva-side-card">
                 <div className="eva-side-card__header">
                   <Icon name="bot" weight="bold" size="sm" />
                   <h2>Summary of the Agent</h2>
@@ -9943,7 +9297,7 @@ ${previewTranscript}`,
                   </span>
                   <button
                     type="button"
-                    className="eva-side-edit-btn eva-side-edit-btn--bare"
+                    className="eva-side-edit-btn"
                     aria-label={sideContextExpanded ? 'Collapse context' : 'Expand context'}
                     aria-expanded={sideContextExpanded}
                     onClick={() => setSideContextExpanded(prev => !prev)}
@@ -10069,43 +9423,6 @@ ${previewTranscript}`,
               transcribePath={voiceTranscribePath}
             />
           </section>
-        )}
-        {showGuidedPolicyStudio && (
-          <SecurityUIPolicyStudio
-            key="new-guided-custom-guardrail"
-            initialBasicStep
-            onClose={() => setShowGuidedPolicyStudio(false)}
-            onPublish={(result) => {
-              const description = result.description.trim()
-                || `Business-specific policy for ${result.name}.`;
-              const createdAt = new Date().toLocaleDateString('en-US', {
-                month: 'short',
-                day: 'numeric',
-                year: 'numeric',
-              });
-              const profile: GuidedCustomProfile = {
-                id: `custom-policy-${Date.now()}`,
-                name: result.name,
-                description,
-                enabled: true,
-                createdBy: 'You',
-                createdAt,
-                overview: result.overview,
-              };
-
-              setPolicyStudioGuidedProfiles(prev => [...prev, profile]);
-              setCustomRules(prev => prev.length >= guidedCustomProfileLimit
-                ? prev
-                : [...prev, description]);
-              setDisabledCustomRules(prev => {
-                const next = new Set(prev);
-                next.delete(description);
-                return next;
-              });
-              setShowGuidedPolicyStudio(false);
-              showToast(`Guardrail "${result.name}" published`, 'success');
-            }}
-          />
         )}
       </div>
     </div>

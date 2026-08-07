@@ -55,7 +55,6 @@ import {
   EVA_STANDARD_GUARDRAILS,
   readEvaSessionState,
   type EvaConversationStep,
-  type EvaSessionState,
 } from '../../features/eva/evaFormConfig';
 import { EVA_TEMPLATES } from '../../features/eva/evaTemplates';
 import {
@@ -65,9 +64,6 @@ import {
   type AgentLifecycle,
 } from '../../features/agent-creation/agentCreationModel';
 import { Icon } from '../../icons';
-import {
-  getCiscoLiveObservability,
-} from '../../demo/ciscoLiveDemo';
 
 type PreviewCallStatus = 'idle' | 'connecting' | 'listening' | 'speaking' | 'paused' | 'ended' | 'error';
 type ConnectedViewMode = 'metrics' | 'resources';
@@ -208,8 +204,6 @@ function EmbeddedObservabilityProviders({ children }: { children: ReactNode }) {
     </ThemeProvider>
   );
 }
-
-const OBSERVABILITY_KPI_CATALOG = kpiDataWithSparklinesForRange('24h');
 
 type PreviewTranscriptEntry = {
   id: string;
@@ -366,9 +360,6 @@ function getConfiguredSummary(agent: Agent, draft?: AgentDraft) {
       ? ['Inventory lookup', 'Create support case']
       : ['Starter action set'],
     knowledgeBases,
-    memories,
-    orchestrationScenarios,
-    guardrails,
   };
 }
 
@@ -473,7 +464,6 @@ export default function AgentStudioLanding() {
   const [previewSessionId, setPreviewSessionId] = useState('');
   const [previewTranscript, setPreviewTranscript] = useState<PreviewTranscriptEntry[]>([]);
   const [previewPaused, setPreviewPaused] = useState(false);
-  const [activeObservabilityKpiId, setActiveObservabilityKpiId] = useState<string | null>(null);
   const previewCallStatusRef = useRef<PreviewCallStatus>('idle');
   const previewWsRef = useRef<WebSocket | null>(null);
   const previewAudioContextRef = useRef<AudioContext | null>(null);
@@ -532,7 +522,6 @@ export default function AgentStudioLanding() {
   const phoneNumberDeferred = Boolean(
     existingEvaSession?.phoneNumberDeferred && existingEvaSession.agentName === agent.name,
   );
-  const showOperationalStatus = agent.status === 'Published';
   const goToSection = (section: string) => {
     selectAgent(agent.id);
     navigate(`/agents/${agent.id}/configure?section=${section}`);
@@ -636,10 +625,6 @@ export default function AgentStudioLanding() {
   const handleOverviewTileDragEnd = () => {
     setDraggedOverviewTile(null);
     setOverviewDropTarget(null);
-  };
-
-  const openObservabilityDashboard = () => {
-    navigate(`/observability${buildClusKpiDashboardAgentFilterSearch(agent.name)}`);
   };
 
   const openGuidedSetup = (targetStep?: EvaConversationStep, options: { autoStartPreview?: boolean } = {}) => {

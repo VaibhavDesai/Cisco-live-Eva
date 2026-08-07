@@ -258,7 +258,7 @@ export default function Sidebar({
                     label={item.label}
                     active={itemActive}
                     onClick={() => {
-                      if (item.path === '/' || item.path === '/agents') {
+                      if (item.path === '/') {
                         setVariation('dashboard');
                       }
                       navigate(item.path);

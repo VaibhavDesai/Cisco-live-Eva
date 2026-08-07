@@ -5,7 +5,6 @@ import {
   useCallback,
   type MouseEvent,
 } from 'react';
-import { useSearchParams } from 'react-router-dom';
 import { DayPicker } from 'react-day-picker';
 import type { DateRange } from 'react-day-picker';
 import 'react-day-picker/style.css';
@@ -33,11 +32,7 @@ import {
   loadObservabilityConfiguration,
   OBSERVABILITY_CONFIGURATION_CHANGED_EVENT,
 } from './observabilityConfiguration';
-import {
-  CLUS_KPI_AGENT_FILTER_PARAM,
-  parseAgentPathFromHash,
-  parseClusKpiDashboardAgentFilter,
-} from './agentHashNavigation';
+import { parseAgentPathFromHash } from './agentHashNavigation';
 import type { KPIData } from './kpiTypes';
 import { parseKpiNumericValue } from './kpiThresholdPresentation';
 import { useApp } from '../../contexts/AppContext';
@@ -184,21 +179,6 @@ export function ClusKpiDashboardRoot() {
   const [activeCardId, setActiveCardId] = useState<string | null>(null);
 
   const [observabilityConfigVersion, setObservabilityConfigVersion] = useState(0);
-
-  useEffect(() => {
-    const agentName = parseClusKpiDashboardAgentFilter(searchParams.toString());
-    setDashboardAgentFilter(current => current === agentName ? current : agentName);
-  }, [searchParams]);
-
-  const applyDashboardAgentFilter = useCallback((agentName: string | null) => {
-    setDashboardAgentFilter(agentName);
-    setSearchParams(previous => {
-      const next = new URLSearchParams(previous);
-      if (agentName) next.set(CLUS_KPI_AGENT_FILTER_PARAM, agentName);
-      else next.delete(CLUS_KPI_AGENT_FILTER_PARAM);
-      return next;
-    }, { replace: true });
-  }, [setSearchParams]);
 
   useEffect(() => {
     const bump = () => setObservabilityConfigVersion((v) => v + 1);
@@ -428,7 +408,7 @@ export function ClusKpiDashboardRoot() {
             type="button"
             variant="tertiary"
             size="sm"
-            onClick={() => applyDashboardAgentFilter(null)}
+            onClick={() => setDashboardAgentFilter(null)}
           >
             <span className="btn-icon" aria-hidden>
               <Icon name="cancel" weight="bold" size={16} />
@@ -551,7 +531,7 @@ export function ClusKpiDashboardRoot() {
                     <FilterBar
                       agentNames={agentData.map((agent) => agent.agentName)}
                       onAgentClick={(agentName) => {
-                        applyDashboardAgentFilter(agentName);
+                        setDashboardAgentFilter(agentName);
                         setActiveTab('dashboard');
                       }}
                     />
@@ -583,7 +563,7 @@ export function ClusKpiDashboardRoot() {
                 </div>
                 <AgentTable
                   onViewAgent={(agentName) => {
-                    applyDashboardAgentFilter(agentName);
+                    setDashboardAgentFilter(agentName);
                     setActiveTab('dashboard');
                   }}
                 />

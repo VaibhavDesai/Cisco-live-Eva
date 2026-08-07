@@ -102,17 +102,6 @@ function SessionDetail({
         ? 'Action denied'
         : 'Observed';
 
-function SessionDetail({
-  session,
-  backLabel,
-  onBack,
-  onReviewGuardrail,
-}: {
-  session: CiscoLiveSession;
-  backLabel: string;
-  onBack: () => void;
-  onReviewGuardrail: () => void;
-}) {
   return (
     <div className="agent-session-detail-page">
       <div className="agent-session-detail-topbar">

@@ -632,8 +632,6 @@ export default function ActionConfigureV2() {
     [agentFamily],
   );
   const [searchParams] = useSearchParams();
-  const routedAgent = agentId ? agents[agentId] : undefined;
-  const ciscoLiveAgent = CISCO_LIVE_AGENTS.find(agent => agent.id === agentId);
   // Allow deep-linking to a specific section via ?section=Security (etc.).
   // Only the first render reads the param; user navigation takes over after that.
   const initialSection: ConfigurationSection = (() => {

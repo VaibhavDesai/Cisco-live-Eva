@@ -478,7 +478,6 @@ export default function EvaAgentsTable() {
                         event.stopPropagation();
                         handlePreviewClick(tile);
                       }}
-                      aria-label={`Preview ${tile.name}`}
                     >
                       <Icon name="play" weight="bold" size={16} />
                     </Button>
