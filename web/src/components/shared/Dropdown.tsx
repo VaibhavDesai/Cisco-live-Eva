@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect, useCallback } from 'react';
+import { useState, useRef, useEffect, useCallback, useId } from 'react';
 import { createPortal } from 'react-dom';
 import { Icon } from '../../icons';
 import type { IconName } from '../../icons/types';
@@ -15,6 +15,8 @@ export interface DropdownOption {
 }
 
 interface DropdownProps {
+  /** Optional id for the trigger. A stable id is generated when omitted. */
+  id?: string;
   /** Choices shown in the listbox */
   options: DropdownOption[];
   /** Currently selected option value */
@@ -48,6 +50,7 @@ interface DropdownProps {
  * <Dropdown options={[{ value: 'a', label: 'A' }]} value={v} onChange={setV} label="Choose" />
  */
 export default function Dropdown({
+  id: externalId,
   options,
   value,
   onChange,
@@ -61,6 +64,12 @@ export default function Dropdown({
   leadingIcon,
   menuPlacement = 'bottom',
 }: DropdownProps) {
+  const autoId = useId();
+  const triggerId = externalId ?? `${autoId}-trigger`;
+  const labelId = `${triggerId}-label`;
+  const valueId = `${triggerId}-value`;
+  const hintId = `${triggerId}-hint`;
+  const menuId = `${triggerId}-menu`;
   const [isOpen, setIsOpen] = useState(false);
   const [highlightedIndex, setHighlightedIndex] = useState(-1);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -153,11 +162,13 @@ export default function Dropdown({
     isOpen &&
     createPortal(
       <div
+        id={menuId}
         ref={menuRef}
         className="dropdown-menu"
         role="listbox"
+        aria-labelledby={label ? labelId : undefined}
         aria-activedescendant={
-          highlightedIndex >= 0 ? `dropdown-opt-${options[highlightedIndex].value}` : undefined
+          highlightedIndex >= 0 ? `${menuId}-option-${highlightedIndex}` : undefined
         }
         style={{
           position: 'fixed',
@@ -171,7 +182,7 @@ export default function Dropdown({
         {options.map((option, index) => (
           <button
             key={option.value}
-            id={`dropdown-opt-${option.value}`}
+            id={`${menuId}-option-${index}`}
             type="button"
             role="option"
             aria-selected={option.value === value}
@@ -205,12 +216,13 @@ export default function Dropdown({
   return (
     <div ref={containerRef} className={`form-group ${className}`}>
       {label && (
-        <label className="form-label">
+        <label id={labelId} className="form-label" htmlFor={triggerId}>
           {label}
           {required && <span className="required">*</span>}
         </label>
       )}
       <button
+        id={triggerId}
         ref={triggerRef}
         type="button"
         className={`dropdown-trigger${size === 'compact' ? ' dropdown-trigger--compact' : ''} ${isOpen ? 'open' : ''}`}
@@ -218,20 +230,23 @@ export default function Dropdown({
         disabled={disabled}
         aria-haspopup="listbox"
         aria-expanded={isOpen}
+        aria-controls={isOpen ? menuId : undefined}
+        aria-labelledby={label ? `${labelId} ${valueId}` : valueId}
+        aria-describedby={hint ? hintId : undefined}
       >
         {leadingIcon && (
           <span className="dropdown-trigger-leading" aria-hidden="true">
             <Icon name={leadingIcon} weight="bold" size="xs" />
           </span>
         )}
-        <span className={`dropdown-trigger-value ${!selectedOption ? 'placeholder' : ''}`}>
+        <span id={valueId} className={`dropdown-trigger-value ${!selectedOption ? 'placeholder' : ''}`}>
           {selectedOption?.label || placeholder}
         </span>
         <span className="dropdown-trigger-chevron">
           <Icon name="arrow-down" weight="bold" size="xs" />
         </span>
       </button>
-      {hint && <span className="form-hint">{hint}</span>}
+      {hint && <span id={hintId} className="form-hint">{hint}</span>}
       {menu}
     </div>
   );

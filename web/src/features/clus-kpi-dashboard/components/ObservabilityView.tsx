@@ -12,6 +12,10 @@ import { kpiExpandedChartAxisProps } from '../kpiChartAxis';
 import { KPICard } from './KPICard';
 import { KPIChart } from './KPIChart';
 import { ObservabilityProjectionCard } from './ObservabilityProjectionCard';
+import {
+  ACTION_CONTROL_OBSERVABILITY_CATEGORY,
+  ActionControlTracePanel,
+} from '../actionControlObservability';
 
 const CARDS_PER_ROW = 4;
 
@@ -20,6 +24,7 @@ interface ObservabilityViewProps {
   categories: string[];
   dateRange: '24h' | 'week' | 'month' | '90d' | 'custom';
   customDateRange: DateRange | undefined;
+  actionValues?: Record<string, unknown>;
   pinnedCardIds: string[];
   onPinToggle: (id: string, e: React.MouseEvent) => void;
   onMoveCard: (dragIndex: number, hoverIndex: number) => void;
@@ -36,6 +41,7 @@ export function ObservabilityView({
   categories,
   dateRange,
   customDateRange,
+  actionValues,
   pinnedCardIds,
   onPinToggle,
   onMoveCard,
@@ -82,19 +88,27 @@ export function ObservabilityView({
                   const expandedChart =
                     isLastInRow && isActiveCardInThisRow && activeKPI ? (
                       <div className="kpi-card-grid__expanded">
-                        <KPIChart
-                          heading={activeKPI.heading}
-                          description={activeKPI.description}
-                          chartType={activeKPI.chartType}
-                          dateRange={dateRange}
-                          customDateRange={customDateRange}
-                          sparklineData={activeKPI.sparklineData}
-                          unit={activeKPI.unit}
-                          value={activeKPI.value}
-                          {...kpiExpandedChartAxisProps(activeKPI)}
-                          curveType={activeKPI.curveType}
-                          onDrillDown={onDateRangeChange}
-                        />
+                        {activeKPI.category === ACTION_CONTROL_OBSERVABILITY_CATEGORY ? (
+                          <ActionControlTracePanel
+                            dateRange={dateRange}
+                            customDateRange={customDateRange}
+                            actionValues={actionValues}
+                          />
+                        ) : (
+                          <KPIChart
+                            heading={activeKPI.heading}
+                            description={activeKPI.description}
+                            chartType={activeKPI.chartType}
+                            dateRange={dateRange}
+                            customDateRange={customDateRange}
+                            sparklineData={activeKPI.sparklineData}
+                            unit={activeKPI.unit}
+                            value={activeKPI.value}
+                            {...kpiExpandedChartAxisProps(activeKPI)}
+                            curveType={activeKPI.curveType}
+                            onDrillDown={onDateRangeChange}
+                          />
+                        )}
                       </div>
                     ) : null;
 
@@ -180,19 +194,27 @@ export function ObservabilityView({
                     />
                     {isLastInRow && isActiveCardInThisRow && activeKPI && (
                       <div className="kpi-card-grid__expanded">
-                        <KPIChart
-                          heading={activeKPI.heading}
-                          description={activeKPI.description}
-                          chartType={activeKPI.chartType}
-                          dateRange={dateRange}
-                          customDateRange={customDateRange}
-                          sparklineData={activeKPI.sparklineData}
-                          unit={activeKPI.unit}
-                          value={activeKPI.value}
-                          {...kpiExpandedChartAxisProps(activeKPI)}
-                          curveType={activeKPI.curveType}
-                          onDrillDown={onDateRangeChange}
-                        />
+                        {activeKPI.category === ACTION_CONTROL_OBSERVABILITY_CATEGORY ? (
+                          <ActionControlTracePanel
+                            dateRange={dateRange}
+                            customDateRange={customDateRange}
+                            actionValues={actionValues}
+                          />
+                        ) : (
+                          <KPIChart
+                            heading={activeKPI.heading}
+                            description={activeKPI.description}
+                            chartType={activeKPI.chartType}
+                            dateRange={dateRange}
+                            customDateRange={customDateRange}
+                            sparklineData={activeKPI.sparklineData}
+                            unit={activeKPI.unit}
+                            value={activeKPI.value}
+                            {...kpiExpandedChartAxisProps(activeKPI)}
+                            curveType={activeKPI.curveType}
+                            onDrillDown={onDateRangeChange}
+                          />
+                        )}
                       </div>
                     )}
                   </Fragment>

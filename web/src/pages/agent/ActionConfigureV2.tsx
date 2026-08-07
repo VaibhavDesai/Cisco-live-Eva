@@ -35,7 +35,11 @@ import {
   type CustomerChannel,
 } from '../../features/agent-creation/agentCreationModel';
 import { EVA_CHANNEL_SELECTION_OPTIONS } from '../../features/eva/evaFormConfig';
-import { CISCO_LIVE_AGENTS, CISCO_LIVE_ACTION_CATALOG } from '../../demo/ciscoLiveDemo';
+import {
+  CISCO_LIVE_AGENTS,
+  CISCO_LIVE_ACTION_CATALOG,
+  CISCO_LIVE_VIP_EVENT_CONFIDENTIALITY_GUARDRAIL,
+} from '../../demo/ciscoLiveDemo';
 import { buildCiscoLiveInstructions } from '../../demo/ciscoLiveSeed';
 import {
   type UpdateStatus,
@@ -51,6 +55,30 @@ import {
   buildSeededVersionCache,
   resolveVersionMetaFromCache,
 } from './actionConfigShared';
+import {
+  ActionControlManagerDialog,
+  GALILEO_ACTION_IDS,
+  LARGE_EVENT_CONTROL_ID,
+  RecommendedActionControlsDialog,
+  addRecommendedGalileoControl,
+  getGalileoActionDisplayName,
+  getGalileoActionId,
+  getGalileoActionStatus,
+  readGalileoActionControlState,
+  type GalileoActionControlState,
+} from './ActionControls';
+
+const VOICE_LOCATION_OPTIONS = [
+  { value: 'headquarters', label: '🇺🇸 San Francisco headquarters' },
+  { value: 'customer-support', label: '🇺🇸 New York customer support' },
+  { value: 'reservations-desk', label: '🇬🇧 London reservations desk' },
+];
+
+const VOICE_PHONE_NUMBER_OPTIONS = [
+  { value: '+1-415-555-0142', label: '+1 (415) 555-0142' },
+  { value: '+1-212-555-0186', label: '+1 (212) 555-0186' },
+  { value: '+44-20-7946-0958', label: '+44 20 7946 0958' },
+];
 
 function ProfileLogicSummary({ overview }: { overview: import('./PolicyStudio').PolicyOverview }) {
   const hasOverview = overview.blocked.length > 0 || overview.allowed.length > 0 || overview.edgeCases.length > 0;
@@ -68,7 +96,7 @@ function ProfileLogicSummary({ overview }: { overview: import('./PolicyStudio').
       key: 'allows',
       icon: 'check-circle',
       iconColor: 'var(--success-color, var(--accent-color))',
-      label: `${overview.allowed.length} allow${overview.allowed.length === 1 ? '' : 's'}`,
+      label: `${overview.allowed.length} allowed`,
     },
     {
       key: 'edge',
@@ -123,6 +151,53 @@ function CustomGuardrailActionMenu({
         ref={anchorRef as RefObject<HTMLButtonElement>}
         type="button"
         className="security-rail-action-menu-btn"
+        aria-label={`Actions for ${name}`}
+        aria-haspopup="menu"
+        aria-expanded={open}
+        onClick={() => toggle()}
+      >
+        <Icon name="more-adr" weight="bold" size="sm" />
+      </button>
+      <MenuOverlay open={open} anchorRef={anchorRef} onClose={close} align="right">
+        <MenuItem
+          label="Edit"
+          icon="edit"
+          onClick={() => {
+            close();
+            onEdit();
+          }}
+        />
+        <MenuItem
+          label="Delete"
+          icon="delete"
+          danger
+          onClick={() => {
+            close();
+            onDelete();
+          }}
+        />
+      </MenuOverlay>
+    </>
+  );
+}
+
+function ActionRowMenu({
+  name,
+  onEdit,
+  onDelete,
+}: {
+  name: string;
+  onEdit: () => void;
+  onDelete: () => void;
+}) {
+  const { open, anchorRef, toggle, close } = useMenu();
+
+  return (
+    <>
+      <button
+        ref={anchorRef as RefObject<HTMLButtonElement>}
+        type="button"
+        className="action-config-v2-row-menu-btn"
         aria-label={`Actions for ${name}`}
         aria-haspopup="menu"
         aria-expanded={open}
@@ -248,6 +323,7 @@ function ClampedDesc({ text, expanded, onToggle }: { text: string; expanded: boo
 
 type ActionRow = {
   id: number;
+  actionId: string;
   name: string;
   description: string;
   enabled: boolean;
@@ -412,7 +488,7 @@ function formatGuardrailUpdatedAt(date = new Date()) {
     hour: 'numeric',
     minute: '2-digit',
     hour12: true,
-  }).toLowerCase();
+  });
   const calendarDate = date.toLocaleDateString('en-US', {
     month: 'long',
     day: 'numeric',
@@ -423,69 +499,51 @@ function formatGuardrailUpdatedAt(date = new Date()) {
 }
 
 const DEFAULT_GENERATED_CUSTOM_PROFILE: CustomGuardrailItem = {
-  id: 'custom-medical-advice-restriction',
-  name: 'Medical advice restriction',
-  description: 'Prevents the agent from giving medical advice, diagnoses, or treatment recommendations, and keeps it focused on appointment booking and scheduling support',
+  id: CISCO_LIVE_VIP_EVENT_CONFIDENTIALITY_GUARDRAIL.id,
+  name: CISCO_LIVE_VIP_EVENT_CONFIDENTIALITY_GUARDRAIL.name,
+  description: CISCO_LIVE_VIP_EVENT_CONFIDENTIALITY_GUARDRAIL.description,
   enabled: true,
-  action: 'block',
-  direction: 'prompt',
+  action: CISCO_LIVE_VIP_EVENT_CONFIDENTIALITY_GUARDRAIL.action,
+  direction: CISCO_LIVE_VIP_EVENT_CONFIDENTIALITY_GUARDRAIL.direction,
   createdBy: 'System',
   createdAt: 'Last updated at: 11:05 am, July 20, 2026',
-  policyText: `# Medical advice restriction
+  policyText: `# VIP event confidentiality
 
 Purpose
-Prevents the agent from giving medical advice, diagnoses, or treatment recommendations, and keeps it focused on appointment booking and scheduling support
+Prevent the agent from sharing protected guest, schedule, location, access, security, or reservation details with unverified or unauthorized requesters.
 
 Blocks
-- Medical advice
-- Diagnoses
-- Treatment recommendations
+- Confirming whether a protected guest is attending
+- Sharing guest lists, arrival times, private entrances, access routes, or security arrangements
+- Reconstructing protected event details across multiple questions
 
 Allows
-- Appointment booking
-- Scheduling support`,
-  overview: {
-    blocked: [
-      { text: 'Medical advice' },
-      { text: 'Diagnoses' },
-      { text: 'Treatment recommendations' },
-    ],
-    allowed: [
-      { text: 'Appointment booking' },
-      { text: 'Scheduling support' },
-    ],
-    edgeCases: [],
-  },
+- Public venue and event information
+- Approved reservation details for a verified organizer
+- Task-specific logistics for a verified vendor
+- Secure verification or organizer callback`,
+  overview: CISCO_LIVE_VIP_EVENT_CONFIDENTIALITY_GUARDRAIL.overview,
   versions: [{
     version: 'v1',
-    name: 'Medical advice restriction',
-    description: 'Prevents the agent from giving medical advice, diagnoses, or treatment recommendations, and keeps it focused on appointment booking and scheduling support',
-    overview: {
-      blocked: [
-        { text: 'Medical advice' },
-        { text: 'Diagnoses' },
-        { text: 'Treatment recommendations' },
-      ],
-      allowed: [
-        { text: 'Appointment booking' },
-        { text: 'Scheduling support' },
-      ],
-      edgeCases: [],
-    },
+    name: CISCO_LIVE_VIP_EVENT_CONFIDENTIALITY_GUARDRAIL.name,
+    description: CISCO_LIVE_VIP_EVENT_CONFIDENTIALITY_GUARDRAIL.description,
+    overview: CISCO_LIVE_VIP_EVENT_CONFIDENTIALITY_GUARDRAIL.overview,
     createdAt: 'Last updated at: 11:05 am, July 20, 2026',
-    policyText: `# Medical advice restriction
+    policyText: `# VIP event confidentiality
 
 Purpose
-Prevents the agent from giving medical advice, diagnoses, or treatment recommendations, and keeps it focused on appointment booking and scheduling support
+Prevent the agent from sharing protected guest, schedule, location, access, security, or reservation details with unverified or unauthorized requesters.
 
 Blocks
-- Medical advice
-- Diagnoses
-- Treatment recommendations
+- Confirming whether a protected guest is attending
+- Sharing guest lists, arrival times, private entrances, access routes, or security arrangements
+- Reconstructing protected event details across multiple questions
 
 Allows
-- Appointment booking
-- Scheduling support`,
+- Public venue and event information
+- Approved reservation details for a verified organizer
+- Task-specific logistics for a verified vendor
+- Secure verification or organizer callback`,
   }],
 };
 
@@ -667,20 +725,36 @@ export default function ActionConfigureV2() {
       })),
     })),
   );
-  const [advancedCustomItems, setAdvancedCustomItems] = useState<CustomGuardrailItem[]>(() =>
-    ciscoLiveAgent.customGuardrails.map(guardrail => ({
+  const [advancedCustomItems, setAdvancedCustomItems] = useState<CustomGuardrailItem[]>(() => {
+    const seededItems = ciscoLiveAgent.customGuardrails.map(guardrail => ({
       ...guardrail,
       enabled: true,
-      action: 'block' as CustomGuardrailAction,
-      direction: 'prompt' as Direction,
+      action: guardrail.action as CustomGuardrailAction,
+      direction: guardrail.direction as Direction,
       overview: {
         blocked: guardrail.overview.blocked.map(entry => ({ ...entry })),
         allowed: guardrail.overview.allowed.map(entry => ({ ...entry })),
         edgeCases: guardrail.overview.edgeCases.map(entry => ({ ...entry })),
       },
       versions: [],
-    })),
-  );
+    }));
+    const storedItems = agentDraft?.familyConfiguration.security?.values?.customGuardrails;
+    if (!Array.isArray(storedItems)) return seededItems;
+
+    const validItems = storedItems.filter((item): item is CustomGuardrailItem => {
+      if (!item || typeof item !== 'object' || Array.isArray(item)) return false;
+      const candidate = item as Partial<CustomGuardrailItem>;
+      return typeof candidate.id === 'string'
+        && typeof candidate.name === 'string'
+        && typeof candidate.description === 'string'
+        && typeof candidate.enabled === 'boolean'
+        && ['monitor', 'steer', 'block'].includes(String(candidate.action))
+        && ['prompt', 'response', 'both'].includes(String(candidate.direction))
+        && Boolean(candidate.overview)
+        && Array.isArray(candidate.versions);
+    });
+    return validItems.length > 0 ? structuredClone(validItems) : seededItems;
+  });
   const [pendingAdvancedEnable, setPendingAdvancedEnable] = useState<{ groupId: string; itemIds: string[]; label: string } | null>(null);
   const [hasAcknowledgedAdvancedPricing, setHasAcknowledgedAdvancedPricing] = useState(false);
   const [expandedRails, setExpandedRails] = useState<Set<string>>(() => {
@@ -701,6 +775,23 @@ export default function ActionConfigureV2() {
   const [editingProfileId, setEditingProfileId] = useState<string | null>(null);
   const [defaultCustomProfileState, setDefaultCustomProfileState] = useState<'idle' | 'generating' | 'complete'>('idle');
   const [defaultCustomProfileProgress, setDefaultCustomProfileProgress] = useState(0);
+  const handledGuardrailDeepLinkRef = useRef<string | null>(null);
+
+  useEffect(() => {
+    const guardrailId = searchParams.get('guardrailId');
+    if (activeSection !== 'Security' || !guardrailId) return;
+    const requestKey = `${agentId ?? ''}:${guardrailId}`;
+    if (handledGuardrailDeepLinkRef.current === requestKey) return;
+    handledGuardrailDeepLinkRef.current = requestKey;
+    setGuardrailMode('custom');
+    setCustomSectionOpen(true);
+    setExpandedRails(current => new Set(current).add(guardrailId));
+    window.requestAnimationFrame(() => window.requestAnimationFrame(() => {
+      const target = document.getElementById(`${guardrailId}-header`);
+      target?.scrollIntoView({ block: 'center', behavior: 'smooth' });
+      target?.focus();
+    }));
+  }, [activeSection, agentId, searchParams]);
 
   const handleOptimize = useCallback(async () => {
     const text = profileForm.instructions.trim();
@@ -727,7 +818,8 @@ export default function ActionConfigureV2() {
 
   const ciscoLiveCapabilities: CapabilityRecord[] = ciscoLiveAgent.actions.map((name, index) => ({
     id: 100 + index,
-    name,
+    sourceActionId: getGalileoActionId(undefined, name),
+    name: getGalileoActionDisplayName(name),
     type: name.startsWith('Transfer') ? 'Handoff' : 'MCP',
     enabled: true,
     description: CISCO_LIVE_ACTION_CATALOG[name] ?? '',
@@ -739,6 +831,7 @@ export default function ActionConfigureV2() {
   const [rows, setRows] = useState<ActionRow[]>(
     ciscoLiveCapabilities.map((cap) => ({
       id: cap.id,
+      actionId: getGalileoActionId(cap.sourceActionId, cap.name),
       name: cap.name,
       description: cap.description || 'Escalate the conversation to a human agent based on general rules and conditions',
       enabled: true,
@@ -748,6 +841,57 @@ export default function ActionConfigureV2() {
       lastUpdated: '07/13/26, at 9:30 AM',
     })),
   );
+  const [galileoActionControls, setGalileoActionControls] = useState<GalileoActionControlState>(() => (
+    readGalileoActionControlState(agentDraft?.familyConfiguration.actions?.values)
+  ));
+  const galileoAgentIdRef = useRef(agentId);
+  const [galileoDialogActionId, setGalileoDialogActionId] = useState<string | null>(null);
+  const galileoReturnFocusRef = useRef<HTMLElement | null>(null);
+  const [showRecommendedControls, setShowRecommendedControls] = useState(false);
+  const recommendedControlsReturnFocusRef = useRef<HTMLElement | null>(null);
+
+  useEffect(() => {
+    if (galileoAgentIdRef.current === agentId) return;
+    galileoAgentIdRef.current = agentId;
+    setGalileoActionControls(readGalileoActionControlState(agentDraft?.familyConfiguration.actions?.values));
+    setGalileoDialogActionId(null);
+    setShowRecommendedControls(false);
+  }, [agentDraft, agentId]);
+
+  const openGalileoActionControls = (actionId: string) => {
+    galileoReturnFocusRef.current = document.activeElement as HTMLElement | null;
+    setGalileoDialogActionId(actionId);
+  };
+
+  const closeGalileoActionControls = () => {
+    setGalileoDialogActionId(null);
+    const target = galileoReturnFocusRef.current;
+    galileoReturnFocusRef.current = null;
+    window.requestAnimationFrame(() => target?.focus());
+  };
+
+  const openRecommendedControls = () => {
+    recommendedControlsReturnFocusRef.current = document.activeElement as HTMLElement | null;
+    setShowAddMenu(false);
+    setShowRecommendedControls(true);
+  };
+
+  const closeRecommendedControls = () => {
+    setShowRecommendedControls(false);
+    const target = recommendedControlsReturnFocusRef.current;
+    recommendedControlsReturnFocusRef.current = null;
+    window.requestAnimationFrame(() => target?.focus());
+  };
+
+  const handledActionControlDeepLinkRef = useRef<string | null>(null);
+  useEffect(() => {
+    const actionId = searchParams.get('actionId');
+    if (activeSection !== 'Action' || !actionId) return;
+    const requestKey = `${agentId ?? ''}:${actionId}:${searchParams.get('controlId') ?? ''}`;
+    if (handledActionControlDeepLinkRef.current === requestKey) return;
+    handledActionControlDeepLinkRef.current = requestKey;
+    openGalileoActionControls(actionId);
+  }, [activeSection, agentId, searchParams]);
 
   // Reflect the Actions table into the shared agent draft so the overview's
   // "Connections" card stays in sync with what is enabled here. Guarded so it
@@ -761,10 +905,18 @@ export default function ActionConfigureV2() {
       ? rawSelections.filter((s): s is string => typeof s === 'string')
       : [];
     const desiredProgress = enabledNames.length > 0 ? 'configured' : 'not_started';
+    const rawControlsByActionId = cap?.values?.controlsByActionId;
+    const rawGatesByActionId = cap?.values?.gatesByActionId;
+    const controlsUnchanged = JSON.stringify(rawControlsByActionId ?? {})
+      === JSON.stringify(galileoActionControls.controlsByActionId);
+    const gatesUnchanged = JSON.stringify(rawGatesByActionId ?? {})
+      === JSON.stringify(galileoActionControls.gatesByActionId);
     const unchanged =
       cap?.progress === desiredProgress &&
       currentSelections.length === enabledNames.length &&
-      currentSelections.every((s, i) => s === enabledNames[i]);
+      currentSelections.every((s, i) => s === enabledNames[i]) &&
+      controlsUnchanged &&
+      gatesUnchanged;
     if (unchanged) return;
     updateAgentDraft(agentId, draft => {
       const actionsCap = draft.familyConfiguration.actions;
@@ -775,13 +927,18 @@ export default function ActionConfigureV2() {
           actions: {
             ...(actionsCap as CapabilityState | undefined),
             progress: desiredProgress,
-            values: { ...(actionsCap?.values ?? {}), selections: enabledNames },
+            values: {
+              ...(actionsCap?.values ?? {}),
+              selections: enabledNames,
+              controlsByActionId: galileoActionControls.controlsByActionId,
+              gatesByActionId: galileoActionControls.gatesByActionId,
+            },
             updatedAt: new Date().toISOString(),
           } as CapabilityState,
         },
       };
     });
-  }, [rows, agentId, agentDraft, updateAgentDraft]);
+  }, [rows, galileoActionControls, agentId, agentDraft, updateAgentDraft]);
 
   // Reflect the enabled guardrails into the shared agent draft (security row).
   useEffect(() => {
@@ -798,10 +955,14 @@ export default function ActionConfigureV2() {
       ? rawSelections.filter((s): s is string => typeof s === 'string')
       : [];
     const desiredProgress = enabledGuardrailNames.length > 0 ? 'configured' : 'not_started';
+    const rawCustomGuardrails = cap?.values?.customGuardrails;
+    const customGuardrailsUnchanged = JSON.stringify(rawCustomGuardrails ?? [])
+      === JSON.stringify(advancedCustomItems);
     const unchanged =
       cap?.progress === desiredProgress &&
       currentSelections.length === enabledGuardrailNames.length &&
-      currentSelections.every((s, i) => s === enabledGuardrailNames[i]);
+      currentSelections.every((s, i) => s === enabledGuardrailNames[i]) &&
+      customGuardrailsUnchanged;
     if (unchanged) return;
     updateAgentDraft(agentId, draft => {
       const securityCap = draft.familyConfiguration.security;
@@ -812,7 +973,11 @@ export default function ActionConfigureV2() {
           security: {
             ...(securityCap as CapabilityState | undefined),
             progress: desiredProgress,
-            values: { ...(securityCap?.values ?? {}), selections: enabledGuardrailNames },
+            values: {
+              ...(securityCap?.values ?? {}),
+              selections: enabledGuardrailNames,
+              customGuardrails: advancedCustomItems,
+            },
             updatedAt: new Date().toISOString(),
           } as CapabilityState,
         },
@@ -1023,6 +1188,7 @@ export default function ActionConfigureV2() {
       ...prev,
       ...newCapabilities.map(cap => ({
         id: cap.id,
+        actionId: getGalileoActionId(cap.sourceActionId, cap.name),
         name: cap.name,
         description: cap.description,
         enabled: true,
@@ -1157,24 +1323,43 @@ export default function ActionConfigureV2() {
     }).length;
   }, [capabilities, resolveVersionMeta]);
 
+  const galileoActionOptions = useMemo(
+    () => rows.map(row => ({ id: row.actionId, name: row.name })),
+    [rows],
+  );
+  const largeEventControl = galileoActionControls.controlsByActionId[GALILEO_ACTION_IDS.checkAvailability]
+    ?.find(control => control.id === LARGE_EVENT_CONTROL_ID);
+
+  const channelConfigurationValues = agentDraft?.familyConfiguration.channels?.values;
   const selectedChannels =
-    (agentDraft?.familyConfiguration.channels?.values?.selectedChannels as CustomerChannel[] | undefined) ?? [];
+    (channelConfigurationValues?.selectedChannels as CustomerChannel[] | undefined) ?? [];
+  const voiceLocation = typeof channelConfigurationValues?.voiceLocation === 'string'
+    ? channelConfigurationValues.voiceLocation
+    : '';
+  const voicePhoneNumber = typeof channelConfigurationValues?.voicePhoneNumber === 'string'
+    ? channelConfigurationValues.voicePhoneNumber
+    : '';
+  const voiceExtension = typeof channelConfigurationValues?.voiceExtension === 'string'
+    ? channelConfigurationValues.voiceExtension
+    : '';
   const configurationFingerprint = useMemo(
     () => JSON.stringify({
       profileForm,
       advancedDefaultGroups,
       advancedCustomItems,
       rows,
+      galileoActionControls,
       disabledKnowledge,
-      selectedChannels,
+      channelConfigurationValues,
     }),
     [
       profileForm,
       advancedDefaultGroups,
       advancedCustomItems,
       rows,
+      galileoActionControls,
       disabledKnowledge,
-      selectedChannels,
+      channelConfigurationValues,
     ],
   );
   const [savedConfigurationFingerprint, setSavedConfigurationFingerprint] = useState(configurationFingerprint);
@@ -1192,16 +1377,18 @@ export default function ActionConfigureV2() {
     showToast('Configuration saved', 'success');
   };
 
-  if (!currentAgent || currentAgent.id !== agentId) {
-    const nextAgent = agents[agentId];
-    if (nextAgent) {
+  const requestedAgent = agents[agentId];
+  useEffect(() => {
+    if (requestedAgent && currentAgent?.id !== agentId) {
       selectAgent(agentId);
-    } else {
-      return <Navigate to="/agents" replace />;
     }
+  }, [agentId, currentAgent?.id, requestedAgent, selectAgent]);
+
+  if (!requestedAgent && currentAgent?.id !== agentId) {
+    return <Navigate to="/agents" replace />;
   }
 
-  const agent = currentAgent || agents[agentId];
+  const agent = currentAgent?.id === agentId ? currentAgent : requestedAgent;
   if (!agent) return <Navigate to="/agents" replace />;
 
   const knowledgeDemoAgent = CISCO_LIVE_AGENTS.find((candidate) => candidate.id === agent.id) ?? CISCO_LIVE_AGENTS[0];
@@ -1213,8 +1400,31 @@ export default function ActionConfigureV2() {
   };
 
   const deleteAction = (id: number) => {
+    const deletedActionId = rows.find(row => row.id === id)?.actionId;
     setRows((prev) => prev.filter((row) => row.id !== id));
     setCapabilities((prev) => prev.filter((cap) => cap.id !== id));
+    if (deletedActionId) {
+      setGalileoActionControls((current) => {
+        const controlsByActionId = Object.fromEntries(
+          Object.entries(current.controlsByActionId)
+            .filter(([actionId]) => actionId !== deletedActionId)
+            .map(([actionId, controls]) => [
+              actionId,
+              controls.map(control => (
+                control.steerToActionId === deletedActionId
+                  ? { ...control, steerToActionId: undefined }
+                  : control
+              )),
+            ]),
+        );
+        const gatesByActionId = Object.fromEntries(
+          Object.entries(current.gatesByActionId).filter(([actionId, gate]) => (
+            actionId !== deletedActionId && gate.sourceActionId !== deletedActionId
+          )),
+        );
+        return { controlsByActionId, gatesByActionId };
+      });
+    }
   };
 
   const toggleChannel = (value: CustomerChannel) => {
@@ -1233,6 +1443,30 @@ export default function ActionConfigureV2() {
             ...(channelsCap as CapabilityState | undefined),
             progress: next.length > 0 ? 'configured' : 'not_started',
             values: { ...(channelsCap?.values ?? {}), selectedChannels: next },
+            updatedAt: new Date().toISOString(),
+          } as CapabilityState,
+        },
+      };
+    });
+  };
+
+  const updateVoiceChannelField = (
+    field: 'voiceLocation' | 'voicePhoneNumber' | 'voiceExtension',
+    value: string,
+  ) => {
+    if (!agentId) return;
+    updateAgentDraft(agentId, (draft) => {
+      const channelsCap = draft.familyConfiguration.channels;
+      return {
+        ...draft,
+        familyConfiguration: {
+          ...draft.familyConfiguration,
+          channels: {
+            ...(channelsCap as CapabilityState | undefined),
+            values: {
+              ...(channelsCap?.values ?? {}),
+              [field]: value,
+            },
             updatedAt: new Date().toISOString(),
           } as CapabilityState,
         },
@@ -1276,6 +1510,7 @@ export default function ActionConfigureV2() {
   );
   const customProfileCardCount = (defaultCustomProfileState === 'generating' ? 1 : 0) + advancedCustomItems.length;
   const customProfileLimit = 3;
+  const customGuardrailCapacityLabel = `${customProfileAppliedCount} enabled · ${customProfileCardCount} of ${customProfileLimit} slots used`;
   const customProfileLimitReached = customProfileCardCount >= customProfileLimit;
   const createCustomProfileDisabled = !isPaidUser || customProfileLimitReached;
 
@@ -1335,6 +1570,9 @@ export default function ActionConfigureV2() {
         <Radio value="response" label="Response" disabled={disabled || !item.enabled || !isPaidUser} />
         <Radio value="both" label="Both prompts and responses" disabled={disabled || !item.enabled || !isPaidUser} />
       </RadioGroup>
+      <p className="security-control-help">
+        Prompt checks customer requests. Response checks agent output. Both checks customer prompts and agent responses.
+      </p>
     </div>
   );
 
@@ -1353,6 +1591,9 @@ export default function ActionConfigureV2() {
         <Radio value="steer" label="Steer" disabled={!item.enabled || !isPaidUser} />
         <Radio value="block" label="Block" disabled={!item.enabled || !isPaidUser} />
       </RadioGroup>
+      <p className="security-control-help">
+        Monitor records a match. Steer guides the agent to a safer path. Block stops the prompt or response.
+      </p>
     </div>
   );
 
@@ -1520,41 +1761,64 @@ export default function ActionConfigureV2() {
   );
 
   const actionPageActions = activeSection === 'Action' ? (
-    <div className="add-action-menu-wrapper" ref={addMenuRef}>
-      <button
+    <div className="action-config-v2-action-actions">
+      <Button
         type="button"
-        className="action-config-v2-add-btn"
-        onClick={() => setShowAddMenu(!showAddMenu)}
+        variant="secondary"
+        size="sm"
+        className="action-config-v2-recommended-btn"
+        aria-haspopup="dialog"
+        aria-expanded={showRecommendedControls}
+        onClick={openRecommendedControls}
       >
-        <Icon name="plus" weight="bold" size={20} />
-        Add actions
-      </button>
-      {showAddMenu && (
-        <div className="add-action-menu">
-          <div className="add-action-menu-section">
-            <div className="add-action-menu-header">Browse actions</div>
-            <button
-              className="add-action-menu-item"
-              onClick={() => { setShowAddMenu(false); setShowAddCapabilityModal(true); }}
-            >
-              <Icon name="extension-mobility" weight="bold" size={20} />
-              Select available
-            </button>
+        <Icon name="sparkle" weight="bold" size={18} />
+        Recommend Controls
+      </Button>
+      <div className="add-action-menu-wrapper" ref={addMenuRef}>
+        <button
+          type="button"
+          className="action-config-v2-add-btn"
+          aria-haspopup="menu"
+          aria-expanded={showAddMenu}
+          onClick={() => setShowAddMenu(!showAddMenu)}
+        >
+          <Icon name="plus" weight="bold" size={20} />
+          Add actions
+        </button>
+        {showAddMenu && (
+          <div className="add-action-menu" role="menu">
+            <div className="add-action-menu-section">
+              <div className="add-action-menu-header">Browse actions</div>
+              <button
+                type="button"
+                role="menuitem"
+                className="add-action-menu-item"
+                onClick={() => { setShowAddMenu(false); setShowAddCapabilityModal(true); }}
+              >
+                <Icon name="extension-mobility" weight="bold" size={20} />
+                Select available
+              </button>
+            </div>
+            <div className="add-action-menu-divider" />
+            <div className="add-action-menu-section">
+              <div className="add-action-menu-header">Create new action</div>
+              <button type="button" role="menuitem" className="add-action-menu-item" onClick={() => setShowAddMenu(false)}>
+                <Icon name="next" weight="bold" size={20} />
+                Transfer
+              </button>
+              <button
+                type="button"
+                role="menuitem"
+                className="add-action-menu-item"
+                onClick={() => { setShowAddMenu(false); setShowFulfillmentModal(true); }}
+              >
+                <Icon name="automation" weight="bold" size={20} />
+                Fulfillment
+              </button>
+            </div>
           </div>
-          <div className="add-action-menu-divider" />
-          <div className="add-action-menu-section">
-            <div className="add-action-menu-header">Create new action</div>
-            <button className="add-action-menu-item" onClick={() => setShowAddMenu(false)}>
-              <Icon name="next" weight="bold" size={20} />
-              Transfer
-            </button>
-            <button className="add-action-menu-item" onClick={() => { setShowAddMenu(false); setShowFulfillmentModal(true); }}>
-              <Icon name="automation" weight="bold" size={20} />
-              Fulfillment
-            </button>
-          </div>
-        </div>
-      )}
+        )}
+      </div>
     </div>
   ) : undefined;
 
@@ -1626,6 +1890,46 @@ export default function ActionConfigureV2() {
                   );
                 })}
               </div>
+              {selectedChannels.includes('voice') && (
+                <fieldset className="v2-voice-channel-fields">
+                  <legend>Voice details</legend>
+                  <p className="v2-voice-channel-fields__description">
+                    Choose the location and phone number callers use to reach this agent.
+                  </p>
+                  <div className="v2-voice-channel-fields__grid">
+                    <Dropdown
+                      id="voice-location"
+                      label="Location"
+                      hint="Choose the location this agent supports"
+                      options={VOICE_LOCATION_OPTIONS}
+                      value={voiceLocation}
+                      placeholder="Select location"
+                      onChange={(value) => updateVoiceChannelField('voiceLocation', value)}
+                    />
+                    <Dropdown
+                      id="voice-phone-number"
+                      label="Phone number"
+                      hint="Choose an available number for this agent"
+                      options={VOICE_PHONE_NUMBER_OPTIONS}
+                      value={voicePhoneNumber}
+                      placeholder="Select phone number"
+                      onChange={(value) => updateVoiceChannelField('voicePhoneNumber', value)}
+                    />
+                    <Input
+                      id="voice-extension"
+                      label="Extension"
+                      hint="Optional, up to 8 digits"
+                      value={voiceExtension}
+                      placeholder="Enter extension"
+                      inputMode="numeric"
+                      pattern="[0-9]*"
+                      maxLength={8}
+                      voiceInput={false}
+                      onChange={(event) => updateVoiceChannelField('voiceExtension', event.target.value.replace(/\D/g, ''))}
+                    />
+                  </div>
+                </fieldset>
+              )}
             </div>
           )}
 
@@ -1889,7 +2193,7 @@ export default function ActionConfigureV2() {
             <div className="guardrails-layout">
               <div className="guardrails-header">
                 <p className="guardrails-subtitle">
-                  Configure protection rules to control agent behavior, enforce safety policies, and prevent misuse. Triggered guardrails appear in Sessions. Monitor logs the interaction for review. Block rejects the prompt while keeping the conversation active.
+                  Use custom guardrails for business-specific privacy, safety, and security rules. Use prebuilt guardrails for common risks. Triggered guardrails appear in Sessions.
                 </p>
               </div>
 
@@ -1900,9 +2204,9 @@ export default function ActionConfigureV2() {
                     <div className="security-tier-card-inner">
                       <Icon name="sparkle" weight="bold" size={24} />
                       <div className="security-tier-card-text">
-                        <span className="security-tier-card-title">Adaptive guardrails</span>
-                        <span className="security-tier-card-desc">Rules tailored to this agent&apos;s business logic and policy exceptions.</span>
-                        <span className="security-tier-card-count">{customProfileAppliedCount} of {customProfileLimit} enabled</span>
+                        <span className="security-tier-card-title">Custom guardrails</span>
+                        <span className="security-tier-card-desc">Business-specific rules that protect this agent&apos;s guests, workflows, and policy boundaries.</span>
+                        <span className="security-tier-card-count">{customGuardrailCapacityLabel}</span>
                       </div>
                     </div>
                   </CardBody>
@@ -1913,7 +2217,7 @@ export default function ActionConfigureV2() {
                       <Icon name="secure-circle" weight="bold" size={24} />
                       <div className="security-tier-card-text">
                         <span className="security-tier-card-title">Prebuilt guardrails</span>
-                        <span className="security-tier-card-desc">Comprehensive security, privacy, and safety guardrails for common risks.</span>
+                        <span className="security-tier-card-desc">Ready-to-use protection for common security, privacy, and safety risks.</span>
                         <span className="security-tier-card-count">{prebuiltEnabledCount} of {prebuiltTotalCount} enabled</span>
                       </div>
                     </div>
@@ -1941,7 +2245,7 @@ export default function ActionConfigureV2() {
                             disabled
                             onClick={() => { setEditingProfileId(null); setShowPolicyStudio(true); }}
                           >
-                            <Icon name="plus" weight="bold" size={16} />Create new
+                            <Icon name="plus" weight="bold" size={16} />Create guardrail
                           </Button>
                         </span>
                       </Tooltip>
@@ -1951,7 +2255,7 @@ export default function ActionConfigureV2() {
                         disabled={createCustomProfileDisabled}
                         onClick={() => { setEditingProfileId(null); setShowPolicyStudio(true); }}
                       >
-                        <Icon name="plus" weight="bold" size={16} />Create new
+                        <Icon name="plus" weight="bold" size={16} />Create guardrail
                       </Button>
                     )}
                   </div>
@@ -1977,12 +2281,12 @@ export default function ActionConfigureV2() {
                           <div className="security-prebuilt-category-copy">
                             <div className="security-prebuilt-category-title">
                               <Icon name="sparkle" weight="bold" size={18} />
-                              <span>Adaptive guardrails</span>
+                              <span>Custom guardrails</span>
                               <Badge variant="success" className="security-tier-badge">Powered by AI Defense</Badge>
                             </div>
-                            <span className="security-prebuilt-category-meta">{customProfileAppliedCount} of {customProfileLimit} created</span>
+                            <span className="security-prebuilt-category-meta">{customGuardrailCapacityLabel}</span>
                             <span className="security-prebuilt-category-desc">
-                              Create guardrails that understand this agent&apos;s real business rules, like identity verification bypasses, approved service flows, and policy exceptions.
+                              Create rules for this agent&apos;s business-specific privacy, safety, and security risks. Custom guardrails can evaluate prompts, responses, or both.
                             </span>
                           </div>
                         </div>
@@ -2006,7 +2310,7 @@ export default function ActionConfigureV2() {
                             <ProgressBar
                               value={defaultCustomProfileProgress}
                               label="Creating custom guardrail"
-                              helperText="Analyzing this agent's goal and drafting a business-specific policy."
+                              helperText="Drafting blocked, allowed, and edge-case rules for this agent."
                               showPercent
                             />
                           </div>
@@ -2022,7 +2326,7 @@ export default function ActionConfigureV2() {
                 ) : (
                   <div className="custom-profile-empty-hero">
                     <Icon name="document-create" weight="bold" size={22} />
-                    <span>No custom guardrails yet. Start with a policy that matches this agent&apos;s business process.</span>
+                    <span>No custom guardrails. Create one for a business-specific privacy, safety, or security risk.</span>
                   </div>
                 )}
                       </div>
@@ -2345,8 +2649,8 @@ export default function ActionConfigureV2() {
           )}
 
           {activeSection === 'Action' && (
-          <div className="action-config-v2-table-wrap">
-            <table className="action-config-v2-table">
+          <div className="action-config-v2-table-wrap action-config-v2-table-wrap--actions">
+            <table className="action-config-v2-table action-config-v2-table--actions">
               <thead>
                 <tr>
                   <th className="col-action-name">Action name</th>
@@ -2356,7 +2660,8 @@ export default function ActionConfigureV2() {
                   <th className="col-last-updated">Last updated</th>
                   <th className="col-action-type">Action type</th>
                   <th className="col-provider-type">Provider type</th>
-                  <th className="col-controls">Controls</th>
+                  <th className="col-galileo">Galileo</th>
+                  <th className="col-row-actions" aria-label="Row actions" />
                 </tr>
               </thead>
               <tbody>
@@ -2368,6 +2673,12 @@ export default function ActionConfigureV2() {
                   const hasUpdate =
                     versionMeta.updateStatus === 'updateAvailable' ||
                     versionMeta.updateStatus === 'incompatible';
+                  const galileoStatus = getGalileoActionStatus(row.actionId, galileoActionControls);
+                  const galileoButtonColor: 'default' | 'positive' | 'accent' = galileoStatus.tone === 'active'
+                    ? 'positive'
+                    : galileoStatus.tone === 'gated' || galileoStatus.tone === 'draft'
+                      ? 'accent'
+                      : 'default';
                   return (
                     <tr key={row.id} className={!row.enabled ? 'row-disabled' : ''}>
                       <td className="col-action-name">
@@ -2400,28 +2711,32 @@ export default function ActionConfigureV2() {
                       <td className="col-last-updated">{row.lastUpdated}</td>
                       <td className="col-action-type">{row.actionType}</td>
                       <td className="col-provider-type">{row.providerType}</td>
-                      <td className="col-controls">
-                        <div className="action-config-v2-control-group">
-                          <button
-                            className="action-config-v2-control-btn"
-                            type="button"
-                            onClick={() => {
-                              const foundCap = capabilities.find((c) => c.id === row.id);
-                              if (foundCap) handleOpenCapabilityEdit(foundCap);
-                            }}
-                            title="Edit action"
-                          >
-                            <Icon name="edit" weight="bold" size={16} />
-                          </button>
-                          <button
-                            className="action-config-v2-control-btn action-config-v2-delete-btn"
-                            type="button"
-                            onClick={() => deleteAction(row.id)}
-                            title="Delete action"
-                          >
-                            <Icon name="delete" weight="bold" size={16} />
-                          </button>
-                        </div>
+                      <td className="col-galileo">
+                        <Button
+                          type="button"
+                          variant="secondary"
+                          color={galileoButtonColor}
+                          size="sm"
+                          className={`galileo-action-control-button is-${galileoStatus.tone}`}
+                          aria-label={`${row.name}: Galileo ${galileoStatus.label}`}
+                          aria-haspopup="dialog"
+                          onClick={() => openGalileoActionControls(row.actionId)}
+                        >
+                          <Icon name="automation" weight="bold" size={16} />
+                          <span className="galileo-action-control-button__label">
+                            {galileoStatus.label}
+                          </span>
+                        </Button>
+                      </td>
+                      <td className="col-row-actions">
+                        <ActionRowMenu
+                          name={row.name}
+                          onEdit={() => {
+                            const foundCap = capabilities.find((capability) => capability.id === row.id);
+                            if (foundCap) handleOpenCapabilityEdit(foundCap);
+                          }}
+                          onDelete={() => deleteAction(row.id)}
+                        />
                       </td>
                     </tr>
                   );
@@ -2432,6 +2747,31 @@ export default function ActionConfigureV2() {
           )}
         </div>
       </div>
+
+      {showRecommendedControls && (
+        <RecommendedActionControlsDialog
+          actions={galileoActionOptions}
+          state={galileoActionControls}
+          onAdd={(control) => {
+            setGalileoActionControls(current => addRecommendedGalileoControl(current, control));
+            showToast('Recommended control added for review', 'success');
+          }}
+          onClose={closeRecommendedControls}
+        />
+      )}
+
+      {galileoDialogActionId && (
+        <ActionControlManagerDialog
+          actionId={galileoDialogActionId}
+          actions={galileoActionOptions}
+          state={galileoActionControls}
+          onChange={(next) => {
+            setGalileoActionControls(next);
+            showToast('Galileo action controls updated', 'success');
+          }}
+          onClose={closeGalileoActionControls}
+        />
+      )}
 
       {showCapabilityEditModal && createPortal(
         <div className="capability-edit-overlay" onClick={handleCloseCapabilityEdit}>
@@ -3110,6 +3450,7 @@ export default function ActionConfigureV2() {
             key={editingProfileId || 'new-security-ui'}
             initialBasicStep={!editingProfileId}
             initialProfileName={editItem?.name}
+            initialDirection={editItem?.direction}
             initialData={editItem ? {
               name: editItem.name,
               description: editItem.description,
@@ -3141,12 +3482,13 @@ export default function ActionConfigureV2() {
                     name: result.name,
                     description: result.description,
                     overview: result.overview,
+                    direction: result.direction,
                     createdAt: now,
                     policyText: result.policyText,
                     versions: [...it.versions, newVersion],
                   };
                 }));
-                showToast(`Profile "${result.name}" v${(editItem?.versions.length ?? 0) + 1} created`, 'success');
+                showToast(`Guardrail "${result.name}" updated`, 'success');
                 setShowPolicyStudio(false);
                 setEditingProfileId(null);
                 return;
@@ -3159,12 +3501,12 @@ export default function ActionConfigureV2() {
                 policyText: result.policyText,
                 enabled: true,
                 action: 'block',
-                direction: 'prompt',
+                direction: result.direction,
                 createdBy: 'You',
                 createdAt: now,
                 versions: [{ version: v1.version, name: v1.name, description: v1.description, overview: v1.overview, createdAt: v1.createdAt, policyText: v1.policyText }],
               }]);
-              showToast(`Profile "${result.name}" published`, 'success');
+              showToast(`Guardrail "${result.name}" published`, 'success');
               setShowPolicyStudio(false);
               setEditingProfileId(null);
             }}

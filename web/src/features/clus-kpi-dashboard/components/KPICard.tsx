@@ -135,10 +135,19 @@ function KPICardInner({
       : threshold === 'bad'
         ? ck.textError
         : ck.text;
+  const changeTone = data.changeTone === 'neutral'
+    ? ck.textMuted
+    : data.changeTone === 'positive'
+      ? ck.textSuccess
+      : data.changeTone === 'negative'
+        ? ck.textError
+        : data.isPositive
+          ? ck.textSuccess
+          : ck.textError;
   return (
     <div
       ref={cardRef}
-      className={`kpi-card ${isActive ? 'kpi-card--active' : 'kpi-card--glass'}`}
+      className={`kpi-card ${isActive ? 'kpi-card--active' : 'kpi-card--glass'}${data.id.startsWith('ac-') ? ' kpi-card--action-control' : ''}`}
     >
       <button
         type="button"
@@ -194,9 +203,7 @@ function KPICardInner({
               </div>
             ) : null}
             <p
-              className={`kpi-card__delta ${ck.typo.bodyMidsizeRegular} ${
-                data.isPositive ? ck.textSuccess : ck.textError
-              }`}
+              className={`kpi-card__delta ${ck.typo.bodyMidsizeRegular} ${changeTone}`}
             >
               {data.change}
             </p>

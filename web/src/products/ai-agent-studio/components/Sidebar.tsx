@@ -79,7 +79,7 @@ export default function Sidebar({
   const location = useLocation();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
-  const { setVariation } = useDesignVariation();
+  const { variation, setVariation } = useDesignVariation();
   const { agents, agentDrafts, selectAgent } = useApp();
 
   const agentId = parseAgentId(location.pathname);
@@ -214,13 +214,22 @@ export default function Sidebar({
     return location.pathname === path || location.pathname.startsWith(path + '/');
   };
 
-  /* Map canvas overlay routes back onto the parent tab so the sidebar
-     highlight stays put while the canvas is open. /eva-canvas opens
-     over the Dashboard root, /agents/eva-canvas opens over AI Agents —
-     both already match via the standard isActive check, but we treat
-     /eva-canvas explicitly as Dashboard so the index ('/') item stays
-     highlighted instead of going inactive. */
-  const isDashboardActive = location.pathname === '/' || location.pathname === '/eva-canvas';
+  /* Highlight the experience the route is actually rendering. The agent
+     builder can appear at the root, on either canvas route, or at /agents
+     before a family agent exists. Those states all remain under New agent;
+     AI Agents becomes active only when /agents is showing the agent list. */
+  const hasFamilyAgents = Object.keys(agentDrafts).length > 0 ||
+    Object.values(agents).some(candidate => Boolean(candidate.family));
+  const agentsRouteShowsBuildingExperience =
+    location.pathname === '/agents/eva-canvas' ||
+    (
+      location.pathname === '/agents' &&
+      (variation !== 'dashboard' || !hasFamilyAgents)
+    );
+  const isNewAgentActive =
+    location.pathname === '/' ||
+    location.pathname === '/eva-canvas' ||
+    agentsRouteShowsBuildingExperience;
 
   return (
     <aside className={`sidebar${collapsed ? ' sidebar--collapsed' : ''}`}>
@@ -237,7 +246,9 @@ export default function Sidebar({
                         location.pathname === '/kpi-dashboard' ||
                         location.pathname.endsWith('/kpi-dashboard')
                     : item.path === '/'
-                      ? isDashboardActive
+                      ? isNewAgentActive
+                    : item.path === '/agents'
+                      ? !agentsRouteShowsBuildingExperience && isActive(item.path)
                       : isActive(item.path, item.path === '/');
 
                 return (

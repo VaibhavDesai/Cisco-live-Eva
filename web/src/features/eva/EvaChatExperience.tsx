@@ -1,4 +1,4 @@
-import { Fragment, useEffect, useRef, useState, type CSSProperties, type KeyboardEvent, type PointerEvent } from 'react';
+import { Fragment, useEffect, useLayoutEffect, useRef, useState, type CSSProperties, type KeyboardEvent, type PointerEvent } from 'react';
 import { createPortal } from 'react-dom';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useApp } from '../../contexts/AppContext';
@@ -422,7 +422,7 @@ const CONTINUE_TO_STUDIO_LABEL = 'Continue in AI Agent Studio';
 const RETAIL_VOICE_LABEL = 'Voice';
 const RETAIL_DIGITAL_LABEL = 'Digital';
 const RETAIL_VIDEO_LABEL = 'Video';
-const RETAIL_CONFIRM_CHANNELS_LABEL = 'Continue to agent details';
+const RETAIL_CONFIRM_CHANNELS_LABEL = 'Continue';
 const RETAIL_CUSTOM_AGENT_NAME_LABEL = 'Type a different name';
 const RETAIL_AGENT_NAME_CUSTOM_LABEL = 'Use typed name';
 const RETAIL_EDIT_WELCOME_LABEL = 'Edit welcome message';
@@ -445,7 +445,7 @@ const RETAIL_PHONE_NUMBER_OPTIONS = [
     flag: '🇺🇸',
     localNumber: '629 263 5773',
     label: '+1 629 263 5773',
-    meta: 'San Francisco store',
+    meta: 'San Francisco',
   },
   {
     value: '+1 512 555 0142',
@@ -453,7 +453,7 @@ const RETAIL_PHONE_NUMBER_OPTIONS = [
     flag: '🇺🇸',
     localNumber: '512 555 0142',
     label: '+1 512 555 0142',
-    meta: 'Austin store',
+    meta: 'Austin',
   },
   {
     value: '+1 408 555 0177',
@@ -461,7 +461,7 @@ const RETAIL_PHONE_NUMBER_OPTIONS = [
     flag: '🇺🇸',
     localNumber: '408 555 0177',
     label: '+1 408 555 0177',
-    meta: 'San Jose store',
+    meta: 'San Jose',
   },
 ];
 type RetailPrototypeStep =
@@ -476,6 +476,14 @@ type RetailPrototypeStep =
   | 'ready-to-preview'
   | 'previewing'
   | 'ready-to-create';
+
+const RETAIL_CENTERED_ORIGIN_BY_STEP: Partial<Record<RetailPrototypeStep, string>> = {
+  welcome: 'retail-welcome-choice',
+  knowledge: 'retail-knowledge-choice',
+  actions: 'retail-actions-choice',
+  phone: 'retail-phone-choice',
+  'ready-to-preview': 'retail-final-actions',
+};
 
 const RETAIL_RECEPTIONIST_AGENT_NAME = 'Acme Electronics agent';
 const RETAIL_RECEPTIONIST_DESCRIPTION = 'Voice agent for Acme Electronics in San Jose';
@@ -527,6 +535,19 @@ const DEFAULT_RETAIL_WORKFLOW_CONTEXT: RetailWorkflowContext = {
   discoveryCompleteText: 'I found Acme Electronics in San Jose from your organization profile and connected store systems. Voice is selected. Choose any additional channels for this agent.',
 };
 
+const VIP_LOGISTICS_WORKFLOW_CONTEXT: RetailWorkflowContext = {
+  targetDescription: 'Eagle Green VIP reservation operations',
+  agentName: 'Eagle Green Facilities Agent',
+  description: 'Coordinates internal operations for Eagle Green VIP reservations',
+  welcomeMessage: 'Hi, thanks for calling the Eagle Green Facilities line. I can check event readiness, flag issues, or help you resolve something that\'s been flagged for you. How can I help?',
+  knowledgeBases: ['Reservation System', 'Inventory System – Food & Beverage'],
+  customRule: 'Require approval before committing staffing, inventory, space, or equipment for a VIP reservation.',
+  escalationSummary: 'VIP operations approval rules',
+  discoveryAssistantName: 'AI Assistant is checking VIP operations context...',
+  discoveryContent: 'I’m checking VIP reservation details and connected operations systems before choosing setup options.',
+  discoveryCompleteText: 'I found the connected Eagle Green operations systems. Choose the channels this agent should support.',
+};
+
 const titleCaseShortBusinessName = (value: string) => value
   .replace(/^(an?|the)\s+/i, '')
   .replace(/\bthat\b.*$/i, '')
@@ -576,6 +597,25 @@ const RETAIL_DISCOVERY_ROWS = [
   },
 ];
 
+const VIP_LOGISTICS_DISCOVERY_ROWS = [
+  {
+    title: 'Hours of operation',
+    detail: 'Confirmed operating hours and reservation availability.',
+  },
+  {
+    title: 'Inventory System – Food, Beverage',
+    detail: 'Checked menus, beverage inventory, and service availability.',
+  },
+  {
+    title: 'Internal Staffing & Scheduling System',
+    detail: 'Checked staffing availability and shift coverage.',
+  },
+  {
+    title: 'Facilities: Space & Equipment',
+    detail: 'Checked space availability and equipment requirements.',
+  },
+];
+
 const RETAIL_RECOMMENDED_KNOWLEDGE_BASES = [
   {
     name: 'Product information',
@@ -588,6 +628,17 @@ const RETAIL_RECOMMENDED_KNOWLEDGE_BASES = [
   {
     name: 'Store handbook',
     description: 'Use pickup, hours, parking, and escalation guidance.',
+  },
+];
+
+const VIP_LOGISTICS_RECOMMENDED_KNOWLEDGE_BASES = [
+  {
+    name: 'Internal Staffing & Scheduling System',
+    description: 'Check staffing availability and shift coverage.',
+  },
+  {
+    name: 'Facilities: Space & Equipment',
+    description: 'Check space availability and equipment requirements.',
   },
 ];
 
@@ -609,6 +660,23 @@ const RETAIL_RECOMMENDED_ACTIONS = [
     provider: 'Stripe',
     providerLogoSrc: providerStripeLogo,
     description: 'Check card charges, deposits, refunds, and receipt issues for store orders.',
+  },
+];
+
+const VIP_LOGISTICS_CONNECTED_ACTIONS = ['Check Escalation Status'];
+
+const VIP_LOGISTICS_RECOMMENDED_ACTIONS = [
+  {
+    name: 'Create a Service Ticket',
+    provider: 'ServiceNow',
+    providerLogoSrc: providerServiceNowLogo,
+    description: 'Create a ticket for a facilities, inventory, staffing, or event-readiness issue.',
+  },
+  {
+    name: 'Look Up Reservation History',
+    provider: 'Salesforce',
+    providerLogoSrc: providerSalesforceLogo,
+    description: 'Review current and previous Eagle Green reservation records.',
   },
 ];
 
@@ -647,10 +715,10 @@ const CONTACT_CENTER_INTAKE_CHANNEL_OPTIONS = [
     description: 'Help customers through chat and messaging experiences.',
   },
   {
-    label: 'Both',
-    icon: 'connect',
-    title: 'Both',
-    description: 'Support one consistent experience across voice and digital.',
+    label: 'Video',
+    icon: 'video',
+    title: 'Video',
+    description: 'Support video conversations for high-touch requests.',
   },
 ] as const;
 
@@ -790,6 +858,12 @@ const isCreateAgentIntent = (normalized: string) => (
   normalized.includes('set up') ||
   normalized.includes('setup')
 ) && normalized.includes('agent');
+
+const isLogisticsAgentCreationIntent = (normalized: string) => (
+  isCreateAgentIntent(normalized) &&
+  (normalized.includes('logistics') || normalized.includes('internal operations')) &&
+  (normalized.includes('reservation') || normalized.includes('vip'))
+);
 
 type EvaReadinessCheckStatus = 'pass' | 'warning' | 'fail';
 
@@ -1209,6 +1283,7 @@ export default function EvaChatExperience({
   const [familyIntakeAnswers, setFamilyIntakeAnswers] = useState<Record<string, string>>(
     restoredEvaSession?.familyIntakeAnswers ?? {},
   );
+  const [contactCenterSelectedChannels, setContactCenterSelectedChannels] = useState<string[]>([]);
   const [familyProposal, setFamilyProposal] = useState<StarterProposal | null>(
     restoredEvaSession?.familyProposal ?? null,
   );
@@ -1238,7 +1313,16 @@ export default function EvaChatExperience({
   const [retailSelectedPhoneNumber, setRetailSelectedPhoneNumber] = useState<string | null>(null);
   const [phoneNumberDeferred, setPhoneNumberDeferred] = useState(restoredEvaSession?.phoneNumberDeferred ?? false);
   const [retailDiscoveryProgress, setRetailDiscoveryProgress] = useState(0);
+  const [logisticsDiscoveryActive, setLogisticsDiscoveryActive] = useState(false);
+  const [logisticsDiscoveryProgress, setLogisticsDiscoveryProgress] = useState(0);
   const [retailWorkflowContext, setRetailWorkflowContext] = useState<RetailWorkflowContext>(DEFAULT_RETAIL_WORKFLOW_CONTEXT);
+  const isVipLogisticsWorkflow = retailWorkflowContext.targetDescription === VIP_LOGISTICS_WORKFLOW_CONTEXT.targetDescription;
+  const retailRecommendedKnowledgeBases = isVipLogisticsWorkflow
+    ? VIP_LOGISTICS_RECOMMENDED_KNOWLEDGE_BASES
+    : RETAIL_RECOMMENDED_KNOWLEDGE_BASES;
+  const retailRecommendedActions = isVipLogisticsWorkflow
+    ? VIP_LOGISTICS_RECOMMENDED_ACTIONS
+    : RETAIL_RECOMMENDED_ACTIONS;
   const [retailAgentNameInput, setRetailAgentNameInput] = useState(RETAIL_RECEPTIONIST_AGENT_NAME);
   const [retailAgentNameInputVisible, setRetailAgentNameInputVisible] = useState(false);
   const [retailWelcomeInput, setRetailWelcomeInput] = useState(RETAIL_RECOMMENDED_WELCOME_MESSAGES[0].text);
@@ -1369,7 +1453,9 @@ export default function EvaChatExperience({
   const sidePanelPreviewCardRef = useRef<HTMLElement | null>(null);
   const pendingPreviewScrollRef = useRef(false);
   const retailDiscoveryTimerRef = useRef<number | null>(null);
+  const logisticsDiscoveryTimerRef = useRef<number | null>(null);
   const retailPhoneSelectorRef = useRef<HTMLDivElement | null>(null);
+  const retailTransitionScrollTopRef = useRef<number | null>(null);
   const onboardingResponseTimerRef = useRef<number | null>(null);
   const studioTransitionTimerRef = useRef<number | null>(null);
   const voiceWsRef = useRef<WebSocket | null>(null);
@@ -1627,6 +1713,9 @@ export default function EvaChatExperience({
     if (retailDiscoveryTimerRef.current) {
       window.clearInterval(retailDiscoveryTimerRef.current);
     }
+    if (logisticsDiscoveryTimerRef.current) {
+      window.clearInterval(logisticsDiscoveryTimerRef.current);
+    }
     if (onboardingResponseTimerRef.current) {
       window.clearTimeout(onboardingResponseTimerRef.current);
     }
@@ -1709,11 +1798,6 @@ export default function EvaChatExperience({
       if (!scrollContainer) return;
       if (freeChatActive && !guidanceVisible && !orchestrationSuggested) {
         const latestAssistantMessage = [...messages].reverse().find(message => message.role === 'assistant');
-        if (latestAssistantMessage?.originStep === 'retail-phone-choice') {
-          scrollContainer.scrollTo({ top: scrollContainer.scrollHeight, behavior: 'smooth' });
-          return;
-        }
-
         const retailStepBlocks = latestAssistantMessage?.originStep
           ? Array.from(scrollContainer.querySelectorAll<HTMLElement>(`[data-retail-origin-step="${latestAssistantMessage.originStep}"]`))
           : [];
@@ -1727,9 +1811,20 @@ export default function EvaChatExperience({
         const shouldLiftAnsweredRetailNamePrompt =
           latestAssistantMessage?.originStep === 'retail-agent-name' &&
           retailPrototypeStep === 'welcome';
+        const centeredRetailOrigin = RETAIL_CENTERED_ORIGIN_BY_STEP[retailPrototypeStep];
+        if (centeredRetailOrigin && latestAssistantMessage?.originStep !== centeredRetailOrigin) {
+          return;
+        }
+        const shouldCenterRetailActivePrompt = Boolean(
+          centeredRetailOrigin && latestAssistantMessage?.originStep === centeredRetailOrigin,
+        );
         const latestBlockRect = latestBlock.getBoundingClientRect();
         const scrollContainerRect = scrollContainer.getBoundingClientRect();
-        const baseOffset = shouldCenterRetailPrompt || shouldLiftAnsweredRetailNamePrompt
+        const baseOffset = shouldCenterRetailActivePrompt
+          ? scrollContainer.scrollTop + latestBlockRect.top - (
+            (window.innerHeight - latestBlockRect.height) / 2
+          )
+          : shouldCenterRetailPrompt || shouldLiftAnsweredRetailNamePrompt
           ? scrollContainer.scrollTop + latestBlockRect.top - scrollContainerRect.top - (
             shouldCenterRetailPrompt
               ? (scrollContainer.clientHeight - latestBlockRect.height) / 2
@@ -1739,9 +1834,19 @@ export default function EvaChatExperience({
         const proposalActions = latestAssistantMessage?.originStep === FAMILY_PROPOSAL_ORIGIN
           ? latestBlock.querySelector<HTMLElement>('.eva-family-proposal__actions')
           : null;
+        const phoneMenu = latestAssistantMessage?.originStep === 'retail-phone-choice'
+          ? latestBlock.querySelector<HTMLElement>('.eva-retail-phone-selector__menu')
+          : null;
         const composer = document.querySelector<HTMLElement>('.eva-first-interface__chat--sticky');
-        const actionClearance = proposalActions && composer
-          ? proposalActions.getBoundingClientRect().bottom - composer.getBoundingClientRect().top + 16
+        const actionClearance = composer
+          ? Math.max(
+            proposalActions
+              ? proposalActions.getBoundingClientRect().bottom - composer.getBoundingClientRect().top + 16
+              : 0,
+            phoneMenu
+              ? phoneMenu.getBoundingClientRect().bottom - composer.getBoundingClientRect().top + 24
+              : 0,
+          )
           : 0;
         const offset = Math.max(baseOffset, scrollContainer.scrollTop + Math.max(0, actionClearance));
         scrollContainer.scrollTo({ top: Math.max(0, offset), behavior: 'smooth' });
@@ -1755,7 +1860,7 @@ export default function EvaChatExperience({
     });
     return () => window.cancelAnimationFrame(frameId);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [latestUserMessageText, messages.length, waterfallThinking, evaThinking, retailDiscoveryProgress, retailPrototypeStep, freeChatActive, guidanceVisible, orchestrationSuggested, familyProposalEditing]);
+  }, [latestUserMessageText, messages.length, waterfallThinking, evaThinking, retailDiscoveryProgress, retailPrototypeStep, retailPhoneDropdownOpen, freeChatActive, guidanceVisible, orchestrationSuggested, familyProposalEditing]);
 
   const completeEvaThinking = (callback: () => void) => {
     /* Deterministic build flow — clear any prior free-chat state so the
@@ -1924,11 +2029,9 @@ export default function EvaChatExperience({
       setSelectedChannels(['voice']);
       setPhoneNumberDeferred(true);
     } else if (selectedAgentFamily === 'contact_center') {
-      const nextChannels = proposal.channel === 'Both'
-        ? ['voice', 'digital'] as EvaChannelSelection[]
-        : proposal.channel === 'Digital'
-          ? ['digital'] as EvaChannelSelection[]
-          : ['voice'] as EvaChannelSelection[];
+      const nextChannels = proposal.selectedChannels?.length
+        ? proposal.selectedChannels as EvaChannelSelection[]
+        : ['voice'] as EvaChannelSelection[];
       setSelectedChannels(nextChannels);
       setChannelType(nextChannels.includes('voice') ? 'voice' : 'digital');
       setSelectedDigitalChannels(nextChannels.includes('digital') ? ['chat'] : []);
@@ -1968,16 +2071,11 @@ export default function EvaChatExperience({
   const normalizeFamilyIntakeAnswer = (answerKey: string, answer: string) => {
     const value = answer.trim();
     if (answerKey !== 'channel') return value;
-    const normalized = value.toLowerCase().replace(/\s+/g, ' ');
-    if (normalized === 'voice' || normalized === 'phone') return 'Voice';
-    if (normalized === 'digital' || normalized === 'chat') return 'Digital';
-    if (['both', 'voice and digital', 'digital and voice', 'voice + digital', 'digital + voice'].includes(normalized)) {
-      return 'Both';
-    }
-    return value;
+    const normalized = value.toLowerCase();
+    return ['Voice', 'Digital', 'Video'].filter(option => normalized.includes(option.toLowerCase())).join(', ');
   };
 
-  const handleAgentFamilySelect = (family: AgentFamily) => {
+  const handleAgentFamilySelect = (family: AgentFamily, initialRequest = FAMILY_METADATA[family].label) => {
     if (entitlements[family] !== 'licensed') {
       showToast(`${FAMILY_METADATA[family].label} is not available with the current license.`, 'warning');
       return;
@@ -1987,6 +2085,7 @@ export default function EvaChatExperience({
     const firstMessage = getFamilyIntakeMessage(family, firstQuestion, {});
     setSelectedAgentFamily(family);
     setFamilyIntakeAnswers({});
+    setContactCenterSelectedChannels([]);
     setFamilyProposal(null);
     setFamilyProposalApplied(false);
     setFamilyProposalEditing(false);
@@ -2002,13 +2101,51 @@ export default function EvaChatExperience({
     setFreeChatActive(true);
     setOrchestrationSuggested(false);
     setMessages([
-      { role: 'user', text: FAMILY_METADATA[family].label, originStep: FAMILY_CHOICE_ORIGIN },
+      { role: 'user', text: initialRequest, originStep: FAMILY_CHOICE_ORIGIN },
     ]);
     addOnboardingAssistantMessage(
       firstMessage.text,
       firstMessage.followups,
       FAMILY_INTAKE_ORIGIN,
     );
+  };
+
+  const beginLogisticsContactCenterIntake = () => {
+    setRetailWorkflowContext(VIP_LOGISTICS_WORKFLOW_CONTEXT);
+    setRetailAgentNameInput(VIP_LOGISTICS_WORKFLOW_CONTEXT.agentName);
+    setRetailWelcomeInput(VIP_LOGISTICS_WORKFLOW_CONTEXT.welcomeMessage);
+    setSelectedKnowledgeBases(VIP_LOGISTICS_WORKFLOW_CONTEXT.knowledgeBases);
+    setSelectedActions(VIP_LOGISTICS_CONNECTED_ACTIONS);
+    setRetailSelectedChannels([]);
+    setGuidanceVisible(false);
+    setEvaThinking(false);
+    setFreeChatActive(true);
+    setOrchestrationSuggested(false);
+    setRetailPrototypeStep('idle');
+    setLogisticsDiscoveryActive(true);
+    setLogisticsDiscoveryProgress(0);
+    if (logisticsDiscoveryTimerRef.current) {
+      window.clearInterval(logisticsDiscoveryTimerRef.current);
+    }
+    logisticsDiscoveryTimerRef.current = window.setInterval(() => {
+      setLogisticsDiscoveryProgress(previous => {
+        const next = Math.min(previous + 1, VIP_LOGISTICS_DISCOVERY_ROWS.length);
+        if (next >= VIP_LOGISTICS_DISCOVERY_ROWS.length && logisticsDiscoveryTimerRef.current) {
+          window.clearInterval(logisticsDiscoveryTimerRef.current);
+          logisticsDiscoveryTimerRef.current = null;
+          window.setTimeout(() => {
+            setLogisticsDiscoveryActive(false);
+            setRetailPrototypeStep('channel');
+            addOnboardingAssistantMessage(
+              VIP_LOGISTICS_WORKFLOW_CONTEXT.discoveryCompleteText,
+              undefined,
+              'retail-channel-choice',
+            );
+          }, 420);
+        }
+        return next;
+      });
+    }, 700);
   };
 
   const handleLandingStarterSelect = (templateId: EvaTemplateId) => {
@@ -2125,7 +2262,12 @@ export default function EvaChatExperience({
 
     const value = normalizeFamilyIntakeAnswer(familyIntakeQuestion.answerKey, answer);
     if (!value) return true;
-    if (familyIntakeQuestion.options && !familyIntakeQuestion.options.some(option => option.toLowerCase() === value.toLowerCase())) {
+    const channelValues = value.split(',').map(item => item.trim()).filter(Boolean);
+    if (familyIntakeQuestion.options && !(
+      familyIntakeQuestion.answerKey === 'channel'
+        ? channelValues.length > 0 && channelValues.every(option => familyIntakeQuestion.options?.some(allowed => allowed.toLowerCase() === option.toLowerCase()))
+        : familyIntakeQuestion.options.some(option => option.toLowerCase() === value.toLowerCase())
+    )) {
       setMessages(previous => [
         ...previous,
         { role: 'user', text: value, originStep: FAMILY_INTAKE_ORIGIN },
@@ -2139,6 +2281,7 @@ export default function EvaChatExperience({
     }
 
     const nextAnswers = { ...familyIntakeAnswers, [familyIntakeQuestion.answerKey]: value };
+    if (familyIntakeQuestion.answerKey === 'channel') setContactCenterSelectedChannels([]);
     const nextQuestion = getAdaptiveIntakeQuestions(selectedAgentFamily, nextAnswers)
       .find(question => !nextAnswers[question.answerKey]?.trim());
     setFamilyIntakeAnswers(nextAnswers);
@@ -2502,7 +2645,13 @@ export default function EvaChatExperience({
     );
   };
 
+  const captureRetailTransitionScrollTop = () => {
+    const scrollContainer = document.querySelector<HTMLElement>('.eva-first-interface__free-chat');
+    retailTransitionScrollTopRef.current = scrollContainer?.scrollTop ?? null;
+  };
+
   const selectRetailPhoneNumber = (phoneValue: string) => {
+    captureRetailTransitionScrollTop();
     setMessages(prev => [...prev, { role: 'user', text: phoneValue }]);
     setRetailPhoneDropdownOpen(false);
     setRetailPhoneSearch('');
@@ -2650,7 +2799,7 @@ export default function EvaChatExperience({
     }
 
     if (retailPrototypeStep === 'knowledge') {
-      const matchedKnowledge = RETAIL_RECOMMENDED_KNOWLEDGE_BASES.find(option => option.name === answer.trim());
+      const matchedKnowledge = retailRecommendedKnowledgeBases.find(option => option.name === answer.trim());
       if (matchedKnowledge) {
         setSelectedKnowledgeBases(prev => (
           prev.includes(matchedKnowledge.name)
@@ -2677,7 +2826,7 @@ export default function EvaChatExperience({
     }
 
     if (retailPrototypeStep === 'actions') {
-      const matchedAction = RETAIL_RECOMMENDED_ACTIONS.find(option => option.name === answer.trim());
+      const matchedAction = retailRecommendedActions.find(option => option.name === answer.trim());
       if (matchedAction) {
         setSelectedActions(prev => (
           prev.includes(matchedAction.name)
@@ -3242,6 +3391,11 @@ export default function EvaChatExperience({
       return;
     }
 
+    if (isLogisticsAgentCreationIntent(normalized)) {
+      beginLogisticsContactCenterIntake();
+      return;
+    }
+
     if (isCreateAgentIntent(normalized)) {
       beginConversationalOnboarding(text);
       return;
@@ -3344,6 +3498,22 @@ export default function EvaChatExperience({
   const handleLlmFollowupClick = (option: string) => {
     const trimmed = option.trim();
     if (!trimmed) return;
+    const willAdvanceCenteredRetailStep = (
+      (retailPrototypeStep === 'welcome' && (
+        trimmed === RETAIL_WELCOME_CUSTOM_LABEL ||
+        trimmed === retailWelcomeInput ||
+        RETAIL_RECOMMENDED_WELCOME_MESSAGES.some(welcome => welcome.text === trimmed)
+      )) ||
+      (retailPrototypeStep === 'knowledge' && trimmed === RETAIL_CONTINUE_TO_ACTIONS_LABEL) ||
+      (retailPrototypeStep === 'actions' && trimmed === RETAIL_CONTINUE_TO_FINAL_LABEL) ||
+      (retailPrototypeStep === 'phone' && (
+        trimmed === CONNECT_RETAIL_PHONE_LATER_LABEL ||
+        CHANNEL_PHONE_NUMBER_OPTIONS.some(phone => phone.label === trimmed || phone.value === trimmed)
+      ))
+    );
+    if (willAdvanceCenteredRetailStep) {
+      captureRetailTransitionScrollTop();
+    }
     if (familyIntakeQuestion && selectedAgentFamily && !familyProposalApplied) {
       handleFamilyIntakeAnswer(trimmed);
       return;
@@ -3366,7 +3536,7 @@ export default function EvaChatExperience({
       return;
     }
     if (retailPrototypeStep === 'knowledge') {
-      const matchedKnowledge = RETAIL_RECOMMENDED_KNOWLEDGE_BASES.find(option => option.name === trimmed);
+      const matchedKnowledge = retailRecommendedKnowledgeBases.find(option => option.name === trimmed);
       if (matchedKnowledge) {
         setSelectedKnowledgeBases(prev => (
           prev.includes(matchedKnowledge.name)
@@ -3377,7 +3547,7 @@ export default function EvaChatExperience({
       }
     }
     if (retailPrototypeStep === 'actions') {
-      const matchedAction = RETAIL_RECOMMENDED_ACTIONS.find(option => option.name === trimmed);
+      const matchedAction = retailRecommendedActions.find(option => option.name === trimmed);
       if (matchedAction) {
         setSelectedActions(prev => (
           prev.includes(matchedAction.name)
@@ -3390,8 +3560,8 @@ export default function EvaChatExperience({
     if (
       trimmed === RETAIL_CONTINUE_TO_ACTIONS_LABEL ||
       trimmed === RETAIL_CONTINUE_TO_FINAL_LABEL ||
-      RETAIL_RECOMMENDED_KNOWLEDGE_BASES.some(option => option.name === trimmed) ||
-      RETAIL_RECOMMENDED_ACTIONS.some(option => option.name === trimmed)
+      retailRecommendedKnowledgeBases.some(option => option.name === trimmed) ||
+      retailRecommendedActions.some(option => option.name === trimmed)
     ) {
       setMessages(prev => [...prev, { role: 'user', text: trimmed }]);
       void handleRetailReceptionistStoryAnswer(trimmed);
@@ -4939,6 +5109,43 @@ ${previewTranscript}`,
   const conversationPlaceholder = familyProposalChangeRequested
     ? 'Describe what you want to change in the proposal.'
     : familyIntakeQuestion?.prompt ?? 'Ask any question during your configuration.';
+  const activeRetailFocusOrigin = RETAIL_CENTERED_ORIGIN_BY_STEP[retailPrototypeStep];
+  const hasCenteredRetailPrompt = messages.some(message => (
+    Object.values(RETAIL_CENTERED_ORIGIN_BY_STEP).includes(message.originStep)
+  ));
+  const shouldHoldActiveRetailPromptPosition = Boolean(
+    activeRetailFocusOrigin &&
+    (
+      messages.some(message => message.originStep === activeRetailFocusOrigin) ||
+      (evaThinking && hasCenteredRetailPrompt)
+    ),
+  );
+  const shouldHoldPhoneFocusSpacing = Boolean(
+    messages.some(message => message.originStep === 'retail-phone-choice') &&
+    (
+      retailPrototypeStep === 'phone' ||
+      (
+        retailPrototypeStep === 'ready-to-preview' &&
+        evaThinking &&
+        !messages.some(message => message.originStep === 'retail-final-actions')
+      )
+    ),
+  );
+
+  useLayoutEffect(() => {
+    if (
+      !evaThinking ||
+      !activeRetailFocusOrigin ||
+      messages.some(message => message.originStep === activeRetailFocusOrigin) ||
+      retailTransitionScrollTopRef.current === null
+    ) {
+      return;
+    }
+    const scrollContainer = document.querySelector<HTMLElement>('.eva-first-interface__free-chat');
+    if (scrollContainer) {
+      scrollContainer.scrollTop = retailTransitionScrollTopRef.current;
+    }
+  }, [activeRetailFocusOrigin, evaThinking, messages]);
 
   useEffect(() => {
     if (!pendingPreviewScrollRef.current || !showEvaGeneratedSidePanel || evaStep !== 'preview') {
@@ -5519,17 +5726,22 @@ ${previewTranscript}`,
     );
   };
 
-  const renderRetailDiscoveryProcess = () => (
+  const renderDiscoveryProcess = (
+    assistantName: string,
+    content: string,
+    rows: typeof RETAIL_DISCOVERY_ROWS,
+    progress: number,
+  ) => (
     <AiResponseMessage
       className="eva-ai-response"
       showActions={false}
-      assistantName={retailWorkflowContext.discoveryAssistantName}
+      assistantName={assistantName}
       assistantState="processing"
-      content={retailWorkflowContext.discoveryContent}
+      content={content}
     >
       <div className="eva-waterfall-card eva-waterfall-status eva-waterfall-status--planning eva-waterfall-status--dynamic" aria-label="AI Assistant discovery process">
-        {RETAIL_DISCOVERY_ROWS.map((row, index) => {
-          const resolvedCount = Math.max(1, retailDiscoveryProgress);
+        {rows.map((row, index) => {
+          const resolvedCount = Math.max(1, progress);
           const isPlaceholder = index >= resolvedCount;
           const status = index === resolvedCount - 1 && resolvedCount < RETAIL_DISCOVERY_ROWS.length
             ? 'active'
@@ -5563,31 +5775,54 @@ ${previewTranscript}`,
     </AiResponseMessage>
   );
 
-  const renderRetailDiscoveryTrace = () => (
-    <AccordionItem
-      title={(
-        <span className="eva-retail-discovery-trace__title">
-          <Icon name="sparkle" weight="bold" size="sm" />
-          Checked business website, inventory system, and organization profile
-        </span>
-      )}
-      className="eva-retail-discovery-trace"
-      size="small"
-      styleVariant="borderless"
-    >
-      <div className="eva-waterfall-card eva-waterfall-status eva-waterfall-status--planning eva-waterfall-status--dynamic" aria-label="Completed AI Assistant discovery process">
-        {RETAIL_DISCOVERY_ROWS.map(row => (
-          <div key={row.title} className="eva-waterfall-status__row eva-waterfall-status__row--done">
-            <Icon name="check-circle-filled" weight="bold" size="sm" />
-            <span>
-              <strong>{row.title}</strong>
-              {row.detail}
-            </span>
-          </div>
-        ))}
-      </div>
-    </AccordionItem>
+  const renderRetailDiscoveryProcess = () => renderDiscoveryProcess(
+    retailWorkflowContext.discoveryAssistantName,
+    retailWorkflowContext.discoveryContent,
+    RETAIL_DISCOVERY_ROWS,
+    retailDiscoveryProgress,
   );
+
+  const renderLogisticsDiscoveryProcess = () => renderDiscoveryProcess(
+    'AI Assistant is checking VIP operations context...',
+    'I’m checking VIP reservation details and connected operations systems before choosing setup options.',
+    VIP_LOGISTICS_DISCOVERY_ROWS,
+    logisticsDiscoveryProgress,
+  );
+
+  const renderRetailDiscoveryTrace = (showVipLogisticsTrace: boolean) => {
+    const discoveryRows = showVipLogisticsTrace
+      ? VIP_LOGISTICS_DISCOVERY_ROWS
+      : RETAIL_DISCOVERY_ROWS;
+    const discoverySummary = showVipLogisticsTrace
+      ? 'Checked operating hours, food and beverage inventory, staffing, and facilities'
+      : 'Checked business website, inventory system, and organization profile';
+
+    return (
+      <AccordionItem
+        title={(
+          <span className="eva-retail-discovery-trace__title">
+            <Icon name="sparkle" weight="bold" size="sm" />
+            {discoverySummary}
+          </span>
+        )}
+        className="eva-retail-discovery-trace"
+        size="small"
+        styleVariant="borderless"
+      >
+        <div className="eva-waterfall-card eva-waterfall-status eva-waterfall-status--planning eva-waterfall-status--dynamic" aria-label="Completed AI Assistant discovery process">
+          {discoveryRows.map(row => (
+            <div key={row.title} className="eva-waterfall-status__row eva-waterfall-status__row--done">
+              <Icon name="check-circle-filled" weight="bold" size="sm" />
+              <span>
+                <strong>{row.title}</strong>
+                {row.detail}
+              </span>
+            </div>
+          ))}
+        </div>
+      </AccordionItem>
+    );
+  };
 
   const renderEvaPlanningRows = (visibleCount = evaPlanningRows.length, dynamic = false, complete = false) => (
     <div
@@ -6099,7 +6334,11 @@ ${previewTranscript}`,
                 ? ' eva-first-interface__free-chat--dense-bottom'
                 : ''
             }${
-              messages.some(message => message.originStep === 'retail-phone-choice')
+              shouldHoldActiveRetailPromptPosition
+                ? ' eva-first-interface__free-chat--active-prompt-focus'
+                : ''
+            }${
+              shouldHoldPhoneFocusSpacing
                 ? ' eva-first-interface__free-chat--phone-focus'
                 : ''
             }${
@@ -6204,7 +6443,9 @@ ${previewTranscript}`,
                   content={isRetailChannelChoice ? (
                     <>
                       <p>{message.text}</p>
-                      {renderRetailDiscoveryTrace()}
+                      {renderRetailDiscoveryTrace(
+                        message.text === VIP_LOGISTICS_WORKFLOW_CONTEXT.discoveryCompleteText,
+                      )}
                     </>
                   ) : isRetailFinalActions ? (
                     <div className="eva-retail-final-heading">
@@ -6227,11 +6468,11 @@ ${previewTranscript}`,
                     <div className="eva-retail-channel-panel">
                       <div
                         className="eva-retail-channel-options"
-                        role="radiogroup"
+                        role="group"
                         aria-label="Contact Center channel options"
                       >
                         {CONTACT_CENTER_INTAKE_CHANNEL_OPTIONS.map(option => {
-                          const isSelected = familyIntakeAnswers.channel === option.label;
+                          const isSelected = contactCenterSelectedChannels.includes(option.label);
                           return (
                             <Card
                               key={option.label}
@@ -6239,9 +6480,13 @@ ${previewTranscript}`,
                               selected={isSelected}
                               className="eva-retail-channel-option card-selectable"
                               aria-label={`${option.title}. ${option.description}`}
-                              role="radio"
+                              role="checkbox"
                               aria-checked={isSelected}
-                              onClick={() => handleFamilyIntakeAnswer(option.label)}
+                              onClick={() => setContactCenterSelectedChannels(previous => (
+                                previous.includes(option.label)
+                                  ? previous.filter(channel => channel !== option.label)
+                                  : [...previous, option.label]
+                              ))}
                             >
                               <span className="card-select-icon eva-retail-channel-option__select" aria-hidden="true">
                                 <Icon name={isSelected ? 'check-circle-filled' : 'check-circle'} weight="bold" size={20} />
@@ -6255,6 +6500,14 @@ ${previewTranscript}`,
                           );
                         })}
                       </div>
+                      {contactCenterSelectedChannels.length > 0 && (
+                        <Button
+                          className="eva-retail-channel-panel__continue"
+                          onClick={() => handleFamilyIntakeAnswer(contactCenterSelectedChannels.join(', '))}
+                        >
+                          Continue
+                        </Button>
+                      )}
                     </div>
                   )}
                   {isContactCenterNamePrompt && !evaThinking && contactCenterIntakeDraft && (
@@ -6518,7 +6771,7 @@ ${previewTranscript}`,
                           );
                         })}
                       </div>
-                      {!isRetailChannelLocked && (
+                      {!isRetailChannelLocked && retailSelectedChannels.length > 0 && (
                         <div className="eva-retail-recommendation-actions">
                           <Button size="sm" onClick={() => continueRetailChannelSelection()}>
                             {RETAIL_CONFIRM_CHANNELS_LABEL}
@@ -6694,7 +6947,7 @@ ${previewTranscript}`,
                       <div className="eva-retail-recommendation-section">
                         <span className="eva-retail-recommendation-eyebrow">Recommended knowledge bases</span>
                         <div className="eva-retail-recommendation-list">
-                          {RETAIL_RECOMMENDED_KNOWLEDGE_BASES.map(option => {
+                          {retailRecommendedKnowledgeBases.map(option => {
                             const isSelected = selectedKnowledgeBases.includes(option.name);
                             return (
                               <Card
@@ -6760,7 +7013,7 @@ ${previewTranscript}`,
                       <div className="eva-retail-recommendation-section">
                         <span className="eva-retail-recommendation-eyebrow">Recommended actions</span>
                         <div className="eva-retail-recommendation-list">
-                          {RETAIL_RECOMMENDED_ACTIONS.map(option => {
+                          {retailRecommendedActions.map(option => {
                             const isSelected = selectedActions.includes(option.name);
                             return (
                               <Card
@@ -6894,6 +7147,7 @@ ${previewTranscript}`,
               );
             })}
             {retailPrototypeStep === 'discovering' && renderRetailDiscoveryProcess()}
+            {logisticsDiscoveryActive && renderLogisticsDiscoveryProcess()}
             {evaThinking && (
               <AiResponseMessage
                 className="eva-ai-response"

@@ -35,7 +35,16 @@ import {
 import { parseAgentPathFromHash } from './agentHashNavigation';
 import type { KPIData } from './kpiTypes';
 import { parseKpiNumericValue } from './kpiThresholdPresentation';
-import { CISCO_LIVE_PRIMARY_AGENT_NAME } from '../../demo/ciscoLiveDemo';
+import { useApp } from '../../contexts/AppContext';
+import {
+  CISCO_LIVE_PRIMARY_AGENT_ID,
+  CISCO_LIVE_PRIMARY_AGENT_NAME,
+} from '../../demo/ciscoLiveDemo';
+import {
+  ACTION_CONTROL_OBSERVABILITY_CATEGORY,
+  buildEagleActionControlKpis,
+  isEagleGreenObservabilityAgent,
+} from './actionControlObservability';
 
 /* Default dashboard state so the Observability page opens scoped to the primary
    demo agent with its key metrics already pinned (matches the design spec). */
@@ -57,6 +66,12 @@ const DATE_RANGE_OPTIONS = [
   { value: '90d', label: 'Last 90 days' },
   { value: 'custom', label: 'Select date range' },
 ];
+
+function initialDashboardAgentFilter(): string | null {
+  if (typeof window === 'undefined') return DEFAULT_DASHBOARD_AGENT_FILTER;
+  const requestedAgent = new URLSearchParams(window.location.search).get('agent')?.trim();
+  return requestedAgent || DEFAULT_DASHBOARD_AGENT_FILTER;
+}
 
 function stableSeed(input: string): number {
   let h = 2166136261;
@@ -148,13 +163,14 @@ function scopeKpiToAgent(kpi: KPIData, agentName: string): KPIData {
 }
 
 export function ClusKpiDashboardRoot() {
+  const { agentDrafts } = useApp();
   const [dateRange, setDateRange] = useState<'24h' | 'week' | 'month' | '90d' | 'custom'>('24h');
   const [customDateRange, setCustomDateRange] = useState<DateRange | undefined>(undefined);
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [showFilterBar, setShowFilterBar] = useState(false);
   const [selectedAgent, setSelectedAgent] = useState<string | null>(null);
   const [dashboardAgentFilter, setDashboardAgentFilter] = useState<string | null>(
-    DEFAULT_DASHBOARD_AGENT_FILTER,
+    initialDashboardAgentFilter,
   );
   const [selectedInteraction, setSelectedInteraction] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState("dashboard");
@@ -169,6 +185,16 @@ export function ClusKpiDashboardRoot() {
     window.addEventListener(OBSERVABILITY_CONFIGURATION_CHANGED_EVENT, bump);
     return () => window.removeEventListener(OBSERVABILITY_CONFIGURATION_CHANGED_EVENT, bump);
   }, []);
+
+  useEffect(() => {
+    const url = new URL(window.location.href);
+    if (dashboardAgentFilter) {
+      url.searchParams.set('agent', dashboardAgentFilter);
+    } else {
+      url.searchParams.delete('agent');
+    }
+    window.history.replaceState(window.history.state, '', `${url.pathname}${url.search}${url.hash}`);
+  }, [dashboardAgentFilter]);
 
   const observabilityConfig = useMemo(
     () => loadObservabilityConfiguration(),
@@ -249,7 +275,7 @@ export function ClusKpiDashboardRoot() {
     [dateRange, observabilityConfig],
   );
 
-  const categories = useMemo(
+  const configuredCategories = useMemo(
     () => getOrderedCategoryList(observabilityConfig),
     [observabilityConfig],
   );
@@ -264,10 +290,51 @@ export function ClusKpiDashboardRoot() {
     return kpiDataWithSparklines.filter((kpi) => kpi.heading.toLowerCase().includes(query));
   }, [kpiDataWithSparklines, searchQuery]);
 
+  const eagleActionValues = agentDrafts[CISCO_LIVE_PRIMARY_AGENT_ID]
+    ?.familyConfiguration.actions?.values;
+
   const dashboardKpiData = useMemo(() => {
-    if (!dashboardAgentFilter) return filteredKpiData;
-    return filteredKpiData.map((kpi) => scopeKpiToAgent(kpi, dashboardAgentFilter));
-  }, [filteredKpiData, dashboardAgentFilter]);
+    const scopedKpis = dashboardAgentFilter
+      ? filteredKpiData.map((kpi) => scopeKpiToAgent(kpi, dashboardAgentFilter))
+      : filteredKpiData;
+
+    if (!isEagleGreenObservabilityAgent(dashboardAgentFilter)) return scopedKpis;
+
+    const query = searchQuery.trim().toLowerCase();
+    const actionControlKpis = buildEagleActionControlKpis({
+      dateRange,
+      customDateRange,
+      actionValues: eagleActionValues,
+    }).filter(kpi => (
+      !query
+      || kpi.heading.toLowerCase().includes(query)
+      || kpi.description.toLowerCase().includes(query)
+    ));
+    return [...scopedKpis, ...actionControlKpis];
+  }, [
+    filteredKpiData,
+    dashboardAgentFilter,
+    searchQuery,
+    dateRange,
+    customDateRange,
+    eagleActionValues,
+  ]);
+
+  const categories = useMemo(() => {
+    if (!isEagleGreenObservabilityAgent(dashboardAgentFilter)) return configuredCategories;
+    const withoutActionControls = configuredCategories.filter(
+      category => category !== ACTION_CONTROL_OBSERVABILITY_CATEGORY,
+    );
+    const actionPerformanceIndex = withoutActionControls.indexOf('Action Performance');
+    const insertionIndex = actionPerformanceIndex >= 0
+      ? actionPerformanceIndex + 1
+      : Math.min(2, withoutActionControls.length);
+    return [
+      ...withoutActionControls.slice(0, insertionIndex),
+      ACTION_CONTROL_OBSERVABILITY_CATEGORY,
+      ...withoutActionControls.slice(insertionIndex),
+    ];
+  }, [configuredCategories, dashboardAgentFilter]);
 
   useEffect(() => {
     const visibleIds = new Set(dashboardKpiData.map((k) => k.id));
@@ -480,6 +547,7 @@ export function ClusKpiDashboardRoot() {
                         categories={categories}
                         dateRange={dateRange}
                         customDateRange={customDateRange}
+                        actionValues={eagleActionValues}
                         pinnedCardIds={pinnedCardIds}
                         onPinToggle={togglePin}
                         onMoveCard={movePinnedCard}

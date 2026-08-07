@@ -20,7 +20,16 @@ import {
   type CapabilityProgress,
   type EntitlementState,
 } from '../features/agent-creation/agentCreationModel';
-import { buildCiscoLiveSeed } from '../demo/ciscoLiveSeed';
+import {
+  buildCiscoLiveSeed,
+  EAGLE_GREEN_ACTION_CONTROL_ID,
+  EAGLE_GREEN_ACTION_CONTROL_VALUES,
+  EAGLE_GREEN_CHECK_AVAILABILITY_ACTION_ID,
+} from '../demo/ciscoLiveSeed';
+import {
+  CISCO_LIVE_PRIMARY_AGENT_ID,
+  CISCO_LIVE_VIP_EVENT_CONFIDENTIALITY_GUARDRAIL,
+} from '../demo/ciscoLiveDemo';
 
 // Types
 export interface Agent {
@@ -101,7 +110,7 @@ export interface AppContextValue {
 }
 
 interface PersistedAgentState {
-  schemaVersion: 1;
+  schemaVersion: 7;
   agents: AgentsMap;
   agentDrafts: AgentDraftsMap;
 }
@@ -109,7 +118,7 @@ interface PersistedAgentState {
 export const APP_AGENT_STORAGE_KEY = 'webex-ai-agent-studio-agents-v1';
 
 const emptyAgentState = (): PersistedAgentState => ({
-  schemaVersion: 1,
+  schemaVersion: 7,
   agents: {},
   agentDrafts: {},
 });
@@ -117,15 +126,228 @@ const emptyAgentState = (): PersistedAgentState => ({
 const isRecord = (value: unknown): value is Record<string, unknown> =>
   Boolean(value) && typeof value === 'object' && !Array.isArray(value);
 
+const LEGACY_LARGE_RESERVATION_GUARDRAIL_ID = 'custom-large-reservation-approval';
+const LEGACY_LARGE_RESERVATION_GUARDRAIL_NAME = 'large reservation approval';
+
+const normalizedGuardrailField = (value: unknown) =>
+  typeof value === 'string' ? value.trim().toLowerCase() : '';
+
+const isLegacyLargeReservationGuardrail = (value: unknown): value is Record<string, unknown> => {
+  if (!isRecord(value)) return false;
+  return normalizedGuardrailField(value.id) === LEGACY_LARGE_RESERVATION_GUARDRAIL_ID
+    || normalizedGuardrailField(value.name) === LEGACY_LARGE_RESERVATION_GUARDRAIL_NAME;
+};
+
+const isCurrentVipConfidentialityGuardrail = (value: unknown): boolean => {
+  if (!isRecord(value)) return false;
+  return normalizedGuardrailField(value.id)
+      === CISCO_LIVE_VIP_EVENT_CONFIDENTIALITY_GUARDRAIL.id.toLowerCase()
+    || normalizedGuardrailField(value.name)
+      === CISCO_LIVE_VIP_EVENT_CONFIDENTIALITY_GUARDRAIL.name.toLowerCase();
+};
+
+const migrateStoredCustomGuardrails = (value: unknown): { value: unknown; changed: boolean } => {
+  if (!Array.isArray(value) || !value.some(isLegacyLargeReservationGuardrail)) {
+    return { value, changed: false };
+  }
+
+  // If a current confidentiality guardrail is already present, keep it and
+  // remove the obsolete large-reservation copy. Otherwise replace the first
+  // obsolete copy with the complete current definition. Unrelated user-created
+  // guardrails remain untouched and in their original order.
+  let hasCurrentGuardrail = value.some(isCurrentVipConfidentialityGuardrail);
+  const migrated = value.flatMap((item) => {
+    if (!isLegacyLargeReservationGuardrail(item)) return [item];
+    if (hasCurrentGuardrail) return [];
+
+    hasCurrentGuardrail = true;
+    return [{
+      ...structuredClone(CISCO_LIVE_VIP_EVENT_CONFIDENTIALITY_GUARDRAIL),
+      enabled: typeof item.enabled === 'boolean' ? item.enabled : true,
+      versions: [],
+    }];
+  });
+
+  return { value: migrated, changed: true };
+};
+
 // The Cisco Live demo agents are always seeded so they appear on /agents fully
 // configured. Persisted (user-edited) records win over the seed by id, so any
 // edits a user makes to a demo agent survive reloads.
-const withCiscoLiveSeed = (agents: AgentsMap, agentDrafts: AgentDraftsMap): PersistedAgentState => {
-  const seed = buildCiscoLiveSeed();
+const migratePrimaryDemoDraft = (draft: AgentDraft, storedSchemaVersion: number): AgentDraft => {
+  const actions = draft.familyConfiguration.actions;
+  const shouldMigrateLegacyActions = storedSchemaVersion < 4;
+  const shouldMigrateVipTeamActionName = storedSchemaVersion < 5;
+  const shouldMigrateCheckAvailabilityName = storedSchemaVersion < 6;
+  const shouldMigrateLargeEventControlTiming = storedSchemaVersion < 7;
+  let migratedActions = actions;
+  if (actions && (
+    shouldMigrateLegacyActions
+    || shouldMigrateVipTeamActionName
+    || shouldMigrateCheckAvailabilityName
+    || shouldMigrateLargeEventControlTiming
+  )) {
+    const actionValues = actions.values ?? {};
+    const hasStoredSelections = Array.isArray(actionValues.selections);
+    const existingSelections = hasStoredSelections
+      ? actionValues.selections.filter((item): item is string => typeof item === 'string')
+      : [];
+    const migratedSelections = hasStoredSelections
+      ? existingSelections.map((item) => {
+        if (item === 'Transfer to concierge' || item === 'Transfer large event to VIP concierge') {
+          return 'Transfer to VIP team';
+        }
+        if (shouldMigrateCheckAvailabilityName && item === 'Check Availability.') {
+          return 'Check Availability';
+        }
+        return item;
+      })
+      : EAGLE_GREEN_ACTION_CONTROL_VALUES.selections;
+
+    const existingControlsByActionId = isRecord(actionValues.controlsByActionId)
+      ? structuredClone(actionValues.controlsByActionId)
+      : {};
+    const defaultControlsByActionId = structuredClone(EAGLE_GREEN_ACTION_CONTROL_VALUES.controlsByActionId);
+    const checkAvailabilityControls = existingControlsByActionId[EAGLE_GREEN_CHECK_AVAILABILITY_ACTION_ID];
+    const hasCheckAvailabilityControls = Object.prototype.hasOwnProperty.call(
+      existingControlsByActionId,
+      EAGLE_GREEN_CHECK_AVAILABILITY_ACTION_ID,
+    );
+    if (!hasCheckAvailabilityControls || !Array.isArray(checkAvailabilityControls)) {
+      existingControlsByActionId[EAGLE_GREEN_CHECK_AVAILABILITY_ACTION_ID] =
+        defaultControlsByActionId[EAGLE_GREEN_CHECK_AVAILABILITY_ACTION_ID];
+    } else if (shouldMigrateCheckAvailabilityName || shouldMigrateLargeEventControlTiming) {
+      const seededLargeEventControl = EAGLE_GREEN_ACTION_CONTROL_VALUES
+        .controlsByActionId[EAGLE_GREEN_CHECK_AVAILABILITY_ACTION_ID][0];
+      existingControlsByActionId[EAGLE_GREEN_CHECK_AVAILABILITY_ACTION_ID] = checkAvailabilityControls.map((control) => {
+        if (!isRecord(control)) return control;
+
+        const nextControl = { ...control };
+        if (
+          shouldMigrateCheckAvailabilityName
+          && control.recommendationReason
+            === 'The reservation threshold changes whether Check Availability. should run or the request should move to VIP review.'
+        ) {
+          nextControl.recommendationReason = 'The reservation threshold changes whether Check Availability should run or the request should move to VIP review.';
+        }
+
+        if (
+          shouldMigrateLargeEventControlTiming
+          && control.id === EAGLE_GREEN_ACTION_CONTROL_ID
+        ) {
+          nextControl.timing = seededLargeEventControl.timing;
+          if (
+            control.name === 'Large event approval routing'
+            || control.name === 'Route large event requests to the VIP team'
+          ) nextControl.name = seededLargeEventControl.name;
+          if (
+            control.description === 'Keep large event requests out of the standard booking path until the VIP event team can review them.'
+            || control.description === 'Route requests over 100 guests or more than 20 bays to the VIP team before Check Availability runs.'
+            || control.description === 'Check availability first, then route requests over 100 guests or more than 20 bays to the VIP team.'
+          ) nextControl.description = seededLargeEventControl.description;
+          if (
+            control.guidance === 'Explain that this request exceeds autonomous booking limits and needs review by the VIP event team. Tell the caller that their context will transfer with them.'
+            || control.guidance === 'Tell the caller that the request needs VIP-team review, then transfer the caller and reservation context to the VIP team.'
+            || control.guidance === 'Tell the caller that availability was checked and the request needs VIP-team review, then transfer the caller, availability result, and reservation context.'
+          ) nextControl.guidance = seededLargeEventControl.guidance;
+          if (control.sourceEvidence === 'Large event requests must transfer with the reservation context attached.') {
+            nextControl.sourceEvidence = seededLargeEventControl.sourceEvidence;
+          }
+          if (
+            control.recommendationReason === 'The reservation threshold changes whether Check Availability should run or the request should move to VIP review.'
+            || control.recommendationReason === 'The reservation threshold changes whether Check Availability. should run or the request should move to VIP review.'
+            || control.recommendationReason === 'This control applies the saved reservation thresholds before Check Availability runs and sends matching requests to the VIP team.'
+            || control.recommendationReason === 'This control lets Check Availability finish, then applies the saved reservation thresholds to choose the next path.'
+          ) nextControl.recommendationReason = seededLargeEventControl.recommendationReason;
+        }
+
+        return nextControl;
+      });
+    }
+
+    const existingGatesByActionId = isRecord(actionValues.gatesByActionId)
+      ? structuredClone(actionValues.gatesByActionId)
+      : {};
+    if (!isRecord(existingGatesByActionId['transfer-large-event-vip-concierge'])) {
+      existingGatesByActionId['transfer-large-event-vip-concierge'] = structuredClone(
+        EAGLE_GREEN_ACTION_CONTROL_VALUES.gatesByActionId['transfer-large-event-vip-concierge'],
+      );
+    }
+
+    migratedActions = {
+      ...actions,
+      values: {
+        ...actionValues,
+        selections: migratedSelections,
+        controlsByActionId: existingControlsByActionId,
+        gatesByActionId: existingGatesByActionId,
+      },
+    };
+  }
+
+  const security = draft.familyConfiguration.security;
+  const securityValues = security?.values ?? {};
+  const existingSecuritySelections = Array.isArray(securityValues.selections)
+    ? securityValues.selections.filter((item): item is string => typeof item === 'string')
+    : [];
+  let hasVipConfidentialitySelection = false;
+  const migratedSecuritySelections = existingSecuritySelections.flatMap((item) => {
+    const normalizedItem = item.trim().toLowerCase();
+    const isLegacySelection = normalizedItem === LEGACY_LARGE_RESERVATION_GUARDRAIL_NAME;
+    const isCurrentSelection = normalizedItem
+      === CISCO_LIVE_VIP_EVENT_CONFIDENTIALITY_GUARDRAIL.name.toLowerCase();
+    if (!isLegacySelection && !isCurrentSelection) return [item];
+    if (hasVipConfidentialitySelection) return [];
+
+    hasVipConfidentialitySelection = true;
+    return [isLegacySelection ? CISCO_LIVE_VIP_EVENT_CONFIDENTIALITY_GUARDRAIL.name : item];
+  });
+  const selectionsChanged = migratedSecuritySelections.some(
+    (selection, index) => selection !== existingSecuritySelections[index],
+  ) || migratedSecuritySelections.length !== existingSecuritySelections.length;
+  const customGuardrailsMigration = migrateStoredCustomGuardrails(securityValues.customGuardrails);
+  const securityChanged = Boolean(security) && (selectionsChanged || customGuardrailsMigration.changed);
+  const migratedSecurity = securityChanged && security ? {
+    ...security,
+    values: {
+      ...securityValues,
+      ...(selectionsChanged ? { selections: migratedSecuritySelections } : {}),
+      ...(customGuardrailsMigration.changed
+        ? { customGuardrails: customGuardrailsMigration.value }
+        : {}),
+    },
+  } : security;
+
+  if (migratedActions === actions && migratedSecurity === security) return draft;
+
   return {
-    schemaVersion: 1,
+    ...draft,
+    familyConfiguration: {
+      ...draft.familyConfiguration,
+      ...(migratedActions ? { actions: migratedActions } : {}),
+      ...(migratedSecurity ? { security: migratedSecurity } : {}),
+    },
+  };
+};
+
+const withCiscoLiveSeed = (
+  agents: AgentsMap,
+  agentDrafts: AgentDraftsMap,
+  storedSchemaVersion = 0,
+): PersistedAgentState => {
+  const seed = buildCiscoLiveSeed();
+  const migratedDrafts = { ...agentDrafts };
+  const primaryDraft = migratedDrafts[CISCO_LIVE_PRIMARY_AGENT_ID];
+  if (primaryDraft) {
+    migratedDrafts[CISCO_LIVE_PRIMARY_AGENT_ID] = migratePrimaryDemoDraft(
+      primaryDraft,
+      storedSchemaVersion,
+    );
+  }
+  return {
+    schemaVersion: 7,
     agents: { ...seed.agents, ...agents },
-    agentDrafts: { ...seed.agentDrafts, ...agentDrafts },
+    agentDrafts: { ...seed.agentDrafts, ...migratedDrafts },
   };
 };
 
@@ -139,7 +361,12 @@ const readPersistedAgentState = (): PersistedAgentState => {
     if (!isRecord(parsed) || !isRecord(parsed.agents) || !isRecord(parsed.agentDrafts)) {
       return withCiscoLiveSeed({}, {});
     }
-    return withCiscoLiveSeed(parsed.agents as AgentsMap, parsed.agentDrafts as AgentDraftsMap);
+    const storedSchemaVersion = typeof parsed.schemaVersion === 'number' ? parsed.schemaVersion : 0;
+    return withCiscoLiveSeed(
+      parsed.agents as AgentsMap,
+      parsed.agentDrafts as AgentDraftsMap,
+      storedSchemaVersion,
+    );
   } catch {
     return withCiscoLiveSeed({}, {});
   }

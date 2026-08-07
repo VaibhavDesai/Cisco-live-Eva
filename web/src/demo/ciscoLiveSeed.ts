@@ -5,7 +5,57 @@ import {
   type StarterProposal,
 } from '../features/agent-creation/agentCreationModel';
 import type { Agent } from '../contexts/AppContext';
-import { CISCO_LIVE_AGENTS, type CiscoLiveAgentDefinition } from './ciscoLiveDemo';
+import {
+  CISCO_LIVE_AGENTS,
+  CISCO_LIVE_PRIMARY_AGENT_ID,
+  type CiscoLiveAgentDefinition,
+} from './ciscoLiveDemo';
+
+export const EAGLE_GREEN_ACTION_CONTROL_ID = 'large-event-approval-routing';
+export const EAGLE_GREEN_CHECK_AVAILABILITY_ACTION_ID = 'check-bay-availability';
+export const EAGLE_GREEN_PAYMENT_ACTION_ID = 'send-payment-link';
+export const EAGLE_GREEN_LARGE_EVENT_TRANSFER_ACTION_ID = 'transfer-large-event-vip-concierge';
+
+export const EAGLE_GREEN_ACTION_CONTROL_VALUES = {
+  selections: [
+    'Check Availability',
+    'Send payment link',
+    'Transfer to VIP team',
+  ],
+  controlsByActionId: {
+    [EAGLE_GREEN_CHECK_AVAILABILITY_ACTION_ID]: [
+      {
+        id: EAGLE_GREEN_ACTION_CONTROL_ID,
+        actionId: EAGLE_GREEN_CHECK_AVAILABILITY_ACTION_ID,
+        name: 'Route large event requests to the VIP team',
+        description: 'Check availability for every request. After it returns, route requests over 100 guests or more than 20 bays to the VIP team.',
+        status: 'active',
+        timing: 'post_tool',
+        behavior: 'steer',
+        guidance: 'Tell the caller that availability was checked and the request needs VIP-team review. Transfer the caller, availability result, and reservation context to the VIP team.',
+        matchMode: 'any',
+        conditions: [
+          { id: 'large-event-party-size', kind: 'action_input', field: 'party_size', operator: 'greater_than', value: 100 },
+          { id: 'large-event-requested-bays', kind: 'action_input', field: 'requested_bays', operator: 'greater_than', value: 20 },
+        ],
+        steerToActionId: EAGLE_GREEN_LARGE_EVENT_TRANSFER_ACTION_ID,
+        source: 'recommended',
+        sourceEvidence: 'Requests over 100 guests or more than 20 bays require review by the VIP event team.',
+        recommendationReason: 'Check Availability receives party size and requested bays, so Galileo can make a deterministic routing decision after the action returns.',
+        version: 1,
+      },
+    ],
+  },
+  gatesByActionId: {
+    [EAGLE_GREEN_LARGE_EVENT_TRANSFER_ACTION_ID]: {
+      actionId: EAGLE_GREEN_LARGE_EVENT_TRANSFER_ACTION_ID,
+      sourceActionId: EAGLE_GREEN_CHECK_AVAILABILITY_ACTION_ID,
+      controlId: EAGLE_GREEN_ACTION_CONTROL_ID,
+      enabled: true,
+      prerequisiteControlIds: [EAGLE_GREEN_ACTION_CONTROL_ID],
+    },
+  },
+};
 
 // Display names for the prebuilt guardrails referenced by each agent's
 // `prebuiltGuardrailIds`. Kept in sync with the standard/advanced catalogs in
@@ -105,6 +155,12 @@ const buildDraft = (definition: CiscoLiveAgentDefinition): AgentDraft => {
   markConfigured(draft.familyConfiguration, 'knowledge', definition.knowledgeSources.map(source => source.name), now);
   markConfigured(draft.familyConfiguration, 'memory', definition.memorySources.map(source => source.name), now);
   markConfigured(draft.familyConfiguration, 'actions', [...definition.actions], now);
+  if (definition.id === CISCO_LIVE_PRIMARY_AGENT_ID && draft.familyConfiguration.actions) {
+    draft.familyConfiguration.actions = {
+      ...draft.familyConfiguration.actions,
+      values: structuredClone(EAGLE_GREEN_ACTION_CONTROL_VALUES),
+    };
+  }
   markConfigured(
     draft.familyConfiguration,
     'handoff',

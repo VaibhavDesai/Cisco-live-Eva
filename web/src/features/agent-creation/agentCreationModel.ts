@@ -16,12 +16,15 @@ export type CapabilityTrackerStatus = 'queued' | 'active' | 'done' | 'skipped' |
 export type AgentLifecycle = 'draft' | 'published' | 'deployed' | 'live';
 
 export type CustomerChannel = 'voice' | 'digital' | 'video';
-export type ContactCenterChannelChoice = 'Voice' | 'Digital' | 'Both';
+export type ContactCenterChannelChoice = string;
 
 export interface ContactCenterChannelValues {
   selectedChannels: CustomerChannel[];
   greetings: Partial<Record<'voice' | 'digital', string>>;
   digitalChannels?: string[];
+  voiceLocation?: string;
+  voicePhoneNumber?: string;
+  voiceExtension?: string;
 }
 
 export type AgentCreationSection =
@@ -311,7 +314,7 @@ const FAMILY_INTAKE: Record<AgentFamily, AdaptiveIntakeQuestion[]> = {
       helperText: 'Choose voice, digital, or both. You can add specific entry points later.',
       required: true,
       inputKind: 'select',
-      options: ['Voice', 'Digital', 'Both'],
+      options: ['Voice', 'Digital', 'Video'],
     },
     {
       id: 'contact-center-use-case',
@@ -536,23 +539,15 @@ export const buildStarterProposal = (
     (audience ? `${purpose} Designed first for ${audience}.` : chosen.description);
 
   const rawChannel = normalize(answers.channel).toLowerCase();
-  const channel: ContactCenterChannelChoice | undefined = family !== 'contact_center'
+  const selectedChannels: CustomerChannel[] | undefined = family !== 'contact_center'
     ? undefined
-    : rawChannel === 'voice' || rawChannel === 'phone'
-      ? 'Voice'
-      : rawChannel === 'digital' || rawChannel === 'chat'
-        ? 'Digital'
-        : rawChannel === 'both' || rawChannel === 'voice and digital' || rawChannel === 'digital and voice'
-          ? 'Both'
-          : undefined;
-  const selectedChannels: CustomerChannel[] | undefined = channel === 'Both'
-    ? ['voice', 'digital']
-    : channel === 'Voice'
-      ? ['voice']
-      : channel === 'Digital'
-        ? ['digital']
-        : undefined;
-  const suggestedGreeting = channel === 'Voice'
+    : (['voice', 'digital', 'video'] as CustomerChannel[]).filter(channel => rawChannel.includes(channel) || (rawChannel === 'both' && channel !== 'video'));
+  const channel: ContactCenterChannelChoice | undefined = selectedChannels?.includes('voice') && selectedChannels.includes('digital') && !selectedChannels.includes('video')
+    ? 'Both'
+    : selectedChannels?.length
+      ? selectedChannels.map(item => `${item.charAt(0).toUpperCase()}${item.slice(1)}`).join(', ')
+      : undefined;
+  const suggestedGreeting = selectedChannels?.length === 1 && selectedChannels[0] === 'voice'
     ? `Thanks for calling. You are speaking with ${name}. How can I help?`
     : channel
       ? `Hi, I am ${name}. How can I help today?`
@@ -576,12 +571,14 @@ export const buildStarterProposal = (
 - When you cannot complete a request, explain the limitation and offer a human handoff.
 - Communicate in ${language} using a warm, concise, professional style.`;
   } else if (family === 'contact_center') {
-    const channelInstruction = channel === 'Both'
+    const channelInstruction = selectedChannels?.includes('voice') && selectedChannels.includes('digital')
       ? 'Support customers consistently across voice and digital channels.'
-      : channel === 'Voice'
+      : selectedChannels?.includes('voice')
         ? 'Support customers through natural, concise voice conversations.'
-        : channel === 'Digital'
+        : selectedChannels?.includes('digital')
           ? 'Support customers through clear, scannable digital conversations.'
+          : selectedChannels?.includes('video')
+            ? 'Support customers through clear video conversations.'
           : 'Maintain the configured tone and language across supported channels.';
     instructions = `You are ${name}, a Contact Center AI agent for the organization.
 

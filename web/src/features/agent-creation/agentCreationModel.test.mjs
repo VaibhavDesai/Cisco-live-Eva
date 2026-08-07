@@ -78,7 +78,7 @@ test('reveals adaptive intake questions as required answers arrive', () => {
 test('guides Contact Center intake through channel, use case, name, and greeting', () => {
   const initial = getAdaptiveIntakeQuestions('contact_center');
   assert.deepEqual(initial.map(question => question.answerKey), ['channel']);
-  assert.deepEqual(initial[0].options, ['Voice', 'Digital', 'Both']);
+  assert.deepEqual(initial[0].options, ['Voice', 'Digital', 'Video']);
 
   const afterChannel = getAdaptiveIntakeQuestions('contact_center', { channel: 'Both' });
   assert.deepEqual(afterChannel.map(question => question.answerKey), ['channel', 'use_case']);

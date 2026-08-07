@@ -6,7 +6,7 @@ import {
   type KeyboardEvent as ReactKeyboardEvent,
   type ReactNode,
 } from 'react';
-import { Navigate, useNavigate, useParams } from 'react-router-dom';
+import { Link, Navigate, useNavigate, useParams } from 'react-router-dom';
 import { IconProvider, ThemeProvider } from '@momentum-design/components/react';
 import { ThemeModeProvider, useThemeMode } from '../../app/ThemeContext';
 import { publicAssetUrl } from '../../app/publicAsset';
@@ -39,10 +39,12 @@ import { useDesignVariation } from '../../contexts/DesignVariationContext';
 import { getElevenLabsConversationSignedUrl, getVoicePreviewErrorMessage } from '../../api/ciscoAi';
 import {
   getCiscoLiveActionMetric,
+  getCiscoLiveActionControlDecisions,
   getCiscoLiveGuardrailTriggerCount,
   getCiscoLiveObservability,
   getCiscoLiveSessionLocator,
   getCiscoLiveSessions,
+  summarizeCiscoLiveActionControlDecisions,
 } from '../../demo/ciscoLiveDemo';
 import {
   buildInstructionPrompt,
@@ -65,10 +67,12 @@ import { Icon } from '../../icons';
 
 type PreviewCallStatus = 'idle' | 'connecting' | 'listening' | 'speaking' | 'paused' | 'ended' | 'error';
 type ConnectedViewMode = 'metrics' | 'resources';
+type OverviewIntervention = 'action_control' | 'guardrail';
 type OverviewTileGroup = 'cards' | 'summary' | 'charts';
 type OverviewCardId = 'capability' | 'operational';
 type OverviewSummaryTileId = 'knowledge' | 'memory' | 'actions' | 'guardrails';
 type OverviewChartTileId = 'signals' | 'actions' | 'guardrails';
+type OverviewConfigurationSection = 'Knowledge' | 'Action' | 'Security';
 type OverviewReleaseState = {
   savedRevision: string;
   pendingPublishRevision: string | null;
@@ -89,6 +93,12 @@ const DEFAULT_OVERVIEW_CHART_ORDER: OverviewChartTileId[] = [
   'actions',
   'guardrails',
 ];
+const OVERVIEW_SUMMARY_CONFIGURATION_SECTION: Record<OverviewSummaryTileId, OverviewConfigurationSection> = {
+  knowledge: 'Knowledge',
+  memory: 'Knowledge',
+  actions: 'Action',
+  guardrails: 'Security',
+};
 const SHOW_CONNECTED_SUGGESTIONS = false;
 
 function overviewLayoutStorageKey(agentId: string, group: OverviewTileGroup) {
@@ -297,6 +307,12 @@ const sessionAgeHours = (updated: string): number => {
   return value;
 };
 
+const actionControlDecisionAgeHours = (occurredAt: string): number => {
+  const occurredAtMs = Date.parse(occurredAt);
+  if (Number.isNaN(occurredAtMs)) return Number.POSITIVE_INFINITY;
+  return Math.max(0, (Date.now() - occurredAtMs) / (60 * 60 * 1000));
+};
+
 const sessionOutcomeVariant = (outcome: string): 'success' | 'warning' | 'info' => {
   if (outcome === 'Transferred') return 'warning';
   if (outcome === 'Resolved') return 'success';
@@ -424,6 +440,7 @@ export default function AgentStudioLanding() {
   const [operationalTimeRange, setOperationalTimeRange] = useState('6h');
   const [connectedViewMode, setConnectedViewMode] = useState<ConnectedViewMode>('metrics');
   const [selectedGuardrailActivity, setSelectedGuardrailActivity] = useState<string | null | undefined>(undefined);
+  const [selectedOverviewIntervention, setSelectedOverviewIntervention] = useState<OverviewIntervention | null>(null);
   const [overviewCardOrder, setOverviewCardOrder] = useState<OverviewCardId[]>(
     () => readOverviewTileOrder(agentId, 'cards', DEFAULT_OVERVIEW_CARD_ORDER),
   );
@@ -1154,7 +1171,7 @@ export default function AgentStudioLanding() {
     ? `/agents/${agent.id}/sessions?sessionId=${encodeURIComponent(previewSessionId)}&source=preview`
     : `/agents/${agent.id}/sessions?source=preview`;
   const sessionsPath = `/agents/${encodeURIComponent(agent.id)}/sessions`;
-  const observabilityPath = '/observability';
+  const observabilityPath = `/observability?agent=${encodeURIComponent(agent.name)}`;
   const showPreviewSessionLink = previewInteractionEnded && (previewCallStatus === 'ended' || previewCallStatus === 'error');
   const configuredKnowledge = agentDraft
     ? configuredCapabilityLabels(agentDraft, 'knowledge', summary.knowledgeBases)
@@ -1164,10 +1181,9 @@ export default function AgentStudioLanding() {
     ? configuredCapabilityLabels(agentDraft, 'actions', summary.actions)
     : summary.actions;
   const configuredHandoff = configuredCapabilityLabels(agentDraft, 'handoff');
-  // Surface triggered guardrails first (e.g. "Large reservation approval"),
-  // ordered by trigger count desc; a stable sort keeps the rest as configured.
+  // Surface triggered guardrails first; a stable sort keeps the rest as configured.
   const configuredSecurity = configuredCapabilityLabels(agentDraft, 'security')
-    .map((item, index) => ({ item, index, count: getCiscoLiveGuardrailTriggerCount(item) }))
+    .map((item, index) => ({ item, index, count: getCiscoLiveGuardrailTriggerCount(item, agent.id) }))
     .sort((a, b) => b.count - a.count || a.index - b.index)
     .map(entry => entry.item);
   const configuredOrchestration = [...configuredActions, ...configuredHandoff];
@@ -1179,10 +1195,9 @@ export default function AgentStudioLanding() {
   const usesEagleGreenShowcaseMetrics = agent.id === 'golftop-vip-reservations';
   const actionPerformanceItems = usesEagleGreenShowcaseMetrics
     ? [
-        'Check bay availability',
+        'Check Availability',
         'Send payment link',
-        'Transfer to concierge',
-        'Get customer info',
+        'Transfer to VIP team',
       ]
     : configuredActions;
   const connectedActionPerformance = actionPerformanceItems.map(item => {
@@ -1200,27 +1215,55 @@ export default function AgentStudioLanding() {
   const connectedCapabilityTotals = {
     knowledge: usesEagleGreenShowcaseMetrics ? 14 : configuredKnowledge.length,
     memory: configuredMemory.length,
-    actions: usesEagleGreenShowcaseMetrics ? 6 : configuredOrchestration.length,
+    actions: usesEagleGreenShowcaseMetrics ? 3 : configuredOrchestration.length,
     guardrails: configuredSecurity.length,
   } as const;
   const connectedGuardrailActivity = configuredSecurity.map(item => ({
     item,
-    count: getCiscoLiveGuardrailTriggerCount(item),
+    count: getCiscoLiveGuardrailTriggerCount(item, agent.id),
   }));
   const defaultSelectedGuardrailName = connectedGuardrailActivity.find(guardrail => guardrail.count > 0)?.item
     ?? connectedGuardrailActivity[0]?.item
     ?? null;
-  const selectedGuardrailName = selectedGuardrailActivity === undefined
-    ? defaultSelectedGuardrailName
-    : selectedGuardrailActivity
-      && connectedGuardrailActivity.some(guardrail => guardrail.item === selectedGuardrailActivity)
-      ? selectedGuardrailActivity
-      : null;
+  const selectedGuardrailName = usesEagleGreenShowcaseMetrics
+    && selectedOverviewIntervention !== 'guardrail'
+    ? null
+    : selectedGuardrailActivity === undefined
+      ? defaultSelectedGuardrailName
+      : selectedGuardrailActivity
+        && connectedGuardrailActivity.some(guardrail => guardrail.item === selectedGuardrailActivity)
+        ? selectedGuardrailActivity
+        : null;
   const selectedGuardrail = connectedGuardrailActivity.find(
     guardrail => guardrail.item === selectedGuardrailName,
   );
+  const showSelectedGuardrailDecision = selectedOverviewIntervention === 'guardrail'
+    && Boolean(selectedGuardrail && selectedGuardrail.count > 0);
   const guardrailTriggerTotal = connectedGuardrailActivity.reduce((total, item) => total + item.count, 0);
-  const allAgentSessions = getCiscoLiveSessions(agent.id);
+  const actionConfigurationValues = agentDraft?.familyConfiguration.actions?.values;
+  const allAgentSessions = getCiscoLiveSessions(agent.id, actionConfigurationValues);
+  const operationalTimeRangeHours = OPERATIONAL_TIME_RANGE_HOURS[operationalTimeRange] ?? 6;
+  const actionControlDecisions = (usesEagleGreenShowcaseMetrics
+    ? getCiscoLiveActionControlDecisions(agent.id, actionConfigurationValues)
+    : [])
+    .filter(decision => actionControlDecisionAgeHours(decision.occurredAt) <= operationalTimeRangeHours);
+  const actionControlFlow = summarizeCiscoLiveActionControlDecisions(actionControlDecisions);
+  const actionControlMatchedOutcomes = [
+    { id: 'observed', label: 'Observed', value: actionControlFlow.observed },
+    { id: 'steered', label: 'Steered', value: actionControlFlow.steered },
+    { id: 'denied', label: 'Denied', value: actionControlFlow.denied },
+  ].filter(outcome => outcome.value > 0);
+  const actionControlSpotlightDecision = [...actionControlDecisions]
+    .filter(decision => decision.matched)
+    .sort((a, b) => Date.parse(b.occurredAt) - Date.parse(a.occurredAt))[0];
+  const showSelectedActionControlDecision = selectedOverviewIntervention === 'action_control'
+    && Boolean(actionControlSpotlightDecision);
+  const actionControlSpotlightEvidence = actionControlSpotlightDecision?.evidence.find(evidence => (
+    typeof evidence.actual === 'number'
+  ));
+  const actionControlSpotlightUnlockedName = actionControlSpotlightDecision?.unlockedActionNames[0] ?? '';
+  const actionControlSpotlightUnlocked = Boolean(actionControlSpotlightUnlockedName);
+  const actionControlFlowLabel = `${actionControlFlow.evaluated} controls were evaluated. ${actionControlFlow.actionRan} attached action${actionControlFlow.actionRan === 1 ? '' : 's'} completed. ${actionControlFlow.matched} matched and ${actionControlFlow.notMatched} did not match; ${actionControlFlow.steered} redirected the next step and ${actionControlFlow.unlocked} gated action${actionControlFlow.unlocked === 1 ? '' : 's'} unlocked. Match rate ${actionControlFlow.matchRate} percent.`;
   const guardedSessionRate = allAgentSessions.length > 0
     ? Math.round((allAgentSessions.filter(session => session.guardrailTriggered).length / allAgentSessions.length) * 100)
     : 0;
@@ -1263,14 +1306,17 @@ export default function AgentStudioLanding() {
     ? { agentId: agent.id, sessionId: knownSessionId }
     : getCiscoLiveSessionLocator(agent.id, getCiscoLiveObservability(agent.id).sessionId);
   const operationalSessionPath = `/agents/${encodeURIComponent(operationalSessionLocator.agentId)}/sessions?sessionId=${encodeURIComponent(operationalSessionLocator.sessionId)}&source=observability`;
+  const eagleActionControlSessionPath = actionControlSpotlightDecision
+    ? `${sessionsPath}?sessionId=${encodeURIComponent(actionControlSpotlightDecision.sessionId)}&source=overview`
+    : sessionsPath;
+  const eagleGuardrailSessionPath = `${sessionsPath}?sessionId=SES-GT-1045&source=observability`;
   // The banner describes the event that owns the transcript being opened, so its
   // title/meta/description stay in sync with the session "View session" links to.
   const operationalEvent = getCiscoLiveObservability(operationalSessionLocator.agentId);
-  const operationalTimeRangeHours = OPERATIONAL_TIME_RANGE_HOURS[operationalTimeRange] ?? 6;
   const operationalTimeRangeLabel = OPERATIONAL_TIME_RANGE_OPTIONS.find(
     option => option.value === operationalTimeRange,
   )?.label ?? 'Past 6 hours';
-  const operationalSessions = getCiscoLiveSessions(agent.id)
+  const operationalSessions = getCiscoLiveSessions(agent.id, actionConfigurationValues)
     .filter(session => sessionAgeHours(session.updated) <= operationalTimeRangeHours)
     .slice(0, 3);
   const studioHeaderAgent = { ...agent, meta: agent.description };
@@ -1472,7 +1518,7 @@ export default function AgentStudioLanding() {
                           label: 'Actions',
                           value: connectedCapabilityTotals.actions,
                           status: usesEagleGreenShowcaseMetrics
-                            ? '4 actions · 2 MCPs'
+                            ? '2 MCPs · 1 active Galileo control'
                             : configuredOrchestration.length > 0
                               ? `${configuredActions.length} actions · ${configuredHandoff.length} MCPs`
                               : null,
@@ -1483,7 +1529,7 @@ export default function AgentStudioLanding() {
                           label: 'Guardrails',
                           value: connectedCapabilityTotals.guardrails,
                           status: usesEagleGreenShowcaseMetrics
-                            ? '1 custom · 3 prebuilt'
+                            ? '2 custom · 2 prebuilt'
                             : configuredSecurity.length > 0
                               ? `${configuredSecurity.length} configured`
                               : null,
@@ -1505,31 +1551,40 @@ export default function AgentStudioLanding() {
                               ? 'is-drop-target'
                               : '',
                           ].filter(Boolean).join(' ')}
-                          draggable
-                          onDragStart={event => handleOverviewTileDragStart(event, 'summary', item.id)}
                           onDragOver={event => handleOverviewTileDragOver(event, 'summary', item.id)}
                           onDrop={event => handleOverviewTileDrop(event, 'summary', item.id)}
-                          onDragEnd={handleOverviewTileDragEnd}
                         >
                           <button
                             type="button"
                             className="agent-studio-overview-tile__drag-handle"
                             aria-label={`Reorder ${item.label}. Position ${index + 1} of ${overviewSummaryOrder.length}`}
                             title="Drag to reorder. Use arrow keys to move this tile."
+                            draggable
+                            onDragStart={event => handleOverviewTileDragStart(event, 'summary', item.id)}
+                            onDragEnd={handleOverviewTileDragEnd}
                             onKeyDown={event => handleOverviewTileKeyDown(event, 'summary', item.id)}
                           >
                             <Icon name="dragger-vertical" weight="bold" size="sm" />
                           </button>
-                          <span className="agent-studio-connected-summary__icon" aria-hidden="true">
-                            <ConfigurationCategoryIcon type={item.type} />
-                          </span>
-                          <span>
-                            <strong>{item.value}</strong>
-                            <small>{item.label}</small>
-                            {item.status && (
-                              <span className="agent-studio-connected-summary__status">{item.status}</span>
-                            )}
-                          </span>
+                          <Link
+                            className="agent-studio-connected-summary__link"
+                            to={`/agents/${agent.id}/configure?section=${OVERVIEW_SUMMARY_CONFIGURATION_SECTION[item.id]}`}
+                            aria-label={`Open ${item.label} configuration`}
+                            title={`Open ${item.label} configuration`}
+                            draggable={false}
+                            onClick={() => selectAgent(agent.id)}
+                          >
+                            <span className="agent-studio-connected-summary__icon" aria-hidden="true">
+                              <ConfigurationCategoryIcon type={item.type} />
+                            </span>
+                            <span>
+                              <strong>{item.value}</strong>
+                              <small>{item.label}</small>
+                              {item.status && (
+                                <span className="agent-studio-connected-summary__status">{item.status}</span>
+                              )}
+                            </span>
+                          </Link>
                         </div>
                       ))}
                     </div>
@@ -1539,7 +1594,9 @@ export default function AgentStudioLanding() {
                         const tileLabel = tileId === 'signals'
                           ? 'Capability signals'
                           : tileId === 'actions'
-                            ? 'Action performance'
+                            ? usesEagleGreenShowcaseMetrics
+                              ? 'Action control activity'
+                              : 'Action performance'
                             : 'Guardrail activity';
                         const labelledBy = `agent-studio-${tileId}-chart-title`;
                         return (
@@ -1611,37 +1668,126 @@ export default function AgentStudioLanding() {
                               <>
                                 <div className="agent-studio-connected-chart__header">
                                   <div>
-                                    <h3 id={labelledBy}>Action performance</h3>
-                                    <p>Success rate against a 95% target</p>
+                                    <h3 id={labelledBy}>
+                                      {usesEagleGreenShowcaseMetrics ? 'Action control activity' : 'Action performance'}
+                                    </h3>
+                                    <p>
+                                      {usesEagleGreenShowcaseMetrics
+                                        ? `Galileo decisions during the ${operationalTimeRangeLabel.toLowerCase()}`
+                                        : 'Success rate against a 95% target'}
+                                    </p>
                                   </div>
-                                  <strong className="agent-studio-connected-chart__headline">{averageActionSuccess.toFixed(1)}%</strong>
-                                </div>
-                                <div className="agent-studio-action-performance">
-                                  {connectedActionPerformance.length > 0 ? connectedActionPerformance.map(action => (
-                                    <div key={action.item} className="agent-studio-action-performance__row">
-                                      <div>
-                                        <span title={action.item}>{action.item}</span>
-                                        <strong className={action.isPositive ? 'is-positive' : 'is-negative'}>
-                                          {action.rateLabel}
-                                          <Icon name={action.isPositive ? 'trending' : 'trending-down'} weight="regular" size="xs" />
-                                        </strong>
-                                      </div>
-                                      <div
-                                        className="agent-studio-action-performance__track"
-                                        role="progressbar"
-                                        aria-label={`${action.item} success rate: ${action.rateLabel}`}
-                                        aria-valuemin={0}
-                                        aria-valuemax={100}
-                                        aria-valuenow={action.rate}
-                                      >
-                                        <span className="agent-studio-action-performance__target" aria-hidden="true" />
-                                        <span className="agent-studio-action-performance__value" style={{ width: `${action.rate}%` }} />
-                                      </div>
-                                    </div>
-                                  )) : (
-                                    <p className="agent-studio-connected-chart__empty">Connect an action to see performance.</p>
+                                  {!usesEagleGreenShowcaseMetrics && (
+                                    <strong className="agent-studio-connected-chart__headline">
+                                      {averageActionSuccess.toFixed(1)}%
+                                    </strong>
                                   )}
                                 </div>
+                                {usesEagleGreenShowcaseMetrics ? (
+                                  <figure
+                                    className="agent-studio-action-control-flow"
+                                    aria-labelledby="agent-studio-action-control-flow-caption"
+                                  >
+                                    <figcaption
+                                      id="agent-studio-action-control-flow-caption"
+                                      className="agent-studio-action-control-flow__caption"
+                                    >
+                                      {actionControlFlowLabel}
+                                    </figcaption>
+                                    <div className="agent-studio-action-control-flow__summary" aria-hidden="true">
+                                      <span className="agent-studio-action-control-flow__summary-icon">
+                                        <Icon name="automation" weight="bold" size="sm" />
+                                      </span>
+                                      <span className="agent-studio-action-control-flow__summary-copy">
+                                        <small>Control checks</small>
+                                        <strong>Evaluated</strong>
+                                      </span>
+                                      <strong className="agent-studio-action-control-flow__summary-value">
+                                        {actionControlFlow.evaluated}
+                                      </strong>
+                                    </div>
+
+                                    <div className="agent-studio-action-control-flow__rows">
+                                      <button
+                                        type="button"
+                                        className={`agent-studio-action-control-flow__row agent-studio-action-control-flow__matched-trigger is-matched${showSelectedActionControlDecision ? ' is-selected' : ''}`}
+                                        aria-expanded={showSelectedActionControlDecision}
+                                        aria-controls="agent-studio-action-control-decision-banner"
+                                        aria-label={`${showSelectedActionControlDecision ? 'Hide' : 'Show'} latest matching decision`}
+                                        disabled={!actionControlSpotlightDecision}
+                                        onClick={() => {
+                                          setSelectedOverviewIntervention(current => (
+                                            current === 'action_control' ? null : 'action_control'
+                                          ));
+                                        }}
+                                      >
+                                        <span className="agent-studio-action-control-flow__decision">
+                                          <span className="agent-studio-action-control-flow__metric">
+                                            <strong>{actionControlFlow.matched}</strong>
+                                          </span>
+                                          <span className="agent-studio-action-control-flow__label">
+                                            Matched
+                                          </span>
+                                        </span>
+
+                                        <span className="agent-studio-action-control-flow__line" aria-hidden="true" />
+
+                                        <span className="agent-studio-action-control-flow__outcomes">
+                                          {actionControlMatchedOutcomes.map(outcome => {
+                                            const showsUnlockedAction = outcome.id === 'steered'
+                                              && actionControlFlow.unlocked > 0;
+
+                                            return (
+                                              <span
+                                                key={outcome.id}
+                                                className={`agent-studio-action-control-flow__outcome${showsUnlockedAction ? ' is-unlocked' : ''}`}
+                                              >
+                                                <span className="agent-studio-action-control-flow__outcome-primary">
+                                                  <span>{outcome.label}</span>
+                                                </span>
+                                                {showsUnlockedAction && (
+                                                  <>
+                                                    <span className="agent-studio-action-control-flow__outcome-connector" aria-hidden="true" />
+                                                    <span className="agent-studio-action-control-flow__outcome-detail">
+                                                      Gated action unlocked
+                                                    </span>
+                                                  </>
+                                                )}
+                                              </span>
+                                            );
+                                          })}
+                                        </span>
+                                      </button>
+                                    </div>
+                                  </figure>
+                                ) : (
+                                  <div className="agent-studio-action-performance">
+                                    {connectedActionPerformance.length > 0 ? connectedActionPerformance.map(action => (
+                                      <div key={action.item} className="agent-studio-action-performance__row">
+                                        <div>
+                                          <span title={action.item}>{action.item}</span>
+                                          <strong className={action.isPositive ? 'is-positive' : 'is-negative'}>
+                                            {action.rateLabel}
+                                            <Icon name={action.isPositive ? 'trending' : 'trending-down'} weight="regular" size="xs" />
+                                          </strong>
+                                        </div>
+                                        <div
+                                          className="agent-studio-action-performance__track"
+                                          role="progressbar"
+                                          aria-label={`${action.item} success rate: ${action.rateLabel}`}
+                                          aria-valuemin={0}
+                                          aria-valuemax={100}
+                                          aria-valuenow={action.rate}
+                                        >
+                                          <span className="agent-studio-action-performance__target" aria-hidden="true" />
+                                          <span className="agent-studio-action-performance__value" style={{ width: `${action.rate}%` }} />
+                                        </div>
+                                      </div>
+                                    )) : (
+                                      <p className="agent-studio-connected-chart__empty">Connect an action to see performance.</p>
+                                    )}
+                                  </div>
+                                )}
                               </>
                             )}
 
@@ -1658,25 +1804,31 @@ export default function AgentStudioLanding() {
                                   <div className="agent-studio-guardrail-chart">
                                     {connectedGuardrailActivity.map(guardrail => {
                                       const maxCount = Math.max(1, ...connectedGuardrailActivity.map(item => item.count));
-                                      const height = guardrail.count === 0 ? 4 : Math.max(18, (guardrail.count / maxCount) * 100);
+                                      const width = (guardrail.count / maxCount) * 100;
                                       return (
                                         <div
                                           key={guardrail.item}
                                           className={`agent-studio-guardrail-chart__item${selectedGuardrailName === guardrail.item ? ' is-selected' : ''}`}
                                         >
+                                          <small title={guardrail.item}>{guardrail.item}</small>
                                           <button
                                             type="button"
                                             className="agent-studio-guardrail-chart__plot"
                                             aria-label={`${guardrail.item}: ${guardrail.count} trigger${guardrail.count === 1 ? '' : 's'}`}
                                             aria-pressed={selectedGuardrailName === guardrail.item}
-                                            onClick={() => setSelectedGuardrailActivity(
-                                              selectedGuardrailName === guardrail.item ? null : guardrail.item,
-                                            )}
+                                            onClick={() => {
+                                              const nextGuardrail = selectedGuardrailName === guardrail.item
+                                                ? null
+                                                : guardrail.item;
+                                              setSelectedGuardrailActivity(nextGuardrail);
+                                              if (usesEagleGreenShowcaseMetrics) {
+                                                setSelectedOverviewIntervention(nextGuardrail ? 'guardrail' : null);
+                                              }
+                                            }}
                                           >
                                             <span>{guardrail.count}</span>
-                                            <i style={{ height: `${height}%` }} />
+                                            <i style={{ width: `${width}%` }} />
                                           </button>
-                                          <small title={guardrail.item}>{guardrail.item}</small>
                                         </div>
                                       );
                                     })}
@@ -1691,7 +1843,67 @@ export default function AgentStudioLanding() {
                       })}
                     </div>
 
-                    {selectedGuardrail && selectedGuardrail.count > 0 && (
+                    {usesEagleGreenShowcaseMetrics ? (
+                      (showSelectedGuardrailDecision || showSelectedActionControlDecision)
+                      && (
+                        <div
+                          id={showSelectedActionControlDecision
+                            ? 'agent-studio-action-control-decision-banner'
+                            : undefined}
+                        >
+                          <Banner
+                            type={showSelectedGuardrailDecision ? 'warning' : 'info'}
+                            icon={showSelectedGuardrailDecision ? 'shield' : 'automation'}
+                            className="agent-studio-operational-event-banner agent-studio-connected-event-banner"
+                            title={showSelectedGuardrailDecision
+                              ? 'VIP event details protected'
+                              : actionControlSpotlightUnlocked
+                                ? 'Large event transfer unlocked'
+                                : 'Standard path redirected'}
+                            subtitle={!showSelectedGuardrailDecision ? (
+                              <>
+                                <span className="agent-studio-operational-event-meta">
+                                  {actionControlSpotlightDecision?.sessionId} · {actionControlSpotlightDecision?.timestamp} · {actionControlSpotlightDecision?.timing === 'post_tool'
+                                    ? `Evaluated after ${actionControlSpotlightDecision.actionName}`
+                                    : `Evaluated before ${actionControlSpotlightDecision?.actionName}`}
+                                </span>
+                                <span>
+                                  {actionControlSpotlightDecision?.timing === 'post_tool'
+                                    && `${actionControlSpotlightDecision.actionName} completed. `}
+                                  {actionControlSpotlightUnlocked
+                                    ? `${actionControlSpotlightUnlockedName} was unlocked`
+                                    : actionControlSpotlightDecision?.toolExecuted
+                                      ? `${actionControlSpotlightDecision?.actionName} continued`
+                                      : `${actionControlSpotlightDecision?.actionName} was skipped`}
+                                  {actionControlSpotlightEvidence
+                                    ? ` after ${actionControlSpotlightEvidence.field} ${Number(actionControlSpotlightEvidence.actual).toLocaleString('en-US')} exceeded ${Number(actionControlSpotlightEvidence.expected).toLocaleString('en-US')}.`
+                                    : ' after the configured control matched.'}
+                                  {actionControlSpotlightDecision?.timing === 'post_tool'
+                                    && actionControlSpotlightDecision.matched
+                                    && ' The standard automated path stopped.'}
+                                  {!actionControlSpotlightUnlocked && ' No gated action was unlocked.'}
+                                </span>
+                              </>
+                            ) : (
+                              <>
+                                <span className="agent-studio-operational-event-meta">SES-GT-1045 · 9:47 AM · Custom guardrail blocked response</span>
+                                <span>No guest, schedule, or access information was shared with the unverified caller.</span>
+                              </>
+                            )}
+                            actions={[{
+                              label: 'View session →',
+                              onClick: () => navigate(
+                                showSelectedGuardrailDecision
+                                  ? eagleGuardrailSessionPath
+                                  : eagleActionControlSessionPath,
+                              ),
+                              variant: 'outline',
+                            }]}
+                            dismissable={false}
+                          />
+                        </div>
+                      )
+                    ) : selectedGuardrail && selectedGuardrail.count > 0 ? (
                       <Banner
                         type="success"
                         icon="shield"
@@ -1710,7 +1922,7 @@ export default function AgentStudioLanding() {
                         }]}
                         dismissable={false}
                       />
-                    )}
+                    ) : null}
 
                     {SHOW_CONNECTED_SUGGESTIONS && (
                     <section className="agent-studio-connected-insights" aria-labelledby="connected-insights-title">
@@ -1811,7 +2023,7 @@ export default function AgentStudioLanding() {
                                     ? getCiscoLiveActionMetric(chip.item)
                                     : null;
                                   const triggerCount = 'showGuardrailCount' in group && group.showGuardrailCount
-                                    ? getCiscoLiveGuardrailTriggerCount(chip.item)
+                                    ? getCiscoLiveGuardrailTriggerCount(chip.item, agent.id)
                                     : 0;
                                   return (
                                     <Badge key={`${group.label}-${chip.item}`} variant="default" className={`agent-studio-service-badge agent-studio-service-badge--${chip.type}`}>
@@ -2035,10 +2247,20 @@ export default function AgentStudioLanding() {
                           </TableCell>
                           <TableCell>
                             <span className="agent-session-metadata-icons">
+                              {session.actionControlTriggered && (
+                                <Badge
+                                  variant="info"
+                                  className="agent-session-metadata-icons__action-control"
+                                >
+                                  <Icon name="automation" weight="bold" size="sm" />
+                                  Action control
+                                </Badge>
+                              )}
                               {session.guardrailTriggered && (
-                                <span title="Guardrail triggered">
+                                <Badge variant="warning">
                                   <Icon name="shield" weight="bold" size="sm" />
-                                </span>
+                                  Guardrail
+                                </Badge>
                               )}
                               {session.transferred && (
                                 <span title="Human transfer">

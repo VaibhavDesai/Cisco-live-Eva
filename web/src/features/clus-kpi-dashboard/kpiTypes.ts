@@ -24,6 +24,8 @@ export interface KPIData {
   unit: string;
   change: string;
   isPositive: boolean;
+  /** Informational runtime counts should not be forced into success/error trend colours. */
+  changeTone?: 'positive' | 'negative' | 'neutral';
   chartType: KpiChartType;
   sparklineData?: number[];
   sparklineType?: 'line' | 'area' | 'bar';
