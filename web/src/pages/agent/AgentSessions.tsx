@@ -120,7 +120,7 @@ function SessionDetail({
             {actionControl?.matched && (
               <Badge variant="info">Action control · {actionControlBehaviorLabel(actionControl.behavior)}</Badge>
             )}
-            {session.guardrailTriggered && <Badge variant="warning">Guardrail · Block</Badge>}
+            {session.guardrailTriggered && <Badge variant="warning">Guardrail triggered</Badge>}
           </div>
           <p>{session.summary}</p>
         </div>

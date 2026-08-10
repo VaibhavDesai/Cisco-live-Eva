@@ -1104,6 +1104,11 @@ test('selected guardrail banner opens a concrete session detail', () => {
   assert.match(sessionsSource, /Conversation transcript/);
   assert.match(
     sessionsSource,
+    /session\.guardrailTriggered\s*&&\s*<Badge variant="warning">Guardrail triggered<\/Badge>/,
+    'the session status chip should describe the event instead of the configured enforcement mode',
+  );
+  assert.match(
+    sessionsSource,
     /Back to observability[\s\S]*?\/observability\?agent=\$\{encodeURIComponent\(agent\.name\)\}/,
     'sessions opened from Observability should return to the filtered dashboard',
   );

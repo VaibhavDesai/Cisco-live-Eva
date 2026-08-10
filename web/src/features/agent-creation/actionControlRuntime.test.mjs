@@ -88,6 +88,17 @@ test('control previews format action inputs as template variables', () => {
   );
 });
 
+test('EAGLE GREEN reports only the VIP confidentiality guardrail as triggered', () => {
+  const agentId = 'golftop-vip-reservations';
+  const triggeredGuardrails = demo.getCiscoLiveSessions(agentId)
+    .filter(session => session.guardrailTriggered)
+    .map(session => session.guardrail?.name);
+
+  assert.deepEqual(triggeredGuardrails, ['VIP event confidentiality']);
+  assert.equal(demo.getCiscoLiveGuardrailTriggerCount('VIP event confidentiality', agentId), 1);
+  assert.equal(demo.getCiscoLiveGuardrailTriggerCount('Payment data protection', agentId), 0);
+});
+
 test('post-tool OR evaluation uses strict thresholds and unlocks only after a matching Steer', () => {
   const state = controls.createDefaultGalileoActionControlState();
   const snapshot = structuredClone(state);
