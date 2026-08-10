@@ -110,7 +110,7 @@ export interface AppContextValue {
 }
 
 interface PersistedAgentState {
-  schemaVersion: 7;
+  schemaVersion: 8;
   agents: AgentsMap;
   agentDrafts: AgentDraftsMap;
 }
@@ -118,7 +118,7 @@ interface PersistedAgentState {
 export const APP_AGENT_STORAGE_KEY = 'webex-ai-agent-studio-agents-v1';
 
 const emptyAgentState = (): PersistedAgentState => ({
-  schemaVersion: 7,
+  schemaVersion: 8,
   agents: {},
   agentDrafts: {},
 });
@@ -180,12 +180,14 @@ const migratePrimaryDemoDraft = (draft: AgentDraft, storedSchemaVersion: number)
   const shouldMigrateVipTeamActionName = storedSchemaVersion < 5;
   const shouldMigrateCheckAvailabilityName = storedSchemaVersion < 6;
   const shouldMigrateLargeEventControlTiming = storedSchemaVersion < 7;
+  const shouldMigrateLargeEventControlMatchMode = storedSchemaVersion < 8;
   let migratedActions = actions;
   if (actions && (
     shouldMigrateLegacyActions
     || shouldMigrateVipTeamActionName
     || shouldMigrateCheckAvailabilityName
     || shouldMigrateLargeEventControlTiming
+    || shouldMigrateLargeEventControlMatchMode
   )) {
     const actionValues = actions.values ?? {};
     const hasStoredSelections = Array.isArray(actionValues.selections);
@@ -216,7 +218,11 @@ const migratePrimaryDemoDraft = (draft: AgentDraft, storedSchemaVersion: number)
     if (!hasCheckAvailabilityControls || !Array.isArray(checkAvailabilityControls)) {
       existingControlsByActionId[EAGLE_GREEN_CHECK_AVAILABILITY_ACTION_ID] =
         defaultControlsByActionId[EAGLE_GREEN_CHECK_AVAILABILITY_ACTION_ID];
-    } else if (shouldMigrateCheckAvailabilityName || shouldMigrateLargeEventControlTiming) {
+    } else if (
+      shouldMigrateCheckAvailabilityName
+      || shouldMigrateLargeEventControlTiming
+      || shouldMigrateLargeEventControlMatchMode
+    ) {
       const seededLargeEventControl = EAGLE_GREEN_ACTION_CONTROL_VALUES
         .controlsByActionId[EAGLE_GREEN_CHECK_AVAILABILITY_ACTION_ID][0];
       existingControlsByActionId[EAGLE_GREEN_CHECK_AVAILABILITY_ACTION_ID] = checkAvailabilityControls.map((control) => {
@@ -259,6 +265,13 @@ const migratePrimaryDemoDraft = (draft: AgentDraft, storedSchemaVersion: number)
             || control.recommendationReason === 'This control applies the saved reservation thresholds before Check Availability runs and sends matching requests to the VIP team.'
             || control.recommendationReason === 'This control lets Check Availability finish, then applies the saved reservation thresholds to choose the next path.'
           ) nextControl.recommendationReason = seededLargeEventControl.recommendationReason;
+        }
+
+        if (
+          shouldMigrateLargeEventControlMatchMode
+          && control.id === EAGLE_GREEN_ACTION_CONTROL_ID
+        ) {
+          nextControl.matchMode = seededLargeEventControl.matchMode;
         }
 
         return nextControl;
@@ -345,7 +358,7 @@ const withCiscoLiveSeed = (
     );
   }
   return {
-    schemaVersion: 7,
+    schemaVersion: 8,
     agents: { ...seed.agents, ...agents },
     agentDrafts: { ...seed.agentDrafts, ...migratedDrafts },
   };

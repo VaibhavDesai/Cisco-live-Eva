@@ -108,7 +108,7 @@ function ProfileLogicSummary({ overview }: { overview: import('./PolicyStudio').
 
   return (
     <div className="custom-profile-card__logic-wrap">
-      <div className="custom-profile-card__logic" aria-label="Custom guardrail rule summary">
+      <div className="custom-profile-card__logic" aria-label="Adaptive guardrail rule summary">
         {logicCounts.map(item => (
           <span key={item.key} className="custom-profile-card__logic-item">
             <Icon name={item.icon} size={14} className="custom-profile-card__logic-icon" color={item.iconColor} />
@@ -1324,7 +1324,11 @@ export default function ActionConfigureV2() {
   }, [capabilities, resolveVersionMeta]);
 
   const galileoActionOptions = useMemo(
-    () => rows.map(row => ({ id: row.actionId, name: row.name })),
+    () => rows.map(row => ({
+      id: row.actionId,
+      name: row.name,
+      description: row.description,
+    })),
     [rows],
   );
   const largeEventControl = galileoActionControls.controlsByActionId[GALILEO_ACTION_IDS.checkAvailability]
@@ -2193,7 +2197,7 @@ export default function ActionConfigureV2() {
             <div className="guardrails-layout">
               <div className="guardrails-header">
                 <p className="guardrails-subtitle">
-                  Use custom guardrails for business-specific privacy, safety, and security rules. Use prebuilt guardrails for common risks. Triggered guardrails appear in Sessions.
+                  Use adaptive guardrails for business-specific privacy, safety, and security rules. Use prebuilt guardrails for common risks. Triggered guardrails appear in Sessions.
                 </p>
               </div>
 
@@ -2204,7 +2208,7 @@ export default function ActionConfigureV2() {
                     <div className="security-tier-card-inner">
                       <Icon name="sparkle" weight="bold" size={24} />
                       <div className="security-tier-card-text">
-                        <span className="security-tier-card-title">Custom guardrails</span>
+                        <span className="security-tier-card-title">Adaptive guardrails</span>
                         <span className="security-tier-card-desc">Business-specific rules that protect this agent&apos;s guests, workflows, and policy boundaries.</span>
                         <span className="security-tier-card-count">{customGuardrailCapacityLabel}</span>
                       </div>
@@ -2232,13 +2236,13 @@ export default function ActionConfigureV2() {
                   <div className="security-prebuilt-toolbar-actions">
                     {customProfileLimitReached ? (
                       <Tooltip
-                        content="You can create up to 3 custom guardrails for this agent. Delete a guardrail to create another."
+                        content="You can create up to 3 adaptive guardrails for this agent. Delete a guardrail to create another."
                         placement="top"
                       >
                         <span
                           className="security-custom-profiles-create-tooltip-anchor"
                           tabIndex={0}
-                          aria-label="Create custom guardrail unavailable. You can create up to 3 custom guardrails for this agent."
+                          aria-label="Create adaptive guardrail unavailable. You can create up to 3 adaptive guardrails for this agent."
                         >
                           <Button
                             variant="primary"
@@ -2281,12 +2285,12 @@ export default function ActionConfigureV2() {
                           <div className="security-prebuilt-category-copy">
                             <div className="security-prebuilt-category-title">
                               <Icon name="sparkle" weight="bold" size={18} />
-                              <span>Custom guardrails</span>
+                              <span>Adaptive guardrails</span>
                               <Badge variant="success" className="security-tier-badge">Powered by AI Defense</Badge>
                             </div>
                             <span className="security-prebuilt-category-meta">{customGuardrailCapacityLabel}</span>
                             <span className="security-prebuilt-category-desc">
-                              Create rules for this agent&apos;s business-specific privacy, safety, and security risks. Custom guardrails can evaluate prompts, responses, or both.
+                              Create rules for this agent&apos;s business-specific privacy, safety, and security risks. Adaptive guardrails can evaluate prompts, responses, or both.
                             </span>
                           </div>
                         </div>
@@ -2309,7 +2313,7 @@ export default function ActionConfigureV2() {
                             {renderCustomGuardrailDirection(DEFAULT_GENERATED_CUSTOM_PROFILE, true)}
                             <ProgressBar
                               value={defaultCustomProfileProgress}
-                              label="Creating custom guardrail"
+                              label="Creating adaptive guardrail"
                               helperText="Drafting blocked, allowed, and edge-case rules for this agent."
                               showPercent
                             />
@@ -2326,7 +2330,7 @@ export default function ActionConfigureV2() {
                 ) : (
                   <div className="custom-profile-empty-hero">
                     <Icon name="document-create" weight="bold" size={22} />
-                    <span>No custom guardrails. Create one for a business-specific privacy, safety, or security risk.</span>
+                    <span>No adaptive guardrails. Create one for a business-specific privacy, safety, or security risk.</span>
                   </div>
                 )}
                       </div>
@@ -2660,7 +2664,7 @@ export default function ActionConfigureV2() {
                   <th className="col-last-updated">Last updated</th>
                   <th className="col-action-type">Action type</th>
                   <th className="col-provider-type">Provider type</th>
-                  <th className="col-galileo">Galileo</th>
+                  <th className="col-galileo">Controls</th>
                   <th className="col-row-actions" aria-label="Row actions" />
                 </tr>
               </thead>

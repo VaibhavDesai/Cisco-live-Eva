@@ -71,6 +71,6 @@ export function getFieldSuggestionLabel(field: EvaSuggestionField): string {
     case 'instructionPrompt':
       return 'instructions';
     case 'customRule':
-      return 'custom guardrail';
+      return 'adaptive guardrail';
   }
 }

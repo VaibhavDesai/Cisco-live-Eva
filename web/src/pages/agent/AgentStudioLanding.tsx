@@ -7,7 +7,7 @@ import {
   type ReactNode,
 } from 'react';
 import { Link, Navigate, useNavigate, useParams } from 'react-router-dom';
-import { IconProvider, ThemeProvider } from '@momentum-design/components/react';
+import { IconProvider, StaticChip, ThemeProvider } from '@momentum-design/components/react';
 import { ThemeModeProvider, useThemeMode } from '../../app/ThemeContext';
 import { publicAssetUrl } from '../../app/publicAsset';
 import { AgentHeader } from '../../components/agents';
@@ -64,6 +64,7 @@ import {
   type AgentLifecycle,
 } from '../../features/agent-creation/agentCreationModel';
 import { Icon } from '../../icons';
+import actionControlArrow from '../../assets/action-control-arrow.svg';
 
 type PreviewCallStatus = 'idle' | 'connecting' | 'listening' | 'speaking' | 'paused' | 'ended' | 'error';
 type ConnectedViewMode = 'metrics' | 'resources';
@@ -256,7 +257,7 @@ const lifecycleStatusLabel = (lifecycle: AgentLifecycle) => {
 const OPERATIONAL_HEALTH = {
   score: 95.8,
   target: 85,
-  signals: 7,
+  signals: 8,
 } as const;
 
 const OPERATIONAL_HEALTH_GAP = Number(
@@ -275,9 +276,10 @@ const OPERATIONAL_HEALTH_METRICS: OperationalHealthMetric[] = [
   { id: 'guardrails-trigger-flag', label: 'Guardrails trigger flag', value: '0.8%', change: '-0.7%' },
   { id: 'containment-rate', label: 'Containment rate', value: '91.6%', change: '+5.2%' },
   { id: 'action-intent-success-rate', label: 'Action/intent success rate', value: '97.8%', change: '+2.4%' },
+  { id: 'control-evaluations', label: 'Control evaluations', value: '2', change: 'Trace derived' },
+  { id: 'steer-outcomes', label: 'Steer outcomes', value: '1', change: 'Trace derived' },
   { id: 'autocsat-improvement', label: 'AutoCSAT improvement', value: '8.6%', change: '+3.4%' },
   { id: 'csat-predictor', label: 'CSAT predictor (AutoCSAT)', value: '4.7/5', change: '+8.1%' },
-  { id: 'fulfilment-latency-p95', label: 'Fulfilment latency P95', value: '1,240ms', change: '-18%' },
 ];
 
 const OPERATIONAL_TIME_RANGE_OPTIONS = [
@@ -1216,7 +1218,7 @@ export default function AgentStudioLanding() {
     knowledge: usesEagleGreenShowcaseMetrics ? 14 : configuredKnowledge.length,
     memory: configuredMemory.length,
     actions: usesEagleGreenShowcaseMetrics ? 3 : configuredOrchestration.length,
-    guardrails: configuredSecurity.length,
+    guardrails: usesEagleGreenShowcaseMetrics ? 6 : configuredSecurity.length,
   } as const;
   const connectedGuardrailActivity = configuredSecurity.map(item => ({
     item,
@@ -1248,11 +1250,6 @@ export default function AgentStudioLanding() {
     : [])
     .filter(decision => actionControlDecisionAgeHours(decision.occurredAt) <= operationalTimeRangeHours);
   const actionControlFlow = summarizeCiscoLiveActionControlDecisions(actionControlDecisions);
-  const actionControlMatchedOutcomes = [
-    { id: 'observed', label: 'Observed', value: actionControlFlow.observed },
-    { id: 'steered', label: 'Steered', value: actionControlFlow.steered },
-    { id: 'denied', label: 'Denied', value: actionControlFlow.denied },
-  ].filter(outcome => outcome.value > 0);
   const actionControlSpotlightDecision = [...actionControlDecisions]
     .filter(decision => decision.matched)
     .sort((a, b) => Date.parse(b.occurredAt) - Date.parse(a.occurredAt))[0];
@@ -1263,6 +1260,9 @@ export default function AgentStudioLanding() {
   ));
   const actionControlSpotlightUnlockedName = actionControlSpotlightDecision?.unlockedActionNames[0] ?? '';
   const actionControlSpotlightUnlocked = Boolean(actionControlSpotlightUnlockedName);
+  const actionControlSpotlightActionName = actionControlSpotlightDecision?.actionName === 'Check Availability'
+    ? 'Check availability'
+    : actionControlSpotlightDecision?.actionName ?? '';
   const actionControlFlowLabel = `${actionControlFlow.evaluated} controls were evaluated. ${actionControlFlow.actionRan} attached action${actionControlFlow.actionRan === 1 ? '' : 's'} completed. ${actionControlFlow.matched} matched and ${actionControlFlow.notMatched} did not match; ${actionControlFlow.steered} redirected the next step and ${actionControlFlow.unlocked} gated action${actionControlFlow.unlocked === 1 ? '' : 's'} unlocked. Match rate ${actionControlFlow.matchRate} percent.`;
   const guardedSessionRate = allAgentSessions.length > 0
     ? Math.round((allAgentSessions.filter(session => session.guardrailTriggered).length / allAgentSessions.length) * 100)
@@ -1529,7 +1529,7 @@ export default function AgentStudioLanding() {
                           label: 'Guardrails',
                           value: connectedCapabilityTotals.guardrails,
                           status: usesEagleGreenShowcaseMetrics
-                            ? '2 custom · 2 prebuilt'
+                            ? '4 prebuilt · 2 adaptive'
                             : configuredSecurity.length > 0
                               ? `${configuredSecurity.length} configured`
                               : null,
@@ -1673,7 +1673,7 @@ export default function AgentStudioLanding() {
                                     </h3>
                                     <p>
                                       {usesEagleGreenShowcaseMetrics
-                                        ? `Galileo decisions during the ${operationalTimeRangeLabel.toLowerCase()}`
+                                        ? `Action control activity during ${operationalTimeRangeLabel.toLowerCase()}`
                                         : 'Success rate against a 95% target'}
                                     </p>
                                   </div>
@@ -1695,69 +1695,71 @@ export default function AgentStudioLanding() {
                                       {actionControlFlowLabel}
                                     </figcaption>
                                     <div className="agent-studio-action-control-flow__summary" aria-hidden="true">
-                                      <span className="agent-studio-action-control-flow__summary-icon">
-                                        <Icon name="automation" weight="bold" size="sm" />
-                                      </span>
                                       <span className="agent-studio-action-control-flow__summary-copy">
-                                        <small>Control checks</small>
                                         <strong>Evaluated</strong>
                                       </span>
                                       <strong className="agent-studio-action-control-flow__summary-value">
                                         {actionControlFlow.evaluated}
                                       </strong>
                                     </div>
+                                    <div className="agent-studio-action-control-flow__divider" aria-hidden="true" />
 
                                     <div className="agent-studio-action-control-flow__rows">
-                                      <button
-                                        type="button"
-                                        className={`agent-studio-action-control-flow__row agent-studio-action-control-flow__matched-trigger is-matched${showSelectedActionControlDecision ? ' is-selected' : ''}`}
-                                        aria-expanded={showSelectedActionControlDecision}
-                                        aria-controls="agent-studio-action-control-decision-banner"
-                                        aria-label={`${showSelectedActionControlDecision ? 'Hide' : 'Show'} latest matching decision`}
-                                        disabled={!actionControlSpotlightDecision}
-                                        onClick={() => {
-                                          setSelectedOverviewIntervention(current => (
-                                            current === 'action_control' ? null : 'action_control'
-                                          ));
-                                        }}
+                                      <div
+                                        className={`agent-studio-action-control-flow__row agent-studio-action-control-flow__matched-trigger${showSelectedActionControlDecision ? ' is-selected' : ''}`}
                                       >
-                                        <span className="agent-studio-action-control-flow__decision">
-                                          <span className="agent-studio-action-control-flow__metric">
+                                        <button
+                                          type="button"
+                                          className="agent-studio-action-control-flow__disclosure"
+                                          aria-expanded={showSelectedActionControlDecision}
+                                          aria-controls="agent-studio-action-control-decision-banner"
+                                          aria-label={`${showSelectedActionControlDecision ? 'Hide' : 'Show'} latest matching decision`}
+                                          disabled={!actionControlSpotlightDecision}
+                                          onClick={() => {
+                                            setSelectedOverviewIntervention(current => (
+                                              current === 'action_control' ? null : 'action_control'
+                                            ));
+                                          }}
+                                        />
+                                        <div className="agent-studio-action-control-flow__matched-content" aria-hidden="true">
+                                          <div className="agent-studio-action-control-flow__matched-heading">
+                                            <strong>Matched</strong>
                                             <strong>{actionControlFlow.matched}</strong>
-                                          </span>
-                                          <span className="agent-studio-action-control-flow__label">
-                                            Matched
-                                          </span>
-                                        </span>
+                                          </div>
 
-                                        <span className="agent-studio-action-control-flow__line" aria-hidden="true" />
-
-                                        <span className="agent-studio-action-control-flow__outcomes">
-                                          {actionControlMatchedOutcomes.map(outcome => {
-                                            const showsUnlockedAction = outcome.id === 'steered'
-                                              && actionControlFlow.unlocked > 0;
-
-                                            return (
-                                              <span
-                                                key={outcome.id}
-                                                className={`agent-studio-action-control-flow__outcome${showsUnlockedAction ? ' is-unlocked' : ''}`}
-                                              >
-                                                <span className="agent-studio-action-control-flow__outcome-primary">
-                                                  <span>{outcome.label}</span>
+                                          {actionControlSpotlightDecision && (
+                                            <IconProvider
+                                              className="agent-studio-action-control-flow__chip-provider"
+                                              iconSet="custom-icons"
+                                              url={publicAssetUrl('icons').replace(/\/$/, '')}
+                                              fileExtension="svg"
+                                            >
+                                              <div className="agent-studio-action-control-flow__outcomes">
+                                                <div className="agent-studio-action-control-flow__action-item">
+                                                  <span>{actionControlSpotlightActionName}</span>
+                                                  <StaticChip
+                                                    className="agent-studio-action-control-flow__chip"
+                                                    color="lime"
+                                                    iconName="automation-bold"
+                                                    label="Steered"
+                                                  />
+                                                </div>
+                                                <span className="agent-studio-action-control-flow__outcome-connector" aria-hidden="true">
+                                                  <img src={actionControlArrow} alt="" />
                                                 </span>
-                                                {showsUnlockedAction && (
-                                                  <>
-                                                    <span className="agent-studio-action-control-flow__outcome-connector" aria-hidden="true" />
-                                                    <span className="agent-studio-action-control-flow__outcome-detail">
-                                                      Gated action unlocked
-                                                    </span>
-                                                  </>
-                                                )}
-                                              </span>
-                                            );
-                                          })}
-                                        </span>
-                                      </button>
+                                                <div className="agent-studio-action-control-flow__action-item">
+                                                  <span>{actionControlSpotlightUnlockedName}</span>
+                                                  <StaticChip
+                                                    className="agent-studio-action-control-flow__chip"
+                                                    color="cobalt"
+                                                    label="Unlocked"
+                                                  />
+                                                </div>
+                                              </div>
+                                            </IconProvider>
+                                          )}
+                                        </div>
+                                      </div>
                                     </div>
                                   </figure>
                                 ) : (
@@ -1810,7 +1812,6 @@ export default function AgentStudioLanding() {
                                           key={guardrail.item}
                                           className={`agent-studio-guardrail-chart__item${selectedGuardrailName === guardrail.item ? ' is-selected' : ''}`}
                                         >
-                                          <small title={guardrail.item}>{guardrail.item}</small>
                                           <button
                                             type="button"
                                             className="agent-studio-guardrail-chart__plot"
@@ -1826,8 +1827,13 @@ export default function AgentStudioLanding() {
                                               }
                                             }}
                                           >
-                                            <span>{guardrail.count}</span>
-                                            <i style={{ width: `${width}%` }} />
+                                            <span className="agent-studio-guardrail-chart__label">
+                                              <small title={guardrail.item}>{guardrail.item}</small>
+                                              <strong>{guardrail.count}</strong>
+                                            </span>
+                                            <span className="agent-studio-guardrail-chart__track" aria-hidden="true">
+                                              <i style={{ width: `${width}%` }} />
+                                            </span>
                                           </button>
                                         </div>
                                       );
@@ -1886,7 +1892,7 @@ export default function AgentStudioLanding() {
                               </>
                             ) : (
                               <>
-                                <span className="agent-studio-operational-event-meta">SES-GT-1045 · 9:47 AM · Custom guardrail blocked response</span>
+                                <span className="agent-studio-operational-event-meta">SES-GT-1045 · 9:47 AM · Adaptive guardrail blocked response</span>
                                 <span>No guest, schedule, or access information was shared with the unverified caller.</span>
                               </>
                             )}

@@ -473,25 +473,13 @@ export default function EvaAgentsTable() {
                       type="button"
                       variant="secondary"
                       size="sm"
-                      className="ai-agents-agent-preview-button"
                       aria-label={`Preview ${tile.name}`}
-                      onClick={(event) => {
-                        event.stopPropagation();
-                        handlePreviewClick(tile);
-                      }}
-                    >
-                      <Icon name="play" weight="bold" size={16} />
-                    </Button>
-                    <Button
-                      type="button"
-                      variant="secondary"
-                      size="sm"
                       onClick={(event) => {
                         event.stopPropagation();
                         handleAgentClick(tile);
                       }}
                     >
-                      View
+                      Preview
                     </Button>
                   </div>
                 </div>

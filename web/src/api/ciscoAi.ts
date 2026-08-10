@@ -38,7 +38,7 @@ function normalizeCompanionApiUrl(configuredUrl: string | undefined, path: strin
   return `${baseUrl}${normalizedPath}`;
 }
 
-const SYSTEM_PROMPT = `You are a guardrail policy assistant for an AI Agent Studio. Your job is to help users create and refine custom guardrail profiles that govern how an AI agent behaves.
+const SYSTEM_PROMPT = `You are a guardrail policy assistant for an AI Agent Studio. Your job is to help users create and refine adaptive guardrail profiles that govern how an AI agent behaves.
 
 When the user describes a policy they want to create, respond with:
 1. A conversational explanation of what you created

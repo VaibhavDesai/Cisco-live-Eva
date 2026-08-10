@@ -304,7 +304,7 @@ Current draft state:
 - Knowledge bases selected: ${args.selectedKnowledgeBases.length > 0 ? args.selectedKnowledgeBases.join(', ') : '(none yet)'}
 - Actions selected: ${args.selectedActions.length > 0 ? args.selectedActions.join(', ') : '(none yet)'}
 - Instructions: ${args.instructionPrompt ? args.instructionPrompt.slice(0, 500) : '(not set)'}
-- Custom guardrails: ${args.customRules.length > 0 ? args.customRules.join('; ') : '(none)'}
+- Adaptive guardrails: ${args.customRules.length > 0 ? args.customRules.join('; ') : '(none)'}
 
 Guidelines:
 - Keep replies concise (2–4 sentences) and ground them in the draft state above.

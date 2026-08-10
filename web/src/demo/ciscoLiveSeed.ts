@@ -33,7 +33,7 @@ export const EAGLE_GREEN_ACTION_CONTROL_VALUES = {
         timing: 'post_tool',
         behavior: 'steer',
         guidance: 'Tell the caller that availability was checked and the request needs VIP-team review. Transfer the caller, availability result, and reservation context to the VIP team.',
-        matchMode: 'any',
+        matchMode: 'or',
         conditions: [
           { id: 'large-event-party-size', kind: 'action_input', field: 'party_size', operator: 'greater_than', value: 100 },
           { id: 'large-event-requested-bays', kind: 'action_input', field: 'requested_bays', operator: 'greater_than', value: 20 },

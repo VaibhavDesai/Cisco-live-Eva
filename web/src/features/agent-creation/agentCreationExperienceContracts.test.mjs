@@ -28,12 +28,12 @@ test('EAGLE GREEN separates Galileo large-event routing from the VIP confidentia
   assert.match(
     demoSource,
     /id:\s*CISCO_LIVE_PRIMARY_AGENT_ID[\s\S]*?customGuardrails:\s*CISCO_LIVE_PRIMARY_GUARDRAILS/,
-    'EAGLE GREEN should receive the seeded custom guardrails',
+    'EAGLE GREEN should receive the seeded adaptive guardrails',
   );
   assert.match(
     configureSource,
     /ciscoLiveAgent\.customGuardrails\.map\(guardrail => \(\{[\s\S]*?enabled:\s*true/,
-    'seeded custom guardrails should start enabled',
+    'seeded adaptive guardrails should start enabled',
   );
   assert.match(
     seedSource,
@@ -51,9 +51,9 @@ test('EAGLE GREEN separates Galileo large-event routing from the VIP confidentia
   assert.match(
     configureSource,
     /customGuardrails:\s*advancedCustomItems[\s\S]*?initialDirection=\{editItem\?\.direction\}[\s\S]*?direction:\s*result\.direction/,
-    'custom guardrail definitions and Direction should survive save and refresh',
+    'adaptive guardrail definitions and Direction should survive save and refresh',
   );
-  assert.match(configureSource, /Custom guardrails/);
+  assert.match(configureSource, /Adaptive guardrails/);
   assert.match(configureSource, /Create guardrail/);
   assert.match(policyStudioSource, /DEFAULT_CUSTOM_GUARDRAIL_NAME\s*=\s*['"]VIP event confidentiality['"]/);
   assert.doesNotMatch(policyStudioSource, /medical advice|healthcare clinic|Large reservation approval/);
@@ -62,11 +62,41 @@ test('EAGLE GREEN separates Galileo large-event routing from the VIP confidentia
     /id:\s*['"]SES-GT-1042['"][\s\S]*?guardrailTriggered:\s*false[\s\S]*?actionControlTriggered:\s*LARGE_EVENT_ACTION_CONTROL\.event\.actionControl\.matched[\s\S]*?id:\s*['"]SES-GT-1045['"][\s\S]*?guardrailTriggered:\s*true/,
     'the large-event and confidentiality stories should remain separate sessions',
   );
+  assert.match(
+    demoSource,
+    /id:\s*['"]SES-GT-1045['"][\s\S]*?messages:\s*6[\s\S]*?id:\s*['"]evt-1045-1['"][\s\S]*?id:\s*['"]evt-1045-8['"]/,
+    'the confidentiality session should include all six conversation messages plus its system and guardrail events',
+  );
+  assert.match(
+    demoSource,
+    /title:\s*['"]VIP event confidentiality blocked a response['"][\s\S]*?detail:\s*['"]Adaptive guardrail triggered['"]/,
+    'the transcript event should identify the adaptive guardrail trigger directly',
+  );
   assert.match(sessionsSource, /event\.kind === ['"]action_control['"][\s\S]*?Action control/);
+  assert.match(
+    sessionsSource,
+    /<h2>\{actionControl\.unlockedActionNames\[0\] \?\? actionControl\.controlTitle\}<\/h2>/,
+    'the session policy card should identify the unlocked action as Transfer to VIP team',
+  );
+  assert.match(
+    sessionsSource,
+    /onReviewActionControl=\{\(\) => navigate\([\s\S]*?`\/agents\/\$\{agent\.id\}\/configure\?section=Action`/,
+    'Review control should open the Actions page without deep-linking into the control editor',
+  );
+  assert.doesNotMatch(
+    sessionsSource,
+    /onReviewActionControl=\{[\s\S]{0,240}(?:actionId|controlId)=/,
+    'Review control should not pass editor-selection parameters',
+  );
   assert.match(
     studioStyles,
     /\.agent-session-metadata-icons\s*>\s*\.agent-session-metadata-icons__action-control\s*\{[\s\S]*?color:\s*var\(--mds-color-theme-common-text-primary-normal,\s*#fff\)/,
     'the Action control session badge should use a white foreground for both its label and inherited icon',
+  );
+  assert.match(
+    studioStyles,
+    /\.agent-session-message--customer\s*\{[^}]*background:\s*color-mix\(in srgb, var\(--bg-secondary\) 78%, transparent\);/,
+    'guest transcript messages should use a neutral grey bubble instead of an accent surface',
   );
   assert.match(
     demoSource,
@@ -85,13 +115,23 @@ test('EAGLE GREEN separates Galileo large-event routing from the VIP confidentia
     /const configuredSecurity = configuredCapabilityLabels\(agentDraft,\s*['"]security['"]\)[\s\S]*?chips:\s*configuredSecurity\.map\(item => \(\{\s*item,\s*type:\s*['"]guardrail['"]/,
     'the Connected card should render configured Security policies as guardrail chips',
   );
+  assert.match(
+    overviewSource,
+    /usesEagleGreenShowcaseMetrics\s*\?\s*['"]4 prebuilt · 2 adaptive['"]/,
+    'the EAGLE GREEN guardrail summary should distinguish its prebuilt and adaptive guardrails',
+  );
+  assert.match(
+    overviewSource,
+    /guardrails:\s*usesEagleGreenShowcaseMetrics\s*\?\s*6\s*:\s*configuredSecurity\.length/,
+    'the EAGLE GREEN guardrail total should match the six-item prebuilt and adaptive breakdown',
+  );
 });
 
 test('EAGLE GREEN upgrades legacy state and normalizes action names', () => {
   const contextSource = readSource('../../contexts/AppContext.tsx');
   const policyStudioSource = readSource('../../pages/agent/SecurityUIPolicyStudio.tsx');
 
-  assert.match(contextSource, /schemaVersion:\s*7/);
+  assert.match(contextSource, /schemaVersion:\s*8/);
   assert.match(
     contextSource,
     /shouldMigrateLegacyActions\s*=\s*storedSchemaVersion\s*<\s*4[\s\S]*?hasStoredSelections[\s\S]*?hasCheckAvailabilityControls[\s\S]*?!Array\.isArray\(checkAvailabilityControls\)/,
@@ -109,12 +149,17 @@ test('EAGLE GREEN upgrades legacy state and normalizes action names', () => {
   );
   assert.match(
     contextSource,
+    /shouldMigrateLargeEventControlMatchMode\s*=\s*storedSchemaVersion\s*<\s*8[\s\S]*?control\.id === EAGLE_GREEN_ACTION_CONTROL_ID[\s\S]*?nextControl\.matchMode = seededLargeEventControl\.matchMode/,
+    'schema-7 drafts should restore the canonical large-event control to OR matching',
+  );
+  assert.match(
+    contextSource,
     /LEGACY_LARGE_RESERVATION_GUARDRAIL_ID\s*=\s*['"]custom-large-reservation-approval['"][\s\S]*?LEGACY_LARGE_RESERVATION_GUARDRAIL_NAME\s*=\s*['"]large reservation approval['"]/,
   );
   assert.match(
     contextSource,
     /migrateStoredCustomGuardrails\(securityValues\.customGuardrails\)[\s\S]*?customGuardrails:\s*customGuardrailsMigration\.value/,
-    'stored custom guardrail objects should migrate during AppContext hydration',
+    'stored adaptive guardrail objects should migrate during AppContext hydration',
   );
   assert.match(
     contextSource,
@@ -349,8 +394,8 @@ test('Galileo intervention behavior uses a native radio group', () => {
 
   assert.match(
     controlsSource,
-    /<RadioGroup[\s\S]*?name=\{`galileo-action-control-behavior-\$\{contextActionId\}`\}[\s\S]*?label="Control behavior"[\s\S]*?value=\{draft\.behavior\}[\s\S]*?<Radio key=\{behavior\} value=\{behavior\} label=\{BEHAVIOR_LABELS\[behavior\]\} \/>/,
-    'Observe, Steer, and Deny should use the shared native RadioGroup pattern',
+    /\{!isCreatingControl && \([\s\S]*?<h3>Control behavior<\/h3>[\s\S]*?Choose what Galileo does when the conditions match\.[\s\S]*?\)\}[\s\S]*?<h3>Control action<\/h3>[\s\S]*?<MomentumRadioGroup[\s\S]*?name=\{`galileo-action-control-behavior-\$\{contextActionId\}`\}[\s\S]*?dataAriaLabel="Control action"[\s\S]*?<MomentumRadio[\s\S]*?value=\{behavior\}[\s\S]*?checked=\{draft\.behavior === behavior\}[\s\S]*?onChange=/,
+    'the inline editor should retain its behavior heading while the wizard proceeds directly to the native Momentum RadioGroup',
   );
   assert.doesNotMatch(
     controlsSource,
@@ -364,64 +409,363 @@ test('Galileo intervention behavior uses a native radio group', () => {
   );
 });
 
-test('Galileo keeps the control summary and editor in one full-page modal', () => {
+test('Galileo evaluation timing uses a native radio group', () => {
   const controlsSource = readSource('../../pages/agent/ActionControls.tsx');
   const styles = readSource('../../components.css');
 
   assert.match(
     controlsSource,
-    /<main className="galileo-action-control-workspace">[\s\S]*?className="galileo-action-control-summary"[\s\S]*?className="galileo-action-control-editor"/,
-    'the outcome summary and editable fields should share one continuous modal workspace',
+    /className="galileo-action-control-timing-column"[\s\S]*?Evaluation timing[\s\S]*?<MomentumRadioGroup[\s\S]*?name=\{`galileo-action-control-timing-\$\{contextActionId\}`\}[\s\S]*?dataAriaLabel="Evaluation timing"[\s\S]*?className="galileo-action-control-timing"[\s\S]*?<MomentumRadio[\s\S]*?value=\{option\.value\}[\s\S]*?checked=\{draft\.timing === option\.value\}[\s\S]*?onChange=[\s\S]*?<UpliftMomentumButton[\s\S]*?className="galileo-action-control-timing-info"[\s\S]*?<Icon name="info-circle"[\s\S]*?<MomentumTooltip[\s\S]*?\{option\.description\}/,
+    'evaluation timing should use the direct Momentum RadioGroup pattern',
   );
   assert.doesNotMatch(
     controlsSource,
-    /className="security-ui-workspace galileo-action-control-studio__workspace"|className="galileo-action-control-dialog__body"/,
-    'the continuous workspace should not be wrapped in an additional layout container',
+    /<UpliftMomentumSelect[\s\S]*?label="Evaluation timing"/,
+    'evaluation timing should no longer use a dropdown select',
+  );
+  assert.match(
+    styles,
+    /\.galileo-action-control-timing::part\(container\)\s*\{[^}]*display:\s*flex;[^}]*flex-direction:\s*row;[^}]*align-items:\s*center;[^}]*flex-wrap:\s*wrap;[^}]*gap:\s*8px;/,
+    'the evaluation timing radio options and their info buttons should stay aligned and wrap safely',
   );
   assert.doesNotMatch(
     controlsSource,
-    /useState<['"]summary['"] \| ['"]editor['"]>|Back to summary|Edit control<\/Button>/,
-    'view and edit should not be split into separate modal modes',
+    /galileo-action-control-timing-help/,
+    'timing guidance should live in the option tooltips instead of a detached helper line',
+  );
+});
+
+test('Galileo action controls use the Figma summary and a direct-entry creation wizard', () => {
+  const controlsSource = readSource('../../pages/agent/ActionControls.tsx');
+  const upliftFieldsSource = readSource('../../components/shared/UpliftMomentumField.tsx');
+  const upliftButtonSource = readSource('../../components/shared/UpliftMomentumButton.tsx');
+  const styles = readSource('../../components.css');
+  const figmaStyles = styles.slice(styles.lastIndexOf('/* ── Figma action-control editor'));
+
+  assert.match(
+    controlsSource,
+    /const shouldStartCreation = !initialControl && !state\.gatesByActionId\[actionId\];[\s\S]*?createBlankControl\(actionId\)[\s\S]*?const \[isEditing, setIsEditing\] = useState\(shouldStartCreation\)/,
+    'an action without a control or gate should open directly in creation instead of showing an empty intermediate screen',
   );
   assert.match(
     controlsSource,
-    /Control summary[\s\S]*?summaryCopy\.lead[\s\S]*?<dt>Evaluation<\/dt>[\s\S]*?<dt>If<\/dt>[\s\S]*?<dt>Then<\/dt>[\s\S]*?<dt>Otherwise<\/dt>/,
-    'the summary should explain the evaluation point and both matched and unmatched outcomes',
+    /GALILEO_CONTROL_WIZARD_STEPS = \[[\s\S]*?label: 'Details'[\s\S]*?label: 'Conditions'[\s\S]*?label: 'Behavior'[\s\S]*?\{isCreatingControl && \([\s\S]*?<MomentumStepper[\s\S]*?aria-label="Control setup progress"[\s\S]*?<MomentumStepperItem[\s\S]*?<MomentumStepperConnector/,
+    'only control creation should expose the labeled three-step Momentum wizard',
+  );
+  assert.match(
+    controlsSource,
+    /className="galileo-action-control-studio__header-copy"[\s\S]*?\{isCreatingControl \? 'Create action control' : 'Action control'\}: \{contextActionDisplayName\}[\s\S]*?Configure when Galileo evaluates/,
+    'the header should include the action name and retain its contextual subtitle',
+  );
+  assert.match(
+    controlsSource,
+    /<UpliftMomentumButton[\s\S]*?className="galileo-action-control-studio__close"[\s\S]*?aria-label="Close action control"[\s\S]*?<Icon name="cancel" weight="regular" size=\{32\}/,
+    'the header should use a React-safe Momentum close icon inside the reusable Uplift button',
+  );
+  assert.match(
+    controlsSource,
+    /<footer className="galileo-action-control-wizard__footer">[\s\S]*?<UpliftMomentumButton[\s\S]*?variant="secondary"[\s\S]*?onClick=\{requestClose\}[\s\S]*?Cancel[\s\S]*?<UpliftMomentumButton[\s\S]*?variant="primary"[\s\S]*?color="default"[\s\S]*?onClick=\{advanceWizard\}[\s\S]*?Next[\s\S]*?<UpliftMomentumButton[\s\S]*?variant="primary"[\s\S]*?color="default"[\s\S]*?Create control/,
+    'the creation-only Momentum footer should use standard primary actions and end with Create control',
   );
   assert.doesNotMatch(
     controlsSource,
-    /<summary>Why Galileo recommended this control<\/summary>/,
-    'the full-page editor should not repeat recommendation provenance',
+    /Step \{wizardStep \+ 1\} of \{GALILEO_CONTROL_WIZARD_STEPS\.length\}/,
+    'the Momentum stepper should be the wizard’s only progress indicator',
+  );
+  assert.match(
+    figmaStyles,
+    /\.galileo-action-control-wizard__progress mdc-stepperconnector\s*\{[^}]*margin-top:\s*calc\(\(1\.75rem - 0\.0625rem\) \/ 2\);/,
+    'the horizontal wizard connector should be centered on the 28px Momentum step status icon',
+  );
+  assert.match(
+    controlsSource,
+    /<StaticChip color=\{summaryStatusColor\} label=\{summaryStatusLabel\} \/>[\s\S]*?iconName="automation-bold"[\s\S]*?label=\{BEHAVIOR_LABELS\[summaryControl\.behavior\]\}/,
+    'status and behavior should use Momentum chips, including the Steer icon',
+  );
+  assert.match(
+    controlsSource,
+    /className=\{`galileo-action-control-edit-toggle\$\{isEditing \? ' is-expanded' : ''\}`\}[\s\S]*?aria-expanded=\{isEditing\}[\s\S]*?aria-controls="galileo-action-control-editor"[\s\S]*?else if \(control\) beginEdit\(control\)/,
+    'Edit control should disclose the existing-control editor without moving to another modal',
+  );
+  assert.match(
+    controlsSource,
+    /id=\{isCreatingControl \? undefined : 'galileo-action-control-editor'\}[\s\S]*?galileo-action-control-editor--inline[\s\S]*?Edit control[\s\S]*?\{\(!isCreatingControl \|\| wizardStep === 0\) && \([\s\S]*?\{\(!isCreatingControl \|\| wizardStep === 1\) && \([\s\S]*?\{\(!isCreatingControl \|\| wizardStep === 2\) && draft\.behavior === 'steer'[\s\S]*?galileo-action-control-editor__footer[\s\S]*?Save changes/,
+    'editing an existing control should expand the complete form and direct save actions in one continuous editor',
+  );
+  assert.doesNotMatch(
+    controlsSource,
+    /<h3>Control details<\/h3>|Use a specific name so teammates can understand this control later\./,
+    'the Details step should proceed directly to the form fields without a redundant helper heading',
+  );
+  assert.doesNotMatch(
+    controlsSource,
+    /Condition setup|Build the rule from inputs that are available to this action\./,
+    'the Conditions step should not repeat its purpose in an extra setup heading',
+  );
+  assert.match(
+    controlsSource,
+    /galileo-action-control-conditions-column[\s\S]*?aria-labelledby=\{isCreatingControl \? 'galileo-conditions-title' : undefined\}[\s\S]*?\{isCreatingControl && \(\s*<div className="galileo-action-control-editor__section-heading galileo-action-control-editor__section-heading--stacked">[\s\S]*?When this happens[\s\S]*?Evaluate only the reservation inputs available to this action/,
+    'the When this happens helper heading should remain wizard-only and stay out of the inline editor',
+  );
+  assert.match(
+    controlsSource,
+    /const deleteControl = \(\) => \{[\s\S]*?window\.confirm[\s\S]*?delete next\.controlsByActionId\[contextActionId\][\s\S]*?delete next\.gatesByActionId\[targetActionId\][\s\S]*?onChange\(next\);[\s\S]*?onClose\(\);[\s\S]*?className="galileo-action-control-delete"[\s\S]*?onClick=\{deleteControl\}[\s\S]*?Delete/,
+    'the existing-control footer should expose a confirmed destructive delete action and remove dependent gates',
+  );
+  assert.match(
+    controlsSource,
+    /<footer className="galileo-action-control-editor__footer">[\s\S]*?<UpliftMomentumButton[\s\S]*?variant="secondary"[\s\S]*?color="negative"[\s\S]*?size=\{40\}[\s\S]*?Delete[\s\S]*?<UpliftMomentumButton[\s\S]*?variant="secondary"[\s\S]*?color="default"[\s\S]*?size=\{40\}[\s\S]*?Cancel[\s\S]*?<UpliftMomentumButton[\s\S]*?variant="primary"[\s\S]*?color="default"[\s\S]*?size=\{40\}[\s\S]*?Save changes/,
+    'the edit footer should use native Momentum variants, including a standard primary action',
+  );
+  assert.doesNotMatch(
+    figmaStyles,
+    /\.galileo-action-control-editor__footer mdc-button\s*\{[^}]*min-width:/,
+    'footer buttons should keep Momentum intrinsic sizing without a legacy width override',
+  );
+  assert.match(
+    figmaStyles,
+    /\.galileo-action-control-editor mdc-textarea\s*\{[^}]*--mdc-textarea-background-color:\s*transparent;[^}]*--mdc-textarea-container-background-color:\s*transparent;[\s\S]*?\.galileo-action-control-editor mdc-textarea::part\(textarea-container\),[\s\S]*?\.galileo-action-control-editor mdc-textarea::part\(textarea\)\s*\{[^}]*background:\s*transparent;/,
+    'editor textareas should retain their borders without painting a filled background',
+  );
+  assert.match(
+    figmaStyles,
+    /\.galileo-action-control-editor--inline[\s\S]*?\.galileo-action-control-editor__section--details:not\(\.galileo-action-control-editor__section--behavior\)\s*\{[^}]*grid-template-columns:\s*minmax\(0, 680px\);[^}]*justify-content:\s*start;[^}]*row-gap:\s*20px;[\s\S]*?\.galileo-action-control-editor--inline \.galileo-action-control-timing-column\s*\{[^}]*width:\s*min\(680px, 100%\);[^}]*max-width:\s*680px;[^}]*grid-column:\s*1;[\s\S]*?\.galileo-action-control-editor--inline \.galileo-action-control-conditions-column\s*\{[^}]*width:\s*min\(680px, 100%\);[^}]*max-width:\s*680px;[^}]*grid-column:\s*1;/,
+    'existing-control timing and conditions should stack within the same 680px measure as the detail fields',
+  );
+  assert.match(
+    figmaStyles,
+    /\.galileo-action-control-wizard__body \.galileo-action-control-conditions-column\s*\{[^}]*width:\s*min\(680px, 100%\);[^}]*max-width:\s*680px;/,
+    'the creation wizard condition builder should use the same 680px form measure as the detail fields',
+  );
+  assert.match(
+    figmaStyles,
+    /\.galileo-action-control-wizard__body \.galileo-action-control-rule-preview\s*\{[^}]*width:\s*min\(680px, 100%\);[^}]*max-width:\s*680px;/,
+    'the creation wizard rule preview should align to the condition builder’s 680px form measure',
+  );
+  assert.match(
+    figmaStyles,
+    /\.galileo-action-control-advanced-trigger::part\(button-text\)\s*\{[^}]*display:\s*inline-flex;[^}]*align-items:\s*center;[^}]*gap:\s*6px;/,
+    'the Advanced condition Momentum button should center its icon and label in the exposed text part',
+  );
+  assert.match(
+    figmaStyles,
+    /\.galileo-action-control-condition-actions > \.uplift-momentum-button::part\(button-text\),/,
+    'the Add condition Momentum button should share the centered icon-and-label treatment',
+  );
+  assert.match(
+    figmaStyles,
+    /\.galileo-action-control-summary__decision-body\s*\{[^}]*gap:\s*8px;[\s\S]*?\.galileo-action-control-summary__decision-body strong\s*\{[^}]*color:\s*rgba\(255, 255, 255, 0\.95\);[^}]*font-size:\s*16px;[^}]*font-weight:\s*600;[^}]*line-height:\s*20px;[\s\S]*?\.galileo-action-control-summary__decision-body p\s*\{[^}]*color:\s*rgba\(255, 255, 255, 0\.7\);[^}]*font-size:\s*13px;[^}]*line-height:\s*18px;/,
+    'the Decision summary should distinguish its primary action from the supporting rule text',
+  );
+  assert.match(
+    controlsSource,
+    /<UpliftMomentumTextarea[\s\S]*?className="galileo-action-control-guidance-field"[\s\S]*?<UpliftMomentumSelect[\s\S]*?className="galileo-action-control-steer-field"/,
+    'guidance and steer fields should expose stable form-measure hooks',
+  );
+  assert.match(
+    figmaStyles,
+    /\.galileo-action-control-editor__section--behavior > \.galileo-action-control-guidance-field\s*\{[^}]*width:\s*min\(680px, 100%\);[^}]*max-width:\s*680px;[\s\S]*?\.galileo-action-control-steer-field\s*\{[^}]*width:\s*min\(680px, 100%\);[^}]*max-width:\s*680px;/,
+    'guidance and steer fields should match the 680px control-name measure',
+  );
+  assert.match(
+    figmaStyles,
+    /\.galileo-action-control-editor__footer \.galileo-action-control-delete\s*\{[^}]*margin-right:\s*auto;/,
+    'the destructive action should sit apart from the Cancel and Save group',
+  );
+  assert.match(
+    figmaStyles,
+    /\.galileo-action-control-condition-actions\s*\{[^}]*display:\s*grid;[^}]*grid-template-columns:\s*minmax\(0, 1fr\) 139px 1px 179px;[\s\S]*?\.galileo-action-control-advanced\s*\{[^}]*display:\s*contents;[\s\S]*?\.galileo-action-control-advanced > \.galileo-action-control-advanced-trigger\s*\{[^}]*display:\s*flex;[^}]*width:\s*179px;[^}]*grid-column:\s*4;[^}]*grid-row:\s*1;[\s\S]*?\.galileo-action-control-advanced__content\s*\{[^}]*position:\s*static;[^}]*width:\s*100%;[^}]*grid-column:\s*1 \/ -1;[^}]*grid-row:\s*2;[^}]*margin-top:\s*12px;[^}]*box-sizing:\s*border-box;/,
+    'expanded advanced conditions should fill the conditions column, stay in flow, and push the rule preview downward',
+  );
+  assert.match(
+    controlsSource,
+    /const \[advancedConditionOpen, setAdvancedConditionOpen\] = useState\(false\);[\s\S]*?<UpliftMomentumButton[\s\S]*?variant="tertiary"[\s\S]*?className="galileo-action-control-advanced-trigger"[\s\S]*?aria-expanded=\{advancedConditionOpen \? 'true' : 'false'\}[\s\S]*?onClick=\{\(\) => setAdvancedConditionOpen\(current => !current\)\}[\s\S]*?Advanced condition[\s\S]*?advancedConditionOpen &&/,
+    'Advanced condition should use the shared Momentum tertiary button as an accessible disclosure',
+  );
+  assert.match(
+    controlsSource,
+    /<MomentumBanner[\s\S]*?variant="informational"[\s\S]*?label="Rule preview"[\s\S]*?secondaryLabel=\{getControlExpressionPreview\(draft\)\}/,
+    'both creation and editing should retain the native Momentum rule preview',
+  );
+  assert.match(
+    controlsSource,
+    /MATCH_MODE_CYCLE:[^=]*= \['or', 'and'\][\s\S]*?MATCH_MODE_CONNECTOR_LABELS[\s\S]*?or: 'OR'[\s\S]*?and: 'AND'[\s\S]*?index === 0 \? \([\s\S]*?>When<\/span>[\s\S]*?galileo-action-control-condition__joiner--toggle[\s\S]*?getNextMatchMode\(current\.matchMode\)[\s\S]*?MATCH_MODE_CONNECTOR_LABELS\[normalizeMatchMode\(draft\.matchMode\)\]/,
+    'later condition connectors should toggle accessibly between OR and AND',
+  );
+  assert.match(
+    upliftFieldsSource,
+    /Input as MomentumInput[\s\S]*?Select as MomentumSelect[\s\S]*?Textarea as MomentumTextarea[\s\S]*?UPLIFT_FIELD_CLASS = 'uplift-momentum-field'[\s\S]*?<MomentumInput[\s\S]*?<MomentumTextarea[\s\S]*?<MomentumSelect/,
+    'the reusable Uplift field layer should remain a thin wrapper over native Momentum controls',
+  );
+  assert.match(
+    controlsSource,
+    /<UpliftMomentumInput[\s\S]*?onInput=[\s\S]*?<UpliftMomentumTextarea[\s\S]*?helpText=[\s\S]*?<UpliftMomentumSelect[\s\S]*?<MomentumSelectlistbox>[\s\S]*?<MomentumOption/,
+    'every editable Action Control field should reuse the Uplift Momentum layer and keystroke-level events',
+  );
+  assert.match(
+    upliftButtonSource,
+    /Button as MomentumButton[\s\S]*?UPLIFT_BUTTON_CLASS = 'uplift-momentum-button'[\s\S]*?size === 'sm' \? 32[\s\S]*?<MomentumButton/,
+    'the stored Uplift button should remain a thin Momentum wrapper with canonical 40px and 32px sizes',
+  );
+  assert.match(
+    controlsSource,
+    /<UpliftMomentumButton[\s\S]*?className=\{`galileo-action-control-edit-toggle[\s\S]*?<UpliftMomentumButton[\s\S]*?className="galileo-action-control-delete"[\s\S]*?Save changes/,
+    'Action Control buttons should reuse the stored Uplift Momentum component',
+  );
+  assert.match(
+    figmaStyles,
+    /Webex Uplift Input[^]*?\.uplift-momentum-field\s*\{[^}]*--mdc-label-font-size:\s*14px;[^}]*--mdc-input-border-color:\s*rgba\(255, 255, 255, 0\.2\);[^}]*--mdc-input-background-color:\s*transparent;[^}]*--mdc-select-background-color:\s*transparent;[^}]*--mdc-textarea-container-background-color:\s*transparent;/,
+    'the reusable field tokens should match the Uplift normal-state input specification',
+  );
+  assert.match(
+    figmaStyles,
+    /\.galileo-action-control-editor \.uplift-momentum-field\s*\{[^}]*--mdc-label-font-size:\s*14px;[^}]*--mdc-label-font-weight:\s*500;[^}]*--mdc-input-background-color:\s*transparent;[^}]*--mdc-textarea-container-background-color:\s*transparent;/,
+    'the Uplift field tokens should outrank the legacy editor field defaults',
+  );
+  assert.match(
+    figmaStyles,
+    /mdc-textarea\.uplift-momentum-field::part\(textarea-container\),\s*mdc-textarea\.uplift-momentum-field::part\(textarea\)\s*\{[^}]*background:\s*transparent;/,
+    'Uplift textareas should remain unfilled in every interaction state',
+  );
+  assert.match(
+    controlsSource,
+    /<IconProvider[\s\S]*?className="galileo-action-control-icon-provider"[\s\S]*?<section[\s\S]*?<MomentumBanner[\s\S]*?<MomentumCheckbox/,
+    'the full studio should provide Momentum icons to nested fields, banners, and checkboxes',
+  );
+  assert.match(
+    controlsSource,
+    /className="galileo-action-control-action-chip"[\s\S]*?<StaticChip[\s\S]*?label=\{summaryTargetName\}[\s\S]*?<MomentumTooltip[\s\S]*?\{summaryTargetDescription\}/,
+    'the summary action chip should disclose the action description through a Momentum tooltip',
+  );
+  assert.match(
+    controlsSource,
+    /className="galileo-action-control-condition-source"[\s\S]*?<span>Condition source<\/span>[\s\S]*?<p>Action input<\/p>/,
+    'Condition source should be concise read-only text instead of a disabled field',
+  );
+  assert.match(
+    controlsSource,
+    /className="galileo-action-control-guidance">[\s\S]*?<Icon name="open-pages"/,
+    'Agent guidance should use the Momentum open-pages icon from the Figma design',
   );
   assert.match(
     controlsSource,
     /previousDocumentOverflow[\s\S]*?document\.documentElement\.style\.overflow = ['"]hidden['"][\s\S]*?document\.body\.style\.overflow = ['"]hidden['"][\s\S]*?document\.documentElement\.style\.overflow = previousDocumentOverflow[\s\S]*?document\.body\.style\.overflow = previousBodyOverflow/,
     'the full-page editor should lock and restore document scrolling',
   );
-  assert.match(controlsSource, /<span>Action control<\/span>/);
   assert.match(
     controlsSource,
-    /<h2 id="galileo-action-control-title" className="security-ui-studio-name">\s*\{contextActionName\}\s*<\/h2>/,
-    'the workspace title should use only the action name',
+    /<h2 id="galileo-action-control-title">[\s\S]*?\{isCreatingControl \? 'Create action control' : 'Action control'\}: \{contextActionDisplayName\}[\s\S]*?<\/h2>[\s\S]*?Review how Galileo evaluates \$\{contextActionDisplayName\}/,
+    'the workspace should show the action name in the title and retain the contextual subheading',
   );
-  assert.doesNotMatch(controlsSource, /Galileo · \{contextActionName\}/);
-  assert.doesNotMatch(controlsSource, /className="security-ui-version"/);
+  assert.doesNotMatch(
+    controlsSource,
+    /aria-label="Back to actions"|className="security-ui-icon-text"/,
+    'the header should not use a back-button treatment',
+  );
+  assert.match(
+    figmaStyles,
+    /\.galileo-action-control-studio\s*\{[^}]*gap:\s*24px;[^}]*padding:\s*24px;[\s\S]*?\.galileo-action-control-studio__header\s*\{[^}]*padding:\s*24px 0 32px;[\s\S]*?\.galileo-action-control-summary,[\s\S]*?\.galileo-action-control-editor\s*\{[^}]*align-self:\s*stretch;[^}]*max-width:\s*none;[^}]*width:\s*100%;/,
+    'the header should use 24px top and 32px bottom spacing while both cards fill the workspace width',
+  );
+  assert.match(
+    figmaStyles,
+    /\.galileo-action-control-workspace\s*\{[^}]*padding:\s*0 0 40px;[\s\S]*?\.galileo-action-control-summary__flow\s*\{[^}]*min-height:\s*160px;[^}]*grid-template-columns:\s*210px 32px 228px 32px minmax\(0, 1fr\);[^}]*gap:\s*4px;/,
+    'the summary should reproduce the Figma node’s fixed stages, two Momentum-arrow slots, and flexible outcomes column',
+  );
   assert.match(
     controlsSource,
-    /className="security-ui-overlay security-ui-overlay--studio galileo-action-control-studio-overlay"[\s\S]*?className="security-ui-studio galileo-action-control-studio"[\s\S]*?className="security-ui-studio-header galileo-action-control-studio__header"[\s\S]*?<main className="galileo-action-control-workspace">/,
-    'the unified workspace should reuse the Policy Studio full-page container pattern',
+    /aria-label="Control decision flow"[\s\S]*?Evaluation point[\s\S]*?Decision[\s\S]*?Matches[\s\S]*?No match/,
+    'the summary should expose its sequence and both branches without requiring users to infer the relationship',
+  );
+  assert.doesNotMatch(
+    controlsSource,
+    /Then · Steer/,
+    'the matched outcome should use the concise Steer label',
+  );
+  assert.doesNotMatch(
+    figmaStyles,
+    /\.galileo-action-control-summary__(?:branches|branch)::(?:before|after)/,
+    'branch labels should not be crossed by decorative connector lines',
   );
   assert.match(
-    styles,
-    /\.galileo-action-control-workspace\s*\{[^}]*display:\s*flex;[^}]*flex:\s*1;[^}]*width:\s*100%;[^}]*min-height:\s*0;[^}]*overflow:\s*auto;[^}]*overscroll-behavior:\s*contain;/,
-    'the unwrapped action-control workspace should own scrolling directly',
+    figmaStyles,
+    /\.galileo-action-control-studio__header\s*\{[^}]*height:\s*64px;[^}]*min-height:\s*64px;[^}]*flex:\s*0 0 64px;[^}]*padding:\s*0;[\s\S]*?\.galileo-action-control-studio__header-copy h2\s*\{[^}]*font-size:\s*24px;[^}]*line-height:\s*32px;[\s\S]*?\.galileo-action-control-studio__close\s*\{[^}]*flex:\s*0 0 64px;[^}]*--mdc-button-prefix-icon-size:\s*32px;/,
+    'the full-page header should preserve the measured title typography and 64px close target',
   );
-  const workspaceRule = styles.match(/\.galileo-action-control-workspace\s*\{([^}]*)\}/)?.[1] ?? '';
-  assert.doesNotMatch(workspaceRule, /padding:/, 'the unwrapped workspace should not add four-sided padding');
   assert.match(
-    styles,
-    /\.galileo-action-control-workspace::\-webkit-scrollbar-thumb\s*\{[^}]*background:\s*transparent;[\s\S]*?\.galileo-action-control-workspace:hover::\-webkit-scrollbar-thumb\s*\{[^}]*scrollbar-background-secondary-normal/,
-    'the parent workspace should use the shared ghost scrollbar pattern',
+    figmaStyles,
+    /\.galileo-action-control-workspace\.is-wizard\s*\{[^}]*grid-template-rows:\s*auto minmax\(0, 1fr\) auto;[^}]*gap:\s*24px;[^}]*padding:\s*0;[^}]*overflow:\s*hidden;[\s\S]*?\.galileo-action-control-wizard__progress\s*\{[^}]*width:\s*min\(660px, 100%\);[^}]*justify-self:\s*center;[\s\S]*?\.galileo-action-control-wizard__body\s*\{[^}]*padding:\s*16px;[^}]*border-radius:\s*12px;[^}]*background:\s*var\(--galileo-card\);/,
+    'the guided editor should reproduce the measured 24px rhythm, centered 660px stepper, and glass content surface',
+  );
+  assert.match(
+    figmaStyles,
+    /\.galileo-action-control-wizard__footer\s*\{[^}]*justify-content:\s*flex-end;[^}]*padding:\s*0;[^}]*border:\s*0;[^}]*background:\s*transparent;/,
+    'the full-page footer should remain detached from the content surface and right-align its Momentum actions',
+  );
+  assert.match(
+    figmaStyles,
+    /\.galileo-action-control-condition-actions > span\s*\{[^}]*height:\s*16px;[^}]*margin-top:\s*8px;/,
+    'the condition-action divider should be vertically centered within the 32px button row',
+  );
+  assert.match(
+    figmaStyles,
+    /\.galileo-action-control-condition\s*\{[^}]*grid-template-columns:\s*48px minmax\(140px, 1fr\) auto 112px 24px;/,
+    'condition rows should trade dropdown width for a roomier numeric field',
+  );
+  assert.match(
+    figmaStyles,
+    /\.galileo-action-control-condition > \.uplift-momentum-button\s*\{[^}]*width:\s*24px;[^}]*min-width:\s*24px;[^}]*padding-inline:\s*3px !important;[^}]*box-sizing:\s*border-box;/,
+    'the Momentum delete action should stay inside its 24px condition-grid track',
+  );
+  assert.match(
+    figmaStyles,
+    /\.galileo-action-control-studio mdc-staticchip\s*\{[^}]*padding-inline:\s*8px;/,
+    'every Momentum chip should retain the specified 8px side padding despite the global reset',
+  );
+  assert.match(
+    figmaStyles,
+    /\.galileo-action-control-card--overview\.card[^}]*\{[^}]*background:\s*rgba\(0, 0, 0, 0\.4\);[^}]*backdrop-filter:\s*blur\(30px\) saturate\(120%\);[\s\S]*?\.galileo-action-control-editor\s*\{[^}]*background:\s*rgba\(0, 0, 0, 0\.4\);[^}]*backdrop-filter:\s*blur\(30px\) saturate\(120%\);/,
+    'the summary and editor should use the requested 40%-black glass surface treatment',
+  );
+  assert.match(
+    figmaStyles,
+    /\.galileo-action-control-card--gate\.card[^}]*\{[^}]*border:\s*0;[^}]*background:\s*rgba\(0, 0, 0, 0\.4\);[^}]*backdrop-filter:\s*blur\(30px\) saturate\(120%\);/,
+    'the gated-action availability card should share the borderless 40%-black glass surface',
+  );
+  assert.match(
+    figmaStyles,
+    /\.galileo-action-control-card--overview\.card[^}]*\{[^}]*border:\s*0;[\s\S]*?\.galileo-action-control-summary__branches\s*\{[^}]*border:\s*0;[^}]*background:\s*transparent;[^}]*box-shadow:\s*none;[\s\S]*?\.galileo-action-control-editor\s*\{[^}]*border:\s*0;/,
+    'the two glass surfaces and the branches group should not add wrapper borders around the Figma cards',
+  );
+  assert.match(
+    controlsSource,
+    /\{error && \([\s\S]*?\{error\}[\s\S]*?<\/div>\s*\)\}\s*<\/div>\s*\{!isCreatingControl && \(\s*<footer className="galileo-action-control-editor__footer">[\s\S]*?<UpliftMomentumButton[\s\S]*?Delete[\s\S]*?<UpliftMomentumButton[\s\S]*?Cancel[\s\S]*?<UpliftMomentumButton[\s\S]*?Save changes/,
+    'the existing-control footer should be outside the glass content card and use Momentum actions',
+  );
+  assert.match(
+    controlsSource,
+    /className="galileo-action-control-gate__relationship"[\s\S]*?<StaticChip color="default" label=\{actionNames\[gate\.sourceActionId\][\s\S]*?className="galileo-action-control-gate__view"[\s\S]*?>\s*View source control/,
+    'the gated action should keep its source-action chip and white View source control action inside the relationship card',
+  );
+  assert.match(
+    controlsSource,
+    /<h3>Available after action control intervenes<\/h3>/,
+    'the gated action title should describe the action control intervention directly',
+  );
+  assert.doesNotMatch(
+    controlsSource,
+    /confirmDiscardChanges|Discard your unsaved control changes/,
+    'Close, Escape, and internal navigation should dismiss without a discard confirmation',
+  );
+  assert.match(
+    figmaStyles,
+    /\.galileo-action-control-condition__joiner\s*\{[^}]*height:\s*32px;[^}]*align-self:\s*end;/,
+    'condition connectors should align to the visible 32px Momentum field surface',
+  );
+  assert.match(
+    figmaStyles,
+    /\.galileo-action-control-rule-preview::part\(leading\)\s*\{[^}]*padding:\s*12px 16px;/,
+    'the Momentum rule-preview banner should retain four-sided content padding',
   );
 });
 
@@ -435,12 +779,12 @@ test('the Actions table owns Galileo control status without a duplicate page ban
   );
   assert.match(
     source,
-    /className="col-galileo">Galileo<[\s\S]*?className="galileo-action-control-button/,
-    'Galileo status and its control entry point should remain available in each action row',
+    /className="col-galileo">Controls<[\s\S]*?className="galileo-action-control-button/,
+    'control status and its entry point should remain available in each action row',
   );
 });
 
-test('action control activity discloses the latest matching decision from the matched path', () => {
+test('action control activity matches the Figma card and discloses its selected state', () => {
   const source = readSource('../../pages/agent/AgentStudioLanding.tsx');
   const styles = readSource('../../products/ai-agent-studio/components.css');
 
@@ -451,38 +795,19 @@ test('action control activity discloses the latest matching decision from the ma
   );
   assert.match(
     source,
-    /Control checks[\s\S]*?Evaluated[\s\S]*?Matched[\s\S]*?Gated action unlocked/,
-    'the flow should show its evaluated total and the matched decision path',
+    /Action control activity during \$\{operationalTimeRangeLabel\.toLowerCase\(\)\}[\s\S]*?Evaluated[\s\S]*?agent-studio-action-control-flow__divider[\s\S]*?Matched/,
+    'the visible hierarchy should identify the time-scoped activity before the evaluated and matched totals',
+  );
+  assert.doesNotMatch(source, />\s*Control checks\s*</, 'the evaluated row should not repeat a redundant eyebrow label');
+  assert.match(
+    source,
+    /actionControlSpotlightActionName[\s\S]*?<StaticChip[\s\S]*?color="lime"[\s\S]*?iconName="automation-bold"[\s\S]*?label="Steered"[\s\S]*?<img src=\{actionControlArrow\} alt="" \/>[\s\S]*?actionControlSpotlightUnlockedName[\s\S]*?<StaticChip[\s\S]*?color="cobalt"[\s\S]*?label="Unlocked"/,
+    'the matched path should use Momentum Lime and Cobalt chips with the two concrete action names',
   );
   assert.match(
     source,
-    /actionControlMatchedOutcomes\.map\(outcome => \{[\s\S]*?outcome\.id === ['"]steered['"][\s\S]*?className="agent-studio-action-control-flow__outcome-primary"[\s\S]*?\{outcome\.label\}[\s\S]*?className="agent-studio-action-control-flow__outcome-connector"[\s\S]*?className="agent-studio-action-control-flow__outcome-detail"[\s\S]*?Gated action unlocked/,
-    'a gated-action unlock should appear below Steered with a vertical connector',
-  );
-  assert.match(
-    styles,
-    /\.agent-studio-action-control-flow__outcome-connector\s*\{[^}]*width:\s*1px;[^}]*height:\s*14px;[^}]*background:[^}]*\}[\s\S]*?\.agent-studio-action-control-flow__outcome-connector::after\s*\{[^}]*border-right:[^}]*border-bottom:[^}]*rotate\(45deg\);/,
-    'the vertical connector should keep the directional cue between the two outcome labels',
-  );
-  assert.doesNotMatch(
-    source,
-    /className="agent-studio-action-control-flow__outcome-primary">[\s\S]{0,160}<strong>\{outcome\.value\}<\/strong>/,
-    'the matched outcome should not repeat a separate count',
-  );
-  assert.doesNotMatch(
-    source,
-    /<small>\{(?:actionControlFlow\.matchRate|actionControlNoMatchRate)\}%<\/small>|<span>Original action ran<\/span>/,
-    'the compact decision flow should not repeat percentages or render an unmatched outcome card',
-  );
-  assert.doesNotMatch(
-    source,
-    /agent-studio-action-control-flow__label">\s*<i|agent-studio-action-control-flow__outcome::before/,
-    'the compact flow labels should not render decorative bullet points',
-  );
-  assert.match(
-    source,
-    /agent-studio-action-control-flow__metric[\s\S]*?actionControlFlow\.matched[\s\S]*?agent-studio-action-control-flow__label[\s\S]*?Matched/,
-    'the matched decision card should present its large count before its supporting label',
+    /<IconProvider[\s\S]*?iconSet="custom-icons"[\s\S]*?url=\{publicAssetUrl\('icons'\)[\s\S]*?<StaticChip[\s\S]*?iconName="automation-bold"/,
+    'the Momentum status chips should resolve their icon through the local Momentum icon provider',
   );
   assert.match(
     source,
@@ -506,73 +831,48 @@ test('action control activity discloses the latest matching decision from the ma
   );
   assert.match(
     styles,
-    /\.agent-studio-action-control-flow__rows\s*\{[^}]*grid-template-columns:\s*minmax\(0, 1fr\);[^}]*align-items:\s*start;[^}]*justify-items:\s*center;/,
-    'the matched path should occupy a single centered column',
+    /\/\* Figma node 628:11105[\s\S]*?\.agent-studio-action-control-flow__summary\s*\{[^}]*display:\s*flex;[^}]*border:\s*0;[^}]*background:\s*transparent;/,
+    'the evaluated total should be an unboxed full-width row from the Figma card',
   );
   assert.match(
     styles,
-    /\.agent-studio-action-control-flow__matched-trigger\s*\{[^}]*display:\s*grid;[^}]*width:\s*50%;[^}]*min-width:\s*116px;/,
-    'the centered matched path should retain a compact card width',
+    /\.agent-studio-action-control-flow__summary-copy strong\s*\{[^}]*font-size:\s*var\(--font-size-body-large\);[^}]*line-height:\s*var\(--font-lineheight-body-large\);[\s\S]*?\.agent-studio-action-control-flow__summary-value\s*\{[^}]*font-size:\s*var\(--font-size-heading-midsize\);[^}]*line-height:\s*var\(--font-lineheight-heading-midsize\);/,
+    'Evaluated and its count should use adjacent type-scale steps instead of competing display sizes',
   );
   assert.match(
     styles,
-    /\.agent-studio-action-control-flow__matched-trigger\s*\{[^}]*display:\s*grid;[^}]*grid-template-columns:\s*minmax\(0, 1fr\);[^}]*grid-template-rows:\s*auto 20px auto;/,
-    'the matched path should stack its decision and outcome cards vertically',
+    /\.agent-studio-action-control-flow__matched-heading strong:first-child\s*\{[^}]*font-size:\s*var\(--font-size-body-large\);[^}]*line-height:\s*var\(--font-lineheight-body-large\);[\s\S]*?\.agent-studio-action-control-flow__matched-heading strong:last-child\s*\{[^}]*font-size:\s*var\(--font-size-heading-midsize\);[^}]*line-height:\s*var\(--font-lineheight-heading-midsize\);/,
+    'Matched and its count should use the same type scale as Evaluated and its count',
+  );
+  assert.match(
+    styles,
+    /\.agent-studio-action-control-flow__matched-heading\s*\{[^}]*display:\s*flex;[^}]*justify-content:\s*space-between;[\s\S]*?\.agent-studio-action-control-flow__action-item\s*\{[^}]*min-height:\s*40px;[^}]*justify-content:\s*space-between;[^}]*padding:\s*var\(--spacing-xx-small\)\s*var\(--spacing-medium\)\s*var\(--spacing-xx-small\)\s*var\(--spacing-x-small\);[^}]*background:\s*var\(--mds-color-theme-background-glass-normal, var\(--bg-glass\)\);/,
+    'Matched and each action row should use the full-width Figma layout with clear trailing chip space',
+  );
+  assert.match(
+    styles,
+    /\.agent-studio-action-control-flow__matched-trigger\.is-selected\s*\{[^}]*padding:\s*0;[^}]*background:\s*var\(--mds-color-theme-background-glass-normal, var\(--bg-glass\)\);[^}]*box-shadow:\s*none;/,
+    'the selected state should add only the darker neutral fill without shifting its content',
+  );
+  assert.doesNotMatch(
+    styles,
+    /\.agent-studio-action-control-flow__matched-trigger:hover[^}]*\{[^}]*padding(?:-top)?:/,
+    'hovering the matched group should not shift the card content',
+  );
+  assert.match(
+    styles,
+    /\.agent-studio-action-control-flow__outcome-connector img\s*\{[^}]*width:\s*16px;[^}]*height:\s*7px;[^}]*transform:\s*rotate\(90deg\);/,
+    'the connector should keep the original arrow aspect ratio when rotated vertically',
+  );
+  assert.match(
+    styles,
+    /\.agent-studio-action-control-flow__chip\s*\{[^}]*padding-inline:\s*var\(--spacing-xx-small\);/,
+    'both Momentum chips should use the requested 8px side padding',
   );
   assert.doesNotMatch(
     source,
-    /agent-studio-action-control-flow__(?:row-divider|row is-unmatched)|No match/,
-    'the compact flow should not render the removed unmatched column or its previous divider',
-  );
-  assert.doesNotMatch(
-    source,
-    /agent-studio-action-control-flow__column-headings|<span>Decision<\/span>|<span>Outcome<\/span>/,
-    'the compact flow should not repeat Decision and Outcome headings above the cards',
-  );
-  assert.match(
-    styles,
-    /\.agent-studio-action-control-flow__summary\s*\{[^}]*border:\s*var\(--border-width-small\) solid var\(--border-color\);[^}]*background:\s*color-mix\(in srgb, var\(--bg-primary\) 74%, transparent\);/,
-    'the evaluated summary should use the neutral Uplift card surface instead of an accent border',
-  );
-  assert.doesNotMatch(
-    styles,
-    /\.agent-studio-action-control-flow__summary-icon\s*\{[^}]*(?:background|border-radius):/,
-    'the control-check icon should render directly without a background tile',
-  );
-  assert.match(
-    styles,
-    /\.agent-studio-action-control-flow__line\s*\{[^}]*width:\s*1px;[^}]*height:\s*20px;[^}]*justify-self:\s*center;[^}]*background:\s*color-mix\(in srgb, var\(--text-secondary\) 58%, transparent\);/,
-    'the matched decision should connect vertically to its outcome with a neutral line',
-  );
-  assert.match(
-    styles,
-    /\.agent-studio-action-control-flow__outcome\.is-unlocked\s*\{[^}]*align-items:\s*center;[^}]*text-align:\s*center;[^}]*\}[\s\S]*?\.agent-studio-action-control-flow__outcome\.is-unlocked\s+\.agent-studio-action-control-flow__outcome-primary\s*\{[^}]*justify-content:\s*center;[^}]*\}[\s\S]*?\.agent-studio-action-control-flow__outcome\.is-unlocked\s+\.agent-studio-action-control-flow__outcome-connector\s*\{[^}]*margin-left:\s*0;/,
-    'the steered outcome content and its internal connector should be centered',
-  );
-  assert.doesNotMatch(
-    styles,
-    /\.agent-studio-action-control-flow__row\.is-matched \.agent-studio-action-control-flow__(?:line(?:::after)?|decision|outcome:first-child)\s*\{|\.agent-studio-action-control-flow__outcome\.is-unlocked\s*\{[^}]*(?:border-color|background):/,
-    'the matched path should not add an arrowhead, blue connector, accent border, or accent card background',
-  );
-  assert.match(
-    styles,
-    /\.agent-studio-action-control-flow__matched-trigger:hover:not\(:disabled\)\s*\{[^}]*background:\s*color-mix\(in srgb, var\(--bg-secondary\) 42%, transparent\);[^}]*box-shadow:\s*0 0 0 var\(--border-width-small\) var\(--border-color\);[^}]*\}[\s\S]*?\.agent-studio-action-control-flow__matched-trigger\.is-selected\s*\{[^}]*background:\s*color-mix\(in srgb, var\(--bg-secondary\) 58%, transparent\);[^}]*box-shadow:[^}]*var\(--border-color\),[^}]*var\(--elevation-1\);/,
-    'the disclosure should use neutral Uplift surfaces for hover and expanded states instead of an accent border',
-  );
-  assert.match(
-    styles,
-    /\.agent-studio-action-control-flow__matched-trigger\.is-selected\s+\.agent-studio-action-control-flow__decision,\s*\.agent-studio-action-control-flow__matched-trigger\.is-selected\s+\.agent-studio-action-control-flow__outcome\s*\{[^}]*background:\s*color-mix\(in srgb, var\(--bg-secondary\) 58%, var\(--bg-primary\)\);/,
-    'the expanded matched decision and outcome cards should receive a darker neutral fill',
-  );
-  assert.match(
-    styles,
-    /\.agent-studio-action-control-flow__decision\s*\{[^}]*border:\s*var\(--border-width-small\) solid color-mix\(in srgb, var\(--border-color\) 74%, transparent\);[\s\S]*?\.agent-studio-action-control-flow__outcome\s*\{[^}]*border:\s*var\(--border-width-small\) solid color-mix\(in srgb, var\(--border-color\) 74%, transparent\);/,
-    'both matched-path cards should retain the same neutral outline as the surrounding cards',
-  );
-  assert.match(
-    styles,
-    /\.agent-studio-action-control-flow__decision\s*\{[^}]*flex-direction:\s*column;[^}]*align-items:\s*flex-start;[^}]*justify-content:\s*center;[^}]*gap:\s*var\(--spacing-micro\);[\s\S]*?\.agent-studio-action-control-flow__label\s*\{[^}]*color:\s*var\(--text-secondary\);[^}]*font-weight:\s*var\(--font-weight-regular\);[\s\S]*?\.agent-studio-action-control-flow__metric\s*\{[^}]*align-items:\s*flex-start;/,
-    'decision cards should use the summary-card hierarchy: count above a muted left-aligned label',
+    /agent-studio-action-control-flow__(?:summary-icon|decision|column-headings|row-divider)|Original action ran|No match|Gated action unlocked/,
+    'the replacement should remove the previous icon tile, decision boxes, and legacy outcome labels',
   );
   assert.doesNotMatch(
     source,
@@ -637,6 +937,11 @@ test('agent navigation uses the floating Uplift rail with collapse and expand ha
     styles,
     /\.uplift-agent-panel-handle\s*\{[^}]*width:\s*20px;[^}]*height:\s*40px;/,
     'the collapsed handle should retain the Uplift dimensions',
+  );
+  assert.match(
+    styles,
+    /\.sidebar-agent-back-link:hover\s*\{[^}]*background:[^;}]+;[^}]*text-decoration:\s*none;/,
+    'the back link should use a subtle fill instead of an underline on hover',
   );
   assert.match(
     layoutSource,
@@ -736,7 +1041,26 @@ test('operational status presents its metrics as a compact table with a dashboar
     /onClick=\{\(\) => navigate\(observabilityPath\)\}[\s\S]*?View observability dashboard/,
     'the detailed dashboard should remain one explicit action away',
   );
+  assert.match(
+    studioSource,
+    /label: 'Control evaluations', value: '2'[\s\S]*?label: 'Steer outcomes', value: '1'/,
+    'the operational table should include the two trace-derived action control metrics',
+  );
+  assert.doesNotMatch(
+    studioSource,
+    /label: 'Fulfilment latency P95'/,
+    'the operational table should no longer include fulfilment latency P95',
+  );
   assert.doesNotMatch(studioSource, /<KPICard|<KPIChart/);
+});
+
+test('EAGLE GREEN pins action control metrics instead of fulfilment latency', () => {
+  const dashboardSource = readSource('../../features/clus-kpi-dashboard/ClusKpiDashboardRoot.tsx');
+  const defaultPins = dashboardSource.match(/const DEFAULT_PINNED_CARD_IDS = \[([\s\S]*?)\];/)?.[1] ?? '';
+
+  assert.match(defaultPins, /'ac-control-evaluations'/);
+  assert.match(defaultPins, /'ac-steer-outcomes'/);
+  assert.doesNotMatch(defaultPins, /'ap-fulfilment-latency-p95'/);
 });
 
 test('selected guardrail banner opens a concrete session detail', () => {
@@ -1479,6 +1803,7 @@ test('create versus edit mode keeps both primary configuration actions synchroni
 });
 
 test('AI agent list cards keep a visible 16px grid gap', () => {
+  const tableSource = readSource('../eva/EvaAgentsTable.tsx');
   const styles = readSource('../../components.css');
   const spacingTokens = readSource('../../tokens/spacing-tokens.css');
   const gridRuleStart = styles.indexOf('.ai-agents-grid {');
@@ -1494,6 +1819,21 @@ test('AI agent list cards keep a visible 16px grid gap', () => {
     styles.slice(cardRuleStart, cardRuleEnd),
     /max-width:/,
     'cards must fill their grid tracks so extra track width does not inflate the visible gap',
+  );
+  assert.match(
+    styles,
+    /\.secondary-content\.ai-agents-dashboard \.card\.ai-agents-agent-card--clickable:hover\s*\{[^}]*background:\s*var\(--mds-color-theme-background-primary-hover, var\(--button-secondary-hover\)\);/,
+    'agent cards should use a subtle full-card fill change on hover',
+  );
+  assert.match(
+    tableSource,
+    /className="ai-agents-agent-footer"[\s\S]*?aria-label=\{`Preview \$\{tile\.name\}`\}[\s\S]*?onClick=\{\(event\) => \{[\s\S]*?handleAgentClick\(tile\);[\s\S]*?>\s*Preview\s*<\/Button>/,
+    'Preview should open the same agent overview as the full-card hit area',
+  );
+  assert.doesNotMatch(
+    styles,
+    /\.ai-agents-agent-name-button:hover\s*\{[^}]*text-decoration:\s*underline;/,
+    'agent card titles should not underline independently on hover',
   );
 });
 

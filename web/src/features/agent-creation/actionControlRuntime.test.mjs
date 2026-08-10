@@ -15,6 +15,11 @@ before(async () => {
     appType: 'custom',
     logLevel: 'silent',
     server: { middlewareMode: true },
+    resolve: {
+      alias: {
+        '@momentum-design/components/react': fileURLToPath(new URL('./momentumRuntimeStub.mjs', import.meta.url)),
+      },
+    },
   });
   controls = await server.ssrLoadModule('/src/pages/agent/ActionControls.tsx');
   demo = await server.ssrLoadModule('/src/demo/ciscoLiveDemo.ts');
@@ -39,6 +44,7 @@ test('canonical Galileo state normalizes model fields and fills only missing see
   const control = defaults.controlsByActionId[controls.GALILEO_ACTION_IDS.checkAvailability][0];
   assert.equal(control.version, 1);
   assert.equal(control.timing, 'post_tool');
+  assert.equal(control.matchMode, 'or');
   assert.ok(control.conditions.every(condition => condition.kind === 'action_input'));
 
   const missingKeys = controls.readGalileoActionControlState({
@@ -59,9 +65,20 @@ test('canonical Galileo state normalizes model fields and fills only missing see
   });
   assert.deepEqual(explicitOverrides.controlsByActionId[controls.GALILEO_ACTION_IDS.checkAvailability], []);
   assert.equal(explicitOverrides.gatesByActionId[controls.GALILEO_ACTION_IDS.transferVipConcierge].enabled, false);
+
+  const legacyAll = controls.readGalileoActionControlState({
+    controlsByActionId: {
+      [controls.GALILEO_ACTION_IDS.checkAvailability]: [{ ...control, matchMode: 'all' }],
+    },
+  });
+  assert.equal(
+    legacyAll.controlsByActionId[controls.GALILEO_ACTION_IDS.checkAvailability][0].matchMode,
+    'and',
+    'legacy all controls should normalize to the canonical AND state',
+  );
 });
 
-test('post-tool ANY evaluation uses strict thresholds and unlocks only after a matching Steer', () => {
+test('post-tool OR evaluation uses strict thresholds and unlocks only after a matching Steer', () => {
   const state = controls.createDefaultGalileoActionControlState();
   const snapshot = structuredClone(state);
 
@@ -113,6 +130,37 @@ test('post-tool ANY evaluation uses strict thresholds and unlocks only after a m
   assert.deepEqual(wrongPhase.decisions, []);
   assert.deepEqual(wrongPhase.unlockedActionIds, []);
   assert.deepEqual(state, snapshot, 'evaluation must not mutate persisted configuration');
+});
+
+test('OR and AND connector states preserve their distinct evaluation contracts', () => {
+  const state = controls.createDefaultGalileoActionControlState();
+  const control = state.controlsByActionId[controls.GALILEO_ACTION_IDS.checkAvailability][0];
+
+  control.matchMode = 'or';
+  const orResult = controls.evaluateGalileoActionInvocation({
+    state,
+    actionId: controls.GALILEO_ACTION_IDS.checkAvailability,
+    inputs: { party_size: 1000, requested_bays: 1 },
+    timing: 'post_tool',
+  });
+  assert.equal(orResult.decisions[0].matched, true, 'OR should match when either condition matches');
+
+  control.matchMode = 'and';
+  const partialAndResult = controls.evaluateGalileoActionInvocation({
+    state,
+    actionId: controls.GALILEO_ACTION_IDS.checkAvailability,
+    inputs: { party_size: 1000, requested_bays: 1 },
+    timing: 'post_tool',
+  });
+  assert.equal(partialAndResult.decisions[0].matched, false, 'AND should reject a partial match');
+
+  const completeAndResult = controls.evaluateGalileoActionInvocation({
+    state,
+    actionId: controls.GALILEO_ACTION_IDS.checkAvailability,
+    inputs: { party_size: 1000, requested_bays: 21 },
+    timing: 'post_tool',
+  });
+  assert.equal(completeAndResult.decisions[0].matched, true, 'AND should match when every condition matches');
 });
 
 test('gates fail closed and accept only satisfied active Steer prerequisites', () => {
@@ -195,6 +243,11 @@ test('recommended controls are added for review without replacing existing contr
     'adding a recommendation must not replace the active VIP transfer gate',
   );
   assert.equal(next.controlsByActionId[controls.GALILEO_ACTION_IDS.sendPayment][0].status, 'needs_review');
+  assert.equal(
+    next.controlsByActionId[controls.GALILEO_ACTION_IDS.sendPayment][0].matchMode,
+    'or',
+    'legacy any controls should normalize to the canonical OR state',
+  );
   assert.equal(state.controlsByActionId[controls.GALILEO_ACTION_IDS.sendPayment], undefined);
 
   const duplicate = controls.addRecommendedGalileoControl(next, recommendation);

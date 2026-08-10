@@ -1,4 +1,5 @@
 import {
+  Fragment,
   type KeyboardEvent as ReactKeyboardEvent,
   useEffect,
   useMemo,
@@ -6,14 +7,31 @@ import {
   useState,
 } from 'react';
 import { createPortal } from 'react-dom';
+import {
+  Banner as MomentumBanner,
+  Checkbox as MomentumCheckbox,
+  IconProvider,
+  Option as MomentumOption,
+  Radio as MomentumRadio,
+  RadioGroup as MomentumRadioGroup,
+  Selectlistbox as MomentumSelectlistbox,
+  StaticChip,
+  Stepper as MomentumStepper,
+  StepperConnector as MomentumStepperConnector,
+  StepperItem as MomentumStepperItem,
+  Tooltip as MomentumTooltip,
+} from '@momentum-design/components/react';
+import { publicAssetUrl } from '../../app/publicAsset';
 import Badge from '../../components/shared/Badge';
 import Button from '../../components/shared/Button';
 import { Card, CardBody } from '../../components/shared/Card';
-import { Checkbox } from '../../components/shared/Checkbox';
-import Dropdown from '../../components/shared/Dropdown';
-import { Input, Textarea } from '../../components/shared/FormInput';
 import { Modal, ModalBody, ModalFooter, ModalHeader } from '../../components/shared/Modal';
-import { Radio, RadioGroup } from '../../components/shared/Radio';
+import {
+  UpliftMomentumInput,
+  UpliftMomentumSelect,
+  UpliftMomentumTextarea,
+} from '../../components/shared/UpliftMomentumField';
+import { UpliftMomentumButton } from '../../components/shared/UpliftMomentumButton';
 import { Icon } from '../../icons';
 
 export const GALILEO_ACTION_IDS = {
@@ -37,8 +55,26 @@ const LEGACY_VIP_TEAM_ACTION_NAMES = new Set([
 export type GalileoActionControlTiming = 'pre_tool' | 'post_tool';
 export type GalileoActionControlBehavior = 'observe' | 'steer' | 'deny';
 export type GalileoActionControlStatus = 'draft' | 'active' | 'disabled' | 'needs_review';
-export type GalileoActionControlMatchMode = 'all' | 'any';
+export type GalileoActionControlMatchMode = 'and' | 'or';
 export type GalileoActionControlField = 'party_size' | 'requested_bays';
+
+type LegacyGalileoActionControlMatchMode = 'all' | 'any';
+type StoredGalileoActionControlMatchMode = GalileoActionControlMatchMode | LegacyGalileoActionControlMatchMode;
+
+const MATCH_MODE_CYCLE: GalileoActionControlMatchMode[] = ['or', 'and'];
+const MATCH_MODE_CONNECTOR_LABELS: Record<GalileoActionControlMatchMode, string> = {
+  or: 'OR',
+  and: 'AND',
+};
+
+function normalizeMatchMode(matchMode: StoredGalileoActionControlMatchMode): GalileoActionControlMatchMode {
+  return matchMode === 'all' || matchMode === 'and' ? 'and' : 'or';
+}
+
+function getNextMatchMode(matchMode: StoredGalileoActionControlMatchMode): GalileoActionControlMatchMode {
+  const currentIndex = MATCH_MODE_CYCLE.indexOf(normalizeMatchMode(matchMode));
+  return MATCH_MODE_CYCLE[(currentIndex + 1) % MATCH_MODE_CYCLE.length];
+}
 
 export interface GalileoActionControlCondition {
   id: string;
@@ -65,6 +101,10 @@ export interface GalileoActionControl {
   recommendationReason?: string;
   version: number;
 }
+
+type StoredGalileoActionControl = Omit<GalileoActionControl, 'matchMode'> & {
+  matchMode: StoredGalileoActionControlMatchMode;
+};
 
 export interface GalileoActionGate {
   actionId: string;
@@ -129,6 +169,7 @@ export interface GalileoActionControlEvaluationRequest {
 export interface GalileoActionOption {
   id: string;
   name: string;
+  description?: string;
 }
 
 type GalileoStatusTone = 'empty' | 'active' | 'draft' | 'review' | 'gated' | 'disabled';
@@ -154,6 +195,27 @@ const TIMING_LABELS: Record<GalileoActionControlTiming, string> = {
   post_tool: 'After the action returns',
 };
 
+const GALILEO_CONTROL_WIZARD_STEPS = [
+  {
+    id: 'details',
+    label: 'Details',
+    title: 'Define the control',
+    description: 'Give the control a clear purpose and choose when Galileo evaluates it.',
+  },
+  {
+    id: 'conditions',
+    label: 'Conditions',
+    title: 'Set the conditions',
+    description: 'Choose the action inputs that determine when this control matches.',
+  },
+  {
+    id: 'behavior',
+    label: 'Behavior',
+    title: 'Choose what happens',
+    description: 'Define how Galileo responds when the conditions match.',
+  },
+] as const;
+
 const SEEDED_LARGE_EVENT_CONTROL: GalileoActionControl = {
   id: LARGE_EVENT_CONTROL_ID,
   actionId: GALILEO_ACTION_IDS.checkAvailability,
@@ -162,7 +224,7 @@ const SEEDED_LARGE_EVENT_CONTROL: GalileoActionControl = {
   status: 'active',
   timing: 'post_tool',
   behavior: 'steer',
-  matchMode: 'any',
+  matchMode: 'or',
   conditions: [
     {
       id: 'large-event-party-size',
@@ -199,10 +261,11 @@ function isRecord(value: unknown): value is Record<string, unknown> {
   return Boolean(value) && typeof value === 'object' && !Array.isArray(value);
 }
 
-function cloneControl(control: GalileoActionControl): GalileoActionControl {
+function cloneControl(control: StoredGalileoActionControl): GalileoActionControl {
   const shouldRefreshSeededCopy = control.id === LARGE_EVENT_CONTROL_ID;
   return {
     ...control,
+    matchMode: normalizeMatchMode(control.matchMode),
     name: shouldRefreshSeededCopy && control.name === 'Large event approval routing'
       ? LARGE_EVENT_CONTROL_NAME
       : control.name,
@@ -279,7 +342,7 @@ function isCondition(value: unknown): value is GalileoActionControlCondition {
   );
 }
 
-function isControl(value: unknown): value is GalileoActionControl {
+function isControl(value: unknown): value is StoredGalileoActionControl {
   if (!isRecord(value)) return false;
   return (
     typeof value.id === 'string'
@@ -289,7 +352,7 @@ function isControl(value: unknown): value is GalileoActionControl {
     && ['draft', 'active', 'disabled', 'needs_review'].includes(String(value.status))
     && ['pre_tool', 'post_tool'].includes(String(value.timing))
     && ['observe', 'steer', 'deny'].includes(String(value.behavior))
-    && ['all', 'any'].includes(String(value.matchMode))
+    && ['and', 'or', 'all', 'any'].includes(String(value.matchMode))
     && Array.isArray(value.conditions)
     && value.conditions.every(isCondition)
     && typeof value.guidance === 'string'
@@ -442,7 +505,7 @@ export function evaluateGalileoActionInvocation({
   const evaluated = controls.map(control => {
     const evidence = control.conditions.map(condition => evaluateCondition(condition, inputs));
     const matched = evidence.length > 0 && (
-      control.matchMode === 'all'
+      normalizeMatchMode(control.matchMode) === 'and'
         ? evidence.every(item => item.matched)
         : evidence.some(item => item.matched)
     );
@@ -560,7 +623,7 @@ export function getGalileoActionStatus(
 
 export function getControlExpressionPreview(control: GalileoActionControl): string {
   if (control.conditions.length === 0) return 'No conditions added';
-  const joiner = control.matchMode === 'all' ? ' and ' : ' or ';
+  const joiner = normalizeMatchMode(control.matchMode) === 'and' ? ' and ' : ' or ';
   return control.conditions
     .map(condition => `${FIELD_LABELS[condition.field]} is greater than ${condition.value}`)
     .join(joiner);
@@ -687,7 +750,7 @@ function buildRecommendedGalileoControls(
       confidence: 97,
       timing: 'post_tool',
       recommendedBehavior: 'steer',
-      matchMode: 'any',
+      matchMode: 'or',
       conditions: buildLargeEventConditions('large-event-review'),
       guidance: 'Tell the caller that availability was checked and the request needs VIP-team review. Transfer the caller, availability result, and reservation context to the VIP team.',
       steerToActionId: GALILEO_ACTION_IDS.transferVipConcierge,
@@ -708,7 +771,7 @@ function buildRecommendedGalileoControls(
       confidence: 91,
       timing: 'pre_tool',
       recommendedBehavior: 'observe',
-      matchMode: 'any',
+      matchMode: 'or',
       conditions: buildLargeEventConditions('large-event-payment'),
       guidance: 'Record that a payment link was requested for a large event. Do not infer VIP approval or payment status from this control alone.',
       steerToActionId: GALILEO_ACTION_IDS.transferVipConcierge,
@@ -1056,7 +1119,7 @@ function createBlankControl(actionId: string): GalileoActionControl {
     status: 'draft',
     timing: 'pre_tool',
     behavior: 'steer',
-    matchMode: 'any',
+    matchMode: 'or',
     conditions: [
       {
         id: `condition-${stamp}`,
@@ -1071,13 +1134,6 @@ function createBlankControl(actionId: string): GalileoActionControl {
     source: 'manual',
     version: 1,
   };
-}
-
-function statusBadgeVariant(status: GalileoActionControlStatus): 'success' | 'warning' | 'info' | 'default' {
-  if (status === 'active') return 'success';
-  if (status === 'needs_review') return 'warning';
-  if (status === 'draft') return 'info';
-  return 'default';
 }
 
 interface ActionControlManagerDialogProps {
@@ -1097,9 +1153,17 @@ export function ActionControlManagerDialog({
 }: ActionControlManagerDialogProps) {
   const [contextActionId, setContextActionId] = useState(actionId);
   const initialControl = state.controlsByActionId[actionId]?.[0] ?? null;
+  const shouldStartCreation = !initialControl && !state.gatesByActionId[actionId];
   const [draft, setDraft] = useState<GalileoActionControl | null>(
-    initialControl ? cloneControl(initialControl) : null,
+    initialControl
+      ? cloneControl(initialControl)
+      : shouldStartCreation
+        ? createBlankControl(actionId)
+        : null,
   );
+  const [isEditing, setIsEditing] = useState(shouldStartCreation);
+  const [wizardStep, setWizardStep] = useState(0);
+  const [advancedConditionOpen, setAdvancedConditionOpen] = useState(false);
   const [gateInterventionAction, setGateInterventionAction] = useState(() => Boolean(
     initialControl?.steerToActionId
     && state.gatesByActionId[initialControl.steerToActionId]?.controlId === initialControl.id
@@ -1107,11 +1171,20 @@ export function ActionControlManagerDialog({
   ));
   const [error, setError] = useState('');
   const studioRef = useRef<HTMLElement>(null);
+  const wizardHeadingRef = useRef<HTMLHeadingElement>(null);
 
   useEffect(() => {
     const nextControl = state.controlsByActionId[actionId]?.[0] ?? null;
+    const startCreation = !nextControl && !state.gatesByActionId[actionId];
     setContextActionId(actionId);
-    setDraft(nextControl ? cloneControl(nextControl) : null);
+    setDraft(nextControl
+      ? cloneControl(nextControl)
+      : startCreation
+        ? createBlankControl(actionId)
+        : null);
+    setIsEditing(startCreation);
+    setWizardStep(0);
+    setAdvancedConditionOpen(false);
     setGateInterventionAction(Boolean(
       nextControl?.steerToActionId
       && state.gatesByActionId[nextControl.steerToActionId]?.controlId === nextControl.id
@@ -1119,6 +1192,12 @@ export function ActionControlManagerDialog({
     ));
     setError('');
   }, [actionId]);
+
+  useEffect(() => {
+    if (!isEditing) return undefined;
+    const frame = window.requestAnimationFrame(() => wizardHeadingRef.current?.focus());
+    return () => window.cancelAnimationFrame(frame);
+  }, [isEditing, wizardStep]);
 
   useEffect(() => {
     const previouslyFocused = document.activeElement instanceof HTMLElement
@@ -1129,7 +1208,7 @@ export function ActionControlManagerDialog({
     document.documentElement.style.overflow = 'hidden';
     document.body.style.overflow = 'hidden';
     const frame = window.requestAnimationFrame(() => {
-      studioRef.current?.querySelector<HTMLElement>('button:not([disabled])')?.focus();
+      studioRef.current?.focus();
     });
     return () => {
       window.cancelAnimationFrame(frame);
@@ -1166,6 +1245,10 @@ export function ActionControlManagerDialog({
     () => Object.fromEntries(actions.map(action => [action.id, action.name])),
     [actions],
   );
+  const actionDescriptions = useMemo(
+    () => Object.fromEntries(actions.map(action => [action.id, action.description ?? ''])),
+    [actions],
+  );
   const contextActionName = actionNames[contextActionId] ?? 'Action';
   const controls = state.controlsByActionId[contextActionId] ?? [];
   const control = controls[0] ?? null;
@@ -1173,32 +1256,16 @@ export function ActionControlManagerDialog({
   const gateSourceControl = gate
     ? state.controlsByActionId[gate.sourceActionId]?.find(item => item.id === gate.controlId) ?? null
     : null;
-  const persistedGateInterventionAction = Boolean(
-    control?.steerToActionId
-    && state.gatesByActionId[control.steerToActionId]?.controlId === control.id
-    && state.gatesByActionId[control.steerToActionId]?.enabled,
-  );
-  const hasUnsavedChanges = Boolean(draft && (
-    !control
-    || JSON.stringify(draft) !== JSON.stringify(cloneControl(control))
-    || gateInterventionAction !== persistedGateInterventionAction
-  ));
-  const confirmDiscardChanges = () => (
-    !hasUnsavedChanges
-    || window.confirm('Discard your unsaved control changes?')
-  );
-  const requestClose = () => {
-    if (confirmDiscardChanges()) onClose();
-  };
+  const requestClose = () => onClose();
 
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
       if (event.key !== 'Escape') return;
-      if (!hasUnsavedChanges || window.confirm('Discard your unsaved control changes?')) onClose();
+      onClose();
     };
     document.addEventListener('keydown', handleKeyDown);
     return () => document.removeEventListener('keydown', handleKeyDown);
-  }, [hasUnsavedChanges, onClose]);
+  }, [onClose]);
 
   const beginEdit = (nextControl: GalileoActionControl) => {
     const editableControl = cloneControl(nextControl);
@@ -1208,6 +1275,25 @@ export function ActionControlManagerDialog({
       && state.gatesByActionId[editableControl.steerToActionId]?.controlId === editableControl.id
       && state.gatesByActionId[editableControl.steerToActionId]?.enabled,
     ));
+    setWizardStep(0);
+    setAdvancedConditionOpen(false);
+    setIsEditing(true);
+    setError('');
+  };
+
+  const cancelEdit = () => {
+    if (control) {
+      const persistedControl = cloneControl(control);
+      setDraft(persistedControl);
+      setGateInterventionAction(Boolean(
+        persistedControl.steerToActionId
+        && state.gatesByActionId[persistedControl.steerToActionId]?.controlId === persistedControl.id
+        && state.gatesByActionId[persistedControl.steerToActionId]?.enabled,
+      ));
+    }
+    setIsEditing(false);
+    setWizardStep(0);
+    setAdvancedConditionOpen(false);
     setError('');
   };
 
@@ -1270,6 +1356,57 @@ export function ActionControlManagerDialog({
 
     onChange(next);
     setDraft(savedControl);
+    setIsEditing(false);
+    setWizardStep(0);
+    setAdvancedConditionOpen(false);
+    setError('');
+  };
+
+  const deleteControl = () => {
+    if (!control) return;
+    if (!window.confirm(`Delete ${control.name}? This action cannot be undone.`)) return;
+
+    const next = cloneState(state);
+    const remainingControls = (next.controlsByActionId[contextActionId] ?? [])
+      .filter(item => item.id !== control.id);
+    if (remainingControls.length > 0) {
+      next.controlsByActionId[contextActionId] = remainingControls;
+    } else {
+      delete next.controlsByActionId[contextActionId];
+    }
+    Object.entries(next.gatesByActionId).forEach(([targetActionId, existingGate]) => {
+      if (
+        existingGate.controlId === control.id
+        || existingGate.prerequisiteControlIds.includes(control.id)
+      ) {
+        delete next.gatesByActionId[targetActionId];
+      }
+    });
+
+    onChange(next);
+    onClose();
+  };
+
+  const advanceWizard = () => {
+    if (!draft) return;
+    if (wizardStep === 0 && !draft.name.trim()) {
+      setError('Give this control a clear name before continuing.');
+      return;
+    }
+    if (
+      wizardStep === 1
+      && (draft.conditions.length === 0 || draft.conditions.some(condition => condition.value <= 0))
+    ) {
+      setError('Add at least one condition with a value greater than zero before continuing.');
+      return;
+    }
+    setError('');
+    setWizardStep(current => Math.min(current + 1, GALILEO_CONTROL_WIZARD_STEPS.length - 1));
+  };
+
+  const returnToWizardStep = (nextStep: number) => {
+    setError('');
+    setWizardStep(Math.max(0, Math.min(nextStep, wizardStep)));
   };
 
   const updateCondition = (
@@ -1315,15 +1452,46 @@ export function ActionControlManagerDialog({
   const summaryCopy = summaryControl
     ? getGalileoControlSummaryCopy(summaryControl, contextActionName, actionNames)
     : null;
+  const contextActionDisplayName = contextActionName === 'Check Availability'
+    ? 'Check availability'
+    : contextActionName;
+  const summaryTargetName = summaryControl?.steerToActionId
+    ? actionNames[summaryControl.steerToActionId] ?? summaryControl.steerToActionId
+    : 'the configured next action';
+  const summaryTargetDescription = summaryControl?.steerToActionId
+    ? actionDescriptions[summaryControl.steerToActionId] || `Continue with ${summaryTargetName}.`
+    : 'Continue with the configured next action.';
+  const summaryTargetTooltipId = summaryControl
+    ? `galileo-action-target-${summaryControl.id}`
+    : 'galileo-action-target';
+  const summaryStatusLabel = summaryControl
+    ? summaryControl.status === 'needs_review'
+      ? 'Needs review'
+      : summaryControl.status[0].toUpperCase() + summaryControl.status.slice(1)
+    : '';
+  const summaryStatusColor = summaryControl?.status === 'active'
+    ? 'mint'
+    : summaryControl?.status === 'needs_review'
+      ? 'orange'
+      : 'cobalt';
+  const activeWizardStep = GALILEO_CONTROL_WIZARD_STEPS[wizardStep];
+  const isCreatingControl = !control;
+  const isCreationWizard = isEditing && isCreatingControl;
 
   return createPortal(
     <div
       className="security-ui-overlay security-ui-overlay--studio galileo-action-control-studio-overlay"
       tabIndex={-1}
     >
+      <IconProvider
+        className="galileo-action-control-icon-provider"
+        iconSet="custom-icons"
+        url={publicAssetUrl('icons').replace(/\/$/, '')}
+        fileExtension="svg"
+      >
       <section
         ref={studioRef}
-        className="security-ui-studio galileo-action-control-studio"
+        className={`security-ui-studio galileo-action-control-studio${isEditing ? ' is-editing' : ''}`}
         role="dialog"
         aria-modal="true"
         aria-labelledby="galileo-action-control-title"
@@ -1331,71 +1499,40 @@ export function ActionControlManagerDialog({
         onKeyDown={trapStudioFocus}
       >
         <header className="security-ui-studio-header galileo-action-control-studio__header">
-          <div className="security-ui-studio-bar">
-            <button
-              type="button"
-              className="security-ui-icon-text"
-              onClick={requestClose}
-              aria-label="Back to actions"
-            >
-              <Icon name="arrow-left" weight="bold" size={32} />
-              <span>Action control</span>
-            </button>
-            <span className="security-ui-divider" aria-hidden="true" />
-            <h2 id="galileo-action-control-title" className="security-ui-studio-name">
-              {contextActionName}
+          <div className="galileo-action-control-studio__header-copy">
+            <h2 id="galileo-action-control-title">
+              {isCreatingControl ? 'Create action control' : 'Action control'}: {contextActionDisplayName}
             </h2>
+            <p>
+              {isCreatingControl
+                ? `Configure when Galileo evaluates ${contextActionDisplayName} and what happens next.`
+                : `Review how Galileo evaluates ${contextActionDisplayName}.`}
+            </p>
           </div>
-          <div className="galileo-action-control-studio__header-actions">
-            {draft ? (
-              <>
-                <button
-                  type="button"
-                  className="security-ui-secondary"
-                  onClick={() => saveControl('draft')}
-                >
-                  {draft.status === 'active' ? 'Deactivate and save as draft' : 'Save as draft'}
-                </button>
-                <button
-                  type="button"
-                  className="security-ui-publish"
-                  onClick={() => saveControl('active')}
-                >
-                  {draft.status === 'active' ? 'Save changes' : 'Activate control'}
-                </button>
-              </>
-            ) : gate ? (
-              <button
-                type="button"
-                className="security-ui-publish"
-                onClick={() => {
-                  setContextActionId(gate.sourceActionId);
-                  if (gateSourceControl) beginEdit(gateSourceControl);
-                }}
-              >
-                View control
-              </button>
-            ) : (
-              <button
-                type="button"
-                className="security-ui-publish"
-                onClick={() => beginEdit(createBlankControl(contextActionId))}
-              >
-                Add control
-              </button>
-            )}
-          </div>
+          <UpliftMomentumButton
+            type="button"
+            variant="tertiary"
+            color="default"
+            size={64}
+            className="galileo-action-control-studio__close"
+            aria-label="Close action control"
+            onClick={requestClose}
+          >
+            <Icon name="cancel" weight="regular" size={32} />
+          </UpliftMomentumButton>
         </header>
 
-        <main className="galileo-action-control-workspace">
+        <main
+          className={`galileo-action-control-workspace${isCreationWizard ? ' is-wizard' : isEditing ? ' is-editing-inline' : ''}`}
+          data-wizard-step={isCreationWizard ? activeWizardStep.id : undefined}
+        >
           {contextActionId !== actionId && (
-            <Button
+            <UpliftMomentumButton
               type="button"
               variant="tertiary"
               size="sm"
               className="galileo-action-control-back"
               onClick={() => {
-                if (!confirmDiscardChanges()) return;
                 setContextActionId(actionId);
                 setDraft(null);
                 setError('');
@@ -1403,73 +1540,169 @@ export function ActionControlManagerDialog({
             >
               <Icon name="arrow-left" weight="bold" size="sm" />
               Back to {actionNames[actionId] ?? 'action'}
-            </Button>
+            </UpliftMomentumButton>
           )}
 
+          {(!isEditing || !isCreatingControl) && (
           <div className="galileo-action-control-summary">
             {summaryControl && summaryCopy ? (
               <Card className="galileo-action-control-card galileo-action-control-card--overview">
                 <CardBody>
-                  <div className="galileo-action-control-card__header">
-                    <div>
-                      <span className="galileo-action-control-eyebrow">Control summary</span>
-                      <h3>{summaryControl.name}</h3>
+                  <div className="galileo-action-control-summary__header">
+                    <div className="galileo-action-control-summary__header-copy">
+                      <h3>Control summary: {summaryControl.name}</h3>
+                      <p className="galileo-action-control-summary__lead">{summaryCopy.lead}</p>
                     </div>
-                    <div className="galileo-action-control-card__badges">
-                      <Badge variant={hasUnsavedChanges ? 'warning' : statusBadgeVariant(summaryControl.status)}>
-                        {hasUnsavedChanges
-                          ? 'Unsaved changes'
-                          : summaryControl.status === 'needs_review'
-                          ? 'Needs review'
-                          : summaryControl.status[0].toUpperCase() + summaryControl.status.slice(1)}
-                      </Badge>
-                      <Badge variant="info">{BEHAVIOR_LABELS[summaryControl.behavior]}</Badge>
-                    </div>
+                    <StaticChip color={summaryStatusColor} label={summaryStatusLabel} />
                   </div>
-                  <p className="galileo-action-control-summary__lead">{summaryCopy.lead}</p>
-                  <dl className="galileo-action-control-summary__flow" aria-label="Control outcome">
-                    <div>
-                      <dt>Evaluation</dt>
-                      <dd>{summaryCopy.evaluation}</dd>
-                    </div>
-                    <div>
-                      <dt>If</dt>
-                      <dd>{summaryCopy.condition}</dd>
-                    </div>
-                    <div>
-                      <dt>Then</dt>
-                      <dd>{summaryCopy.matchedOutcome}</dd>
-                    </div>
-                    <div>
-                      <dt>Otherwise</dt>
-                      <dd>{summaryCopy.unmatchedOutcome}</dd>
-                    </div>
-                  </dl>
-                  {summaryControl.guidance && (
-                    <div className="galileo-action-control-guidance">
-                      <Icon name="info-circle" weight="bold" size="sm" />
-                      <div>
-                        <strong>Agent guidance</strong>
-                        <p>{summaryControl.guidance}</p>
+                  <div className="galileo-action-control-summary__content">
+                    <div
+                      className="galileo-action-control-summary__flow"
+                      role="group"
+                      aria-label="Control decision flow"
+                    >
+                      <div className="galileo-action-control-summary__stage galileo-action-control-summary__stage--timing">
+                        <span className="galileo-action-control-summary__stage-label">
+                          <span className="galileo-action-control-summary__step">1.</span>
+                          Evaluation point
+                        </span>
+                        <div className="galileo-action-control-summary__stage-title">
+                          <StaticChip color="default" label={summaryControl.timing === 'post_tool' ? 'Post' : 'Pre'} />
+                          <strong>{contextActionDisplayName}</strong>
+                        </div>
+                      </div>
+
+                      <span className="galileo-action-control-summary__arrow" aria-hidden="true">
+                        <Icon name="arrow-right" weight="bold" size="sm" />
+                      </span>
+
+                      <div className="galileo-action-control-summary__stage galileo-action-control-summary__stage--decision">
+                        <span className="galileo-action-control-summary__stage-label">
+                          <span className="galileo-action-control-summary__step">2.</span>
+                          Decision
+                        </span>
+                        <div className="galileo-action-control-summary__decision-body">
+                          <strong>Evaluate reservation inputs</strong>
+                          <p>{summaryCopy.condition}</p>
+                        </div>
+                      </div>
+
+                      <span className="galileo-action-control-summary__arrow" aria-hidden="true">
+                        <Icon name="arrow-right" weight="bold" size="sm" />
+                      </span>
+
+                      <div className="galileo-action-control-summary__branches">
+                        <div className="galileo-action-control-summary__branch galileo-action-control-summary__branch--matched">
+                          <span className="galileo-action-control-summary__branch-label">
+                            <span aria-hidden="true" />
+                            Matches:
+                            <StaticChip
+                              color={summaryControl.behavior === 'steer' ? 'lime' : 'default'}
+                              iconName="automation-bold"
+                              label={BEHAVIOR_LABELS[summaryControl.behavior]}
+                            />
+                          </span>
+                          <div className="galileo-action-control-summary__branch-copy">
+                            {summaryControl.timing === 'post_tool' && summaryControl.behavior === 'steer' ? (
+                              <>
+                                <span>Keep the availability result and continue with</span>
+                                <span
+                                  id={summaryTargetTooltipId}
+                                  className="galileo-action-control-action-chip"
+                                  tabIndex={0}
+                                >
+                                  <StaticChip color="default" label={summaryTargetName} />
+                                </span>
+                                <MomentumTooltip
+                                  triggerID={summaryTargetTooltipId}
+                                  trigger="mouseenter focusin"
+                                  placement="top"
+                                  color="contrast"
+                                >
+                                  {summaryTargetDescription}
+                                </MomentumTooltip>
+                              </>
+                            ) : summaryCopy.matchedOutcome}
+                          </div>
+                        </div>
+                        <div className="galileo-action-control-summary__branch galileo-action-control-summary__branch--unmatched">
+                          <span className="galileo-action-control-summary__branch-label">
+                            <span aria-hidden="true" />
+                            No match
+                          </span>
+                          <p>{summaryCopy.unmatchedOutcome}</p>
+                        </div>
                       </div>
                     </div>
-                  )}
+                    {summaryControl.guidance && (
+                      <div className="galileo-action-control-guidance">
+                        <Icon name="open-pages" weight="bold" size="sm" />
+                        <div>
+                          <strong>Agent guidance</strong>
+                          <p>{summaryControl.guidance}</p>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                  <UpliftMomentumButton
+                    type="button"
+                    variant="tertiary"
+                    color="default"
+                    size={28}
+                    prefixIcon="edit-bold"
+                    postfixIcon={isEditing ? 'arrow-up-bold' : 'arrow-down-bold'}
+                    className={`galileo-action-control-edit-toggle${isEditing ? ' is-expanded' : ''}`}
+                    aria-expanded={isEditing}
+                    aria-controls="galileo-action-control-editor"
+                    onClick={() => {
+                      if (isEditing) cancelEdit();
+                      else if (control) beginEdit(control);
+                    }}
+                  >
+                    {isEditing ? 'Close editor' : 'Edit control'}
+                  </UpliftMomentumButton>
                 </CardBody>
               </Card>
             ) : gate ? (
               <Card className="galileo-action-control-card galileo-action-control-card--gate">
                 <CardBody>
-                  <div className="galileo-action-control-card__header">
+                  <div className="galileo-action-control-gate__intro">
                     <div>
                       <span className="galileo-action-control-eyebrow">Action availability</span>
-                      <h3>Available after Galileo intervenes</h3>
+                      <h3>Available after action control intervenes</h3>
+                      <p>This action is available only after its required control matches.</p>
                     </div>
                     <Badge variant={gate.enabled ? 'info' : 'default'}>{gate.enabled ? 'Gated' : 'Gate draft'}</Badge>
                   </div>
-                  <p className="galileo-action-control-card__description">
-                    This action becomes available when <strong>{gateSourceControl?.name ?? gate.controlId}</strong> matches on{' '}
-                    <strong>{actionNames[gate.sourceActionId] ?? gate.sourceActionId}</strong>.
-                  </p>
+                  <div className="galileo-action-control-gate__relationship" aria-label="Action availability prerequisite">
+                    <div className="galileo-action-control-gate__node">
+                      <span>Source action</span>
+                      <StaticChip color="default" label={actionNames[gate.sourceActionId] ?? gate.sourceActionId} />
+                    </div>
+                    <Icon
+                      name="arrow-right"
+                      weight="bold"
+                      size="sm"
+                      className="galileo-action-control-gate__arrow"
+                    />
+                    <div className="galileo-action-control-gate__node galileo-action-control-gate__node--control">
+                      <span>Required control</span>
+                      <strong>{gateSourceControl?.name ?? gate.controlId}</strong>
+                    </div>
+                    <UpliftMomentumButton
+                      type="button"
+                      variant="primary"
+                      color="default"
+                      size="sm"
+                      className="galileo-action-control-gate__view"
+                      onClick={() => {
+                        setContextActionId(gate.sourceActionId);
+                        if (gateSourceControl) beginEdit(gateSourceControl);
+                      }}
+                    >
+                      View source control
+                    </UpliftMomentumButton>
+                  </div>
                 </CardBody>
               </Card>
             ) : (
@@ -1482,186 +1715,366 @@ export function ActionControlManagerDialog({
               </div>
             )}
           </div>
+          )}
 
-          {draft && (
-          <div className="galileo-action-control-editor">
+          {draft && isEditing && (
+          <>
+            {isCreatingControl && (
+              <MomentumStepper
+                id="galileo-action-control-wizard"
+                className="galileo-action-control-wizard__progress"
+                orientation="horizontal"
+                variant="stacked"
+                aria-label="Control setup progress"
+              >
+                {GALILEO_CONTROL_WIZARD_STEPS.map((step, index) => {
+                  const isComplete = index < wizardStep;
+                  const isCurrent = index === wizardStep;
+                  return (
+                    <Fragment key={step.id}>
+                      <MomentumStepperItem
+                        status={isComplete ? 'completed' : isCurrent ? 'current' : 'not-started'}
+                        stepNumber={index + 1}
+                        label={step.label}
+                        aria-current={isCurrent ? 'step' : undefined}
+                        aria-label={isComplete ? `Return to ${step.label}` : `${step.label}, step ${index + 1}`}
+                        aria-disabled={!isComplete}
+                        tabIndex={isComplete ? 0 : -1}
+                        onClick={() => {
+                          if (isComplete) returnToWizardStep(index);
+                        }}
+                      />
+                      {index < GALILEO_CONTROL_WIZARD_STEPS.length - 1 && (
+                        <MomentumStepperConnector status={index < wizardStep ? 'complete' : 'incomplete'} />
+                      )}
+                    </Fragment>
+                  );
+                })}
+              </MomentumStepper>
+            )}
+
+            <div
+              id={isCreatingControl ? undefined : 'galileo-action-control-editor'}
+              className={`galileo-action-control-editor${isCreatingControl ? ' galileo-action-control-wizard__body' : ' galileo-action-control-editor--inline'}`}
+            >
             <div className="galileo-action-control-editor__heading">
-              <div>
-                <h3>Edit control</h3>
-                <p>Changes appear in the summary as you edit.</p>
-              </div>
+              {isCreatingControl ? (
+                <>
+                  <h3
+                    id="galileo-wizard-step-title"
+                    ref={wizardHeadingRef}
+                    tabIndex={-1}
+                  >
+                    {activeWizardStep.title}
+                  </h3>
+                  <p>{activeWizardStep.description}</p>
+                </>
+              ) : (
+                <>
+                  <h3
+                    id="galileo-inline-editor-title"
+                    ref={wizardHeadingRef}
+                    tabIndex={-1}
+                  >
+                    Edit control
+                  </h3>
+                  <p>Update the control details, conditions, and behavior, then save your changes.</p>
+                </>
+              )}
             </div>
 
-            <section className="galileo-action-control-editor__section galileo-action-control-editor__section--details" aria-labelledby="galileo-details-title">
-              <div className="galileo-action-control-editor__section-heading">
-                <div>
-                  <h3 id="galileo-details-title">Control details</h3>
-                  <p>Name the control and tell the agent how to explain an intervention.</p>
-                </div>
-              </div>
+            <section
+              className="galileo-action-control-editor__section galileo-action-control-editor__section--details"
+              aria-labelledby={isCreatingControl ? 'galileo-wizard-step-title' : 'galileo-inline-editor-title'}
+              hidden={isCreatingControl && wizardStep === 2}
+            >
+              {(!isCreatingControl || wizardStep === 0) && (
+                <div className="galileo-action-control-wizard__details-fields">
+                  <UpliftMomentumInput
+                    label="Control name"
+                    required
+                    value={draft.name}
+                    trailingButton
+                    clearAriaLabel="Clear control name"
+                    onClear={() => setDraft(current => current ? { ...current, name: '' } : current)}
+                    onInput={event => setDraft(current => current
+                      ? { ...current, name: (event.target as { value: string }).value }
+                      : current)}
+                  />
 
-            <Input
-              label="Control name"
-              required
-              value={draft.name}
-              onChange={event => setDraft(current => current ? { ...current, name: event.target.value } : current)}
-              voiceInput={false}
-            />
+                  <UpliftMomentumTextarea
+                    label="Control description"
+                    value={draft.description}
+                    rows={5}
+                    className="galileo-action-control-description"
+                    helpText="Summarize the business outcome this control protects."
+                    onInput={event => setDraft(current => current
+                      ? { ...current, description: (event.target as { value: string }).value }
+                      : current)}
+                  />
 
-            <Textarea
-              label="Control description"
-              value={draft.description}
-              rows={2}
-              hint="Summarize the business outcome this control protects."
-              onChange={event => setDraft(current => current ? { ...current, description: event.target.value } : current)}
-              voiceInput={false}
-            />
-
-            <Textarea
-              label="Agent-facing control guidance"
-              value={draft.guidance}
-              rows={3}
-              hint="Explain what happened, what the agent should tell the customer, and which context to preserve."
-              onChange={event => setDraft(current => current ? { ...current, guidance: event.target.value } : current)}
-              voiceInput={false}
-            />
-
-            <Dropdown
-              label="Evaluation timing"
-              value={draft.timing}
-              options={([
-                { value: 'pre_tool', label: TIMING_LABELS.pre_tool },
-                { value: 'post_tool', label: TIMING_LABELS.post_tool },
-              ] satisfies Array<{ value: GalileoActionControlTiming; label: string }>)}
-              onChange={value => setDraft(current => current
-                ? { ...current, timing: value as GalileoActionControlTiming }
-                : current)}
-              hint={draft.timing === 'post_tool'
-                ? `Galileo evaluates the original action inputs after ${contextActionName} returns.`
-                : `Galileo evaluates the action inputs before ${contextActionName} runs.`}
-            />
-            </section>
-
-            <section className="galileo-action-control-editor__section">
-              <RadioGroup
-                name={`galileo-action-control-behavior-${contextActionId}`}
-                label="Control behavior"
-                helperText="Choose what Galileo does when the conditions match."
-                value={draft.behavior}
-                onChange={behavior => setDraft(current => current
-                  ? { ...current, behavior: behavior as GalileoActionControlBehavior }
-                  : current)}
-                className="galileo-action-control-behavior"
-              >
-                {(['observe', 'steer', 'deny'] as GalileoActionControlBehavior[]).map(behavior => (
-                  <Radio key={behavior} value={behavior} label={BEHAVIOR_LABELS[behavior]} />
-                ))}
-              </RadioGroup>
-            </section>
-
-            <section className="galileo-action-control-editor__section" aria-labelledby="galileo-conditions-title">
-              <div className="galileo-action-control-editor__section-heading">
-                <div>
-                  <h3 id="galileo-conditions-title">When this happens</h3>
-                  <p>Evaluate only the reservation inputs available to this action.</p>
-                </div>
-              </div>
-
-              <Dropdown
-                label="Condition source"
-                value="action_input"
-                options={[{ value: 'action_input', label: 'Action input' }]}
-                onChange={() => undefined}
-                disabled
-                hint="Galileo evaluates the structured inputs captured for this action."
-              />
-
-              <div className="galileo-action-control-condition-list">
-                {draft.conditions.map((condition, index) => (
-                  <div key={condition.id} className="galileo-action-control-condition">
-                    <span className="galileo-action-control-condition__joiner">
-                      {index === 0 ? 'When' : draft.matchMode.toUpperCase()}
-                    </span>
-                    <Dropdown
-                      value={condition.field}
-                      label={`Action input ${index + 1}`}
-                      className="galileo-action-control-condition__field"
-                      options={[
-                        { value: 'party_size', label: FIELD_LABELS.party_size },
-                        { value: 'requested_bays', label: FIELD_LABELS.requested_bays },
-                      ]}
-                      onChange={value => updateCondition(condition.id, { field: value as GalileoActionControlField })}
-                    />
-                    <span className="galileo-action-control-condition__operator">is greater than</span>
-                    <Input
-                      type="number"
-                      min={1}
-                      value={condition.value}
-                      aria-label={`Condition ${index + 1} value`}
-                      voiceInput={false}
-                      onChange={event => updateCondition(condition.id, { value: Number(event.target.value) })}
-                    />
-                    <Button
-                      type="button"
-                      variant="tertiary"
-                      size="sm"
-                      disabled={draft.conditions.length === 1}
-                      aria-label={`Remove condition ${index + 1}`}
-                      onClick={() => removeCondition(condition.id)}
+                  <div className="galileo-action-control-timing-column">
+                    <span className="form-label">Evaluation timing</span>
+                    <MomentumRadioGroup
+                      name={`galileo-action-control-timing-${contextActionId}`}
+                      dataAriaLabel="Evaluation timing"
+                      className="galileo-action-control-timing"
                     >
-                      <Icon name="delete" weight="bold" size="sm" />
-                    </Button>
-                  </div>
-                ))}
-              </div>
-              <Button type="button" variant="tertiary" size="sm" onClick={addCondition}>
-                <Icon name="plus" weight="bold" size="sm" />
-                Add condition
-              </Button>
-              <div className="galileo-action-control-rule galileo-action-control-rule--preview" aria-live="polite">
-                <span>Rule preview</span>
-                <strong>{getControlExpressionPreview(draft)}</strong>
-              </div>
-
-              <details className="galileo-action-control-advanced">
-                <summary>Advanced</summary>
-                <div className="galileo-action-control-advanced__content">
-                  <div>
-                    <span className="galileo-action-control-advanced__label">Match mode</span>
-                    <div className="galileo-action-control-choice-group" role="group" aria-label="Condition matching">
-                      {(['any', 'all'] as GalileoActionControlMatchMode[]).map(matchMode => (
-                        <button
-                          key={matchMode}
-                          type="button"
-                          className={draft.matchMode === matchMode ? 'is-selected' : ''}
-                          aria-pressed={draft.matchMode === matchMode}
-                          onClick={() => setDraft(current => current ? { ...current, matchMode } : current)}
-                        >
-                          {matchMode === 'any' ? 'Any condition' : 'All conditions'}
-                        </button>
+                      {([
+                        {
+                          value: 'pre_tool',
+                          label: TIMING_LABELS.pre_tool,
+                          description: `Galileo evaluates the action inputs before ${contextActionDisplayName} runs.`,
+                        },
+                        {
+                          value: 'post_tool',
+                          label: TIMING_LABELS.post_tool,
+                          description: `Galileo evaluates the original action inputs after ${contextActionDisplayName} returns.`,
+                        },
+                      ] satisfies Array<{
+                        value: GalileoActionControlTiming;
+                        label: string;
+                        description: string;
+                      }>).map(option => (
+                        <Fragment key={option.value}>
+                          <MomentumRadio
+                            value={option.value}
+                            label={option.label}
+                            checked={draft.timing === option.value}
+                            onChange={() => setDraft(current => current
+                              ? { ...current, timing: option.value }
+                              : current)}
+                          />
+                          <UpliftMomentumButton
+                            id={`galileo-action-control-timing-info-${contextActionId}-${option.value}`}
+                            type="button"
+                            variant="tertiary"
+                            size={24}
+                            className="galileo-action-control-timing-info"
+                            aria-label={`${option.label}: ${option.description}`}
+                          >
+                            <Icon name="info-circle" weight="bold" size={16} />
+                          </UpliftMomentumButton>
+                          <MomentumTooltip
+                            triggerID={`galileo-action-control-timing-info-${contextActionId}-${option.value}`}
+                            trigger="mouseenter focusin"
+                            placement="top"
+                            color="contrast"
+                          >
+                            {option.description}
+                          </MomentumTooltip>
+                        </Fragment>
                       ))}
+                    </MomentumRadioGroup>
+                  </div>
+                </div>
+              )}
+
+              {(!isCreatingControl || wizardStep === 1) && (
+                <div
+                  className="galileo-action-control-conditions-column"
+                  aria-labelledby={isCreatingControl ? 'galileo-conditions-title' : undefined}
+                >
+                  {isCreatingControl && (
+                    <div className="galileo-action-control-editor__section-heading galileo-action-control-editor__section-heading--stacked">
+                      <h3 id="galileo-conditions-title">When this happens</h3>
+                      <p>Evaluate only the reservation inputs available to this action.</p>
+                    </div>
+                  )}
+
+                  <div className="galileo-action-control-condition-source">
+                    <span>Condition source</span>
+                    <p>Action input</p>
+                  </div>
+
+                  <div className="galileo-action-control-condition-list">
+                    {draft.conditions.map((condition, index) => (
+                      <div key={condition.id} className="galileo-action-control-condition">
+                        {index === 0 ? (
+                          <span className="galileo-action-control-condition__joiner">When</span>
+                        ) : (
+                          <button
+                            type="button"
+                            className="galileo-action-control-condition__joiner galileo-action-control-condition__joiner--toggle"
+                            aria-label={`Change condition connector from ${MATCH_MODE_CONNECTOR_LABELS[normalizeMatchMode(draft.matchMode)]} to ${MATCH_MODE_CONNECTOR_LABELS[getNextMatchMode(draft.matchMode)]}`}
+                            onClick={() => setDraft(current => current
+                              ? { ...current, matchMode: getNextMatchMode(current.matchMode) }
+                              : current)}
+                          >
+                            {MATCH_MODE_CONNECTOR_LABELS[normalizeMatchMode(draft.matchMode)]}
+                          </button>
+                        )}
+                        <UpliftMomentumSelect
+                          value={condition.field}
+                          label={`Action input ${index + 1}`}
+                          className="galileo-action-control-condition__field"
+                          onChange={event => updateCondition(condition.id, {
+                            field: (event.target as { value: string }).value as GalileoActionControlField,
+                          })}
+                        >
+                          <MomentumSelectlistbox>
+                            {([
+                              { value: 'party_size', label: FIELD_LABELS.party_size },
+                              { value: 'requested_bays', label: FIELD_LABELS.requested_bays },
+                            ] satisfies Array<{ value: GalileoActionControlField; label: string }>).map(option => (
+                              <MomentumOption
+                                key={option.value}
+                                value={option.value}
+                                label={option.label}
+                                selected={condition.field === option.value}
+                              />
+                            ))}
+                          </MomentumSelectlistbox>
+                        </UpliftMomentumSelect>
+                        <span className="galileo-action-control-condition__operator">is greater than</span>
+                        <UpliftMomentumInput
+                          type="number"
+                          min={1}
+                          value={String(condition.value)}
+                          dataAriaLabel={`Condition ${index + 1} value`}
+                          trailingButton
+                          clearAriaLabel={`Clear condition ${index + 1} value`}
+                          onClear={() => updateCondition(condition.id, { value: 0 })}
+                          onInput={event => updateCondition(condition.id, {
+                            value: Number((event.target as { value: string }).value),
+                          })}
+                        />
+                        <UpliftMomentumButton
+                          type="button"
+                          variant="tertiary"
+                          size={24}
+                          disabled={draft.conditions.length === 1}
+                          aria-label={`Remove condition ${index + 1}`}
+                          onClick={() => removeCondition(condition.id)}
+                        >
+                          <Icon name="delete" weight="bold" size="sm" />
+                        </UpliftMomentumButton>
+                      </div>
+                    ))}
+                  </div>
+
+                  <div className="galileo-action-control-condition-actions">
+                    <UpliftMomentumButton type="button" variant="tertiary" size="sm" onClick={addCondition}>
+                      <Icon name="plus" weight="bold" size={14} />
+                      Add condition
+                    </UpliftMomentumButton>
+                    <span aria-hidden="true" />
+                    <div className="galileo-action-control-advanced">
+                      <UpliftMomentumButton
+                        type="button"
+                        variant="tertiary"
+                        size="sm"
+                        className="galileo-action-control-advanced-trigger"
+                        aria-expanded={advancedConditionOpen ? 'true' : 'false'}
+                        aria-controls={`galileo-action-control-advanced-content-${contextActionId}`}
+                        onClick={() => setAdvancedConditionOpen(current => !current)}
+                      >
+                        <Icon name="code-block" weight="bold" size="sm" />
+                        Advanced condition
+                      </UpliftMomentumButton>
+                      {advancedConditionOpen && (
+                        <div
+                          id={`galileo-action-control-advanced-content-${contextActionId}`}
+                          className="galileo-action-control-advanced__content"
+                        >
+                          <div>
+                            <span className="galileo-action-control-advanced__label">Match mode</span>
+                            <div className="galileo-action-control-choice-group" role="group" aria-label="Condition matching">
+                              {MATCH_MODE_CYCLE.map(matchMode => (
+                                <button
+                                  key={matchMode}
+                                  type="button"
+                                  className={draft.matchMode === matchMode ? 'is-selected' : ''}
+                                  aria-pressed={draft.matchMode === matchMode}
+                                  onClick={() => setDraft(current => current ? { ...current, matchMode } : current)}
+                                >
+                                  {MATCH_MODE_CONNECTOR_LABELS[matchMode]}
+                                </button>
+                              ))}
+                            </div>
+                          </div>
+                          <div>
+                            <span className="galileo-action-control-advanced__label">Runtime metadata</span>
+                            <p>Action key: {contextActionId} · {draft.timing} · {draft.behavior}</p>
+                          </div>
+                          <div>
+                            <span className="galileo-action-control-advanced__label">JSON preview</span>
+                            <pre>{JSON.stringify({
+                              actionId: contextActionId,
+                              version: draft.version,
+                              timing: draft.timing,
+                              behavior: draft.behavior,
+                              matchMode: draft.matchMode,
+                              conditions: draft.conditions,
+                            }, null, 2)}</pre>
+                          </div>
+                        </div>
+                      )}
                     </div>
                   </div>
-                  <div>
-                    <span className="galileo-action-control-advanced__label">Runtime metadata</span>
-                    <p>Action key: {contextActionId} · {draft.timing} · {draft.behavior}</p>
-                  </div>
-                  <div>
-                    <span className="galileo-action-control-advanced__label">JSON preview</span>
-                    <pre>{JSON.stringify({
-                      actionId: contextActionId,
-                      version: draft.version,
-                      timing: draft.timing,
-                      behavior: draft.behavior,
-                      matchMode: draft.matchMode,
-                      conditions: draft.conditions,
-                    }, null, 2)}</pre>
-                  </div>
                 </div>
-              </details>
+              )}
+
+              {(!isCreatingControl || wizardStep === 1) && (
+                <MomentumBanner
+                  className="galileo-action-control-rule-preview"
+                  variant="informational"
+                  label="Rule preview"
+                  secondaryLabel={getControlExpressionPreview(draft)}
+                  aria-live="polite"
+                />
+              )}
             </section>
 
-            {draft.behavior === 'steer' && (
+            <section
+              className="galileo-action-control-editor__section galileo-action-control-editor__section--behavior galileo-action-control-editor__section--details"
+              aria-labelledby={isCreatingControl ? 'galileo-wizard-step-title' : 'galileo-inline-editor-title'}
+              hidden={isCreatingControl && wizardStep !== 2}
+            >
+              {!isCreatingControl && (
+                <div className="galileo-action-control-editor__section-heading galileo-action-control-editor__section-heading--stacked">
+                  <h3>Control behavior</h3>
+                  <p>Choose what Galileo does when the conditions match.</p>
+                </div>
+              )}
+
+              <div className="galileo-action-control-direction">
+                <div className="galileo-action-control-editor__section-heading galileo-action-control-editor__section-heading--stacked">
+                  <h3>Control action</h3>
+                  <p>Choose what control does when the conditions match.</p>
+                </div>
+                <MomentumRadioGroup
+                  name={`galileo-action-control-behavior-${contextActionId}`}
+                  dataAriaLabel="Control action"
+                  className="galileo-action-control-behavior"
+                >
+                  {(['observe', 'steer', 'deny'] as GalileoActionControlBehavior[]).map(behavior => (
+                    <MomentumRadio
+                      key={behavior}
+                      value={behavior}
+                      label={BEHAVIOR_LABELS[behavior]}
+                      checked={draft.behavior === behavior}
+                      onChange={() => setDraft(current => current
+                        ? { ...current, behavior }
+                        : current)}
+                    />
+                  ))}
+                </MomentumRadioGroup>
+              </div>
+
+              <UpliftMomentumTextarea
+                label="Agent instruction"
+                value={draft.guidance}
+                rows={4}
+                className="galileo-action-control-guidance-field"
+                helpText="Explain what happened, what the agent should tell the customer, and which context to preserve."
+                onInput={event => setDraft(current => current
+                  ? { ...current, guidance: (event.target as { value: string }).value }
+                  : current)}
+              />
+            </section>
+
+            {(!isCreatingControl || wizardStep === 2) && draft.behavior === 'steer' && (
               <section className="galileo-action-control-editor__section" aria-labelledby="galileo-steer-title">
                 <div className="galileo-action-control-editor__section-heading">
                   <div>
@@ -1669,19 +2082,36 @@ export function ActionControlManagerDialog({
                     <p>Choose the action Galileo unlocks when this control matches.</p>
                   </div>
                 </div>
-                <Dropdown
+                <UpliftMomentumSelect
                   label="Steer to action"
                   value={draft.steerToActionId ?? ''}
                   placeholder="Select an action"
-                  options={availableSteerActions.map(action => ({ value: action.id, label: action.name }))}
-                  onChange={value => setDraft(current => current ? { ...current, steerToActionId: value } : current)}
-                />
-                <Checkbox
-                  checked={gateInterventionAction}
-                  onChange={setGateInterventionAction}
-                  label="Make this action available only after prerequisites match"
-                  helperText="Authentication, authorization, and business rules still apply in the action backend."
-                />
+                  className="galileo-action-control-steer-field"
+                  onChange={event => setDraft(current => current
+                    ? { ...current, steerToActionId: (event.target as { value: string }).value }
+                    : current)}
+                >
+                  <MomentumSelectlistbox>
+                    {availableSteerActions.map(action => (
+                      <MomentumOption
+                        key={action.id}
+                        value={action.id}
+                        label={action.name}
+                        selected={draft.steerToActionId === action.id}
+                      />
+                    ))}
+                  </MomentumSelectlistbox>
+                </UpliftMomentumSelect>
+                <div className="galileo-action-control-gate-setting">
+                  <MomentumCheckbox
+                    checked={gateInterventionAction}
+                    onChange={event => setGateInterventionAction(
+                      Boolean((event.target as { checked: boolean }).checked),
+                    )}
+                    label="Make this action available only after prerequisites match"
+                    helpText="Authentication, authorization, and business rules still apply in the action backend."
+                  />
+                </div>
               </section>
             )}
 
@@ -1691,10 +2121,82 @@ export function ActionControlManagerDialog({
                 {error}
               </div>
             )}
-          </div>
+            </div>
+
+            {!isCreatingControl && (
+              <footer className="galileo-action-control-editor__footer">
+                <UpliftMomentumButton
+                  type="button"
+                  variant="secondary"
+                  color="negative"
+                  size={40}
+                  className="galileo-action-control-delete"
+                  onClick={deleteControl}
+                >
+                  Delete
+                </UpliftMomentumButton>
+                <UpliftMomentumButton
+                  type="button"
+                  variant="secondary"
+                  color="default"
+                  size={40}
+                  onClick={cancelEdit}
+                >
+                  Cancel
+                </UpliftMomentumButton>
+                <UpliftMomentumButton
+                  type="button"
+                  variant="primary"
+                  color="default"
+                  size={40}
+                  onClick={() => saveControl('active')}
+                >
+                  Save changes
+                </UpliftMomentumButton>
+              </footer>
+            )}
+
+            {isCreatingControl && (
+              <footer className="galileo-action-control-wizard__footer">
+                <div>
+                  <UpliftMomentumButton
+                    type="button"
+                    variant="secondary"
+                    color="default"
+                    size={40}
+                    onClick={requestClose}
+                  >
+                    Cancel
+                  </UpliftMomentumButton>
+                  {wizardStep < GALILEO_CONTROL_WIZARD_STEPS.length - 1 ? (
+                    <UpliftMomentumButton
+                      type="button"
+                      variant="primary"
+                      color="default"
+                      size={40}
+                      onClick={advanceWizard}
+                    >
+                      Next
+                    </UpliftMomentumButton>
+                  ) : (
+                    <UpliftMomentumButton
+                      type="button"
+                      variant="primary"
+                      color="default"
+                      size={40}
+                      onClick={() => saveControl('active')}
+                    >
+                      Create control
+                    </UpliftMomentumButton>
+                  )}
+                </div>
+              </footer>
+            )}
+          </>
           )}
         </main>
       </section>
+      </IconProvider>
     </div>,
     document.body,
   );

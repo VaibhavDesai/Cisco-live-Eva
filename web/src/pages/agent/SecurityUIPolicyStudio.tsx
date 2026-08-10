@@ -776,7 +776,7 @@ export default function SecurityUIPolicyStudio({
       {basicStep ? (
         <Modal size="md" onClose={onClose} className="create-guardrail-modal">
           <ModalHeader
-            title="Create custom guardrail"
+            title="Create adaptive guardrail"
             description="Define what this agent must block and where the guardrail evaluates content. You can review and refine the policy in Policy Studio."
             onClose={onClose}
           />
@@ -821,7 +821,7 @@ export default function SecurityUIPolicyStudio({
                 {stage === 'empty' ? (
                   <div className="security-ui-get-started">
                     <MagneticIcon src={securityIcon} className="security-ui-shield" />
-                    <h2>Create a custom guardrail</h2>
+                    <h2>Create an adaptive guardrail</h2>
                     <p>Describe what the agent must block and what it can share. You can also upload policies or labeled examples.</p>
                     <span>Suggested next steps:</span>
                     <button onClick={() => setInput(DEFAULT_POLICY_PROMPT)}>Describe the protection rules</button>

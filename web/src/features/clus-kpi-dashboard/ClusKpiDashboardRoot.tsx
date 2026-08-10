@@ -54,9 +54,10 @@ const DEFAULT_PINNED_CARD_IDS = [
   'sec-guardrails-trigger-flag',
   'ce-containment-rate',
   'ap-intent-success-rate',
+  'ac-control-evaluations',
+  'ac-steer-outcomes',
   'bi-autocsat-improvement',
   'ce-csat-predictor',
-  'ap-fulfilment-latency-p95',
 ];
 
 const DATE_RANGE_OPTIONS = [

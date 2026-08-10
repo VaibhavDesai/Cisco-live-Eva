@@ -4881,9 +4881,9 @@ button.view-btn.active {
   transition: border-color 0.15s ease, background-color 0.15s ease, box-shadow 0.15s ease;
 }
 
-.ai-agents-agent-card--clickable:hover {
+.secondary-content.ai-agents-dashboard .card.ai-agents-agent-card--clickable:hover {
   border-color: var(--mds-color-theme-outline-primary-hover, var(--outline-color));
-  background: var(--mds-color-theme-background-solid-secondary-hover, var(--button-secondary-hover));
+  background: var(--mds-color-theme-background-primary-hover, var(--button-secondary-hover));
 }
 
 .ai-agents-agent-card__hit-area {
@@ -5013,10 +5013,6 @@ button.view-btn.active {
   text-overflow: ellipsis;
   white-space: nowrap;
   cursor: pointer;
-}
-
-.ai-agents-agent-name-button:hover {
-  text-decoration: underline;
 }
 
 .ai-agents-agent-content {
@@ -12822,7 +12818,7 @@ img.app-header__wordmark-logo {
   color: var(--mds-color-theme-text-success-normal, var(--success-color));
 }
 
-/* ── Custom guardrail profiles ── */
+/* ── Adaptive guardrail profiles ── */
 
 .security-custom-panel {
   display: flex;
@@ -19676,7 +19672,7 @@ img.app-header__wordmark-logo {
 /* Typing dots */
 .ps-msg-body--processing {
   display: flex;
-  gap: 4px;
+  gap: 12px;
   padding-top: var(--spacing-xxx-small);
 }
 
@@ -20754,7 +20750,7 @@ img.app-header__wordmark-logo {
 }
 
 
-/* Create button shares the Custom guardrails header top line with the
+/* Create button shares the Adaptive guardrails header top line with the
    accordion chevron: chevron stays in the top-right corner and the button
    sits just to its left, vertically centered on the chevron. */
 .security-prebuilt-section > .security-prebuilt-toolbar {
@@ -20995,7 +20991,7 @@ img.app-header__wordmark-logo {
 }
 
 
-/* Custom guardrails reuses the prebuilt category format */
+/* Adaptive guardrails reuses the prebuilt category format */
 .security-prebuilt-custom-item {
   width: 100%;
   margin-bottom: var(--spacing-medium);
@@ -21901,7 +21897,6 @@ img.app-header__wordmark-logo {
 .security-ui-direction-group .radio-group-header {
   gap: 8px;
 }
-
 
 .security-ui-direction-group .radio {
   color: var(--security-ui-text-primary);
@@ -23507,4 +23502,1763 @@ img.app-header__wordmark-logo {
 .security-ui-upload-modal footer div {
   display: flex;
   gap: 8px;
+}
+
+/* ── Figma action-control editor — nodes 636:2524 and 636:2352 ── */
+
+.galileo-action-control-studio-overlay {
+  --galileo-page: #000;
+  --galileo-card: rgba(0, 0, 0, 0.4);
+  --galileo-field: rgba(255, 255, 255, 0.05);
+  --galileo-card-border: rgba(255, 255, 255, 0.11);
+  --galileo-field-border: rgba(255, 255, 255, 0.5);
+  --galileo-text-primary: rgba(255, 255, 255, 0.95);
+  --galileo-text-secondary: rgba(255, 255, 255, 0.7);
+  --galileo-accent: #64b4fa;
+  --text-primary: var(--galileo-text-primary);
+  --text-secondary: var(--galileo-text-secondary);
+  --bg-primary: var(--galileo-field);
+  --bg-secondary: var(--galileo-card);
+  --border-color: var(--galileo-field-border);
+  --outline-color: var(--galileo-card-border);
+  --outline-input: var(--galileo-field-border);
+  --outline-input-hover: #484f58;
+  --security-ui-text-primary: var(--galileo-text-primary);
+  --security-ui-text-secondary: var(--galileo-text-secondary);
+  --security-ui-border: var(--galileo-field-border);
+  --security-ui-accent: var(--galileo-accent);
+}
+
+.galileo-action-control-studio {
+  height: 100dvh;
+  gap: 24px;
+  padding: 24px;
+  color: var(--galileo-text-primary);
+  font-family: Inter, "Helvetica Neue", Arial, sans-serif;
+  box-sizing: border-box;
+}
+
+.galileo-action-control-icon-provider {
+  display: contents;
+}
+
+.galileo-action-control-studio__header {
+  min-height: 116px;
+  flex: 0 0 auto;
+  align-items: center;
+  gap: 24px;
+  padding: 24px 0 32px;
+  box-sizing: border-box;
+}
+
+.galileo-action-control-studio__header-copy {
+  display: flex;
+  flex: 1 1 auto;
+  min-width: 0;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 8px;
+}
+
+.galileo-action-control-studio__header-copy h2 {
+  width: 100%;
+  margin: 0;
+  color: var(--galileo-text-primary);
+  font-size: 20px;
+  font-weight: 700;
+  line-height: 28px;
+}
+
+.galileo-action-control-studio__header-copy p {
+  width: 100%;
+  margin: 0;
+  color: var(--galileo-text-secondary);
+  font-size: 16px;
+  font-weight: 400;
+  line-height: 24px;
+}
+
+.galileo-action-control-studio.is-editing .galileo-action-control-studio__header {
+  min-height: 116px;
+  flex-basis: auto;
+}
+
+.galileo-action-control-studio__close {
+  display: inline-flex;
+  flex: 0 0 40px;
+  width: 40px;
+  height: 40px;
+  align-self: flex-start;
+  align-items: center;
+  justify-content: center;
+  margin-left: auto;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: transparent;
+  color: var(--galileo-text-primary);
+  cursor: pointer;
+}
+
+.galileo-action-control-studio__close:hover {
+  background: rgba(240, 246, 252, 0.12);
+}
+
+.galileo-action-control-workspace {
+  width: 100%;
+  max-width: none;
+  min-height: 0;
+  margin: 0;
+  padding: 0 0 40px;
+  align-items: stretch;
+  gap: 24px;
+  overflow-x: hidden;
+  overflow-y: auto;
+  scrollbar-gutter: auto;
+  box-sizing: border-box;
+}
+
+.galileo-action-control-summary,
+.galileo-action-control-editor {
+  align-self: stretch;
+  max-width: none;
+  width: 100%;
+  gap: 0;
+  box-sizing: border-box;
+}
+
+.galileo-action-control-card.card:not(.card-vertical):not(.card-horizontal) {
+  max-width: none;
+  width: 100%;
+  margin: 0;
+  padding: 0;
+  gap: 0;
+  border: 1px solid var(--security-ui-border-card);
+  border-radius: 12px;
+  background: var(--security-ui-surface);
+  box-shadow: 0 4px 40px rgba(0, 0, 0, 0.4);
+  backdrop-filter: blur(30px);
+  -webkit-backdrop-filter: blur(30px);
+  box-sizing: border-box;
+}
+
+.galileo-action-control-card--overview.card:not(.card-vertical):not(.card-horizontal) {
+  border: 0;
+  background: rgba(0, 0, 0, 0.4);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.025);
+  backdrop-filter: blur(30px) saturate(120%);
+  -webkit-backdrop-filter: blur(30px) saturate(120%);
+}
+
+.galileo-action-control-card--gate.card:not(.card-vertical):not(.card-horizontal) {
+  border: 0;
+  background: rgba(0, 0, 0, 0.4);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.025);
+  backdrop-filter: blur(30px) saturate(120%);
+  -webkit-backdrop-filter: blur(30px) saturate(120%);
+}
+
+.galileo-action-control-card--overview.card:not(.card-vertical):not(.card-horizontal) > .card-body {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  row-gap: 24px !important;
+  padding: 24px;
+}
+
+.galileo-action-control-card--overview.card:not(.card-vertical):not(.card-horizontal) > .card-body > * {
+  margin-block: 0 !important;
+}
+
+.galileo-action-control-card--gate.card:not(.card-vertical):not(.card-horizontal) > .card-body {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  padding: 23px;
+}
+
+.galileo-action-control-gate__intro {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 24px;
+}
+
+.galileo-action-control-gate__intro > div {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.galileo-action-control-gate__intro h3,
+.galileo-action-control-gate__intro p {
+  margin: 0;
+}
+
+.galileo-action-control-gate__intro h3 {
+  color: var(--galileo-text-primary);
+  font-size: 20px;
+  font-weight: 700;
+  line-height: 24px;
+}
+
+.galileo-action-control-gate__intro p {
+  color: var(--galileo-text-secondary);
+  font-size: 13px;
+  line-height: 20px;
+}
+
+.galileo-action-control-gate__relationship {
+  display: grid;
+  grid-template-columns: max-content minmax(96px, 0.45fr) minmax(320px, 1fr) auto;
+  align-items: center;
+  gap: 12px;
+  padding: 16px;
+  border: 1px solid var(--galileo-field-border);
+  border-radius: 8px;
+  background: var(--security-ui-surface);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+}
+
+.galileo-action-control-gate__arrow {
+  justify-self: center;
+  color: var(--galileo-text-secondary);
+}
+
+.galileo-action-control-gate__node {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 8px;
+}
+
+.galileo-action-control-gate__node > span {
+  color: var(--galileo-text-secondary);
+  font-size: 12px;
+  font-weight: 500;
+  line-height: 16px;
+}
+
+.galileo-action-control-gate__node strong {
+  overflow: hidden;
+  max-width: 100%;
+  color: var(--galileo-text-primary);
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 20px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.galileo-action-control-gate__view {
+  flex: 0 0 auto;
+  white-space: nowrap;
+}
+
+.galileo-action-control-gate__view.btn-primary:not(.btn-accent) {
+  border-color: var(--galileo-text-primary);
+  background: var(--galileo-text-primary);
+  color: var(--galileo-page);
+}
+
+.galileo-action-control-summary__header {
+  display: flex;
+  min-width: 0;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.galileo-action-control-summary__header-copy {
+  display: flex;
+  min-width: 0;
+  flex: 1 1 auto;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.galileo-action-control-summary__header h3 {
+  min-width: 0;
+  margin: 0;
+  color: #f0f6fc;
+  font-size: 18px;
+  font-weight: 700;
+  line-height: normal;
+  overflow-wrap: anywhere;
+}
+
+.galileo-action-control-summary__header > mdc-staticchip {
+  flex: 0 0 auto;
+}
+
+.galileo-action-control-summary__lead {
+  max-width: none;
+  margin: 0;
+  color: #8b949e;
+  font-size: 13px;
+  font-weight: 400;
+  line-height: normal;
+}
+
+.galileo-action-control-summary__content {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.galileo-action-control-summary__flow {
+  display: grid;
+  width: 100%;
+  min-height: 160px;
+  grid-template-columns: 210px 32px 228px 32px minmax(0, 1fr);
+  align-items: stretch;
+  gap: 4px;
+  margin: 0;
+}
+
+.galileo-action-control-summary__stage,
+.galileo-action-control-summary__branch {
+  min-width: 0;
+  border: 1px solid #212630;
+  background: rgba(13, 17, 23, 0.76);
+  box-sizing: border-box;
+}
+
+.galileo-action-control-summary__stage {
+  display: flex;
+  height: 160px;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 16px;
+  padding: 16px;
+  border-radius: 8px;
+}
+
+.galileo-action-control-summary__stage--decision {
+  gap: 12px;
+}
+
+.galileo-action-control-summary__stage-label {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  color: rgba(255, 255, 255, 0.95);
+  font-size: 12px;
+  font-weight: 600;
+  line-height: normal;
+  white-space: nowrap;
+}
+
+.galileo-action-control-summary__step {
+  font-variant-numeric: tabular-nums;
+}
+
+.galileo-action-control-summary__stage-title {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  align-items: flex-start;
+  justify-content: center;
+  gap: 8px;
+}
+
+.galileo-action-control-summary__stage-title strong {
+  min-width: 0;
+  color: #f0f6fc;
+  font-size: 16px;
+  font-weight: 700;
+  line-height: normal;
+  overflow-wrap: anywhere;
+}
+
+.galileo-action-control-summary__decision-body {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.galileo-action-control-summary__decision-body strong {
+  color: rgba(255, 255, 255, 0.95);
+  font-size: 16px;
+  font-weight: 600;
+  line-height: 20px;
+}
+
+.galileo-action-control-summary__decision-body p {
+  margin: 0;
+  color: rgba(255, 255, 255, 0.7);
+  font-size: 13px;
+  font-weight: 400;
+  line-height: 18px;
+  overflow-wrap: anywhere;
+}
+
+.galileo-action-control-summary__arrow {
+  display: flex;
+  width: 32px;
+  min-width: 32px;
+  align-items: center;
+  justify-content: center;
+  color: #7d8793;
+}
+
+.galileo-action-control-summary__flow > .galileo-action-control-summary__branches {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 12px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  box-shadow: none;
+}
+
+.galileo-action-control-summary__branch {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  align-items: flex-start;
+  justify-content: center;
+  gap: 4px;
+  padding: 8px 12px;
+  border-radius: 6px;
+}
+
+.galileo-action-control-summary__branch--matched {
+  flex: 1 1 0;
+  gap: 12px;
+  border-color: #93c437;
+  background: rgba(22, 27, 34, 0.78);
+}
+
+.galileo-action-control-summary__branch--unmatched {
+  flex: 0 0 auto;
+  background: rgba(22, 27, 34, 0.72);
+}
+
+.galileo-action-control-summary__branch-label {
+  display: inline-flex;
+  min-width: 0;
+  align-items: center;
+  gap: 6px;
+  color: #8b949e;
+  font-size: 12px;
+  font-weight: 600;
+  line-height: normal;
+  white-space: nowrap;
+}
+
+.galileo-action-control-summary__branch-label > span:first-child {
+  width: 8px;
+  height: 8px;
+  flex: 0 0 8px;
+  border: 1px solid #7d8793;
+  border-radius: 50%;
+  background: transparent;
+  box-sizing: border-box;
+}
+
+.galileo-action-control-summary__branch--matched .galileo-action-control-summary__branch-label {
+  color: #f0f6fc;
+}
+
+.galileo-action-control-summary__branch--matched .galileo-action-control-summary__branch-label > span:first-child {
+  border-color: #9ed02f;
+  background: #9ed02f;
+}
+
+.galileo-action-control-summary__branch-copy {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 4px;
+  color: #f0f6fc;
+  font-size: 12px;
+  font-weight: 400;
+  line-height: normal;
+}
+
+.galileo-action-control-summary__branch--unmatched p {
+  min-width: 100%;
+  margin: 0;
+  color: #f0f6fc;
+  font-size: 12px;
+  font-weight: 400;
+  line-height: normal;
+  overflow-wrap: anywhere;
+}
+
+.galileo-action-control-studio mdc-staticchip {
+  padding-inline: 8px;
+}
+
+.galileo-action-control-summary__branch mdc-staticchip {
+  flex: 0 0 auto;
+}
+
+.galileo-action-control-action-chip {
+  display: inline-flex;
+  border-radius: 4px;
+  outline: none;
+}
+
+.galileo-action-control-action-chip:focus-visible {
+  outline: 2px solid var(--galileo-accent);
+  outline-offset: 2px;
+}
+
+.galileo-action-control-guidance {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 16px;
+  border: 1px solid #30363d;
+  border-radius: 8px;
+  background: rgba(9, 13, 19, 0.66);
+  box-sizing: border-box;
+}
+
+.galileo-action-control-guidance > span:first-child {
+  width: 16px !important;
+  height: 16px !important;
+  flex: 0 0 16px;
+  color: #f0f6fc;
+}
+
+.galileo-action-control-guidance strong {
+  display: block;
+  margin: 0 0 8px;
+  color: #f0f6fc;
+  font-size: 13px;
+  font-weight: 700;
+  line-height: normal;
+}
+
+.galileo-action-control-guidance p {
+  margin: 0;
+  color: #8b949e;
+  font-size: 12px;
+  font-weight: 400;
+  line-height: 1.4;
+  overflow-wrap: anywhere;
+}
+
+.galileo-action-control-edit-toggle {
+  width: auto;
+  align-self: flex-end;
+  --mdc-button-background: transparent;
+  --mdc-button-text-color: rgba(255, 255, 255, 0.95);
+  --mdc-button-prefix-icon-size: 16px;
+  --mdc-button-postfix-icon-size: 16px;
+}
+
+.galileo-action-control-edit-toggle.is-expanded {
+  --mdc-button-background: rgba(240, 246, 252, 0.12);
+}
+
+.galileo-action-control-editor {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+  padding: 23px;
+  border: 0;
+  border-radius: 12px;
+  background: rgba(0, 0, 0, 0.4);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.025);
+  backdrop-filter: blur(30px) saturate(120%);
+  -webkit-backdrop-filter: blur(30px) saturate(120%);
+}
+
+.galileo-action-control-editor--inline {
+  flex: 0 0 auto;
+}
+
+.galileo-action-control-editor--inline .galileo-action-control-editor__section--behavior {
+  padding-top: 23px;
+  border-top: 1px solid var(--galileo-card-border);
+}
+
+.galileo-action-control-editor__footer {
+  display: flex;
+  width: 100%;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 12px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  box-sizing: border-box;
+}
+
+.galileo-action-control-editor__footer .galileo-action-control-delete {
+  margin-right: auto;
+}
+
+.galileo-action-control-workspace.is-wizard {
+  display: grid;
+  max-width: none;
+  grid-template-rows: auto minmax(0, 1fr) auto;
+  gap: 24px;
+  padding: 0;
+  overflow: hidden;
+}
+
+.galileo-action-control-wizard__progress {
+  width: min(660px, 100%);
+  justify-self: center;
+  padding: 0;
+  border: 0;
+  box-sizing: border-box;
+}
+
+.galileo-action-control-wizard__progress mdc-stepperitem {
+  --mdc-stepperitem-label-color: var(--galileo-text-primary);
+  --mdc-stepperitem-help-text-color: var(--galileo-text-secondary);
+  --mdc-stepperitem-status-container-border-color: var(--galileo-field-border);
+  --mdc-stepperitem-status-container-background: var(--galileo-page);
+}
+
+.galileo-action-control-wizard__progress mdc-stepperitem[aria-disabled='true'] {
+  pointer-events: none;
+}
+
+.galileo-action-control-wizard__progress mdc-stepperconnector {
+  min-width: 72px;
+  margin-top: calc((1.75rem - 0.0625rem) / 2);
+  --mdc-stepperconnector-complete-background: var(--galileo-accent);
+  --mdc-stepperconnector-incomplete-background: var(--galileo-field-border);
+}
+
+.galileo-action-control-editor__heading {
+  display: flex;
+  max-width: 680px;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.galileo-action-control-editor__heading h3 {
+  margin: 0;
+  color: var(--galileo-text-primary);
+  font-size: 20px;
+  font-weight: 700;
+  line-height: 24px;
+}
+
+.galileo-action-control-editor__heading h3:focus {
+  outline: none;
+}
+
+.galileo-action-control-editor__heading p {
+  max-width: 68ch;
+  margin: 0;
+  color: var(--galileo-text-secondary);
+  font-size: 13px;
+  line-height: 20px;
+}
+
+.galileo-action-control-wizard__details-fields {
+  display: flex;
+  max-width: 680px;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.galileo-action-control-wizard__details-fields .galileo-action-control-timing-column {
+  max-width: 480px;
+}
+
+.galileo-action-control-wizard__body {
+  display: flex;
+  min-height: 0;
+  flex: 1 1 auto;
+  flex-direction: column;
+  gap: 24px;
+  padding: 16px;
+  border: 0;
+  border-radius: 12px;
+  background: var(--galileo-card);
+  box-shadow: none;
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+  overflow-x: hidden;
+  overflow-y: auto;
+  scrollbar-gutter: stable;
+}
+
+.galileo-action-control-editor__section {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  padding-top: 23px;
+  border-top: 1px solid var(--galileo-card-border);
+}
+
+.galileo-action-control-editor__section[hidden] {
+  display: none;
+}
+
+.galileo-action-control-editor__section--details {
+  padding-top: 0;
+  border-top: 0;
+}
+
+.galileo-action-control-editor__section-heading {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.galileo-action-control-editor__section-heading--stacked {
+  flex-direction: column;
+  justify-content: flex-start;
+  gap: 4px;
+}
+
+.galileo-action-control-editor__section > .galileo-action-control-editor__section-heading > div {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.galileo-action-control-editor__section-heading h3,
+.galileo-action-control-editor__section h3 {
+  margin: 0;
+  color: var(--galileo-text-primary);
+  font-size: 14px;
+  font-weight: 700;
+  line-height: 17px;
+}
+
+.galileo-action-control-editor__section > .galileo-action-control-editor__section-heading > h3 {
+  font-size: 16px;
+  line-height: 19px;
+}
+
+.galileo-action-control-editor__section-heading p,
+.galileo-action-control-editor__section-heading--stacked p {
+  margin: 0;
+  color: var(--galileo-text-secondary);
+  font-size: 12px;
+  font-weight: 400;
+  line-height: 16px;
+}
+
+.galileo-action-control-editor .form-group {
+  gap: 8px;
+  margin: 0;
+}
+
+.galileo-action-control-editor .form-label {
+  gap: 4px;
+  color: var(--galileo-text-primary);
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 16px;
+}
+
+.galileo-action-control-editor .form-label .required {
+  color: #fc8b98;
+}
+
+.galileo-action-control-editor .form-input,
+.galileo-action-control-editor .form-input-wrapper,
+.galileo-action-control-editor .form-textarea-wrapper,
+.galileo-action-control-editor .dropdown-trigger {
+  border-color: var(--galileo-field-border);
+  border-radius: 6px;
+  background: var(--galileo-field);
+  color: var(--galileo-text-primary);
+  box-sizing: border-box;
+}
+
+.galileo-action-control-editor .form-input {
+  height: 40px;
+  padding: 0 16px;
+  font-size: 13px;
+  line-height: 16px;
+}
+
+.galileo-action-control-editor .form-input-wrapper {
+  height: 40px;
+  padding: 0 6px 0 16px;
+}
+
+.galileo-action-control-editor .form-input-wrapper .form-input {
+  height: auto;
+  padding: 0;
+}
+
+.galileo-action-control-editor .dropdown-trigger {
+  height: 36px;
+  padding: 0 12px 0 16px;
+  font-size: 13px;
+  line-height: 16px;
+}
+
+.galileo-action-control-editor .dropdown-trigger-chevron > span {
+  width: 16px !important;
+  height: 16px !important;
+}
+
+.galileo-action-control-editor .dropdown-trigger:disabled {
+  border-color: var(--galileo-field-border);
+  background: var(--galileo-field);
+  color: #555e6b;
+}
+
+.galileo-action-control-editor .form-textarea-wrapper {
+  overflow: hidden;
+}
+
+.galileo-action-control-editor .form-textarea {
+  padding: 12px 16px;
+  color: var(--galileo-text-primary);
+  font-size: 13px;
+  line-height: 20px;
+  resize: none;
+}
+
+.galileo-action-control-description .form-textarea-wrapper {
+  height: 120px;
+  min-height: 120px;
+}
+
+.galileo-action-control-guidance-field .form-textarea-wrapper {
+  height: 100px;
+  min-height: 100px;
+}
+
+.galileo-action-control-editor .form-hint,
+.galileo-action-control-editor .checkbox-helper {
+  color: var(--galileo-text-secondary);
+  font-size: 12px;
+  font-weight: 400;
+  line-height: 15px;
+}
+
+.galileo-action-control-editor mdc-input,
+.galileo-action-control-editor mdc-textarea,
+.galileo-action-control-editor mdc-select,
+.galileo-action-control-editor mdc-radiogroup,
+.galileo-action-control-editor mdc-checkbox {
+  width: 100%;
+  --mdc-label-font-size: 12px;
+  --mdc-label-font-weight: 600;
+  --mdc-label-line-height: 16px;
+  --mdc-label-color: var(--galileo-text-primary);
+  --mdc-help-text-font-size: 12px;
+  --mdc-help-text-font-weight: 400;
+  --mdc-help-text-line-height: 16px;
+  --mdc-help-text-color: var(--galileo-text-secondary);
+  --mdc-required-indicator-color: #fc8b98;
+}
+
+.galileo-action-control-editor mdc-input {
+  display: block;
+  --mdc-input-text-color: var(--galileo-text-primary);
+  --mdc-input-border-color: var(--galileo-field-border);
+  --mdc-input-background-color: var(--galileo-field);
+  --mdc-input-support-text-color: var(--galileo-text-secondary);
+}
+
+.galileo-action-control-editor mdc-select {
+  display: flex;
+  --mdc-select-width: 100%;
+  --mdc-select-background-color: var(--galileo-field);
+  --mdc-select-text-color: var(--galileo-text-primary);
+  --mdc-select-border-color: var(--galileo-field-border);
+}
+
+.galileo-action-control-editor mdc-textarea {
+  display: block;
+  --mdc-textarea-text-color: var(--galileo-text-primary);
+  --mdc-textarea-background-color: transparent;
+  --mdc-textarea-container-background-color: transparent;
+  --mdc-textarea-border-color: var(--galileo-field-border);
+  --mdc-textarea-text-secondary-normal: var(--galileo-text-secondary);
+  --mdc-textarea-text-font-size: 13px;
+  --mdc-textarea-text-line-height: 20px;
+}
+
+.galileo-action-control-editor mdc-textarea::part(textarea-container),
+.galileo-action-control-editor mdc-textarea::part(textarea) {
+  background: transparent;
+}
+
+/* Webex Uplift Input — Figma node 157:18948. Shared by reusable Momentum fields. */
+.uplift-momentum-field {
+  --mdc-label-font-size: 14px;
+  --mdc-label-font-weight: 500;
+  --mdc-label-line-height: 20px;
+  --mdc-label-color: rgba(255, 255, 255, 0.95);
+  --mdc-help-text-font-size: 14px;
+  --mdc-help-text-font-weight: 400;
+  --mdc-help-text-line-height: 20px;
+  --mdc-help-text-color: rgba(255, 255, 255, 0.7);
+  --mdc-required-indicator-color: #fc8b98;
+  --mdc-input-text-color: rgba(255, 255, 255, 0.95);
+  --mdc-input-border-color: rgba(255, 255, 255, 0.2);
+  --mdc-input-background-color: transparent;
+  --mdc-input-support-text-color: rgba(255, 255, 255, 0.7);
+  --mdc-select-width: 100%;
+  --mdc-select-background-color: transparent;
+  --mdc-select-text-color: rgba(255, 255, 255, 0.95);
+  --mdc-select-border-color: rgba(255, 255, 255, 0.2);
+  --mdc-textarea-text-color: rgba(255, 255, 255, 0.95);
+  --mdc-textarea-background-color: transparent;
+  --mdc-textarea-container-background-color: transparent;
+  --mdc-textarea-border-color: rgba(255, 255, 255, 0.2);
+  --mdc-textarea-text-secondary-normal: rgba(255, 255, 255, 0.7);
+  --mdc-textarea-text-font-size: 14px;
+  --mdc-textarea-text-line-height: 20px;
+}
+
+/* Keep the reusable Uplift tokens authoritative over legacy editor selectors. */
+.galileo-action-control-editor .uplift-momentum-field {
+  --mdc-label-font-size: 14px;
+  --mdc-label-font-weight: 500;
+  --mdc-label-line-height: 20px;
+  --mdc-label-color: rgba(255, 255, 255, 0.95);
+  --mdc-help-text-font-size: 14px;
+  --mdc-help-text-font-weight: 400;
+  --mdc-help-text-line-height: 20px;
+  --mdc-help-text-color: rgba(255, 255, 255, 0.7);
+  --mdc-input-border-color: rgba(255, 255, 255, 0.2);
+  --mdc-input-background-color: transparent;
+  --mdc-select-background-color: transparent;
+  --mdc-select-border-color: rgba(255, 255, 255, 0.2);
+  --mdc-textarea-background-color: transparent;
+  --mdc-textarea-container-background-color: transparent;
+  --mdc-textarea-border-color: rgba(255, 255, 255, 0.2);
+}
+
+.uplift-momentum-field::part(input-container),
+.uplift-momentum-field::part(base-container),
+.uplift-momentum-field::part(textarea-container) {
+  border-radius: 8px;
+  background: transparent;
+}
+
+.galileo-action-control-editor .uplift-momentum-field::part(input-container),
+.galileo-action-control-editor .uplift-momentum-field::part(base-container),
+.galileo-action-control-editor .uplift-momentum-field::part(textarea-container),
+.galileo-action-control-editor .uplift-momentum-field::part(textarea) {
+  border-radius: 8px;
+  background: transparent;
+}
+
+.uplift-momentum-field:not([disabled]):hover:not(:focus-within)::part(input-container),
+.uplift-momentum-field:not([disabled]):hover:not(:focus-within)::part(base-container) {
+  background: rgba(255, 255, 255, 0.07);
+}
+
+.uplift-momentum-field:not([disabled]):active:not(:focus-within)::part(input-container),
+.uplift-momentum-field:not([disabled]):active:not(:focus-within)::part(base-container) {
+  background: rgba(255, 255, 255, 0.11);
+}
+
+.uplift-momentum-field:focus-within::part(input-container),
+.uplift-momentum-field:focus-within::part(base-container),
+.uplift-momentum-field:focus-within::part(textarea-container) {
+  border-color: rgba(255, 255, 255, 0.9);
+  background: transparent;
+  box-shadow:
+    0 0 0 2px #000,
+    0 0 0 5px rgba(100, 180, 250, 0.35),
+    0 0 0 4px #64b4fa;
+}
+
+.uplift-momentum-field[disabled] {
+  --mdc-label-color: rgba(255, 255, 255, 0.4);
+  --mdc-help-text-color: rgba(255, 255, 255, 0.4);
+  --mdc-required-indicator-color: rgba(255, 255, 255, 0.4);
+  --mdc-input-text-color: rgba(255, 255, 255, 0.4);
+  --mdc-input-background-color: rgba(255, 255, 255, 0.11);
+  --mdc-input-border-color: rgba(255, 255, 255, 0.2);
+  --mdc-select-background-color: rgba(255, 255, 255, 0.11);
+  --mdc-select-text-color: rgba(255, 255, 255, 0.4);
+  --mdc-textarea-background-color: transparent;
+  --mdc-textarea-container-background-color: transparent;
+  --mdc-textarea-text-color: rgba(255, 255, 255, 0.4);
+}
+
+mdc-textarea.uplift-momentum-field::part(textarea-container),
+mdc-textarea.uplift-momentum-field::part(textarea) {
+  background: transparent;
+}
+
+.galileo-action-control-description::part(textarea-container) {
+  min-height: 120px;
+}
+
+.galileo-action-control-guidance-field::part(textarea-container) {
+  min-height: 100px;
+  background: transparent;
+}
+
+.galileo-action-control-guidance-field::part(textarea) {
+  background: transparent;
+}
+
+.galileo-action-control-guidance-field::part(label) {
+  margin-bottom: 8px;
+}
+
+.galileo-action-control-guidance-field::part(help-text-container) {
+  margin-top: 4px;
+}
+
+.galileo-action-control-guidance-field {
+  --mdc-label-font-size: 14px;
+  --mdc-label-font-weight: 700;
+  --mdc-label-line-height: 17px;
+}
+
+.galileo-action-control-editor .galileo-action-control-guidance-field {
+  --mdc-textarea-background-color: transparent;
+  --mdc-textarea-container-background-color: transparent;
+}
+
+.galileo-action-control-condition-layout {
+  display: grid;
+  grid-template-columns: 313px minmax(0, 1fr);
+  align-items: start;
+  gap: 20px;
+}
+
+.galileo-action-control-editor--inline
+  .galileo-action-control-editor__section--details:not(.galileo-action-control-editor__section--behavior) {
+  display: grid;
+  grid-template-columns: minmax(0, 680px);
+  align-items: start;
+  justify-content: start;
+  row-gap: 20px;
+}
+
+.galileo-action-control-editor--inline
+  .galileo-action-control-editor__section--details:not(.galileo-action-control-editor__section--behavior)
+  > .galileo-action-control-editor__section-heading,
+.galileo-action-control-editor--inline
+  .galileo-action-control-editor__section--details:not(.galileo-action-control-editor__section--behavior)
+  > .galileo-action-control-rule-preview {
+  grid-column: 1 / -1;
+}
+
+.galileo-action-control-editor--inline
+  .galileo-action-control-editor__section--details:not(.galileo-action-control-editor__section--behavior)
+  > .galileo-action-control-wizard__details-fields {
+  display: contents;
+}
+
+.galileo-action-control-editor--inline
+  .galileo-action-control-wizard__details-fields > mdc-input,
+.galileo-action-control-editor--inline
+  .galileo-action-control-wizard__details-fields > mdc-textarea {
+  width: min(680px, 100%);
+  grid-column: 1 / -1;
+}
+
+.galileo-action-control-editor--inline .galileo-action-control-timing-column {
+  width: min(680px, 100%);
+  max-width: 680px;
+  grid-column: 1;
+}
+
+.galileo-action-control-editor--inline .galileo-action-control-conditions-column {
+  width: min(680px, 100%);
+  max-width: 680px;
+  grid-column: 1;
+}
+
+.galileo-action-control-wizard__body .galileo-action-control-conditions-column {
+  width: min(680px, 100%);
+  max-width: 680px;
+}
+
+.galileo-action-control-wizard__body .galileo-action-control-rule-preview {
+  width: min(680px, 100%);
+  max-width: 680px;
+}
+
+.galileo-action-control-timing-column,
+.galileo-action-control-conditions-column {
+  min-width: 0;
+}
+
+.galileo-action-control-timing-column {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.galileo-action-control-timing-column .form-label,
+.galileo-action-control-conditions-column > .galileo-action-control-editor__section-heading h3,
+.galileo-action-control-guidance-field > .form-label {
+  font-size: 14px;
+  font-weight: 700;
+  line-height: 17px;
+}
+
+.galileo-action-control-timing::part(container) {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.galileo-action-control-timing::part(group-header) {
+  display: none;
+}
+
+.galileo-action-control-timing mdc-radio {
+  width: auto;
+  --mdc-label-font-size: 13px;
+  --mdc-label-font-weight: 400;
+  --mdc-label-line-height: 20px;
+}
+
+.galileo-action-control-timing-info {
+  flex: 0 0 auto;
+}
+
+.galileo-action-control-timing-info:not(:last-of-type) {
+  margin-inline-end: 16px;
+}
+
+.galileo-action-control-conditions-column {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.galileo-action-control-condition-source {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.galileo-action-control-condition-source span {
+  color: var(--galileo-text-primary);
+  font-size: 14px;
+  font-weight: 700;
+  line-height: 17px;
+}
+
+.galileo-action-control-condition-source p {
+  margin: 0;
+  color: var(--galileo-text-primary);
+  font-size: 13px;
+  font-weight: 400;
+  line-height: 20px;
+}
+
+.galileo-action-control-condition-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.galileo-action-control-condition {
+  display: grid;
+  grid-template-columns: 48px minmax(140px, 1fr) auto 112px 24px;
+  align-items: center;
+  gap: 8px;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+}
+
+.galileo-action-control-condition .form-group {
+  min-width: 0;
+}
+
+.galileo-action-control-condition > mdc-select,
+.galileo-action-control-condition > mdc-input {
+  min-width: 0;
+  width: 100%;
+}
+
+.galileo-action-control-condition__field::part(label) {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+.galileo-action-control-condition__field > .form-label {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+.galileo-action-control-condition__joiner {
+  display: inline-flex;
+  width: 48px;
+  height: 32px;
+  align-self: end;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--galileo-field-border);
+  border-radius: 6px;
+  background: var(--galileo-field);
+  color: var(--galileo-text-secondary);
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 16px;
+  box-sizing: border-box;
+}
+
+.galileo-action-control-condition__joiner--toggle {
+  padding: 0;
+  font: inherit;
+  cursor: pointer;
+}
+
+.galileo-action-control-condition__joiner--toggle:hover {
+  border-color: var(--outline-input-hover);
+  background: color-mix(in srgb, var(--galileo-field) 82%, var(--galileo-text-primary));
+  color: var(--galileo-text-primary);
+}
+
+.galileo-action-control-condition__joiner--toggle:focus-visible {
+  outline: 2px solid var(--galileo-accent);
+  outline-offset: 1px;
+}
+
+.galileo-action-control-condition__operator {
+  color: var(--galileo-text-secondary);
+  font-size: 12px;
+  font-weight: 400;
+  line-height: 16px;
+  white-space: nowrap;
+}
+
+.galileo-action-control-condition .dropdown-trigger,
+.galileo-action-control-condition .form-input-wrapper {
+  height: 36px;
+}
+
+.galileo-action-control-condition .dropdown-trigger {
+  padding-right: 12px;
+  padding-left: 12px;
+}
+
+.galileo-action-control-condition .dropdown-trigger-chevron > span,
+.galileo-action-control-condition .form-input-clear > span {
+  width: 14px !important;
+  height: 14px !important;
+}
+
+.galileo-action-control-condition .form-input-wrapper {
+  padding-right: 6px;
+  padding-left: 12px;
+}
+
+.galileo-action-control-condition > .uplift-momentum-button {
+  width: 24px;
+  min-width: 24px;
+  padding-inline: 3px !important;
+  box-sizing: border-box;
+}
+
+.galileo-action-control-condition > .uplift-momentum-button .icon {
+  width: 16px;
+  height: 16px;
+}
+
+.galileo-action-control-condition-actions {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 139px 1px 179px;
+  align-items: start;
+  column-gap: 16px;
+}
+
+.galileo-action-control-condition-actions > .uplift-momentum-button {
+  width: 139px;
+  grid-column: 2;
+  grid-row: 1;
+}
+
+.galileo-action-control-condition-actions > .galileo-action-control-advanced > .galileo-action-control-advanced-trigger {
+  width: 179px;
+}
+
+.galileo-action-control-condition-actions > span {
+  width: 0;
+  height: 16px;
+  grid-column: 3;
+  grid-row: 1;
+  justify-self: center;
+  margin-top: 8px;
+  border-left: 1px solid var(--galileo-field-border);
+}
+
+.galileo-action-control-advanced {
+  display: contents;
+}
+
+.galileo-action-control-advanced > .galileo-action-control-advanced-trigger {
+  display: flex;
+  width: 179px;
+  grid-column: 4;
+  grid-row: 1;
+}
+
+.galileo-action-control-condition-actions > .uplift-momentum-button::part(button-text),
+.galileo-action-control-advanced-trigger::part(button-text) {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.galileo-action-control-advanced__content {
+  display: grid;
+  position: static;
+  width: 100%;
+  grid-column: 1 / -1;
+  grid-row: 2;
+  gap: 12px;
+  margin-top: 12px;
+  padding: 16px;
+  border: 1px solid var(--galileo-field-border);
+  border-radius: 8px;
+  background: var(--galileo-field);
+  box-shadow: 0 12px 36px rgba(0, 0, 0, 0.42);
+  box-sizing: border-box;
+}
+
+.galileo-action-control-rule-preview {
+  display: block;
+  width: 100%;
+  min-height: 64px;
+  color: var(--galileo-text-primary);
+  --mdc-banner-background-color: #0d3764;
+  --mdc-banner-border-color: #58b9ff;
+  --mdc-banner-border-width: 1px;
+  --mdc-banner-icon-color: #58b9ff;
+  --mdc-banner-padding: 12px 16px;
+  --mdc-banner-gap: 8px;
+  margin-top: 0;
+}
+
+.galileo-action-control-rule-preview::part(leading) {
+  padding: 12px 16px;
+  box-sizing: border-box;
+}
+
+.galileo-action-control-direction {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.galileo-action-control-behavior::part(container) {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 24px;
+}
+
+.galileo-action-control-behavior::part(group-header) {
+  display: none;
+}
+
+.galileo-action-control-behavior mdc-radio {
+  width: auto;
+  --mdc-label-font-size: 13px;
+  --mdc-label-font-weight: 400;
+  --mdc-label-line-height: 20px;
+}
+
+.galileo-action-control-gate-setting mdc-checkbox {
+  --mdc-label-font-size: 13px;
+  --mdc-label-font-weight: 400;
+  --mdc-label-line-height: 16px;
+}
+
+.galileo-action-control-behavior.radio-group {
+  gap: 0;
+}
+
+.galileo-action-control-behavior .radio-group-list {
+  min-height: 16px;
+  flex-direction: row;
+  flex-wrap: wrap;
+  gap: 8px 24px;
+}
+
+.galileo-action-control-behavior .radio {
+  min-height: 16px;
+  align-items: center;
+}
+
+.galileo-action-control-behavior .radio-circle {
+  margin-top: 0;
+}
+
+.galileo-action-control-behavior .radio-label-text {
+  font-size: 13px;
+  line-height: 16px;
+}
+
+.galileo-action-control-editor__section--behavior > .galileo-action-control-guidance-field {
+  width: min(680px, 100%);
+  max-width: 680px;
+  margin-top: 4px;
+}
+
+.galileo-action-control-steer-field {
+  width: min(680px, 100%);
+  max-width: 680px;
+}
+
+.galileo-action-control-editor__section:not(.galileo-action-control-editor__section--details) .checkbox {
+  gap: 8px;
+}
+
+.galileo-action-control-editor__section:not(.galileo-action-control-editor__section--details) .checkbox-label {
+  gap: 0;
+}
+
+.galileo-action-control-editor__section:not(.galileo-action-control-editor__section--details) .checkbox-label-text {
+  font-size: 13px;
+  line-height: 20px;
+}
+
+.galileo-action-control-editor__section:not(.galileo-action-control-editor__section--details) > .form-group {
+  gap: 8px;
+}
+
+.galileo-action-control-editor__section:not(.galileo-action-control-editor__section--details):not(.galileo-action-control-editor__section--behavior) {
+  gap: 12px;
+}
+
+.galileo-action-control-gate-setting {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  justify-content: flex-start;
+  gap: 4px;
+  min-height: 35px;
+}
+
+.galileo-action-control-gate-setting mdc-checkbox {
+  width: auto;
+  align-self: flex-start;
+}
+
+.galileo-action-control-gate-setting .checkbox {
+  min-height: 16px;
+  gap: 10px;
+}
+
+.galileo-action-control-gate-setting .checkbox-label {
+  min-height: 16px;
+}
+
+.galileo-action-control-gate-setting .checkbox-box {
+  margin-top: 0;
+}
+
+.galileo-action-control-editor__section .galileo-action-control-gate-setting .checkbox-label-text {
+  font-size: 13px;
+  line-height: 16px;
+}
+
+.galileo-action-control-gate-setting > span {
+  color: var(--galileo-text-secondary);
+  font-size: 12px;
+  line-height: 15px;
+}
+
+.galileo-action-control-error {
+  margin: 0;
+}
+
+.galileo-action-control-wizard__footer {
+  display: flex;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 16px;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+}
+
+.galileo-action-control-wizard__footer > div {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.galileo-action-control-wizard__footer mdc-button {
+  min-width: 0;
+}
+
+@media (max-width: 860px) {
+  .galileo-action-control-studio {
+    height: 100dvh;
+    gap: 16px;
+    padding: max(16px, env(safe-area-inset-top)) max(16px, env(safe-area-inset-right))
+      max(16px, env(safe-area-inset-bottom)) max(16px, env(safe-area-inset-left));
+  }
+
+  .galileo-action-control-studio__header {
+    height: 64px;
+    min-height: 64px;
+    flex: 0 0 64px;
+    gap: 16px;
+    padding: 0;
+  }
+
+  .galileo-action-control-studio__header-copy h2 {
+    font-size: 20px;
+    line-height: 28px;
+  }
+
+  .galileo-action-control-studio__header-copy p {
+    overflow: hidden;
+    font-size: 14px;
+    line-height: 20px;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .galileo-action-control-studio__close {
+    flex-basis: 52px;
+  }
+
+  .galileo-action-control-workspace {
+    padding: 0;
+  }
+
+  .galileo-action-control-wizard__progress mdc-stepperconnector {
+    min-width: 36px;
+  }
+
+  .galileo-action-control-condition-layout {
+    grid-template-columns: 1fr;
+  }
+
+  .galileo-action-control-editor--inline
+    .galileo-action-control-editor__section--details:not(.galileo-action-control-editor__section--behavior) {
+    grid-template-columns: 1fr;
+  }
+
+  .galileo-action-control-editor--inline .galileo-action-control-timing-column,
+  .galileo-action-control-editor--inline .galileo-action-control-conditions-column {
+    grid-column: 1;
+  }
+
+  .galileo-action-control-gate__relationship {
+    grid-template-columns: 1fr;
+  }
+
+  .galileo-action-control-gate__arrow {
+    transform: rotate(90deg);
+  }
+
+  .galileo-action-control-gate__view {
+    justify-self: start;
+  }
+
+  .galileo-action-control-summary__flow {
+    min-height: 0;
+    grid-template-columns: 210px 32px minmax(228px, 1fr);
+  }
+
+  .galileo-action-control-summary__stage--decision + .galileo-action-control-summary__arrow {
+    width: 32px;
+    height: 20px;
+    grid-column: 1 / -1;
+    justify-self: center;
+    transform: rotate(90deg);
+  }
+
+  .galileo-action-control-summary__branches {
+    grid-column: 1 / -1;
+  }
+}
+
+@media (max-width: 620px) {
+  .galileo-action-control-card--overview.card > .card-body,
+  .galileo-action-control-editor {
+    padding: 16px;
+  }
+
+  .galileo-action-control-workspace.is-wizard .galileo-action-control-wizard__body {
+    padding: 16px;
+  }
+
+  .galileo-action-control-wizard__footer {
+    margin: 0;
+    padding: 0;
+  }
+
+  .galileo-action-control-wizard__footer > div {
+    width: auto;
+  }
+
+  .galileo-action-control-editor__footer {
+    align-items: stretch;
+    flex-direction: column-reverse;
+  }
+
+  .galileo-action-control-editor__footer mdc-button {
+    width: 100%;
+  }
+
+  .galileo-action-control-editor__footer .galileo-action-control-delete {
+    margin-right: 0;
+  }
+
+  .galileo-action-control-card__header,
+  .galileo-action-control-summary__header {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .galileo-action-control-summary__flow {
+    grid-template-columns: 1fr;
+  }
+
+  .galileo-action-control-summary__arrow {
+    width: 32px;
+    height: 20px;
+    justify-self: center;
+    transform: rotate(90deg);
+  }
+
+  .galileo-action-control-summary__branches {
+    grid-column: auto;
+    grid-template-columns: 1fr;
+  }
+
+  .galileo-action-control-condition {
+    grid-template-columns: 48px minmax(0, 1fr) 24px;
+  }
+
+  .galileo-action-control-condition__operator,
+  .galileo-action-control-condition > .form-group:not(.galileo-action-control-condition__field) {
+    grid-column: 2;
+  }
+
+  .galileo-action-control-condition > .uplift-momentum-button {
+    grid-column: 3;
+    grid-row: 1;
+  }
+
+  .galileo-action-control-condition-actions {
+    grid-template-columns: 1fr;
+    row-gap: 8px;
+  }
+
+  .galileo-action-control-condition-actions > .uplift-momentum-button {
+    grid-column: 1;
+    grid-row: 1;
+    justify-self: end;
+  }
+
+  .galileo-action-control-condition-actions > .galileo-action-control-advanced {
+    grid-column: 1;
+    grid-row: 2;
+  }
+
+  .galileo-action-control-condition-actions > span {
+    display: none;
+  }
+}
+
+/* Momentum full-page modal parity — WxCC 6290 node 38100:22784. */
+.galileo-action-control-studio.galileo-action-control-studio {
+  gap: 24px;
+  padding: 24px;
+}
+
+.galileo-action-control-studio.galileo-action-control-studio .galileo-action-control-studio__header {
+  height: 64px;
+  min-height: 64px;
+  flex: 0 0 64px;
+  align-items: center;
+  gap: 24px;
+  padding: 0;
+}
+
+.galileo-action-control-studio .galileo-action-control-studio__header-copy {
+  display: flex;
+  flex: 1 1 auto;
+  min-width: 0;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 8px;
+}
+
+.galileo-action-control-studio .galileo-action-control-studio__header-copy h2 {
+  width: 100%;
+  margin: 0;
+  font-size: 24px;
+  font-weight: 700;
+  line-height: 32px;
+}
+
+.galileo-action-control-studio .galileo-action-control-studio__header-copy p {
+  width: 100%;
+  margin: 0;
+  color: var(--galileo-text-secondary);
+  font-size: 16px;
+  font-weight: 400;
+  line-height: 24px;
+}
+
+.galileo-action-control-studio .galileo-action-control-studio__close {
+  width: 64px;
+  height: 64px;
+  flex: 0 0 64px;
+  align-self: center;
+  margin-left: auto;
+  --mdc-button-prefix-icon-size: 32px;
+  --mdc-button-text-color: var(--galileo-text-primary);
+}
+
+@media (max-width: 860px) {
+  .galileo-action-control-studio.galileo-action-control-studio {
+    gap: 16px;
+    padding: max(16px, env(safe-area-inset-top)) max(16px, env(safe-area-inset-right))
+      max(16px, env(safe-area-inset-bottom)) max(16px, env(safe-area-inset-left));
+  }
+
+  .galileo-action-control-studio .galileo-action-control-studio__header-copy h2 {
+    font-size: 20px;
+    line-height: 28px;
+  }
+
+  .galileo-action-control-studio .galileo-action-control-studio__header-copy p {
+    overflow: hidden;
+    font-size: 14px;
+    line-height: 20px;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
 }

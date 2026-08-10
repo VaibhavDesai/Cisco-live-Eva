@@ -105,7 +105,7 @@ The central page of the application. A single-page, tabbed interface for configu
 Key sub-features:
 - **Instruction optimization** — simulated AI rewrite with diff review and accept/reject
 - **Guardrail recommendations** — system-suggested guardrails with reasoning tooltips
-- **Custom guardrails** — user-created rules with a "Custom" badge
+- **Adaptive guardrails** — user-created rules with an "Adaptive" badge
 - **AI Engine modal** — create/edit engine configurations with system prompt guidelines
 
 ### 6. Component Library

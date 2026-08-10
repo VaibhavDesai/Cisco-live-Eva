@@ -91,7 +91,7 @@ function SessionDetail({
   backLabel: string;
   onBack: () => void;
   onReviewGuardrail: (guardrailId: string) => void;
-  onReviewActionControl: (controlId: string, actionId: string) => void;
+  onReviewActionControl: () => void;
 }) {
   const actionControl = getSessionActionControlDecision(session);
   const actionControlResultLabel = !actionControl?.matched
@@ -239,16 +239,13 @@ function SessionDetail({
               <div className="agent-session-policy-card__header">
                 <span aria-hidden="true"><Icon name="automation" weight="bold" size="md" /></span>
                 <div>
-                  <h2>{actionControl.controlTitle}</h2>
+                  <h2>{actionControl.unlockedActionNames[0] ?? actionControl.controlTitle}</h2>
                 </div>
                 <Button
                   variant="secondary"
                   size="sm"
                   className="agent-session-policy-card__review"
-                  onClick={() => onReviewActionControl(
-                    actionControl.controlId,
-                    actionControl.actionId,
-                  )}
+                  onClick={onReviewActionControl}
                 >
                   Review control
                 </Button>
@@ -399,8 +396,8 @@ export default function AgentSessions() {
             onReviewGuardrail={(guardrailId) => navigate(
               `/agents/${agent.id}/configure?section=Security&tier=advanced&guardrailId=${encodeURIComponent(guardrailId)}`,
             )}
-            onReviewActionControl={(controlId, actionId) => navigate(
-              `/agents/${agent.id}/configure?section=Action&actionId=${encodeURIComponent(actionId)}&controlId=${encodeURIComponent(controlId)}`,
+            onReviewActionControl={() => navigate(
+              `/agents/${agent.id}/configure?section=Action`,
             )}
           />
         ) : (
