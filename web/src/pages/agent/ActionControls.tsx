@@ -11,6 +11,8 @@ import {
   Banner as MomentumBanner,
   Checkbox as MomentumCheckbox,
   IconProvider,
+  MenuItemRadio as MomentumMenuItemRadio,
+  MenuPopover as MomentumMenuPopover,
   Option as MomentumOption,
   Radio as MomentumRadio,
   RadioGroup as MomentumRadioGroup,
@@ -625,8 +627,27 @@ export function getControlExpressionPreview(control: GalileoActionControl): stri
   if (control.conditions.length === 0) return 'No conditions added';
   const joiner = normalizeMatchMode(control.matchMode) === 'and' ? ' and ' : ' or ';
   return control.conditions
-    .map(condition => `${FIELD_LABELS[condition.field]} is greater than ${condition.value}`)
+    .map(condition => `{{${condition.field}}} is greater than ${condition.value}`)
     .join(joiner);
+}
+
+function GalileoControlExpression({ control }: { control: GalileoActionControl }) {
+  if (control.conditions.length === 0) return <>No conditions added</>;
+  const joiner = normalizeMatchMode(control.matchMode) === 'and' ? ' and ' : ' or ';
+
+  return (
+    <>
+      {control.conditions.map((condition, index) => (
+        <Fragment key={condition.id}>
+          {index > 0 ? joiner : null}
+          <code className="galileo-action-control-summary__variable" translate="no">
+            {`{{${condition.field}}}`}
+          </code>
+          {` is greater than ${condition.value}`}
+        </Fragment>
+      ))}
+    </>
+  );
 }
 
 interface GalileoControlSummaryCopy {
@@ -1448,6 +1469,10 @@ export function ActionControlManagerDialog({
   };
 
   const availableSteerActions = actions.filter(action => action.id !== contextActionId);
+  const steerMenuTriggerId = `galileo-steer-menu-trigger-${contextActionId}`;
+  const selectedSteerActionName = draft?.steerToActionId
+    ? actionNames[draft.steerToActionId] ?? draft.steerToActionId
+    : 'Select an action';
   const summaryControl = draft ?? control;
   const summaryCopy = summaryControl
     ? getGalileoControlSummaryCopy(summaryControl, contextActionName, actionNames)
@@ -1583,7 +1608,7 @@ export function ActionControlManagerDialog({
                         </span>
                         <div className="galileo-action-control-summary__decision-body">
                           <strong>Evaluate reservation inputs</strong>
-                          <p>{summaryCopy.condition}</p>
+                          <p><GalileoControlExpression control={summaryControl} /></p>
                         </div>
                       </div>
 
@@ -2082,26 +2107,50 @@ export function ActionControlManagerDialog({
                     <p>Choose the action Galileo unlocks when this control matches.</p>
                   </div>
                 </div>
-                <UpliftMomentumSelect
-                  label="Steer to action"
-                  value={draft.steerToActionId ?? ''}
-                  placeholder="Select an action"
-                  className="galileo-action-control-steer-field"
-                  onChange={event => setDraft(current => current
-                    ? { ...current, steerToActionId: (event.target as { value: string }).value }
-                    : current)}
-                >
-                  <MomentumSelectlistbox>
+                <div className="galileo-action-control-steer-field">
+                  <span
+                    id={`${steerMenuTriggerId}-label`}
+                    className="galileo-action-control-steer-field__label"
+                  >
+                    Steer to action
+                  </span>
+                  <UpliftMomentumButton
+                    id={steerMenuTriggerId}
+                    type="button"
+                    variant="secondary"
+                    color="default"
+                    size={40}
+                    className="galileo-action-control-steer-trigger"
+                    aria-labelledby={`${steerMenuTriggerId}-label ${steerMenuTriggerId}`}
+                    postfixIcon="arrow-down-bold"
+                  >
+                    {selectedSteerActionName}
+                  </UpliftMomentumButton>
+                  <MomentumMenuPopover
+                    triggerID={steerMenuTriggerId}
+                    placement="bottom-start"
+                    color="tonal"
+                    hideOnEscape
+                    hideOnOutsideClick
+                    focusBackToTrigger
+                    interactive
+                    className="galileo-action-control-steer-menu"
+                  >
                     {availableSteerActions.map(action => (
-                      <MomentumOption
+                      <MomentumMenuItemRadio
                         key={action.id}
+                        name={`galileo-steer-target-${contextActionId}`}
                         value={action.id}
                         label={action.name}
-                        selected={draft.steerToActionId === action.id}
+                        checked={draft.steerToActionId === action.id}
+                        indicator="checkmark"
+                        onChange={() => setDraft(current => current
+                          ? { ...current, steerToActionId: action.id }
+                          : current)}
                       />
                     ))}
-                  </MomentumSelectlistbox>
-                </UpliftMomentumSelect>
+                  </MomentumMenuPopover>
+                </div>
                 <div className="galileo-action-control-gate-setting">
                   <MomentumCheckbox
                     checked={gateInterventionAction}

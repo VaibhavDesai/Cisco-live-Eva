@@ -1,11 +1,12 @@
 import { useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { Card as MomentumCard } from '@momentum-design/components/react';
 import { useApp, type Agent } from '../../contexts/AppContext';
 import { useDesignVariation } from '../../contexts/DesignVariationContext';
 import Button from '../../components/shared/Button';
 import {
   Badge,
-  Card,
+  Card as SharedCard,
   Dropdown,
   Input,
   MenuItem,
@@ -414,14 +415,19 @@ export default function EvaAgentsTable() {
             {filteredAgents.map(tile => {
               const family = FAMILY_PRESENTATION[tile.family];
               return (
-              <Card key={tile.id} className="ai-agents-agent-card ai-agents-agent-card--clickable">
+              <MomentumCard
+                key={tile.id}
+                orientation="vertical"
+                variant="border"
+                className="ai-agents-agent-card ai-agents-agent-card--clickable"
+              >
                 <button
                   type="button"
                   className="ai-agents-agent-card__hit-area"
                   onClick={() => handleAgentClick(tile)}
                   aria-label={`Open ${tile.name}, ${family.label}, ${LIFECYCLE_STATUS_LABELS[tile.lifecycle]}`}
                 />
-                <div className="ai-agents-agent-card-slot">
+                <div slot="body" className="ai-agents-agent-card-slot">
                   <div className="ai-agents-agent-card-head">
                     <span
                       className={`ai-agents-agent-avatar ai-agents-agent-avatar--${family.avatarClass}`}
@@ -460,15 +466,12 @@ export default function EvaAgentsTable() {
                   </div>
                   <div className="ai-agents-agent-content">
                     <p className="ai-agents-agent-description">{tile.description}</p>
-                    <p className="ai-agents-agent-meta">
-                      {tile.description}
-                      <br />
-                      Updated on {tile.updatedOn}
-                      <br />
-                      by {tile.updatedBy}
-                    </p>
                   </div>
                   <div className="ai-agents-agent-footer">
+                    <p className="ai-agents-agent-meta">
+                      <span>Updated {tile.updatedOn}</span>
+                      <span>by {tile.updatedBy}</span>
+                    </p>
                     <Button
                       type="button"
                       variant="secondary"
@@ -483,15 +486,15 @@ export default function EvaAgentsTable() {
                     </Button>
                   </div>
                 </div>
-              </Card>
+              </MomentumCard>
               );
             })}
           </div>
         ) : (
-          <Card className="ai-agents-empty-card">
+          <SharedCard className="ai-agents-empty-card">
             <strong>No agents found</strong>
             <span>Try changing the search or filters.</span>
-          </Card>
+          </SharedCard>
         )}
       </div>
 

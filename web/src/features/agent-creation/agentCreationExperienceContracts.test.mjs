@@ -559,8 +559,23 @@ test('Galileo action controls use the Figma summary and a direct-entry creation 
   );
   assert.match(
     controlsSource,
-    /<UpliftMomentumTextarea[\s\S]*?className="galileo-action-control-guidance-field"[\s\S]*?<UpliftMomentumSelect[\s\S]*?className="galileo-action-control-steer-field"/,
+    /<code className="galileo-action-control-summary__variable" translate="no">[\s\S]*?`\{\{\$\{condition\.field\}\}\}`[\s\S]*?<GalileoControlExpression control=\{summaryControl\} \/>/,
+    'the Decision summary should render action inputs as non-translatable code tokens',
+  );
+  assert.match(
+    figmaStyles,
+    /--galileo-code-variable:\s*#ffa657;[\s\S]*?\.galileo-action-control-summary__variable\s*\{[^}]*color:\s*var\(--galileo-code-variable, #ffa657\);[^}]*font-family:\s*ui-monospace,[^}]*font-weight:\s*600;/,
+    'action-input variables should use the dark-editor syntax color and a monospace code treatment',
+  );
+  assert.match(
+    controlsSource,
+    /<UpliftMomentumTextarea[\s\S]*?className="galileo-action-control-guidance-field"[\s\S]*?<div className="galileo-action-control-steer-field"/,
     'guidance and steer fields should expose stable form-measure hooks',
+  );
+  assert.match(
+    controlsSource,
+    /const steerMenuTriggerId = `galileo-steer-menu-trigger-\$\{contextActionId\}`;[\s\S]*?<UpliftMomentumButton[\s\S]*?id=\{steerMenuTriggerId\}[\s\S]*?postfixIcon="arrow-down-bold"[\s\S]*?<MomentumMenuPopover[\s\S]*?triggerID=\{steerMenuTriggerId\}[\s\S]*?<MomentumMenuItemRadio[\s\S]*?indicator="checkmark"/,
+    'Steer to action should use the native Momentum menu popover and single-select menu items',
   );
   assert.match(
     figmaStyles,
@@ -1802,7 +1817,7 @@ test('create versus edit mode keeps both primary configuration actions synchroni
   assert.doesNotMatch(saveHandlerSource, /publishAgentVersion|navigateToAgentStudio/);
 });
 
-test('AI agent list cards keep a visible 16px grid gap', () => {
+test('AI agent list cards use the native Uplift card with a visible 16px grid gap', () => {
   const tableSource = readSource('../eva/EvaAgentsTable.tsx');
   const styles = readSource('../../components.css');
   const spacingTokens = readSource('../../tokens/spacing-tokens.css');
@@ -1815,6 +1830,11 @@ test('AI agent list cards keep a visible 16px grid gap', () => {
   assert.ok(cardRuleStart >= 0 && cardRuleEnd > cardRuleStart);
   assert.match(styles.slice(gridRuleStart, gridRuleEnd), /gap:\s*var\(--spacing-small\)/);
   assert.match(spacingTokens, /--spacing-small:\s*16px/);
+  assert.match(
+    tableSource,
+    /Card as MomentumCard[^]*?<MomentumCard[^]*?orientation="vertical"[^]*?variant="border"[^]*?<div slot="body" className="ai-agents-agent-card-slot"/,
+    'every agent tile should use the native Momentum Card structure',
+  );
   assert.doesNotMatch(
     styles.slice(cardRuleStart, cardRuleEnd),
     /max-width:/,
@@ -1822,8 +1842,13 @@ test('AI agent list cards keep a visible 16px grid gap', () => {
   );
   assert.match(
     styles,
-    /\.secondary-content\.ai-agents-dashboard \.card\.ai-agents-agent-card--clickable:hover\s*\{[^}]*background:\s*var\(--mds-color-theme-background-primary-hover, var\(--button-secondary-hover\)\);/,
+    /\.secondary-content\.ai-agents-dashboard mdc-card\.ai-agents-agent-card--clickable:hover\s*\{[^}]*background:\s*var\(--mds-color-theme-background-primary-hover, var\(--button-secondary-hover\)\);/,
     'agent cards should use a subtle full-card fill change on hover',
+  );
+  assert.doesNotMatch(
+    tableSource,
+    /className="ai-agents-agent-meta"[^]*?\{tile\.description\}/,
+    'agent cards should not repeat the description in their metadata',
   );
   assert.match(
     tableSource,

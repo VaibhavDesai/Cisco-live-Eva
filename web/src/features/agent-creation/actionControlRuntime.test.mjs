@@ -78,6 +78,16 @@ test('canonical Galileo state normalizes model fields and fills only missing see
   );
 });
 
+test('control previews format action inputs as template variables', () => {
+  const state = controls.createDefaultGalileoActionControlState();
+  const control = state.controlsByActionId[controls.GALILEO_ACTION_IDS.checkAvailability][0];
+
+  assert.equal(
+    controls.getControlExpressionPreview(control),
+    '{{party_size}} is greater than 100 or {{requested_bays}} is greater than 20',
+  );
+});
+
 test('post-tool OR evaluation uses strict thresholds and unlocks only after a matching Steer', () => {
   const state = controls.createDefaultGalileoActionControlState();
   const snapshot = structuredClone(state);

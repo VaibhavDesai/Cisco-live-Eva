@@ -4799,14 +4799,6 @@ button.view-btn.active {
   margin-bottom: 0;
 }
 
-.secondary-content.ai-agents-dashboard .card.ai-agents-agent-card {
-  padding: 0;
-}
-
-.secondary-content.ai-agents-dashboard .card.ai-agents-agent-card > :last-child {
-  padding-bottom: var(--spacing-small);
-}
-
 .ai-agents-header {
   display: flex;
   align-items: flex-start;
@@ -4867,13 +4859,25 @@ button.view-btn.active {
 }
 
 .ai-agents-agent-card {
+  --mdc-card-width: 100%;
   position: relative;
+  display: flex;
   min-width: 0;
   width: 100%;
   height: 100%;
   box-sizing: border-box;
-  padding: 0;
+  border-color: var(--mds-color-theme-outline-primary-normal, var(--outline-color));
+  border-radius: var(--border-radius-medium);
+  background: var(--mds-color-theme-background-solid-primary-normal, var(--bg-glass));
+  color: var(--text-primary);
   overflow: hidden;
+}
+
+.ai-agents-agent-card::part(body) {
+  width: 100%;
+  height: 100%;
+  padding: var(--spacing-large);
+  box-sizing: border-box;
 }
 
 .ai-agents-agent-card--clickable {
@@ -4881,7 +4885,7 @@ button.view-btn.active {
   transition: border-color 0.15s ease, background-color 0.15s ease, box-shadow 0.15s ease;
 }
 
-.secondary-content.ai-agents-dashboard .card.ai-agents-agent-card--clickable:hover {
+.secondary-content.ai-agents-dashboard mdc-card.ai-agents-agent-card--clickable:hover {
   border-color: var(--mds-color-theme-outline-primary-hover, var(--outline-color));
   background: var(--mds-color-theme-background-primary-hover, var(--button-secondary-hover));
 }
@@ -4897,8 +4901,9 @@ button.view-btn.active {
 }
 
 .ai-agents-agent-card__hit-area:focus-visible {
-  outline: var(--border-width-medium) solid var(--focus-ring-1);
-  outline-offset: calc(var(--spacing-micro) * -1);
+  outline: none;
+  border-radius: inherit;
+  box-shadow: inset 0 0 0 var(--border-width-medium) var(--focus-ring-1);
 }
 
 .ai-agents-agent-card-slot {
@@ -4907,9 +4912,10 @@ button.view-btn.active {
   display: flex;
   flex: 1;
   flex-direction: column;
-  gap: var(--spacing-xxx-small);
+  gap: var(--spacing-small);
   min-height: 0;
-  padding: var(--spacing-small);
+  margin: 0;
+  padding: 0;
   pointer-events: none;
 }
 
@@ -5016,19 +5022,41 @@ button.view-btn.active {
 }
 
 .ai-agents-agent-content {
-  padding-bottom: var(--spacing-xx-small);
+  min-width: 0;
+}
+
+.ai-agents-agent-description {
+  display: -webkit-box;
+  min-height: calc(1.4em * 2);
+  margin: 0;
+  overflow: hidden;
+  color: var(--text-primary);
+  font-size: var(--font-size-body-midsize);
+  line-height: 1.4;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
 }
 
 .ai-agents-agent-meta {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-micro);
   margin: 0;
-  color: var(--text-primary);
+  color: var(--text-secondary);
   font-size: var(--font-size-body-small);
   line-height: 1.35;
 }
 
 .ai-agents-agent-footer {
   display: flex;
+  align-items: flex-end;
   justify-content: flex-end;
+  gap: var(--spacing-small);
+  margin-top: auto;
+}
+
+.ai-agents-agent-footer .ai-agents-agent-meta {
+  margin-right: auto;
 }
 
 .ai-agents-empty-card {
@@ -23515,6 +23543,7 @@ img.app-header__wordmark-logo {
   --galileo-text-primary: rgba(255, 255, 255, 0.95);
   --galileo-text-secondary: rgba(255, 255, 255, 0.7);
   --galileo-accent: #64b4fa;
+  --galileo-code-variable: #ffa657;
   --text-primary: var(--galileo-text-primary);
   --text-secondary: var(--galileo-text-secondary);
   --bg-primary: var(--galileo-field);
@@ -23894,6 +23923,15 @@ img.app-header__wordmark-logo {
   font-size: 13px;
   font-weight: 400;
   line-height: 18px;
+  overflow-wrap: anywhere;
+}
+
+.galileo-action-control-summary__variable {
+  color: var(--galileo-code-variable, #ffa657);
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+  font-size: 0.96em;
+  font-weight: 600;
+  font-variant-ligatures: none;
   overflow-wrap: anywhere;
 }
 
@@ -24928,8 +24966,52 @@ mdc-textarea.uplift-momentum-field::part(textarea) {
 }
 
 .galileo-action-control-steer-field {
+  display: flex;
   width: min(680px, 100%);
   max-width: 680px;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 8px;
+}
+
+.galileo-action-control-steer-field__label {
+  color: var(--galileo-text-primary);
+  font-size: 14px;
+  font-weight: 500;
+  line-height: 20px;
+}
+
+.galileo-action-control-steer-trigger {
+  width: 100%;
+  min-width: 0;
+  justify-content: space-between;
+  border-radius: 8px;
+  box-sizing: border-box;
+  --mdc-button-background: var(--galileo-field);
+  --mdc-button-border-color: var(--galileo-field-border);
+  --mdc-button-text-color: var(--galileo-text-primary);
+  --mdc-button-postfix-icon-size: 16px;
+}
+
+.galileo-action-control-steer-trigger::part(button-text) {
+  display: block;
+  min-width: 0;
+  flex: 1;
+  overflow: hidden;
+  text-align: left;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.galileo-action-control-steer-menu {
+  --mdc-popover-width: min(680px, calc(100vw - 48px));
+  --mdc-popover-max-width: min(680px, calc(100vw - 48px));
+  --mdc-popover-primary-background-color: #17191c;
+  --mdc-popover-border-color: var(--galileo-card-border);
+}
+
+.galileo-action-control-steer-menu mdc-menuitemradio {
+  --mdc-listitem-primary-label-color: var(--galileo-text-primary);
 }
 
 .galileo-action-control-editor__section:not(.galileo-action-control-editor__section--details) .checkbox {

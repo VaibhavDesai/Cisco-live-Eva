@@ -4,6 +4,8 @@ export const Banner = () => null;
 export const Checkbox = () => null;
 export const IconProvider = () => null;
 export const Input = () => null;
+export const MenuItemRadio = () => null;
+export const MenuPopover = () => null;
 export const Option = () => null;
 export const Radio = () => null;
 export const RadioGroup = () => null;
