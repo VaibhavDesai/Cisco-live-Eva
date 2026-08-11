@@ -1,6 +1,6 @@
 import { Icon } from '../../icons';
 
-export type ConfigurationCategory = 'knowledge' | 'memory' | 'action' | 'orchestration' | 'guardrail';
+export type ConfigurationCategory = 'knowledge' | 'memory' | 'action' | 'action-control' | 'orchestration' | 'guardrail';
 
 export function KnowledgeBookIcon({ size = 16 }: { size?: number }) {
   return (
@@ -26,6 +26,14 @@ export default function ConfigurationCategoryIcon({ type }: { type: Configuratio
     return (
       <span className="configuration-category-icon configuration-category-icon--action" aria-hidden="true">
         <Icon name="tools" weight="regular" size="xs" />
+      </span>
+    );
+  }
+
+  if (type === 'action-control') {
+    return (
+      <span className="configuration-category-icon configuration-category-icon--action-control" aria-hidden="true">
+        <Icon name="workflow-deployments" weight="regular" size="xs" />
       </span>
     );
   }

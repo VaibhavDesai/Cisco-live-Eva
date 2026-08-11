@@ -37,6 +37,12 @@ export default function MainLayout() {
   const isAgentContext =
     /^\/agents\/[^/]+/.test(location.pathname) &&
     !location.pathname.startsWith('/agents/eva-canvas');
+  const isAgentOverview =
+    isAgentContext && /^\/agents\/[^/]+\/?$/.test(location.pathname);
+  const isAgentsList = /^\/agents\/?$/.test(location.pathname);
+  const isAgentConfigure =
+    isAgentContext && /^\/agents\/[^/]+\/configure\/?$/.test(location.pathname);
+  const usesStudioAurora = isAgentsList || isAgentOverview || isAgentConfigure;
 
   useEffect(() => {
     if (isAgentContext) {
@@ -47,7 +53,10 @@ export default function MainLayout() {
 
   return (
     <>
-      <div className="app--ai__bg" aria-hidden />
+      <div
+        className={`app--ai__bg${usesStudioAurora ? ' app--ai__bg--studio-aurora' : ''}`}
+        aria-hidden
+      />
       <Header
         onMenuClick={() => {
           if (isAgentContext) {
@@ -59,7 +68,7 @@ export default function MainLayout() {
         onAiClick={() => setAiPanelOpen(prev => !prev)}
       />
       <div
-        className={`app app--ai${sidebarCollapsed ? ' app--ai--sidebar-collapsed' : ''}${isAgentContext ? ' app--ai--agent-context' : ''}${isAgentContext && agentPanelOpen ? ' app--ai--agent-panel-open' : ''}${aiPanelOpen ? ' app--ai--assistant-open' : ''}`}
+        className={`app app--ai${sidebarCollapsed ? ' app--ai--sidebar-collapsed' : ''}${isAgentContext ? ' app--ai--agent-context' : ''}${usesStudioAurora ? ' app--ai--studio-aurora' : ''}${isAgentContext && agentPanelOpen ? ' app--ai--agent-panel-open' : ''}${aiPanelOpen ? ' app--ai--assistant-open' : ''}`}
       >
         <Sidebar
           collapsed={sidebarCollapsed}

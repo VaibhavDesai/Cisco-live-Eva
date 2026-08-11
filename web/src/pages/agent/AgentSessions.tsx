@@ -77,7 +77,14 @@ function actionControlEvidenceLabel(decision: CiscoLiveActionControlDecision) {
       ? '='
       : 'is one of';
 
-  return `${evidence.field} ${actual} ${operator} ${expected}`;
+  return (
+    <>
+      <code className="galileo-action-control-summary__variable" translate="no">
+        {`{{${evidence.field}}}`}
+      </code>
+      {` ${actual} ${operator} ${expected}`}
+    </>
+  );
 }
 
 function SessionDetail({

@@ -64,6 +64,11 @@ test('EAGLE GREEN separates Galileo large-event routing from the VIP confidentia
   );
   assert.match(
     demoSource,
+    /id:\s*['"]SES-GT-1042['"][\s\S]*?connectedSystems:\s*\[['"]VIP customer profile['"],\s*['"]VIP event concierge['"]\]/,
+    'the large-event session should list only the two systems represented in its designed handoff',
+  );
+  assert.match(
+    demoSource,
     /id:\s*['"]SES-GT-1045['"][\s\S]*?messages:\s*6[\s\S]*?id:\s*['"]evt-1045-1['"][\s\S]*?id:\s*['"]evt-1045-8['"]/,
     'the confidentiality session should include all six conversation messages plus its system and guardrail events',
   );
@@ -112,8 +117,8 @@ test('EAGLE GREEN separates Galileo large-event routing from the VIP confidentia
   assert.doesNotMatch(demoSource, /CISCO_LIVE_LARGE_RESERVATION_GUARDRAIL|custom-large-reservation-approval/);
   assert.match(
     overviewSource,
-    /const configuredSecurity = configuredCapabilityLabels\(agentDraft,\s*['"]security['"]\)[\s\S]*?chips:\s*configuredSecurity\.map\(item => \(\{\s*item,\s*type:\s*['"]guardrail['"]/,
-    'the Connected card should render configured Security policies as guardrail chips',
+    /const configuredSecurity = configuredCapabilityLabels\(agentDraft,\s*['"]security['"]\)[\s\S]*?const connectedGuardrailActivity = configuredSecurity\.map\(item => \(\{[\s\S]*?getCiscoLiveGuardrailTriggerCount\(item, agent\.id\)/,
+    'the Capability usage card should derive guardrail activity from configured Security policies',
   );
   assert.match(
     overviewSource,
@@ -172,6 +177,7 @@ test('EAGLE GREEN upgrades legacy state and normalizes action names', () => {
 
 test('operational status shows a compact session event table filtered by the selected time range', () => {
   const source = readSource('../../pages/agent/AgentStudioLanding.tsx');
+  const styles = readSource('../../products/ai-agent-studio/components.css');
 
   assert.match(
     source,
@@ -196,6 +202,16 @@ test('operational status shows a compact session event table filtered by the sel
     source,
     /if \(outcome === ['"]Transferred['"]\) return ['"]warning['"][\s\S]*?if \(outcome === ['"]Resolved['"]\) return ['"]success['"]/,
     'transferred sessions should use the yellow warning treatment while resolved sessions remain green',
+  );
+  assert.match(
+    styles,
+    /\.agent-studio-session-events\s*\{[^}]*background:[^}]*background-glass-normal[^}]*backdrop-filter:\s*blur\(24px\) saturate\(130%\)[^}]*box-shadow:/,
+    'the session events card should use the shared glass surface with enough blur to preserve table readability',
+  );
+  assert.match(
+    styles,
+    /\.agent-studio-session-events__table thead tr\s*\{[^}]*background:\s*transparent;/,
+    'the table header should share the card glass instead of introducing a different surface color',
   );
 });
 
@@ -248,11 +264,16 @@ test('capability summary cards navigate to their respective configuration sectio
   const styles = readSource('../../products/ai-agent-studio/components.css');
 
   const sectionMapPattern =
-    /OVERVIEW_SUMMARY_CONFIGURATION_SECTION[\s\S]*?knowledge:\s*['"]Knowledge['"][\s\S]*?memory:\s*['"]Knowledge['"][\s\S]*?actions:\s*['"]Action['"][\s\S]*?guardrails:\s*['"]Security['"]/;
+    /OVERVIEW_SUMMARY_CONFIGURATION_SECTION[\s\S]*?knowledge:\s*['"]Knowledge['"][\s\S]*?memory:\s*['"]Knowledge['"][\s\S]*?actions:\s*['"]Action['"][\s\S]*?actionControl:\s*['"]Action['"][\s\S]*?guardrails:\s*['"]Security['"]/;
   assert.match(
     source,
     sectionMapPattern,
     'summary cards should map to the matching configuration destinations',
+  );
+  assert.doesNotMatch(
+    source,
+    /connectedViewMode|setConnectedViewMode|Capability usage view|agent-studio-connected-view-switcher/,
+    'Capability usage should use one summary presentation without a redundant Chart/List switcher',
   );
   assert.match(
     source,
@@ -271,6 +292,16 @@ test('capability summary cards navigate to their respective configuration sectio
     'the hover surface should fill the card without inheriting the global link underline',
   );
   assert.match(styles, /\.agent-studio-connected-summary__link:focus-visible\s*\{[^}]*outline:/);
+  assert.match(
+    source,
+    /label:\s*['"]Actions['"][\s\S]*?value:\s*connectedCapabilityTotals\.actions[\s\S]*?['"]1 Transfer, 2 MCPs['"][\s\S]*?id:\s*['"]actionControl['"][\s\S]*?label:\s*['"]Action control['"][\s\S]*?value:\s*connectedCapabilityTotals\.actionControls[\s\S]*?['"]1 active · Steer['"]/,
+    'Actions should remain intact while Action control receives its own active-control summary tile',
+  );
+  assert.match(
+    styles,
+    /\.agent-studio-connected-summary\s*\{[^}]*grid-template-columns:\s*repeat\(5,\s*minmax\(0,\s*1fr\)\);/,
+    'the wide capability summary should accommodate all five cards in one row',
+  );
 });
 
 test('Voice channel progressively reveals and persists its three routing fields', () => {
@@ -663,6 +694,11 @@ test('Galileo action controls use the Figma summary and a direct-entry creation 
     'Agent guidance should use the Momentum open-pages icon from the Figma design',
   );
   assert.match(
+    figmaStyles,
+    /\.galileo-action-control-guidance\s*\{[^}]*border:\s*1px solid #212630;[^}]*border-radius:\s*6px;[^}]*background:\s*rgba\(22, 27, 34, 0\.72\);/,
+    'Agent guidance should reuse the neutral filled card treatment from the no-match branch above it',
+  );
+  assert.match(
     controlsSource,
     /previousDocumentOverflow[\s\S]*?document\.documentElement\.style\.overflow = ['"]hidden['"][\s\S]*?document\.body\.style\.overflow = ['"]hidden['"][\s\S]*?document\.documentElement\.style\.overflow = previousDocumentOverflow[\s\S]*?document\.body\.style\.overflow = previousBodyOverflow/,
     'the full-page editor should lock and restore document scrolling',
@@ -965,6 +1001,61 @@ test('agent navigation uses the floating Uplift rail with collapse and expand ha
   );
 });
 
+test('agent navigation groups deployment destinations under Deploy and renders Flow', () => {
+  const sidebarSource = readSource('../../products/ai-agent-studio/components/Sidebar.tsx');
+  const configureSource = readSource('../../pages/agent/ActionConfigureV2.tsx');
+
+  assert.doesNotMatch(
+    sidebarSource,
+    /const CONFIGURE_ITEMS[\s\S]*?section:\s*['"]Channels['"][\s\S]*?const DEPLOY_ITEMS/,
+    'Channels should no longer belong to the Configure section',
+  );
+  assert.match(
+    sidebarSource,
+    /const DEPLOY_ITEMS[\s\S]*?section:\s*['"]Channels['"][\s\S]*?section:\s*['"]Flow['"][\s\S]*?<SideNav\.Section header="Deploy">[\s\S]*?deployItems\.map/,
+    'Deploy should contain Channels followed by Flow',
+  );
+  assert.match(
+    sidebarSource,
+    /sidenav__tab--active['"]\)[\s\S]*?scrollIntoView\(\{ block: ['"]nearest['"] \}\)/,
+    'the selected destination should remain visible when the longer agent rail scrolls',
+  );
+  assert.match(
+    configureSource,
+    /type ConfigurationSection[^;]*['"]Flow['"][\s\S]*?Flow:\s*['"]Flow['"][\s\S]*?activeSection === ['"]Flow['"][\s\S]*?title="No flow configured"/,
+    'Flow should be a selectable configuration destination with its own page state',
+  );
+});
+
+test('agent list, Overview, and configuration share the responsive high-visibility aurora', () => {
+  const layoutSource = readSource('../../components/layout/MainLayout.tsx');
+  const styles = readSource('../../products/ai-agent-studio/components.css');
+
+  assert.ok(
+    layoutSource.includes("const isAgentsList = /^\\/agents\\/?$/.test(location.pathname);") &&
+      layoutSource.includes("isAgentContext && /^\\/agents\\/[^/]+\\/configure\\/?$/.test(location.pathname);") &&
+      layoutSource.includes('isAgentsList || isAgentOverview || isAgentConfigure') &&
+      layoutSource.includes('app--ai__bg--studio-aurora') &&
+      layoutSource.includes('app--ai--studio-aurora'),
+    'the agent list, exact Overview, and all configuration sections should receive the shared aurora modifiers',
+  );
+  assert.match(
+    styles,
+    /\.app--ai__bg--studio-aurora::before\s*\{[^}]*left:\s*clamp\([^;]+;[^}]*width:\s*clamp\([^;]+;[^}]*filter:\s*blur\(clamp\(/,
+    'the blue field should use responsive positioning, scale, and blur instead of fixed viewport coordinates',
+  );
+  assert.match(
+    styles,
+    /\.app--ai--studio-aurora \.primary-content\.ai-agents-page,[\s\S]*?\.primary-content\.agent-studio-landing,[\s\S]*?\.primary-content\.action-config-v2-page\s*\{[^}]*54%[^}]*backdrop-filter:\s*blur\(44px\)/,
+    'the list, Overview, and configuration surfaces should let more aurora color pass through while preserving glass separation',
+  );
+  assert.match(
+    styles,
+    /@media \(max-width:\s*767px\)[\s\S]*?\.app--ai__bg--studio-aurora::before\s*\{[^}]*width:\s*160vw;/,
+    'compact screens should retain a broad center-crossing blue field',
+  );
+});
+
 test('configuration and monitor destinations reuse the Overview page-heading contract', () => {
   const headingSource = readSource('../../components/agents/AgentWorkspacePageHeading.tsx');
   const configureSource = readSource('../../pages/agent/ActionConfigureV2.tsx');
@@ -1041,6 +1132,7 @@ test('overview suggestions stay hidden while the section is paused', () => {
 
 test('operational status presents its metrics as a compact table with a dashboard link', () => {
   const studioSource = readSource('../../pages/agent/AgentStudioLanding.tsx');
+  const styles = readSource('../../products/ai-agent-studio/components.css');
   assert.match(
     studioSource,
     /const observabilityPath = `\/observability\?agent=\$\{encodeURIComponent\(agent\.name\)\}`;/,
@@ -1067,6 +1159,11 @@ test('operational status presents its metrics as a compact table with a dashboar
     'the operational table should no longer include fulfilment latency P95',
   );
   assert.doesNotMatch(studioSource, /<KPICard|<KPIChart/);
+  assert.match(
+    styles,
+    /\.agent-studio-grid > \.agent-studio-card\.card\s*\{[^}]*margin-bottom:\s*0;/,
+    'overview cards should rely on the responsive grid gap instead of adding a second bottom margin',
+  );
 });
 
 test('EAGLE GREEN pins action control metrics instead of fulfilment latency', () => {
@@ -1846,9 +1943,19 @@ test('AI agent list cards use the native Uplift card with a visible 16px grid ga
     'cards must fill their grid tracks so extra track width does not inflate the visible gap',
   );
   assert.match(
+    styles.slice(cardRuleStart, cardRuleEnd),
+    /background:[^}]*background-glass-normal[^}]*backdrop-filter:\s*blur\(24px\) saturate\(130%\)[^}]*box-shadow:/,
+    'every agent tile should let the shared aurora pass through a readable glass surface',
+  );
+  assert.match(
     styles,
-    /\.secondary-content\.ai-agents-dashboard mdc-card\.ai-agents-agent-card--clickable:hover\s*\{[^}]*background:\s*var\(--mds-color-theme-background-primary-hover, var\(--button-secondary-hover\)\);/,
-    'agent cards should use a subtle full-card fill change on hover',
+    /\.ai-agents-agent-card::part\(body\)\s*\{[^}]*background:\s*transparent;/,
+    'the native Momentum card body should not cover the host glass treatment',
+  );
+  assert.match(
+    styles,
+    /\.secondary-content\.ai-agents-dashboard mdc-card\.ai-agents-agent-card--clickable:hover,[\s\S]*?:focus-within\s*\{[^}]*border-color:\s*color-mix\(in srgb, var\(--text-primary\) 42%, var\(--outline-color\)\);[^}]*background:[^}]*background-glass-normal[^}]*box-shadow:[^}]*transform:\s*translateY\(-2px\);/,
+    'hover should preserve the glass and use a neutral elevated outline rather than a blue border',
   );
   assert.doesNotMatch(
     tableSource,
@@ -1879,6 +1986,16 @@ test('AI agent list imports the design-variation hook it invokes', () => {
     source,
     /previewTile|previewCallActive|previewCloseRef|closePreview/,
     'the removed inline preview panel must not leave unresolved runtime references',
+  );
+});
+
+test('session action-control evidence formats evaluated inputs as template variables', () => {
+  const sessionsSource = readSource('../../pages/agent/AgentSessions.tsx');
+
+  assert.match(
+    sessionsSource,
+    /<code className="galileo-action-control-summary__variable" translate="no">[\s\S]*?`\{\{\$\{evidence\.field\}\}\}`[\s\S]*?` \$\{actual\} \$\{operator\} \$\{expected\}`/,
+    'the evaluated input should render its field as a highlighted {{variable}} token',
   );
 });
 

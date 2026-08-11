@@ -74,6 +74,27 @@ html[data-product='ai-agent-studio']:has(.eva-first-interface--landing) .app--ai
   transform: rotate(-170.05deg);
 }
 
+/* Keep the aurora present behind the agent list, Overview, and configuration
+   surfaces at every viewport size. The large blue field crosses the visual
+   center while the warmer accent stays anchored to the lower-right edge. */
+.app--ai__bg--studio-aurora::before {
+  right: auto;
+  left: clamp(2rem, 18vw, 26rem);
+  bottom: clamp(-28rem, -30vh, -12rem);
+  width: clamp(58rem, 94vw, 110rem);
+  height: clamp(58rem, 94vw, 110rem);
+  filter: blur(clamp(88px, 7vw, 132px));
+}
+
+.app--ai__bg--studio-aurora::after {
+  right: auto;
+  left: clamp(58%, 69vw, 76%);
+  bottom: clamp(-31rem, -36vh, -16rem);
+  width: clamp(34rem, 54vw, 64rem);
+  height: clamp(34rem, 54vw, 64rem);
+  filter: blur(clamp(82px, 6vw, 120px));
+}
+
 html[data-product='ai-agent-studio']:has(.eva-first-interface--landing) .app--ai__bg::after {
   right: -270px;
   bottom: -365px;
@@ -230,6 +251,36 @@ html[data-product='ai-agent-studio'] .app-header__menu-row-hint {
   backdrop-filter: blur(60px);
   -webkit-backdrop-filter: blur(60px);
   border-color: rgba(255, 255, 255, 0.06);
+}
+
+.app--ai--studio-aurora .primary-content.ai-agents-page,
+.app--ai--studio-aurora .primary-content.agent-studio-landing,
+.app--ai--studio-aurora .primary-content.action-config-v2-page {
+  background: color-mix(in srgb, var(--mds-color-theme-background-solid-primary-normal) 54%, transparent);
+  backdrop-filter: blur(44px);
+  -webkit-backdrop-filter: blur(44px);
+}
+
+@media (max-width: 767px) {
+  .app--ai__bg--studio-aurora::before {
+    left: -20vw;
+    bottom: -28vh;
+    width: 160vw;
+    height: 160vw;
+  }
+
+  .app--ai__bg--studio-aurora::after {
+    left: 56vw;
+    bottom: -34vh;
+    width: 100vw;
+    height: 100vw;
+  }
+
+  .app--ai--studio-aurora .primary-content.ai-agents-page,
+  .app--ai--studio-aurora .primary-content.agent-studio-landing,
+  .app--ai--studio-aurora .primary-content.action-config-v2-page {
+    background: color-mix(in srgb, var(--mds-color-theme-background-solid-primary-normal) 58%, transparent);
+  }
 }
 
 [data-theme='light'] .app--ai .primary-content {
@@ -1425,6 +1476,10 @@ html[data-product='ai-agent-studio'] .app-header__menu-row-hint {
   grid-template-columns: minmax(300px, 0.76fr) minmax(0, 1.64fr);
 }
 
+.agent-studio-grid > .agent-studio-card.card {
+  margin-bottom: 0;
+}
+
 .agent-studio-step-grid {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -1784,7 +1839,18 @@ html[data-product='ai-agent-studio'] .app-header__menu-row-hint {
   overflow: hidden;
   border: var(--border-width-small) solid color-mix(in srgb, var(--border-color) 64%, transparent);
   border-radius: var(--border-radius-large);
-  background: color-mix(in srgb, var(--mds-color-theme-background-solid-primary-normal, #121212) 76%, transparent);
+  background:
+    linear-gradient(
+      135deg,
+      color-mix(in srgb, var(--mds-color-theme-background-solid-primary-normal, #121212) 42%, transparent),
+      color-mix(in srgb, var(--mds-color-theme-background-solid-primary-normal, #121212) 28%, transparent)
+    ),
+    var(--mds-color-theme-background-glass-normal, rgba(255, 255, 255, 0.05));
+  backdrop-filter: blur(24px) saturate(130%);
+  -webkit-backdrop-filter: blur(24px) saturate(130%);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.08),
+    0 12px 32px rgba(0, 0, 0, 0.14);
 }
 
 .agent-studio-session-events__header {
@@ -1825,6 +1891,10 @@ html[data-product='ai-agent-studio'] .app-header__menu-row-hint {
 
 .agent-studio-session-events__table table {
   min-width: 860px;
+}
+
+.agent-studio-session-events__table thead tr {
+  background: transparent;
 }
 
 .agent-studio-session-events__table th,
@@ -2094,7 +2164,7 @@ html[data-product='ai-agent-studio'] .app-header__menu-row-hint {
 
 .agent-studio-connected-summary {
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-columns: repeat(5, minmax(0, 1fr));
   gap: var(--spacing-x-small);
 }
 
@@ -2203,6 +2273,7 @@ html[data-product='ai-agent-studio'] .app-header__menu-row-hint {
 .agent-studio-connected-summary__item--knowledge,
 .agent-studio-connected-summary__item--memory,
 .agent-studio-connected-summary__item--action,
+.agent-studio-connected-summary__item--action-control,
 .agent-studio-connected-summary__item--guardrail {
   color: var(--text-secondary);
 }
@@ -4162,6 +4233,10 @@ html[data-product='ai-agent-studio'] .app-header__menu-row-hint {
 
 .configuration-category-icon--action {
   color: var(--mds-color-theme-outline-label-mint);
+}
+
+.configuration-category-icon--action-control {
+  color: var(--accent-color);
 }
 
 .configuration-category-icon--guardrail {

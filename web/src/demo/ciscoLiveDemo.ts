@@ -821,7 +821,7 @@ export const CISCO_LIVE_SESSIONS_BY_AGENT: Record<string, CiscoLiveSession[]> = 
       actionControlTriggered: LARGE_EVENT_ACTION_CONTROL.event.actionControl.matched,
       transferred: true,
       summary: 'Check Availability completed. A post-action Galileo control matched the 1,000-person request, stopped the standard automated path, and unlocked Transfer to VIP team.',
-      connectedSystems: ['VIP customer profile', 'Gofie reservations', 'VIP event concierge'],
+      connectedSystems: ['VIP customer profile', 'VIP event concierge'],
       transcript: [
         {
           id: 'evt-1',

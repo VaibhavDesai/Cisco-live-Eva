@@ -333,12 +333,12 @@ type ActionRow = {
   lastUpdated: string;
 };
 
-type ConfigurationSection = 'Profile' | 'Channels' | 'Instructions' | 'Knowledge' | 'Action' | 'Security' | 'Language';
+type ConfigurationSection = 'Profile' | 'Channels' | 'Flow' | 'Instructions' | 'Knowledge' | 'Action' | 'Security' | 'Language';
 
-const ACTION_SECTIONS: ConfigurationSection[] = ['Profile', 'Channels', 'Instructions', 'Knowledge', 'Action', 'Security', 'Language'];
+const ACTION_SECTIONS: ConfigurationSection[] = ['Profile', 'Channels', 'Flow', 'Instructions', 'Knowledge', 'Action', 'Security', 'Language'];
 
 const FAMILY_SECTIONS: Record<AgentFamily, ConfigurationSection[]> = {
-  calling: ['Profile', 'Channels', 'Instructions', 'Knowledge', 'Language'],
+  calling: ['Profile', 'Channels', 'Flow', 'Instructions', 'Knowledge', 'Language'],
   contact_center: ACTION_SECTIONS,
   internal_assistant: ACTION_SECTIONS,
 };
@@ -360,6 +360,7 @@ const FAMILY_SECTION_LABELS: Record<AgentFamily, Partial<Record<ConfigurationSec
 const CONFIGURATION_PAGE_TITLES: Record<ConfigurationSection, string> = {
   Profile: 'Profile',
   Channels: 'Channels',
+  Flow: 'Flow',
   Instructions: 'Instructions',
   Knowledge: 'Knowledge & Memory',
   Action: 'Actions',
@@ -1935,6 +1936,21 @@ export default function ActionConfigureV2() {
                 </fieldset>
               )}
             </div>
+          )}
+
+          {activeSection === 'Flow' && (
+            <EmptyState
+              global
+              illustration="desert-open-results"
+              title="No flow configured"
+              description="Create a flow to define how this agent handles conversations across its deployed channels."
+              actions={
+                <Button variant="secondary">
+                  <Icon name="plus" weight="bold" size={20} />
+                  Create flow
+                </Button>
+              }
+            />
           )}
 
           {activeSection === 'Profile' && (

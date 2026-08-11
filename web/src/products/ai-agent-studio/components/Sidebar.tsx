@@ -1,4 +1,4 @@
-import type { ReactNode } from 'react';
+import { useEffect, type ReactNode } from 'react';
 import { Link, useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import SideNav from '../../../components/shared/SideNav';
 import { KnowledgeBookIcon } from '../../../components/shared/ConfigurationCategoryIcon';
@@ -35,11 +35,15 @@ interface ConfigureItem {
 
 const CONFIGURE_ITEMS: ConfigureItem[] = [
   { section: 'Profile', label: 'Profile', icon: 'contact-card-bold' },
-  { section: 'Channels', label: 'Channels', icon: 'headset-bold', families: ['calling', 'contact_center'] },
   { section: 'Instructions', label: 'Instructions', icon: 'document-bold' },
   { section: 'Knowledge', label: 'Knowledge & Memory', icon: <KnowledgeBookIcon size={24} /> },
   { section: 'Action', label: 'Actions', icon: 'tools-bold', families: ['contact_center', 'internal_assistant'] },
   { section: 'Security', label: 'Security', icon: 'shield-bold', families: ['contact_center', 'internal_assistant'] },
+];
+
+const DEPLOY_ITEMS: ConfigureItem[] = [
+  { section: 'Channels', label: 'Channels', icon: 'headset-bold', families: ['calling', 'contact_center'] },
+  { section: 'Flow', label: 'Flow', icon: 'workflow-deployments-bold' },
 ];
 
 interface MonitorItem {
@@ -84,6 +88,19 @@ export default function Sidebar({
 
   const agentId = parseAgentId(location.pathname);
   const agent = agentId ? agents[agentId] : undefined;
+
+  useEffect(() => {
+    if (!agentId || !agentPanelOpen) return;
+
+    const frame = window.requestAnimationFrame(() => {
+      document
+        .querySelector<HTMLElement>('.sidebar-agent-nav .sidenav__tab--active')
+        ?.scrollIntoView({ block: 'nearest' });
+    });
+
+    return () => window.cancelAnimationFrame(frame);
+  }, [agentId, agentPanelOpen, location.pathname, location.search]);
+
   const openAgentPanel = (restoreFocus = false) => {
     onAgentPanelOpenChange?.(true);
     if (restoreFocus) {
@@ -97,6 +114,9 @@ export default function Sidebar({
   if (agentId && agent) {
     const family = agent.family ?? agentDrafts[agentId]?.family;
     const configureItems = CONFIGURE_ITEMS.filter(
+      item => !item.families || !family || item.families.includes(family),
+    );
+    const deployItems = DEPLOY_ITEMS.filter(
       item => !item.families || !family || item.families.includes(family),
     );
 
@@ -174,6 +194,21 @@ export default function Sidebar({
 
               <SideNav.Section header="Configure">
                 {configureItems.map(item => (
+                  <SideNav.Item
+                    key={item.section}
+                    icon={item.icon}
+                    label={item.label}
+                    active={onConfigureRoute && activeSection === item.section}
+                    onClick={() => {
+                      selectAgent(agentId);
+                      navigate(`/agents/${agentId}/configure?section=${item.section}`);
+                    }}
+                  />
+                ))}
+              </SideNav.Section>
+
+              <SideNav.Section header="Deploy">
+                {deployItems.map(item => (
                   <SideNav.Item
                     key={item.section}
                     icon={item.icon}

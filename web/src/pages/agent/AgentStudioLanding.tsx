@@ -67,11 +67,10 @@ import { Icon } from '../../icons';
 import actionControlArrow from '../../assets/action-control-arrow.svg';
 
 type PreviewCallStatus = 'idle' | 'connecting' | 'listening' | 'speaking' | 'paused' | 'ended' | 'error';
-type ConnectedViewMode = 'metrics' | 'resources';
 type OverviewIntervention = 'action_control' | 'guardrail';
 type OverviewTileGroup = 'cards' | 'summary' | 'charts';
 type OverviewCardId = 'capability' | 'operational';
-type OverviewSummaryTileId = 'knowledge' | 'memory' | 'actions' | 'guardrails';
+type OverviewSummaryTileId = 'knowledge' | 'memory' | 'actions' | 'actionControl' | 'guardrails';
 type OverviewChartTileId = 'signals' | 'actions' | 'guardrails';
 type OverviewConfigurationSection = 'Knowledge' | 'Action' | 'Security';
 type OverviewReleaseState = {
@@ -83,6 +82,7 @@ const DEFAULT_OVERVIEW_SUMMARY_ORDER: OverviewSummaryTileId[] = [
   'knowledge',
   'memory',
   'actions',
+  'actionControl',
   'guardrails',
 ];
 const DEFAULT_OVERVIEW_CARD_ORDER: OverviewCardId[] = [
@@ -98,6 +98,7 @@ const OVERVIEW_SUMMARY_CONFIGURATION_SECTION: Record<OverviewSummaryTileId, Over
   knowledge: 'Knowledge',
   memory: 'Knowledge',
   actions: 'Action',
+  actionControl: 'Action',
   guardrails: 'Security',
 };
 const SHOW_CONNECTED_SUGGESTIONS = false;
@@ -440,7 +441,6 @@ export default function AgentStudioLanding() {
   const [previewInteractionEnded, setPreviewInteractionEnded] = useState(false);
   const [previewWidgetOpen, setPreviewWidgetOpen] = useState(false);
   const [operationalTimeRange, setOperationalTimeRange] = useState('6h');
-  const [connectedViewMode, setConnectedViewMode] = useState<ConnectedViewMode>('metrics');
   const [selectedGuardrailActivity, setSelectedGuardrailActivity] = useState<string | null | undefined>(undefined);
   const [selectedOverviewIntervention, setSelectedOverviewIntervention] = useState<OverviewIntervention | null>(null);
   const [overviewCardOrder, setOverviewCardOrder] = useState<OverviewCardId[]>(
@@ -1218,6 +1218,7 @@ export default function AgentStudioLanding() {
     knowledge: usesEagleGreenShowcaseMetrics ? 14 : configuredKnowledge.length,
     memory: configuredMemory.length,
     actions: usesEagleGreenShowcaseMetrics ? 3 : configuredOrchestration.length,
+    actionControls: usesEagleGreenShowcaseMetrics ? 1 : 0,
     guardrails: usesEagleGreenShowcaseMetrics ? 6 : configuredSecurity.length,
   } as const;
   const connectedGuardrailActivity = configuredSecurity.map(item => ({
@@ -1471,32 +1472,9 @@ export default function AgentStudioLanding() {
                   </small>
                 </span>
               </div>
-              <div className="agent-studio-connected-toolbar">
-                <div className="agent-studio-connected-view-switcher" role="group" aria-label="Capability usage view">
-                  <button
-                    type="button"
-                    aria-pressed={connectedViewMode === 'metrics'}
-                    aria-controls="agent-studio-connected-content"
-                    onClick={() => setConnectedViewMode('metrics')}
-                  >
-                    <Icon name="multiline-chart" weight="bold" size="xs" />
-                    Chart
-                  </button>
-                  <button
-                    type="button"
-                    aria-pressed={connectedViewMode === 'resources'}
-                    aria-controls="agent-studio-connected-content"
-                    onClick={() => setConnectedViewMode('resources')}
-                  >
-                    <Icon name="apps" weight="bold" size="xs" />
-                    List
-                  </button>
-                </div>
-              </div>
             </CardHeader>
             <CardBody id="agent-studio-connected-content">
-              {connectedViewMode === 'metrics' ? (
-                  <div className="agent-studio-connected-metrics">
+              <div className="agent-studio-connected-metrics">
                     <div className="agent-studio-connected-summary" aria-label="Capability usage summary">
                       {[
                         {
@@ -1518,11 +1496,18 @@ export default function AgentStudioLanding() {
                           label: 'Actions',
                           value: connectedCapabilityTotals.actions,
                           status: usesEagleGreenShowcaseMetrics
-                            ? '2 MCPs · 1 active Galileo control'
+                            ? '1 Transfer, 2 MCPs'
                             : configuredOrchestration.length > 0
                               ? `${configuredActions.length} actions · ${configuredHandoff.length} MCPs`
                               : null,
                           type: 'action' as ConfigurationCategory,
+                        },
+                        {
+                          id: 'actionControl' as OverviewSummaryTileId,
+                          label: 'Action control',
+                          value: connectedCapabilityTotals.actionControls,
+                          status: usesEagleGreenShowcaseMetrics ? '1 active · Steer' : null,
+                          type: 'action-control' as ConfigurationCategory,
                         },
                         {
                           id: 'guardrails' as OverviewSummaryTileId,
@@ -1982,88 +1967,7 @@ export default function AgentStudioLanding() {
                       </div>
                     </section>
                     )}
-                  </div>
-                ) : (
-                  <div className="agent-studio-connected-columns">
-                  {([
-                    [
-                      {
-                        label: 'Knowledge',
-                        empty: 'Not connected',
-                        chips: configuredKnowledge.map(item => ({ item, type: 'knowledge' as ConfigurationCategory })),
-                      },
-                      {
-                        label: 'AI memory',
-                        empty: 'Not configured',
-                        chips: configuredMemory.map(item => ({ item, type: 'memory' as ConfigurationCategory })),
-                      },
-                    ],
-                    [
-                      {
-                        label: 'Orchestration and actions',
-                        empty: 'Not connected',
-                        showActionMetric: true,
-                        chips: [
-                          ...configuredActions.map(item => ({ item, type: 'action' as ConfigurationCategory })),
-                          ...configuredHandoff.map(item => ({ item, type: 'orchestration' as ConfigurationCategory })),
-                        ],
-                      },
-                    ],
-                    [
-                      {
-                        label: 'Security',
-                        empty: 'Not configured',
-                        showGuardrailCount: true,
-                        chips: configuredSecurity.map(item => ({ item, type: 'guardrail' as ConfigurationCategory })),
-                      },
-                    ],
-                  ]).map((column, columnIndex) => (
-                    <div key={columnIndex} className="agent-studio-connected-column">
-                      {column.map(group => (
-                        <div key={group.label} className="agent-studio-connected-group">
-                          <strong>{group.label}</strong>
-                          <div className="agent-studio-chip-group" aria-label={`Connected ${group.label.toLowerCase()}`}>
-                            {group.chips.length > 0
-                              ? group.chips.map(chip => {
-                                  const actionMetric = 'showActionMetric' in group && group.showActionMetric
-                                    ? getCiscoLiveActionMetric(chip.item)
-                                    : null;
-                                  const triggerCount = 'showGuardrailCount' in group && group.showGuardrailCount
-                                    ? getCiscoLiveGuardrailTriggerCount(chip.item, agent.id)
-                                    : 0;
-                                  return (
-                                    <Badge key={`${group.label}-${chip.item}`} variant="default" className={`agent-studio-service-badge agent-studio-service-badge--${chip.type}`}>
-                                      <ConfigurationCategoryIcon type={chip.type} />
-                                      <span>{chip.item}</span>
-                                      {actionMetric ? (
-                                        <span
-                                          className={`agent-studio-chip-metric${actionMetric.isPositive ? ' is-positive' : ' is-negative'}`}
-                                          title={`Action success rate ${actionMetric.rate}`}
-                                        >
-                                          {actionMetric.rate}
-                                          <Icon name={actionMetric.isPositive ? 'trending' : 'trending-down'} weight="regular" size="xs" />
-                                        </span>
-                                      ) : triggerCount > 0 ? (
-                                        <span
-                                          className="agent-studio-chip-count"
-                                          title={`Triggered ${triggerCount} time${triggerCount === 1 ? '' : 's'}`}
-                                        >
-                                          {triggerCount}
-                                        </span>
-                                      ) : (
-                                        <span className="agent-studio-chip-health-dot" title="Healthy connection" />
-                                      )}
-                                    </Badge>
-                                  );
-                                })
-                              : <span className="agent-studio-connected-empty">{group.empty}</span>}
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  ))}
-                  </div>
-                )}
+              </div>
             </CardBody>
           </Card>
           ) : cardId === 'operational' && showOperationalStatus ? (
