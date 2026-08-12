@@ -26,14 +26,8 @@ import { kpiExpandedChartAxisProps } from '../kpiChartAxis';
 import { PageHeader, type AgentPageTab } from './PageHeader';
 import { RecentInteractions } from './RecentInteractions';
 import { agentData } from './AgentTable';
-import {
-  KPI_OBSERVABILITY_SECTION_HEADER_SUPPLEMENT,
-  OBSERVABILITY_PROJECTION_DIGITAL_ID,
-  observabilityProjectionIdForCategory,
-} from '../data/phase1ObservabilityMetrics';
 import { ObservabilityConfigurationTab } from './ObservabilityConfigurationTab';
 import { ObservabilityDashboardEmptyState } from './ObservabilityDashboardEmptyState';
-import { ObservabilityProjectionCard } from './ObservabilityProjectionCard';
 import { hideMomentumTabListOverflowArrows } from '../hideMomentumTabListOverflowArrows';
 import { parsePrimaryTabFromAgentHash } from '../agentHashNavigation';
 
@@ -390,11 +384,6 @@ export function SingleAgentView({ agentName, onBack }: SingleAgentViewProps) {
                     <div className="kpi-card-grid">
                       {pinnedCardIds.map((pinnedId, index) => {
                         const CARDS_PER_ROW = 4;
-                        const projSup =
-                          pinnedId === OBSERVABILITY_PROJECTION_DIGITAL_ID
-                            ? KPI_OBSERVABILITY_SECTION_HEADER_SUPPLEMENT['Digital usage']
-                            : undefined;
-
                         const isLastInRow =
                           (index + 1) % CARDS_PER_ROW === 0 || index === pinnedCardIds.length - 1;
                         const currentRowStart = Math.floor(index / CARDS_PER_ROW) * CARDS_PER_ROW;
@@ -426,24 +415,6 @@ export function SingleAgentView({ agentName, onBack }: SingleAgentViewProps) {
                             </div>
                           ) : null;
 
-                        if (projSup) {
-                          return (
-                            <Fragment key={pinnedId}>
-                              <ObservabilityProjectionCard
-                                cardId={pinnedId}
-                                title={projSup.title}
-                                dateLabel={projSup.dateLabel}
-                                thresholdStatus={projSup.thresholdStatus}
-                                isPinned
-                                onPinToggle={(e) => togglePin(pinnedId, e)}
-                                dragIndex={index}
-                                onMoveCard={movePinnedCard}
-                              />
-                              {expandedChart}
-                            </Fragment>
-                          );
-                        }
-
                         const kpi = filteredKpiData.find((k) => k.id === pinnedId);
                         if (!kpi) return null;
 
@@ -474,11 +445,6 @@ export function SingleAgentView({ agentName, onBack }: SingleAgentViewProps) {
                 
                 if (unpinnedKpis.length === 0) return null;
                 
-                const sectionSupplement = KPI_OBSERVABILITY_SECTION_HEADER_SUPPLEMENT[
-                  category as keyof typeof KPI_OBSERVABILITY_SECTION_HEADER_SUPPLEMENT
-                ];
-                const projectionCardId = observabilityProjectionIdForCategory(category);
-
                 return (
                   <div key={category}>
                     <h2 className={`${ck.sectionHeading} mb-4 mt-8 first:mt-0`}>{category}</h2>
@@ -518,15 +484,6 @@ export function SingleAgentView({ agentName, onBack }: SingleAgentViewProps) {
                           </Fragment>
                         );
                       })}
-                      {sectionSupplement && projectionCardId && !pinnedCardIds.includes(projectionCardId) ? (
-                        <ObservabilityProjectionCard
-                          cardId={projectionCardId}
-                          title={sectionSupplement.title}
-                          dateLabel={sectionSupplement.dateLabel}
-                          thresholdStatus={sectionSupplement.thresholdStatus}
-                          onPinToggle={(e) => togglePin(projectionCardId, e)}
-                        />
-                      ) : null}
                     </div>
                   </div>
                 );

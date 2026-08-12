@@ -10,7 +10,7 @@ import { Icon } from '../../icons/Icon';
 import type { KPIData } from './kpiTypes';
 import './actionControlObservability.css';
 
-export const ACTION_CONTROL_OBSERVABILITY_CATEGORY = 'Action Controls';
+export const ACTION_CONTROL_OBSERVABILITY_CATEGORY = 'Agent controls';
 
 export type ActionControlDateRange = '24h' | 'week' | 'month' | '90d' | 'custom';
 
@@ -250,6 +250,7 @@ function formatEvidenceValue(value: CiscoLiveActionControlEvidence['actual']): s
 
 function formatOperator(operator: CiscoLiveActionControlEvidence['operator']): string {
   if (operator === 'greater_than') return '>';
+  if (operator === 'less_than') return '<';
   if (operator === 'in') return 'is in';
   return '=';
 }
@@ -319,7 +320,7 @@ export function ActionControlTracePanel({
       <header className="action-control-observability__header">
         <div>
           <span className="action-control-observability__eyebrow">Galileo runtime trace</span>
-          <h3 id="action-control-trace-title">Action control decisions</h3>
+          <h3 id="action-control-trace-title">Agent control decisions</h3>
           <p>
             Deterministic local prototype telemetry—not a live Galileo or Splunk connection.
             Each control is a child span of its attached action; the transcript remains in Studio.

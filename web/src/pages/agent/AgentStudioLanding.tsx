@@ -38,6 +38,7 @@ import { useApp, type Agent } from '../../contexts/AppContext';
 import { useDesignVariation } from '../../contexts/DesignVariationContext';
 import { getElevenLabsConversationSignedUrl, getVoicePreviewErrorMessage } from '../../api/ciscoAi';
 import {
+  CISCO_LIVE_PRIMARY_AGENT_ID,
   getCiscoLiveActionMetric,
   getCiscoLiveActionControlDecisions,
   getCiscoLiveGuardrailTriggerCount,
@@ -442,7 +443,9 @@ export default function AgentStudioLanding() {
   const [previewWidgetOpen, setPreviewWidgetOpen] = useState(false);
   const [operationalTimeRange, setOperationalTimeRange] = useState('6h');
   const [selectedGuardrailActivity, setSelectedGuardrailActivity] = useState<string | null | undefined>(undefined);
-  const [selectedOverviewIntervention, setSelectedOverviewIntervention] = useState<OverviewIntervention | null>(null);
+  const [selectedOverviewIntervention, setSelectedOverviewIntervention] = useState<OverviewIntervention | null>(
+    () => (agentId === CISCO_LIVE_PRIMARY_AGENT_ID ? 'action_control' : null),
+  );
   const [overviewCardOrder, setOverviewCardOrder] = useState<OverviewCardId[]>(
     () => readOverviewTileOrder(agentId, 'cards', DEFAULT_OVERVIEW_CARD_ORDER),
   );
@@ -491,6 +494,8 @@ export default function AgentStudioLanding() {
     setOverviewChartOrder(readOverviewTileOrder(agentId, 'charts', DEFAULT_OVERVIEW_CHART_ORDER));
     setDraggedOverviewTile(null);
     setOverviewDropTarget(null);
+    setSelectedGuardrailActivity(undefined);
+    setSelectedOverviewIntervention(agentId === CISCO_LIVE_PRIMARY_AGENT_ID ? 'action_control' : null);
   }, [agentId]);
 
   useEffect(() => {
@@ -1200,6 +1205,7 @@ export default function AgentStudioLanding() {
         'Check Availability',
         'Send payment link',
         'Transfer to VIP team',
+        'Handover',
       ]
     : configuredActions;
   const connectedActionPerformance = actionPerformanceItems.map(item => {
@@ -1217,8 +1223,8 @@ export default function AgentStudioLanding() {
   const connectedCapabilityTotals = {
     knowledge: usesEagleGreenShowcaseMetrics ? 14 : configuredKnowledge.length,
     memory: configuredMemory.length,
-    actions: usesEagleGreenShowcaseMetrics ? 3 : configuredOrchestration.length,
-    actionControls: usesEagleGreenShowcaseMetrics ? 1 : 0,
+    actions: usesEagleGreenShowcaseMetrics ? 4 : configuredOrchestration.length,
+    actionControls: usesEagleGreenShowcaseMetrics ? 2 : 0,
     guardrails: usesEagleGreenShowcaseMetrics ? 6 : configuredSecurity.length,
   } as const;
   const connectedGuardrailActivity = configuredSecurity.map(item => ({
@@ -1502,7 +1508,7 @@ export default function AgentStudioLanding() {
                           label: 'Actions',
                           value: connectedCapabilityTotals.actions,
                           status: usesEagleGreenShowcaseMetrics
-                            ? '1 Transfer, 2 MCPs'
+                            ? '2 Transfers, 2 MCPs'
                             : configuredOrchestration.length > 0
                               ? `${configuredActions.length} actions · ${configuredHandoff.length} MCPs`
                               : null,
@@ -1510,9 +1516,9 @@ export default function AgentStudioLanding() {
                         },
                         {
                           id: 'actionControl' as OverviewSummaryTileId,
-                          label: 'Action control',
+                          label: 'Agent control',
                           value: connectedCapabilityTotals.actionControls,
-                          status: usesEagleGreenShowcaseMetrics ? '1 active · Steer' : null,
+                          status: usesEagleGreenShowcaseMetrics ? '2 active · Steer' : null,
                           type: 'action-control' as ConfigurationCategory,
                         },
                         {
@@ -1586,7 +1592,7 @@ export default function AgentStudioLanding() {
                           ? 'Capability signals'
                           : tileId === 'actions'
                             ? usesEagleGreenShowcaseMetrics
-                              ? 'Action control activity'
+                              ? 'Agent control activity'
                               : 'Action performance'
                             : 'Guardrail activity';
                         const labelledBy = `agent-studio-${tileId}-chart-title`;
@@ -1660,11 +1666,11 @@ export default function AgentStudioLanding() {
                                 <div className="agent-studio-connected-chart__header">
                                   <div>
                                     <h3 id={labelledBy}>
-                                      {usesEagleGreenShowcaseMetrics ? 'Action control activity' : 'Action performance'}
+                                      {usesEagleGreenShowcaseMetrics ? 'Agent control activity' : 'Action performance'}
                                     </h3>
                                     <p>
                                       {usesEagleGreenShowcaseMetrics
-                                        ? `Action control activity during ${operationalTimeRangeLabel.toLowerCase()}`
+                                        ? `Agent control activity during ${operationalTimeRangeLabel.toLowerCase()}`
                                         : 'Success rate against a 95% target'}
                                     </p>
                                   </div>
@@ -2171,7 +2177,7 @@ export default function AgentStudioLanding() {
                                   className="agent-session-metadata-icons__action-control"
                                 >
                                   <Icon name="automation" weight="bold" size="sm" />
-                                  Action control
+                                  Agent control
                                 </Badge>
                               )}
                               {session.guardrailTriggered && (

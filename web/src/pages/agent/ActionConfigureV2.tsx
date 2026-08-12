@@ -328,7 +328,6 @@ type ActionRow = {
   description: string;
   enabled: boolean;
   actionType: string;
-  providerType: string;
   createdBy: string;
   lastUpdated: string;
 };
@@ -821,7 +820,7 @@ export default function ActionConfigureV2() {
     id: 100 + index,
     sourceActionId: getGalileoActionId(undefined, name),
     name: getGalileoActionDisplayName(name),
-    type: name.startsWith('Transfer') ? 'Handoff' : 'MCP',
+    type: /^(Transfer|Handover)/i.test(name) ? 'Handoff' : 'MCP',
     enabled: true,
     description: CISCO_LIVE_ACTION_CATALOG[name] ?? '',
   }));
@@ -837,7 +836,6 @@ export default function ActionConfigureV2() {
       description: cap.description || 'Escalate the conversation to a human agent based on general rules and conditions',
       enabled: true,
       actionType: cap.type === 'Handoff' ? 'Transfer' : cap.type,
-      providerType: /(ServiceNow|fulfillment|SLA)/i.test(cap.name) ? 'ServiceNow' : 'Gofie',
       createdBy: ciscoLiveAgent.updatedBy,
       lastUpdated: '07/13/26, at 9:30 AM',
     })),
@@ -1194,7 +1192,6 @@ export default function ActionConfigureV2() {
         description: cap.description,
         enabled: true,
         actionType: cap.type,
-        providerType: 'Custom',
         createdBy: 'System',
         lastUpdated: new Date().toLocaleDateString('en-US', {
           month: '2-digit',
@@ -2679,7 +2676,6 @@ export default function ActionConfigureV2() {
                   <th className="col-description">Description</th>
                   <th className="col-last-updated">Last updated</th>
                   <th className="col-action-type">Action type</th>
-                  <th className="col-provider-type">Provider type</th>
                   <th className="col-galileo">Controls</th>
                   <th className="col-row-actions" aria-label="Row actions" />
                 </tr>
@@ -2730,7 +2726,6 @@ export default function ActionConfigureV2() {
                       <td className="col-description">{row.description}</td>
                       <td className="col-last-updated">{row.lastUpdated}</td>
                       <td className="col-action-type">{row.actionType}</td>
-                      <td className="col-provider-type">{row.providerType}</td>
                       <td className="col-galileo">
                         <Button
                           type="button"
@@ -2787,7 +2782,7 @@ export default function ActionConfigureV2() {
           state={galileoActionControls}
           onChange={(next) => {
             setGalileoActionControls(next);
-            showToast('Galileo action controls updated', 'success');
+            showToast('Galileo agent controls updated', 'success');
           }}
           onClose={closeGalileoActionControls}
         />

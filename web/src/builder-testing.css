@@ -455,6 +455,26 @@ mdc-dialog.delete-variable-confirm-dialog[visible] {
   border-color: var(--outline-button);
 }
 
+.clus-kpi-chart-toolbar .btn-group {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.clus-kpi-chart-toolbar .btn-group .btn {
+  width: 32px;
+  min-width: 32px;
+  height: 32px;
+  padding: 0;
+  border-radius: 50%;
+}
+
+.clus-kpi-splunk-button {
+  flex: 0 0 auto;
+  margin-left: auto;
+  gap: 8px;
+}
+
 /* Observability Settings layout — matches the compact builder configuration screen. */
 .observability-configuration-tab .app-heading-block > h2 + p {
   margin-top: 4px;

@@ -397,6 +397,21 @@ export function ClusKpiDashboardRoot() {
           />
         </div>
 
+        <SharedButton
+          type="button"
+          variant="secondary"
+          size="sm"
+          className="clus-kpi-splunk-button"
+          onClick={() => window.open(
+            'https://www.splunk.com/en_us/products/observability.html',
+            '_blank',
+            'noopener,noreferrer',
+          )}
+        >
+          <span>Customize with Splunk</span>
+          <Icon name="launch" weight="bold" size={16} />
+        </SharedButton>
+
       </div>
 
       {dashboardAgentFilter ? (

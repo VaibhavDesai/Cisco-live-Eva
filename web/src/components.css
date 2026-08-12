@@ -14824,17 +14824,15 @@ img.app-header__wordmark-logo {
 .action-config-v2-table .col-description { width: 350px; }
 .action-config-v2-table .col-last-updated { width: 200px; }
 .action-config-v2-table .col-action-type { width: 124px; }
-.action-config-v2-table .col-provider-type { width: 126px; }
 .action-config-v2-table .col-controls { width: 96px; }
 
-.action-config-v2-table--actions .col-action-name { width: 16%; }
+.action-config-v2-table--actions .col-action-name { width: 18%; }
 .action-config-v2-table--actions .col-recurring { width: 4%; }
 .action-config-v2-table--actions .col-created-by { width: 8%; }
-.action-config-v2-table--actions .col-description { width: 19%; }
+.action-config-v2-table--actions .col-description { width: 22%; }
 .action-config-v2-table--actions .col-last-updated { width: 13%; }
 .action-config-v2-table--actions .col-action-type { width: 9%; }
-.action-config-v2-table--actions .col-provider-type { width: 8%; }
-.action-config-v2-table--actions .col-galileo { width: 18%; }
+.action-config-v2-table--actions .col-galileo { width: 21%; }
 .action-config-v2-table--actions .col-row-actions { width: 5%; }
 
 /* Knowledge section: knowledge bases + AI memory tables */
@@ -23894,7 +23892,7 @@ img.app-header__wordmark-logo {
 
 .galileo-action-control-summary__stage {
   display: flex;
-  height: 160px;
+  min-height: 160px;
   flex-direction: column;
   align-items: flex-start;
   gap: 16px;
@@ -24734,6 +24732,27 @@ mdc-textarea.uplift-momentum-field::part(textarea) {
   line-height: 20px;
 }
 
+.galileo-action-control-condition-source__variables {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.galileo-action-control-condition-source__variables code,
+.galileo-action-control-condition__variable {
+  border: 1px solid var(--galileo-field-border);
+  border-radius: 6px;
+  background: var(--galileo-field);
+  color: var(--galileo-text-primary);
+  font-family: var(--mds-font-family-monospace, ui-monospace, SFMono-Regular, Menlo, monospace);
+  font-size: 12px;
+  line-height: 18px;
+}
+
+.galileo-action-control-condition-source__variables code {
+  padding: 3px 8px;
+}
+
 .galileo-action-control-condition-list {
   display: flex;
   flex-direction: column;
@@ -24749,6 +24768,37 @@ mdc-textarea.uplift-momentum-field::part(textarea) {
   border: 0;
   border-radius: 0;
   background: transparent;
+}
+
+.galileo-action-control-condition--time-window {
+  grid-template-columns: 48px minmax(140px, 1fr) auto minmax(244px, 1fr);
+}
+
+.galileo-action-control-condition__variable {
+  display: flex;
+  min-height: 36px;
+  align-items: center;
+  padding: 0 12px;
+  box-sizing: border-box;
+}
+
+.galileo-action-control-time-window {
+  display: grid;
+  grid-template-columns: minmax(96px, 1fr) auto minmax(96px, 1fr);
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.galileo-action-control-time-window > mdc-input {
+  width: 100%;
+  min-width: 0;
+}
+
+.galileo-action-control-time-window > span {
+  color: var(--galileo-text-secondary);
+  font-size: 12px;
+  line-height: 16px;
 }
 
 .galileo-action-control-condition .form-group {
@@ -25286,6 +25336,20 @@ mdc-textarea.uplift-momentum-field::part(textarea) {
   .galileo-action-control-condition > .uplift-momentum-button {
     grid-column: 3;
     grid-row: 1;
+  }
+
+  .galileo-action-control-condition--time-window {
+    grid-template-columns: 48px minmax(0, 1fr);
+  }
+
+  .galileo-action-control-condition--time-window .galileo-action-control-condition__variable,
+  .galileo-action-control-condition--time-window .galileo-action-control-condition__operator,
+  .galileo-action-control-condition--time-window .galileo-action-control-time-window {
+    grid-column: 2;
+  }
+
+  .galileo-action-control-time-window {
+    grid-template-columns: 1fr;
   }
 
   .galileo-action-control-condition-actions {

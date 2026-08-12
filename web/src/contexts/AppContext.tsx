@@ -25,6 +25,8 @@ import {
   EAGLE_GREEN_ACTION_CONTROL_ID,
   EAGLE_GREEN_ACTION_CONTROL_VALUES,
   EAGLE_GREEN_CHECK_AVAILABILITY_ACTION_ID,
+  EAGLE_GREEN_HANDOVER_ACTION_ID,
+  EAGLE_GREEN_HANDOVER_CONTROL_ID,
 } from '../demo/ciscoLiveSeed';
 import {
   CISCO_LIVE_PRIMARY_AGENT_ID,
@@ -110,7 +112,7 @@ export interface AppContextValue {
 }
 
 interface PersistedAgentState {
-  schemaVersion: 8;
+  schemaVersion: 10;
   agents: AgentsMap;
   agentDrafts: AgentDraftsMap;
 }
@@ -118,7 +120,7 @@ interface PersistedAgentState {
 export const APP_AGENT_STORAGE_KEY = 'webex-ai-agent-studio-agents-v1';
 
 const emptyAgentState = (): PersistedAgentState => ({
-  schemaVersion: 8,
+  schemaVersion: 10,
   agents: {},
   agentDrafts: {},
 });
@@ -181,6 +183,8 @@ const migratePrimaryDemoDraft = (draft: AgentDraft, storedSchemaVersion: number)
   const shouldMigrateCheckAvailabilityName = storedSchemaVersion < 6;
   const shouldMigrateLargeEventControlTiming = storedSchemaVersion < 7;
   const shouldMigrateLargeEventControlMatchMode = storedSchemaVersion < 8;
+  const shouldMigrateHandoverAction = storedSchemaVersion < 9;
+  const shouldMigrateHandoverTurnRule = storedSchemaVersion < 10;
   let migratedActions = actions;
   if (actions && (
     shouldMigrateLegacyActions
@@ -188,13 +192,15 @@ const migratePrimaryDemoDraft = (draft: AgentDraft, storedSchemaVersion: number)
     || shouldMigrateCheckAvailabilityName
     || shouldMigrateLargeEventControlTiming
     || shouldMigrateLargeEventControlMatchMode
+    || shouldMigrateHandoverAction
+    || shouldMigrateHandoverTurnRule
   )) {
     const actionValues = actions.values ?? {};
     const hasStoredSelections = Array.isArray(actionValues.selections);
     const existingSelections = hasStoredSelections
       ? actionValues.selections.filter((item): item is string => typeof item === 'string')
       : [];
-    const migratedSelections = hasStoredSelections
+    const normalizedSelections = hasStoredSelections
       ? existingSelections.map((item) => {
         if (item === 'Transfer to concierge' || item === 'Transfer large event to VIP concierge') {
           return 'Transfer to VIP team';
@@ -205,6 +211,10 @@ const migratePrimaryDemoDraft = (draft: AgentDraft, storedSchemaVersion: number)
         return item;
       })
       : EAGLE_GREEN_ACTION_CONTROL_VALUES.selections;
+    const migratedSelections = shouldMigrateHandoverAction
+      && !normalizedSelections.includes('Handover')
+      ? [...normalizedSelections, 'Handover']
+      : normalizedSelections;
 
     const existingControlsByActionId = isRecord(actionValues.controlsByActionId)
       ? structuredClone(actionValues.controlsByActionId)
@@ -276,6 +286,18 @@ const migratePrimaryDemoDraft = (draft: AgentDraft, storedSchemaVersion: number)
 
         return nextControl;
       });
+    }
+    const handoverControls = existingControlsByActionId[EAGLE_GREEN_HANDOVER_ACTION_ID];
+    if (shouldMigrateHandoverAction && !Array.isArray(handoverControls)) {
+      existingControlsByActionId[EAGLE_GREEN_HANDOVER_ACTION_ID] =
+        defaultControlsByActionId[EAGLE_GREEN_HANDOVER_ACTION_ID];
+    } else if (shouldMigrateHandoverTurnRule && Array.isArray(handoverControls)) {
+      const seededHandoverControl = defaultControlsByActionId[EAGLE_GREEN_HANDOVER_ACTION_ID][0];
+      existingControlsByActionId[EAGLE_GREEN_HANDOVER_ACTION_ID] = handoverControls.map(control => (
+        isRecord(control) && control.id === EAGLE_GREEN_HANDOVER_CONTROL_ID
+          ? structuredClone(seededHandoverControl)
+          : control
+      ));
     }
 
     const existingGatesByActionId = isRecord(actionValues.gatesByActionId)
@@ -358,7 +380,7 @@ const withCiscoLiveSeed = (
     );
   }
   return {
-    schemaVersion: 8,
+    schemaVersion: 10,
     agents: { ...seed.agents, ...agents },
     agentDrafts: { ...seed.agentDrafts, ...migratedDrafts },
   };

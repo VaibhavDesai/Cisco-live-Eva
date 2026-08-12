@@ -15,12 +15,15 @@ export const EAGLE_GREEN_ACTION_CONTROL_ID = 'large-event-approval-routing';
 export const EAGLE_GREEN_CHECK_AVAILABILITY_ACTION_ID = 'check-bay-availability';
 export const EAGLE_GREEN_PAYMENT_ACTION_ID = 'send-payment-link';
 export const EAGLE_GREEN_LARGE_EVENT_TRANSFER_ACTION_ID = 'transfer-large-event-vip-concierge';
+export const EAGLE_GREEN_HANDOVER_ACTION_ID = 'handover-human-agent';
+export const EAGLE_GREEN_HANDOVER_CONTROL_ID = 'handover-human-agent-steer';
 
 export const EAGLE_GREEN_ACTION_CONTROL_VALUES = {
   selections: [
     'Check Availability',
     'Send payment link',
     'Transfer to VIP team',
+    'Handover',
   ],
   controlsByActionId: {
     [EAGLE_GREEN_CHECK_AVAILABILITY_ACTION_ID]: [
@@ -28,7 +31,7 @@ export const EAGLE_GREEN_ACTION_CONTROL_VALUES = {
         id: EAGLE_GREEN_ACTION_CONTROL_ID,
         actionId: EAGLE_GREEN_CHECK_AVAILABILITY_ACTION_ID,
         name: 'Route large event requests to the VIP team',
-        description: 'Check availability for every request. After it returns, route requests over 100 guests or more than 20 bays to the VIP team.',
+        description: 'After Check availability returns, between 9:30 AM and 10:00 AM, route requests over 100 guests or more than 20 bays to the VIP team.',
         status: 'active',
         timing: 'post_tool',
         behavior: 'steer',
@@ -38,10 +41,31 @@ export const EAGLE_GREEN_ACTION_CONTROL_VALUES = {
           { id: 'large-event-party-size', kind: 'action_input', field: 'party_size', operator: 'greater_than', value: 100 },
           { id: 'large-event-requested-bays', kind: 'action_input', field: 'requested_bays', operator: 'greater_than', value: 20 },
         ],
+        timeWindow: { field: 'event_time', operator: 'between', start: '09:30', end: '10:00' },
         steerToActionId: EAGLE_GREEN_LARGE_EVENT_TRANSFER_ACTION_ID,
         source: 'recommended',
         sourceEvidence: 'Requests over 100 guests or more than 20 bays require review by the VIP event team.',
         recommendationReason: 'Check Availability receives party size and requested bays, so Galileo can make a deterministic routing decision after the action returns.',
+        version: 1,
+      },
+    ],
+    [EAGLE_GREEN_HANDOVER_ACTION_ID]: [
+      {
+        id: EAGLE_GREEN_HANDOVER_CONTROL_ID,
+        actionId: EAGLE_GREEN_HANDOVER_ACTION_ID,
+        name: 'Delay human handover until turn 5',
+        description: 'Before Handover runs, nudge requests made before turn 5 to continue with the AI agent and share the estimated wait time. At turn 5 or later, allow Handover to transfer to a human agent.',
+        status: 'active',
+        timing: 'pre_tool',
+        behavior: 'steer',
+        guidance: 'Before turn 5, encourage the user to continue with the AI agent and tell them: “A human agent is available in about {{estimated_human_wait_minutes}} minutes.” At turn 5 or later, run Handover and transfer the user and conversation context to a human agent.',
+        matchMode: 'and',
+        conditions: [
+          { id: 'handover-conversation-turn', kind: 'action_input', field: 'conversation_turn', operator: 'less_than', value: 5 },
+        ],
+        source: 'manual',
+        sourceEvidence: 'Early handover requests should remain with the AI agent until turn 5 while the user receives the current human-agent wait estimate.',
+        recommendationReason: 'Handover receives the current conversation turn and human-agent wait estimate, so Galileo can delay early requests and transfer later ones.',
         version: 1,
       },
     ],

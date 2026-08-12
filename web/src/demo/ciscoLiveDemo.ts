@@ -147,6 +147,7 @@ export const CISCO_LIVE_ACTION_CATALOG: Record<string, string> = {
   'Check Availability': 'Check live bay inventory for the requested Gofie location, date, party size, and duration.',
   'Send payment link': 'Send the approved PCI-compliant payment link without collecting card data in the conversation.',
   'Transfer to VIP team': 'Transfer an approved large-event request with the verified caller profile, transcript reference, customer context, and event summary attached.',
+  Handover: 'Hand over the active conversation to a human agent with the verified caller profile, transcript, and reservation context attached.',
   'Check venue capacity': 'Evaluate bay capacity, guest thresholds, and facilities constraints for a proposed large event.',
   'Coordinate staffing': 'Coordinate staffing, catering, beverage, and facilities owners against the approved event plan.',
   'Open workstream': 'Create the shared cross-team fulfillment plan after required approvals are recorded.',
@@ -291,7 +292,7 @@ export const CISCO_LIVE_AGENTS: CiscoLiveAgentDefinition[] = [
         },
       },
     ],
-    actions: ['Check Availability', 'Send payment link', 'Transfer to VIP team'],
+    actions: ['Check Availability', 'Send payment link', 'Transfer to VIP team', 'Handover'],
     goals: [
       'Recognize verified VIP callers and personalize the reservation experience',
       'Check live bay availability and complete eligible reservations',
@@ -558,7 +559,7 @@ const OBSERVABILITY_BY_AGENT: Record<string, CiscoLiveObservabilitySnapshot> = {
       { metricId: 'sec-policy-violation-guardrail-block-rate', value: '0.4', unit: '%', change: '-0.1%', isPositive: true, thresholdStatus: 'good' },
       { metricId: 'bi-autocsat-improvement', value: '5.00', unit: '%', change: '+0.03%', isPositive: true, thresholdStatus: 'good' },
     ],
-    eventLabel: 'Galileo action control',
+    eventLabel: 'Galileo agent control',
     eventTitle: 'Large event transfer unlocked',
     eventDescription: 'Check Availability completed. Galileo matched the large-event threshold and unlocked Transfer to VIP team with the availability result and caller context attached.',
     eventMeta: 'Evaluated after Check Availability • 9:42 AM',
@@ -607,7 +608,7 @@ export type CiscoLiveActionControlResult = 'observed' | 'steered' | 'denied' | '
 
 export interface CiscoLiveActionControlEvidence {
   field: string;
-  operator: 'greater_than' | 'equals' | 'in';
+  operator: 'greater_than' | 'less_than' | 'equals' | 'in';
   expected: number | string | string[];
   actual: number | string | string[];
 }
@@ -622,6 +623,12 @@ export interface CiscoLiveActionControlDecision {
   invoked: true;
   matched: boolean;
   evidence: CiscoLiveActionControlEvidence[];
+  timeWindowEvidence?: {
+    field: 'event_time';
+    expected: { start: string; end: string };
+    actual: string;
+    matched: boolean;
+  };
   result: CiscoLiveActionControlResult;
   toolExecuted: boolean;
   unlockedActionIds: string[];
@@ -673,6 +680,7 @@ const EAGLE_GREEN_ACTION_NAMES: Record<string, string> = {
   [GALILEO_ACTION_IDS.checkAvailability]: 'Check Availability',
   [GALILEO_ACTION_IDS.sendPayment]: 'Send payment link',
   [GALILEO_ACTION_IDS.transferVipConcierge]: 'Transfer to VIP team',
+  [GALILEO_ACTION_IDS.handover]: 'Handover',
 };
 
 interface SeededActionControlEventOptions {
@@ -707,6 +715,7 @@ function createSeededActionControlEvent({
     actionId,
     inputs,
     timing,
+    occurredAt: time,
   });
   const evaluatedDecision = evaluation.decisions[0];
   if (!evaluatedDecision) return null;
@@ -748,6 +757,14 @@ function createSeededActionControlEvent({
       expected: evidence.expected,
       actual: evidence.actual,
     })),
+    timeWindowEvidence: evaluatedDecision.timeWindowEvidence
+      ? {
+        field: evaluatedDecision.timeWindowEvidence.field,
+        expected: evaluatedDecision.timeWindowEvidence.expected,
+        actual: evaluatedDecision.timeWindowEvidence.actual,
+        matched: evaluatedDecision.timeWindowEvidence.matched,
+      }
+      : undefined,
     result: evaluatedDecision.result,
     toolExecuted: evaluatedDecision.toolExecuted,
     unlockedActionIds: evaluatedDecision.unlockedActionIds,
@@ -760,7 +777,7 @@ function createSeededActionControlEvent({
     event: {
       id,
       kind: 'action_control',
-      speaker: 'Galileo action controls',
+      speaker: 'Galileo agent controls',
       title: `${evaluatedDecision.controlTitle} ${evaluatedDecision.matched ? 'matched' : 'evaluated'}`,
       text: evidenceText,
       detail: resultDetail,
@@ -935,7 +952,7 @@ export const CISCO_LIVE_SESSIONS_BY_AGENT: Record<string, CiscoLiveSession[]> = 
           kind: 'guardrail',
           speaker: 'AI Defense',
           title: 'Payment data protection blocked sensitive input',
-          text: 'A full card number, expiration date, and security code were detected in the caller’s speech. The sensitive audio was suppressed and the transcript was redacted before storage.',
+          text: 'Card details were blocked and redacted before storage.',
           detail: 'Adaptive guardrail triggered',
           time: '9:47 AM',
         },

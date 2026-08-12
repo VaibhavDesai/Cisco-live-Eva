@@ -319,8 +319,11 @@ const VALID_CATEGORY_SET = new Set<string>(KPI_OBSERVABILITY_CATEGORY_ORDER);
 export function normalizeCategoryOrder(order: string[] | undefined): string[] {
   const base = [...KPI_OBSERVABILITY_CATEGORY_ORDER];
   if (!order?.length) return base;
-  const seen = new Set<string>();
-  const out: string[] = [];
+  // Business Impact is the primary outcome section and remains directly below Pinned,
+  // including for dashboards that saved the previous category order.
+  const pinnedFirstCategory = 'Business Impact';
+  const seen = new Set<string>([pinnedFirstCategory]);
+  const out: string[] = [pinnedFirstCategory];
   for (const c of order) {
     if (VALID_CATEGORY_SET.has(c) && !seen.has(c)) {
       out.push(c);

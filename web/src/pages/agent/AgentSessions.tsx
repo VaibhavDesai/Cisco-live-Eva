@@ -58,10 +58,10 @@ function sessionHasMatchedActionControl(session: CiscoLiveSession): boolean {
 
 function actionControlEvidenceLabel(decision: CiscoLiveActionControlDecision) {
   const evidence = decision.evidence.find(item => {
-    if (item.operator !== 'greater_than') return false;
+    if (item.operator !== 'greater_than' && item.operator !== 'less_than') return false;
     return typeof item.actual === 'number'
       && typeof item.expected === 'number'
-      && item.actual > item.expected;
+      && (item.operator === 'less_than' ? item.actual < item.expected : item.actual > item.expected);
   }) ?? decision.evidence[0];
   if (!evidence) return 'No matching evidence recorded';
 
@@ -73,6 +73,8 @@ function actionControlEvidenceLabel(decision: CiscoLiveActionControlDecision) {
   const actual = formatValue(evidence.actual);
   const operator = evidence.operator === 'greater_than'
     ? '>'
+    : evidence.operator === 'less_than'
+      ? '<'
     : evidence.operator === 'equals'
       ? '='
       : 'is one of';
@@ -83,6 +85,25 @@ function actionControlEvidenceLabel(decision: CiscoLiveActionControlDecision) {
         {`{{${evidence.field}}}`}
       </code>
       {` ${actual} ${operator} ${expected}`}
+    </>
+  );
+}
+
+function actionControlTimeWindowLabel(decision: CiscoLiveActionControlDecision) {
+  const evidence = decision.timeWindowEvidence;
+  if (!evidence) return null;
+  const formatTime = (value: string) => {
+    const [hourValue, minuteValue] = value.split(':').map(Number);
+    if (!Number.isFinite(hourValue) || !Number.isFinite(minuteValue)) return value;
+    const displayHour = hourValue % 12 || 12;
+    return `${displayHour}:${String(minuteValue).padStart(2, '0')} ${hourValue >= 12 ? 'PM' : 'AM'}`;
+  };
+  return (
+    <>
+      <code className="galileo-action-control-summary__variable" translate="no">
+        {'{{event_time}}'}
+      </code>
+      {` ${evidence.actual} falls between ${formatTime(evidence.expected.start)} and ${formatTime(evidence.expected.end)}`}
     </>
   );
 }
@@ -125,7 +146,7 @@ function SessionDetail({
             <h1>{session.topic}</h1>
             <Badge variant={outcomeVariant(session.outcome)}>{session.outcome}</Badge>
             {actionControl?.matched && (
-              <Badge variant="info">Action control · {actionControlBehaviorLabel(actionControl.behavior)}</Badge>
+              <Badge variant="info">Agent control · {actionControlBehaviorLabel(actionControl.behavior)}</Badge>
             )}
             {session.guardrailTriggered && <Badge variant="warning">Guardrail triggered</Badge>}
           </div>
@@ -262,6 +283,9 @@ function SessionDetail({
                 <div><dt>Timing</dt><dd>{actionControlTimingLabel(actionControl.timing)}</dd></div>
                 <div><dt>Behavior</dt><dd>{actionControlBehaviorLabel(actionControl.behavior)}</dd></div>
                 <div><dt>Evaluated input</dt><dd>{actionControlEvidenceLabel(actionControl)}</dd></div>
+                {actionControl.timeWindowEvidence && (
+                  <div><dt>Event time</dt><dd>{actionControlTimeWindowLabel(actionControl)}</dd></div>
+                )}
                 <div><dt>Decision</dt><dd>{actionControlDecisionLabel(actionControl)}</dd></div>
                 <div><dt>Unlocked action</dt><dd>{actionControl.unlockedActionNames.join(', ') || 'None'}</dd></div>
                 <div><dt>Result</dt><dd>{actionControlResultLabel}</dd></div>
@@ -384,7 +408,7 @@ export default function AgentSessions() {
       {!activeSession && (
         <AgentWorkspacePageHeading
           title="Sessions"
-          description="Review interactions, handoffs, errors, guardrail events, and action control decisions for this agent."
+          description="Review interactions, handoffs, errors, guardrail events, and agent control decisions for this agent."
           actions={(
             <Button variant="secondary" size="sm">
               <Icon name="refresh" weight="bold" size="sm" />
@@ -455,7 +479,7 @@ export default function AgentSessions() {
                   </label>
                   <label>
                     <input type="checkbox" checked={actionControlOnly} onChange={(event) => setActionControlOnly(event.target.checked)} />
-                    <span>Action control matched</span>
+                    <span>Agent control matched</span>
                   </label>
                   <label>
                     <input type="checkbox" checked={transfersOnly} onChange={(event) => setTransfersOnly(event.target.checked)} />
@@ -514,7 +538,7 @@ export default function AgentSessions() {
                         <TableCell>
                           <span className="agent-session-metadata-icons">
                             {sessionHasMatchedActionControl(session) && (
-                              <span className="agent-session-metadata-icons__action-control" title="Action control matched">
+                              <span className="agent-session-metadata-icons__action-control" title="Agent control matched">
                                 <Icon name="automation" weight="bold" size="sm" />
                               </span>
                             )}

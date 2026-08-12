@@ -39,6 +39,10 @@ test('canonical Galileo state normalizes model fields and fills only missing see
     controls.GALILEO_ACTION_IDS.checkAvailability,
     'legacy persisted names should continue to resolve to the stable action ID',
   );
+  assert.equal(
+    controls.getGalileoActionId(undefined, 'Handover'),
+    controls.GALILEO_ACTION_IDS.handover,
+  );
 
   const defaults = controls.createDefaultGalileoActionControlState();
   const control = defaults.controlsByActionId[controls.GALILEO_ACTION_IDS.checkAvailability][0];
@@ -46,12 +50,32 @@ test('canonical Galileo state normalizes model fields and fills only missing see
   assert.equal(control.timing, 'post_tool');
   assert.equal(control.matchMode, 'or');
   assert.ok(control.conditions.every(condition => condition.kind === 'action_input'));
+  assert.deepEqual(control.timeWindow, {
+    field: 'event_time',
+    operator: 'between',
+    start: '09:30',
+    end: '10:00',
+  });
+  const handoverControl = defaults.controlsByActionId[controls.GALILEO_ACTION_IDS.handover][0];
+  assert.equal(handoverControl.name, 'Delay human handover until turn 5');
+  assert.deepEqual(handoverControl.conditions, [{
+    id: 'handover-conversation-turn',
+    kind: 'action_input',
+    field: 'conversation_turn',
+    operator: 'less_than',
+    value: 5,
+  }]);
+  assert.match(handoverControl.guidance, /estimated_human_wait_minutes/);
 
   const missingKeys = controls.readGalileoActionControlState({
     controlsByActionId: {},
     gatesByActionId: {},
   });
   assert.equal(missingKeys.controlsByActionId[controls.GALILEO_ACTION_IDS.checkAvailability].length, 1);
+  assert.equal(
+    controls.getGalileoActionStatus(controls.GALILEO_ACTION_IDS.handover, missingKeys).label,
+    '1 active · Steer',
+  );
   assert.equal(missingKeys.gatesByActionId[controls.GALILEO_ACTION_IDS.transferVipConcierge].enabled, true);
 
   const explicitOverrides = controls.readGalileoActionControlState({
@@ -84,8 +108,36 @@ test('control previews format action inputs as template variables', () => {
 
   assert.equal(
     controls.getControlExpressionPreview(control),
-    '{{party_size}} is greater than 100 or {{requested_bays}} is greater than 20',
+    '({{party_size}} is greater than 100 or {{requested_bays}} is greater than 20) and {{event_time}} is between 9:30 AM and 10:00 AM',
   );
+  assert.equal(
+    controls.getControlExpressionPreview(
+      state.controlsByActionId[controls.GALILEO_ACTION_IDS.handover][0],
+    ),
+    '{{conversation_turn}} is less than 5',
+  );
+});
+
+test('Handover nudges early requests and transfers at turn 5', () => {
+  const state = controls.createDefaultGalileoActionControlState();
+  const earlyRequest = controls.evaluateGalileoActionInvocation({
+    state,
+    actionId: controls.GALILEO_ACTION_IDS.handover,
+    inputs: { conversation_turn: 3, estimated_human_wait_minutes: 8 },
+    timing: 'pre_tool',
+  });
+  assert.equal(earlyRequest.decisions[0].matched, true);
+  assert.equal(earlyRequest.decisions[0].result, 'steered');
+  assert.equal(earlyRequest.shouldExecuteAction, false);
+
+  const eligibleRequest = controls.evaluateGalileoActionInvocation({
+    state,
+    actionId: controls.GALILEO_ACTION_IDS.handover,
+    inputs: { conversation_turn: 5, estimated_human_wait_minutes: 4 },
+    timing: 'pre_tool',
+  });
+  assert.equal(eligibleRequest.decisions[0].matched, false);
+  assert.equal(eligibleRequest.shouldExecuteAction, true);
 });
 
 test('EAGLE GREEN reports only payment data protection as triggered', () => {
@@ -110,7 +162,7 @@ test('EAGLE GREEN reports only payment data protection as triggered', () => {
   assert.equal(paymentSession?.guardrail?.result, 'No payment card details were retained, repeated, or processed in the conversation');
 });
 
-test('post-tool OR evaluation uses strict thresholds and unlocks only after a matching Steer', () => {
+test('post-tool compound evaluation uses strict thresholds and a required session-time window', () => {
   const state = controls.createDefaultGalileoActionControlState();
   const snapshot = structuredClone(state);
 
@@ -119,6 +171,7 @@ test('post-tool OR evaluation uses strict thresholds and unlocks only after a ma
     actionId: controls.GALILEO_ACTION_IDS.checkAvailability,
     inputs: { party_size: 1000 },
     timing: 'post_tool',
+    occurredAt: '9:42 AM',
   });
   assert.equal(oversized.shouldExecuteAction, true);
   assert.equal(oversized.decisions[0].toolExecuted, true);
@@ -130,6 +183,7 @@ test('post-tool OR evaluation uses strict thresholds and unlocks only after a ma
     actionId: controls.GALILEO_ACTION_IDS.checkAvailability,
     inputs: { party_size: 100, requested_bays: 20 },
     timing: 'post_tool',
+    occurredAt: '9:42 AM',
   });
   assert.equal(exactBoundary.decisions[0].matched, false);
   assert.equal(exactBoundary.shouldExecuteAction, true);
@@ -140,6 +194,7 @@ test('post-tool OR evaluation uses strict thresholds and unlocks only after a ma
     actionId: controls.GALILEO_ACTION_IDS.checkAvailability,
     inputs: { party_size: 8, requested_bays: 21 },
     timing: 'post_tool',
+    occurredAt: '9:42 AM',
   });
   assert.equal(secondAnyBranch.decisions[0].matched, true);
   assert.deepEqual(secondAnyBranch.unlockedActionIds, [controls.GALILEO_ACTION_IDS.transferVipConcierge]);
@@ -149,6 +204,7 @@ test('post-tool OR evaluation uses strict thresholds and unlocks only after a ma
     actionId: controls.GALILEO_ACTION_IDS.checkAvailability,
     inputs: {},
     timing: 'post_tool',
+    occurredAt: '9:42 AM',
   });
   assert.equal(missingInputs.decisions[0].matched, false);
   assert.deepEqual(missingInputs.unlockedActionIds, []);
@@ -158,9 +214,21 @@ test('post-tool OR evaluation uses strict thresholds and unlocks only after a ma
     actionId: controls.GALILEO_ACTION_IDS.checkAvailability,
     inputs: { party_size: 1000 },
     timing: 'pre_tool',
+    occurredAt: '9:42 AM',
   });
   assert.deepEqual(wrongPhase.decisions, []);
   assert.deepEqual(wrongPhase.unlockedActionIds, []);
+
+  const outsideTimeWindow = controls.evaluateGalileoActionInvocation({
+    state,
+    actionId: controls.GALILEO_ACTION_IDS.checkAvailability,
+    inputs: { party_size: 1000, requested_bays: 100 },
+    timing: 'post_tool',
+    occurredAt: '10:01 AM',
+  });
+  assert.equal(outsideTimeWindow.decisions[0].matched, false);
+  assert.equal(outsideTimeWindow.decisions[0].timeWindowEvidence.matched, false);
+  assert.deepEqual(outsideTimeWindow.unlockedActionIds, []);
   assert.deepEqual(state, snapshot, 'evaluation must not mutate persisted configuration');
 });
 
@@ -174,6 +242,7 @@ test('OR and AND connector states preserve their distinct evaluation contracts',
     actionId: controls.GALILEO_ACTION_IDS.checkAvailability,
     inputs: { party_size: 1000, requested_bays: 1 },
     timing: 'post_tool',
+    occurredAt: '9:42 AM',
   });
   assert.equal(orResult.decisions[0].matched, true, 'OR should match when either condition matches');
 
@@ -183,6 +252,7 @@ test('OR and AND connector states preserve their distinct evaluation contracts',
     actionId: controls.GALILEO_ACTION_IDS.checkAvailability,
     inputs: { party_size: 1000, requested_bays: 1 },
     timing: 'post_tool',
+    occurredAt: '9:42 AM',
   });
   assert.equal(partialAndResult.decisions[0].matched, false, 'AND should reject a partial match');
 
@@ -191,6 +261,7 @@ test('OR and AND connector states preserve their distinct evaluation contracts',
     actionId: controls.GALILEO_ACTION_IDS.checkAvailability,
     inputs: { party_size: 1000, requested_bays: 21 },
     timing: 'post_tool',
+    occurredAt: '9:42 AM',
   });
   assert.equal(completeAndResult.decisions[0].matched, true, 'AND should match when every condition matches');
 });
@@ -211,6 +282,7 @@ test('gates fail closed and accept only satisfied active Steer prerequisites', (
     actionId: controls.GALILEO_ACTION_IDS.checkAvailability,
     inputs: { requested_bays: 21 },
     timing: 'post_tool',
+    occurredAt: '9:42 AM',
   });
   const unlocked = controls.evaluateGalileoActionInvocation({
     state,
@@ -229,6 +301,7 @@ test('gates fail closed and accept only satisfied active Steer prerequisites', (
       actionId: controls.GALILEO_ACTION_IDS.checkAvailability,
       inputs: { party_size: 1000 },
       timing: 'post_tool',
+      occurredAt: '9:42 AM',
     });
     assert.deepEqual(result.unlockedActionIds, [], `${behavior} must not unlock the Steer gate`);
     assert.equal(result.shouldExecuteAction, true, 'the attached action has already completed');
@@ -290,7 +363,7 @@ test('seeded Session telemetry preserves completed transfers and exposes machine
   const now = new Date('2026-08-07T02:00:00.000Z');
   const defaults = controls.createDefaultGalileoActionControlState();
   const values = {
-    selections: ['Check Availability', 'Send payment link', 'Transfer to VIP team'],
+    selections: ['Check Availability', 'Send payment link', 'Transfer to VIP team', 'Handover'],
     ...defaults,
   };
   const decisions = demo.getCiscoLiveActionControlDecisions(
@@ -299,6 +372,10 @@ test('seeded Session telemetry preserves completed transfers and exposes machine
     now,
   );
   assert.deepEqual(decisions.map(decision => decision.result), ['steered', 'not_matched']);
+  assert.deepEqual(
+    decisions.map(decision => decision.timeWindowEvidence?.actual),
+    ['9:42 AM', '9:31 AM'],
+  );
   assert.deepEqual(
     decisions.map(decision => decision.occurredAt),
     ['2026-08-07T01:58:00.000Z', '2026-08-07T01:52:00.000Z'],

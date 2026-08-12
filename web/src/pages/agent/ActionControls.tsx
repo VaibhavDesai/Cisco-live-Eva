@@ -40,15 +40,20 @@ export const GALILEO_ACTION_IDS = {
   checkAvailability: 'check-bay-availability',
   sendPayment: 'send-payment-link',
   transferVipConcierge: 'transfer-large-event-vip-concierge',
+  handover: 'handover-human-agent',
 } as const;
 
 export const LARGE_EVENT_CONTROL_ID = 'large-event-approval-routing';
+export const HANDOVER_CONTROL_ID = 'handover-human-agent-steer';
 export const VIP_TEAM_ACTION_NAME = 'Transfer to VIP team';
 const LARGE_EVENT_CONTROL_NAME = 'Route large event requests to the VIP team';
-const LARGE_EVENT_CONTROL_DESCRIPTION = 'Check availability for every request. After it returns, route requests over 100 guests or more than 20 bays to the VIP team.';
+const LARGE_EVENT_CONTROL_DESCRIPTION = 'After Check availability returns, between 9:30 AM and 10:00 AM, route requests over 100 guests or more than 20 bays to the VIP team.';
 const LARGE_EVENT_CONTROL_GUIDANCE = 'Tell the caller that availability was checked and the request needs VIP-team review. Transfer the caller, availability result, and reservation context to the VIP team.';
 const LARGE_EVENT_SOURCE_EVIDENCE = 'Requests over 100 guests or more than 20 bays require review by the VIP event team.';
 const LARGE_EVENT_RECOMMENDATION_REASON = 'Check Availability receives party size and requested bays, so Galileo can make a deterministic routing decision after the action returns.';
+const HANDOVER_CONTROL_NAME = 'Delay human handover until turn 5';
+const HANDOVER_CONTROL_DESCRIPTION = 'Before Handover runs, nudge requests made before turn 5 to continue with the AI agent and share the estimated wait time. At turn 5 or later, allow Handover to transfer to a human agent.';
+const HANDOVER_CONTROL_GUIDANCE = 'Before turn 5, encourage the user to continue with the AI agent and tell them: “A human agent is available in about {{estimated_human_wait_minutes}} minutes.” At turn 5 or later, run Handover and transfer the user and conversation context to a human agent.';
 const LEGACY_VIP_TEAM_ACTION_NAMES = new Set([
   'transfer to concierge',
   'transfer large event to vip concierge',
@@ -58,7 +63,15 @@ export type GalileoActionControlTiming = 'pre_tool' | 'post_tool';
 export type GalileoActionControlBehavior = 'observe' | 'steer' | 'deny';
 export type GalileoActionControlStatus = 'draft' | 'active' | 'disabled' | 'needs_review';
 export type GalileoActionControlMatchMode = 'and' | 'or';
-export type GalileoActionControlField = 'party_size' | 'requested_bays';
+export type GalileoActionControlField = 'party_size' | 'requested_bays' | 'conversation_turn' | 'estimated_human_wait_minutes';
+export type GalileoActionControlOperator = 'greater_than' | 'less_than';
+
+export interface GalileoActionControlTimeWindow {
+  field: 'event_time';
+  operator: 'between';
+  start: string;
+  end: string;
+}
 
 type LegacyGalileoActionControlMatchMode = 'all' | 'any';
 type StoredGalileoActionControlMatchMode = GalileoActionControlMatchMode | LegacyGalileoActionControlMatchMode;
@@ -82,7 +95,7 @@ export interface GalileoActionControlCondition {
   id: string;
   kind: 'action_input';
   field: GalileoActionControlField;
-  operator: 'greater_than';
+  operator: GalileoActionControlOperator;
   value: number;
 }
 
@@ -96,6 +109,7 @@ export interface GalileoActionControl {
   behavior: GalileoActionControlBehavior;
   matchMode: GalileoActionControlMatchMode;
   conditions: GalileoActionControlCondition[];
+  timeWindow?: GalileoActionControlTimeWindow;
   guidance: string;
   steerToActionId?: string;
   source: 'manual' | 'recommended';
@@ -128,9 +142,17 @@ export interface GalileoActionControlState {
 export interface GalileoActionControlConditionEvidence {
   conditionId: string;
   field: GalileoActionControlField;
-  operator: 'greater_than';
+  operator: GalileoActionControlOperator;
   expected: number;
   actual: number | 'missing';
+  matched: boolean;
+}
+
+export interface GalileoActionControlTimeWindowEvidence {
+  field: 'event_time';
+  operator: 'between';
+  expected: { start: string; end: string };
+  actual: string | 'missing';
   matched: boolean;
 }
 
@@ -143,6 +165,7 @@ export interface GalileoActionControlEvaluationDecision {
   invoked: true;
   matched: boolean;
   evidence: GalileoActionControlConditionEvidence[];
+  timeWindowEvidence?: GalileoActionControlTimeWindowEvidence;
   result: 'observed' | 'steered' | 'denied' | 'not_matched';
   toolExecuted: boolean;
   unlockedActionIds: string[];
@@ -165,6 +188,7 @@ export interface GalileoActionControlEvaluationRequest {
   actionId: string;
   inputs: Record<string, unknown>;
   timing?: GalileoActionControlTiming;
+  occurredAt?: string | Date;
   satisfiedControlIds?: string[];
 }
 
@@ -181,9 +205,23 @@ export interface GalileoActionStatus {
   tone: GalileoStatusTone;
 }
 
-const FIELD_LABELS: Record<GalileoActionControlField, string> = {
-  party_size: 'Party size',
-  requested_bays: 'Requested bays',
+const ACTION_INPUT_VARIABLES: Array<{ value: GalileoActionControlField; label: string }> = [
+  { value: 'party_size', label: '{{party_size}}' },
+  { value: 'requested_bays', label: '{{requested_bays}}' },
+  { value: 'conversation_turn', label: '{{conversation_turn}}' },
+  { value: 'estimated_human_wait_minutes', label: '{{estimated_human_wait_minutes}}' },
+];
+
+const CONDITION_OPERATOR_LABELS: Record<GalileoActionControlOperator, string> = {
+  greater_than: 'is greater than',
+  less_than: 'is less than',
+};
+
+const LARGE_EVENT_TIME_WINDOW: GalileoActionControlTimeWindow = {
+  field: 'event_time',
+  operator: 'between',
+  start: '09:30',
+  end: '10:00',
 };
 
 const BEHAVIOR_LABELS: Record<GalileoActionControlBehavior, string> = {
@@ -243,11 +281,37 @@ const SEEDED_LARGE_EVENT_CONTROL: GalileoActionControl = {
       value: 20,
     },
   ],
+  timeWindow: LARGE_EVENT_TIME_WINDOW,
   guidance: LARGE_EVENT_CONTROL_GUIDANCE,
   steerToActionId: GALILEO_ACTION_IDS.transferVipConcierge,
   source: 'recommended',
   sourceEvidence: LARGE_EVENT_SOURCE_EVIDENCE,
   recommendationReason: LARGE_EVENT_RECOMMENDATION_REASON,
+  version: 1,
+};
+
+const SEEDED_HANDOVER_CONTROL: GalileoActionControl = {
+  id: HANDOVER_CONTROL_ID,
+  actionId: GALILEO_ACTION_IDS.handover,
+  name: HANDOVER_CONTROL_NAME,
+  description: HANDOVER_CONTROL_DESCRIPTION,
+  status: 'active',
+  timing: 'pre_tool',
+  behavior: 'steer',
+  matchMode: 'and',
+  conditions: [
+    {
+      id: 'handover-conversation-turn',
+      kind: 'action_input',
+      field: 'conversation_turn',
+      operator: 'less_than',
+      value: 5,
+    },
+  ],
+  guidance: HANDOVER_CONTROL_GUIDANCE,
+  source: 'manual',
+  sourceEvidence: 'Early handover requests should remain with the AI agent until turn 5 while the user receives the current human-agent wait estimate.',
+  recommendationReason: 'Handover receives the current conversation turn and human-agent wait estimate, so Galileo can delay early requests and transfer later ones.',
   version: 1,
 };
 
@@ -276,6 +340,7 @@ function cloneControl(control: StoredGalileoActionControl): GalileoActionControl
         control.description === 'Keep large event requests out of the standard booking path until the VIP event team can review them.'
         || control.description === 'Route requests over 100 guests or more than 20 bays to the VIP team before Check Availability runs.'
         || control.description === 'Check availability first, then route requests over 100 guests or more than 20 bays to the VIP team.'
+        || control.description === 'Check availability for every request. After it returns, route requests over 100 guests or more than 20 bays to the VIP team.'
       )
       ? LARGE_EVENT_CONTROL_DESCRIPTION
       : control.description,
@@ -304,6 +369,11 @@ function cloneControl(control: StoredGalileoActionControl): GalileoActionControl
       ...condition,
       kind: condition.kind ?? 'action_input',
     })),
+    timeWindow: shouldRefreshSeededCopy
+      ? { ...(control.timeWindow ?? LARGE_EVENT_TIME_WINDOW) }
+      : control.timeWindow
+        ? { ...control.timeWindow }
+        : undefined,
   };
 }
 
@@ -325,6 +395,7 @@ export function createDefaultGalileoActionControlState(): GalileoActionControlSt
   return cloneState({
     controlsByActionId: {
       [GALILEO_ACTION_IDS.checkAvailability]: [SEEDED_LARGE_EVENT_CONTROL],
+      [GALILEO_ACTION_IDS.handover]: [SEEDED_HANDOVER_CONTROL],
     },
     gatesByActionId: {
       [GALILEO_ACTION_IDS.transferVipConcierge]: SEEDED_VIP_TRANSFER_GATE,
@@ -337,10 +408,20 @@ function isCondition(value: unknown): value is GalileoActionControlCondition {
   return (
     typeof value.id === 'string'
     && (value.kind === undefined || value.kind === 'action_input')
-    && (value.field === 'party_size' || value.field === 'requested_bays')
-    && value.operator === 'greater_than'
+    && ['party_size', 'requested_bays', 'conversation_turn', 'estimated_human_wait_minutes'].includes(String(value.field))
+    && ['greater_than', 'less_than'].includes(String(value.operator))
     && typeof value.value === 'number'
     && Number.isFinite(value.value)
+  );
+}
+
+function isTimeWindow(value: unknown): value is GalileoActionControlTimeWindow {
+  if (!isRecord(value)) return false;
+  return (
+    value.field === 'event_time'
+    && value.operator === 'between'
+    && typeof value.start === 'string'
+    && typeof value.end === 'string'
   );
 }
 
@@ -357,6 +438,7 @@ function isControl(value: unknown): value is StoredGalileoActionControl {
     && ['and', 'or', 'all', 'any'].includes(String(value.matchMode))
     && Array.isArray(value.conditions)
     && value.conditions.every(isCondition)
+    && (value.timeWindow === undefined || isTimeWindow(value.timeWindow))
     && typeof value.guidance === 'string'
     && (value.steerToActionId === undefined || typeof value.steerToActionId === 'string')
     && (value.source === 'manual' || value.source === 'recommended')
@@ -453,7 +535,62 @@ function evaluateCondition(
     operator: condition.operator,
     expected: condition.value,
     actual,
-    matched: actual !== 'missing' && actual > condition.value,
+    matched: actual !== 'missing' && (
+      condition.operator === 'less_than'
+        ? actual < condition.value
+        : actual > condition.value
+    ),
+  };
+}
+
+function timeValueToMinutes(value: string | Date | undefined): number | null {
+  if (value instanceof Date) {
+    return Number.isNaN(value.getTime()) ? null : (value.getHours() * 60) + value.getMinutes();
+  }
+  if (!value) return null;
+  const normalized = value.trim();
+  const twelveHourMatch = normalized.match(/^(\d{1,2}):(\d{2})(?::\d{2})?\s*(AM|PM)$/i);
+  if (twelveHourMatch) {
+    const rawHour = Number(twelveHourMatch[1]);
+    const minute = Number(twelveHourMatch[2]);
+    if (rawHour < 1 || rawHour > 12 || minute < 0 || minute > 59) return null;
+    const period = twelveHourMatch[3].toUpperCase();
+    const hour = (rawHour % 12) + (period === 'PM' ? 12 : 0);
+    return (hour * 60) + minute;
+  }
+  const twentyFourHourMatch = normalized.match(/^([01]?\d|2[0-3]):([0-5]\d)$/);
+  if (!twentyFourHourMatch) return null;
+  return (Number(twentyFourHourMatch[1]) * 60) + Number(twentyFourHourMatch[2]);
+}
+
+function formatTimeValue(value: string): string {
+  const minutes = timeValueToMinutes(value);
+  if (minutes === null) return value;
+  const hour = Math.floor(minutes / 60);
+  const minute = minutes % 60;
+  const displayHour = hour % 12 || 12;
+  return `${displayHour}:${String(minute).padStart(2, '0')} ${hour >= 12 ? 'PM' : 'AM'}`;
+}
+
+function evaluateTimeWindow(
+  timeWindow: GalileoActionControlTimeWindow,
+  occurredAt: string | Date | undefined,
+): GalileoActionControlTimeWindowEvidence {
+  const actualMinutes = timeValueToMinutes(occurredAt);
+  const startMinutes = timeValueToMinutes(timeWindow.start);
+  const endMinutes = timeValueToMinutes(timeWindow.end);
+  const withinWindow = actualMinutes !== null && startMinutes !== null && endMinutes !== null
+    && (startMinutes <= endMinutes
+      ? actualMinutes >= startMinutes && actualMinutes <= endMinutes
+      : actualMinutes >= startMinutes || actualMinutes <= endMinutes);
+  return {
+    field: timeWindow.field,
+    operator: timeWindow.operator,
+    expected: { start: timeWindow.start, end: timeWindow.end },
+    actual: occurredAt instanceof Date
+      ? `${String(occurredAt.getHours()).padStart(2, '0')}:${String(occurredAt.getMinutes()).padStart(2, '0')}`
+      : occurredAt ?? 'missing',
+    matched: withinWindow,
   };
 }
 
@@ -473,6 +610,7 @@ export function evaluateGalileoActionInvocation({
   actionId,
   inputs,
   timing = 'pre_tool',
+  occurredAt,
   satisfiedControlIds = [],
 }: GalileoActionControlEvaluationRequest): GalileoActionControlEvaluationResult {
   const currentGate = state.gatesByActionId[actionId];
@@ -506,12 +644,16 @@ export function evaluateGalileoActionInvocation({
   ));
   const evaluated = controls.map(control => {
     const evidence = control.conditions.map(condition => evaluateCondition(condition, inputs));
-    const matched = evidence.length > 0 && (
+    const actionInputsMatched = evidence.length > 0 && (
       normalizeMatchMode(control.matchMode) === 'and'
         ? evidence.every(item => item.matched)
         : evidence.some(item => item.matched)
     );
-    return { control, evidence, matched };
+    const timeWindowEvidence = control.timeWindow
+      ? evaluateTimeWindow(control.timeWindow, occurredAt)
+      : undefined;
+    const matched = actionInputsMatched && (timeWindowEvidence?.matched ?? true);
+    return { control, evidence, timeWindowEvidence, matched };
   });
   const matchedControlIds = evaluated
     .filter(item => item.matched)
@@ -541,7 +683,7 @@ export function evaluateGalileoActionInvocation({
     .filter(gate => !unlockedActions.has(gate.actionId))
     .map(gate => gate.actionId);
 
-  const decisions = evaluated.map<GalileoActionControlEvaluationDecision>(({ control, evidence, matched }) => ({
+  const decisions = evaluated.map<GalileoActionControlEvaluationDecision>(({ control, evidence, timeWindowEvidence, matched }) => ({
     controlId: control.id,
     controlTitle: control.name,
     actionId,
@@ -550,6 +692,7 @@ export function evaluateGalileoActionInvocation({
     invoked: true,
     matched,
     evidence,
+    timeWindowEvidence,
     result: !matched
       ? 'not_matched'
       : control.behavior === 'steer'
@@ -587,6 +730,7 @@ export function getGalileoActionId(sourceActionId: number | string | undefined, 
     return GALILEO_ACTION_IDS.checkAvailability;
   }
   if (normalized === 'send payment link') return GALILEO_ACTION_IDS.sendPayment;
+  if (normalized === 'handover') return GALILEO_ACTION_IDS.handover;
   if (LEGACY_VIP_TEAM_ACTION_NAMES.has(normalized) || normalized === VIP_TEAM_ACTION_NAME.toLowerCase()) {
     return GALILEO_ACTION_IDS.transferVipConcierge;
   }
@@ -626,9 +770,11 @@ export function getGalileoActionStatus(
 export function getControlExpressionPreview(control: GalileoActionControl): string {
   if (control.conditions.length === 0) return 'No conditions added';
   const joiner = normalizeMatchMode(control.matchMode) === 'and' ? ' and ' : ' or ';
-  return control.conditions
-    .map(condition => `{{${condition.field}}} is greater than ${condition.value}`)
+  const actionInputExpression = control.conditions
+    .map(condition => `{{${condition.field}}} ${CONDITION_OPERATOR_LABELS[condition.operator]} ${condition.value}`)
     .join(joiner);
+  if (!control.timeWindow) return actionInputExpression;
+  return `(${actionInputExpression}) and {{event_time}} is between ${formatTimeValue(control.timeWindow.start)} and ${formatTimeValue(control.timeWindow.end)}`;
 }
 
 function GalileoControlExpression({ control }: { control: GalileoActionControl }) {
@@ -637,15 +783,25 @@ function GalileoControlExpression({ control }: { control: GalileoActionControl }
 
   return (
     <>
+      {control.timeWindow ? '(' : null}
       {control.conditions.map((condition, index) => (
         <Fragment key={condition.id}>
           {index > 0 ? joiner : null}
           <code className="galileo-action-control-summary__variable" translate="no">
             {`{{${condition.field}}}`}
           </code>
-          {` is greater than ${condition.value}`}
+          {` ${CONDITION_OPERATOR_LABELS[condition.operator]} ${condition.value}`}
         </Fragment>
       ))}
+      {control.timeWindow ? (
+        <>
+          {') and '}
+          <code className="galileo-action-control-summary__variable" translate="no">
+            {'{{event_time}}'}
+          </code>
+          {` is between ${formatTimeValue(control.timeWindow.start)} and ${formatTimeValue(control.timeWindow.end)}`}
+        </>
+      ) : null}
     </>
   );
 }
@@ -653,6 +809,7 @@ function GalileoControlExpression({ control }: { control: GalileoActionControl }
 interface GalileoControlSummaryCopy {
   lead: string;
   evaluation: string;
+  decisionTitle: string;
   condition: string;
   matchedOutcome: string;
   unmatchedOutcome: string;
@@ -668,6 +825,17 @@ function getGalileoControlSummaryCopy(
     ? actionNames[control.steerToActionId] ?? control.steerToActionId
     : 'the configured next action';
 
+  if (control.id === HANDOVER_CONTROL_ID) {
+    return {
+      lead: 'Galileo checks how early the human handover was requested. Requests before turn 5 pause Handover and continue with the AI agent; requests at turn 5 or later continue to Handover.',
+      evaluation: `Before ${actionName} runs`,
+      decisionTitle: 'Evaluate handover request',
+      condition,
+      matchedOutcome: 'Pause Handover, continue with the AI agent, and share the estimated human wait time',
+      unmatchedOutcome: 'Run Handover and transfer to a human agent',
+    };
+  }
+
   if (control.timing === 'post_tool') {
     const matchedOutcome = control.behavior === 'steer'
       ? `Keep the availability result, stop the standard automated path, and continue with ${targetName}`
@@ -677,6 +845,7 @@ function getGalileoControlSummaryCopy(
     return {
       lead: `${actionName} always runs. After it returns, Galileo evaluates the original reservation inputs to choose what happens next.`,
       evaluation: `After ${actionName} returns`,
+      decisionTitle: 'Evaluate reservation inputs',
       condition,
       matchedOutcome,
       unmatchedOutcome: 'Continue on the standard automated path',
@@ -697,6 +866,7 @@ function getGalileoControlSummaryCopy(
   return {
     lead: `Galileo checks the request before ${actionName} runs. Matching requests ${matchedLead}; all other requests continue to ${actionName}.`,
     evaluation: `Before ${actionName} runs`,
+    decisionTitle: 'Evaluate reservation inputs',
     condition,
     matchedOutcome,
     unmatchedOutcome: `Run ${actionName}`,
@@ -957,10 +1127,10 @@ export function RecommendedActionControlsDialog({
       className="recommended-controls-dialog"
       overlayClassName="recommended-controls-dialog-overlay"
       onClose={onClose}
-      ariaLabel="Recommended action controls"
+      ariaLabel="Recommended agent controls"
     >
       <ModalHeader
-        title="Recommended action controls"
+        title="Recommended agent controls"
         description="Review deterministic controls derived from the saved goal, instructions, actions, and current controls. Nothing is published automatically."
         onClose={onClose}
       />
@@ -1135,7 +1305,7 @@ function createBlankControl(actionId: string): GalileoActionControl {
   return {
     id: `control-${stamp}`,
     actionId,
-    name: 'New action control',
+    name: 'New agent control',
     description: 'Define when Galileo should intervene before this action runs.',
     status: 'draft',
     timing: 'pre_tool',
@@ -1442,6 +1612,13 @@ export function ActionControlManagerDialog({
     } : current);
   };
 
+  const updateTimeWindow = (patch: Partial<GalileoActionControlTimeWindow>) => {
+    setDraft(current => current?.timeWindow ? {
+      ...current,
+      timeWindow: { ...current.timeWindow, ...patch },
+    } : current);
+  };
+
   const addCondition = () => {
     const stamp = Date.now().toString(36);
     setDraft(current => current ? {
@@ -1526,7 +1703,7 @@ export function ActionControlManagerDialog({
         <header className="security-ui-studio-header galileo-action-control-studio__header">
           <div className="galileo-action-control-studio__header-copy">
             <h2 id="galileo-action-control-title">
-              {isCreatingControl ? 'Create action control' : 'Action control'}: {contextActionDisplayName}
+              {isCreatingControl ? 'Create agent control' : 'Agent control'}: {contextActionDisplayName}
             </h2>
             <p>
               {isCreatingControl
@@ -1540,7 +1717,7 @@ export function ActionControlManagerDialog({
             color="default"
             size={64}
             className="galileo-action-control-studio__close"
-            aria-label="Close action control"
+            aria-label="Close agent control"
             onClick={requestClose}
           >
             <Icon name="cancel" weight="regular" size={32} />
@@ -1607,7 +1784,7 @@ export function ActionControlManagerDialog({
                           Decision
                         </span>
                         <div className="galileo-action-control-summary__decision-body">
-                          <strong>Evaluate reservation inputs</strong>
+                          <strong>{summaryCopy.decisionTitle}</strong>
                           <p><GalileoControlExpression control={summaryControl} /></p>
                         </div>
                       </div>
@@ -1694,7 +1871,7 @@ export function ActionControlManagerDialog({
                   <div className="galileo-action-control-gate__intro">
                     <div>
                       <span className="galileo-action-control-eyebrow">Action availability</span>
-                      <h3>Available after action control intervenes</h3>
+                      <h3>Available after agent control intervenes</h3>
                       <p>This action is available only after its required control matches.</p>
                     </div>
                     <Badge variant={gate.enabled ? 'info' : 'default'}>{gate.enabled ? 'Gated' : 'Gate draft'}</Badge>
@@ -1908,8 +2085,13 @@ export function ActionControlManagerDialog({
                   )}
 
                   <div className="galileo-action-control-condition-source">
-                    <span>Condition source</span>
-                    <p>Action input</p>
+                    <span>Available variables</span>
+                    <div className="galileo-action-control-condition-source__variables">
+                      {ACTION_INPUT_VARIABLES.map(variable => (
+                        <code key={variable.value} translate="no">{variable.label}</code>
+                      ))}
+                      <code translate="no">{'{{event_time}}'}</code>
+                    </div>
                   </div>
 
                   <div className="galileo-action-control-condition-list">
@@ -1938,10 +2120,7 @@ export function ActionControlManagerDialog({
                           })}
                         >
                           <MomentumSelectlistbox>
-                            {([
-                              { value: 'party_size', label: FIELD_LABELS.party_size },
-                              { value: 'requested_bays', label: FIELD_LABELS.requested_bays },
-                            ] satisfies Array<{ value: GalileoActionControlField; label: string }>).map(option => (
+                            {ACTION_INPUT_VARIABLES.map(option => (
                               <MomentumOption
                                 key={option.value}
                                 value={option.value}
@@ -1951,7 +2130,9 @@ export function ActionControlManagerDialog({
                             ))}
                           </MomentumSelectlistbox>
                         </UpliftMomentumSelect>
-                        <span className="galileo-action-control-condition__operator">is greater than</span>
+                        <span className="galileo-action-control-condition__operator">
+                          {CONDITION_OPERATOR_LABELS[condition.operator]}
+                        </span>
                         <UpliftMomentumInput
                           type="number"
                           min={1}
@@ -1976,6 +2157,34 @@ export function ActionControlManagerDialog({
                         </UpliftMomentumButton>
                       </div>
                     ))}
+                    {draft.timeWindow && (
+                      <div className="galileo-action-control-condition galileo-action-control-condition--time-window">
+                        <span className="galileo-action-control-condition__joiner">AND</span>
+                        <code className="galileo-action-control-condition__variable" translate="no">
+                          {'{{event_time}}'}
+                        </code>
+                        <span className="galileo-action-control-condition__operator">is between</span>
+                        <div className="galileo-action-control-time-window">
+                          <UpliftMomentumInput
+                            type="time"
+                            value={draft.timeWindow.start}
+                            dataAriaLabel="Event time window start"
+                            onInput={event => updateTimeWindow({
+                              start: (event.target as { value: string }).value,
+                            })}
+                          />
+                          <span>to</span>
+                          <UpliftMomentumInput
+                            type="time"
+                            value={draft.timeWindow.end}
+                            dataAriaLabel="Event time window end"
+                            onInput={event => updateTimeWindow({
+                              end: (event.target as { value: string }).value,
+                            })}
+                          />
+                        </div>
+                      </div>
+                    )}
                   </div>
 
                   <div className="galileo-action-control-condition-actions">

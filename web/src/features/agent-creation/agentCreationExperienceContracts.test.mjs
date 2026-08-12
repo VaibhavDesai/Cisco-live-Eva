@@ -6,6 +6,59 @@ function readSource(relativePath) {
   return readFileSync(new URL(relativePath, import.meta.url), 'utf8');
 }
 
+test('Observability omits projected exhaustion metrics', () => {
+  const metricSource = readSource('../clus-kpi-dashboard/data/phase1ObservabilityMetrics.ts');
+  const dashboardSource = readSource('../clus-kpi-dashboard/components/ObservabilityView.tsx');
+  const agentDashboardSource = readSource('../clus-kpi-dashboard/components/SingleAgentView.tsx');
+
+  assert.doesNotMatch(metricSource, /Projected (?:voice|message) exhaustion|obs-projection-(?:voice|digital)/);
+  assert.doesNotMatch(dashboardSource, /ObservabilityProjectionCard|observabilityProjectionIdForCategory/);
+  assert.doesNotMatch(agentDashboardSource, /ObservabilityProjectionCard|observabilityProjectionIdForCategory/);
+});
+
+test('Observability shares the agent workspace glass and prioritizes Business Impact', () => {
+  const layoutSource = readSource('../../components/layout/MainLayout.tsx');
+  const studioStyles = readSource('../../products/ai-agent-studio/components.css');
+  const observabilityStyles = readSource('../../builder-testing.css');
+  const observabilityRootSource = readSource('../clus-kpi-dashboard/ClusKpiDashboardRoot.tsx');
+  const observabilityViewSource = readSource('../clus-kpi-dashboard/components/ObservabilityView.tsx');
+  const chartSource = readSource('../clus-kpi-dashboard/components/KPIChart.tsx');
+  const metricSource = readSource('../clus-kpi-dashboard/data/phase1ObservabilityMetrics.ts');
+  const configurationSource = readSource('../clus-kpi-dashboard/observabilityConfiguration.ts');
+
+  assert.match(
+    layoutSource,
+    /const isObservability\s*=\s*\/\^\\\/observability[\s\S]*?usesStudioAurora\s*=\s*isAgentsList \|\| isAgentOverview \|\| isAgentConfigure \|\| isObservability/,
+  );
+  assert.match(
+    studioStyles,
+    /\.primary-content\.action-config-v2-page,[\s\S]*?\.clus-kpi-dashboard-root\s*\{[^}]*54%[^}]*backdrop-filter:\s*blur\(44px\)/,
+    'Observability should use the same translucent surface as Overview and Configure',
+  );
+  assert.match(
+    metricSource,
+    /KPI_OBSERVABILITY_CATEGORY_ORDER\s*=\s*\[\s*['"]Business Impact['"]/,
+  );
+  assert.match(
+    configurationSource,
+    /pinnedFirstCategory\s*=\s*['"]Business Impact['"][\s\S]*?out:\s*string\[\]\s*=\s*\[pinnedFirstCategory\]/,
+    'saved layouts should migrate Business Impact directly below Pinned',
+  );
+  assert.match(chartSource, /clus-kpi-chart-toolbar[\s\S]*?aria-label="Chart view"[\s\S]*?aria-label="Table view"[\s\S]*?aria-label="Box zoom"[\s\S]*?aria-label="Reset zoom"/);
+  assert.match(
+    observabilityStyles,
+    /\.clus-kpi-chart-toolbar \.btn-group \.btn\s*\{[^}]*width:\s*32px;[^}]*min-width:\s*32px;[^}]*height:\s*32px;[^}]*padding:\s*0;[^}]*border-radius:\s*50%;/,
+    'all chart toolbar icon buttons should render as equal circular controls',
+  );
+  assert.match(
+    observabilityRootSource,
+    /className="clus-kpi-toolbar[\s\S]*?aria-label="Search metrics"[\s\S]*?aria-label="Date range"[\s\S]*?className="clus-kpi-splunk-button"[\s\S]*?Customize with Splunk[\s\S]*?<Icon name="launch"/,
+    'the dashboard toolbar should offer a cross-launch action for Splunk customization',
+  );
+  assert.doesNotMatch(observabilityViewSource, /Customize with Splunk/);
+  assert.match(observabilityStyles, /\.clus-kpi-splunk-button\s*\{[^}]*margin-left:\s*auto;/);
+});
+
 test('EAGLE GREEN separates Galileo large-event routing from payment data protection', () => {
   const demoSource = readSource('../../demo/ciscoLiveDemo.ts');
   const seedSource = readSource('../../demo/ciscoLiveSeed.ts');
@@ -42,8 +95,13 @@ test('EAGLE GREEN separates Galileo large-event routing from payment data protec
   );
   assert.match(
     seedSource,
-    /EAGLE_GREEN_ACTION_CONTROL_VALUES[\s\S]*?name:\s*['"]Route large event requests to the VIP team['"][\s\S]*?timing:\s*['"]post_tool['"][\s\S]*?behavior:\s*['"]steer['"][\s\S]*?field:\s*['"]party_size['"][\s\S]*?value:\s*100[\s\S]*?field:\s*['"]requested_bays['"][\s\S]*?value:\s*20[\s\S]*?prerequisiteControlIds/,
-    'the large-event threshold should be stored as an action control and gate, not a guardrail',
+    /['"]Handover['"][\s\S]*?name:\s*['"]Delay human handover until turn 5['"][\s\S]*?behavior:\s*['"]steer['"][\s\S]*?estimated_human_wait_minutes[\s\S]*?field:\s*['"]conversation_turn['"][\s\S]*?operator:\s*['"]less_than['"][\s\S]*?value:\s*5/,
+    'the Handover action should nudge requests before turn 5 and expose the human wait estimate',
+  );
+  assert.match(
+    seedSource,
+    /EAGLE_GREEN_ACTION_CONTROL_VALUES[\s\S]*?name:\s*['"]Route large event requests to the VIP team['"][\s\S]*?timing:\s*['"]post_tool['"][\s\S]*?behavior:\s*['"]steer['"][\s\S]*?field:\s*['"]party_size['"][\s\S]*?value:\s*100[\s\S]*?field:\s*['"]requested_bays['"][\s\S]*?value:\s*20[\s\S]*?timeWindow:\s*\{\s*field:\s*['"]event_time['"][\s\S]*?start:\s*['"]09:30['"][\s\S]*?end:\s*['"]10:00['"][\s\S]*?prerequisiteControlIds/,
+    'the large-event threshold should be stored as an agent control and gate, not a guardrail',
   );
   assert.match(controlsSource, /label:\s*`\$\{activeCount\} active\$\{behavior \? ` · \$\{behavior\}` : ''\}`/);
   assert.match(controlsSource, /Gated · 1 prerequisite/);
@@ -74,14 +132,19 @@ test('EAGLE GREEN separates Galileo large-event routing from payment data protec
   );
   assert.match(
     demoSource,
-    /title:\s*['"]Payment data protection blocked sensitive input['"][\s\S]*?text:\s*['"]A full card number, expiration date, and security code were detected[\s\S]*?detail:\s*['"]Adaptive guardrail triggered['"]/,
+    /title:\s*['"]Payment data protection blocked sensitive input['"][\s\S]*?text:\s*['"]Card details were blocked and redacted before storage\.[\s\S]*?detail:\s*['"]Adaptive guardrail triggered['"]/,
     'the transcript event should identify the payment-data guardrail trigger without retaining the spoken details',
   );
-  assert.match(sessionsSource, /event\.kind === ['"]action_control['"][\s\S]*?Action control/);
+  assert.match(sessionsSource, /event\.kind === ['"]action_control['"][\s\S]*?Agent control/);
   assert.match(
     sessionsSource,
     /<h2>\{actionControl\.unlockedActionNames\[0\] \?\? actionControl\.controlTitle\}<\/h2>/,
     'the session policy card should identify the unlocked action as Transfer to VIP team',
+  );
+  assert.match(
+    sessionsSource,
+    /<dt>Event time<\/dt>[\s\S]*?actionControlTimeWindowLabel\(actionControl\)/,
+    'the session detail should show that the recorded event time matched the configured window',
   );
   assert.match(
     sessionsSource,
@@ -96,7 +159,7 @@ test('EAGLE GREEN separates Galileo large-event routing from payment data protec
   assert.match(
     studioStyles,
     /\.agent-session-metadata-icons\s*>\s*\.agent-session-metadata-icons__action-control\s*\{[\s\S]*?color:\s*var\(--mds-color-theme-common-text-primary-normal,\s*#fff\)/,
-    'the Action control session badge should use a white foreground for both its label and inherited icon',
+    'the Agent control session badge should use a white foreground for both its label and inherited icon',
   );
   assert.match(
     studioStyles,
@@ -136,11 +199,21 @@ test('EAGLE GREEN upgrades legacy state and normalizes action names', () => {
   const contextSource = readSource('../../contexts/AppContext.tsx');
   const policyStudioSource = readSource('../../pages/agent/SecurityUIPolicyStudio.tsx');
 
-  assert.match(contextSource, /schemaVersion:\s*8/);
+  assert.match(contextSource, /schemaVersion:\s*10/);
   assert.match(
     contextSource,
     /shouldMigrateLegacyActions\s*=\s*storedSchemaVersion\s*<\s*4[\s\S]*?hasStoredSelections[\s\S]*?hasCheckAvailabilityControls[\s\S]*?!Array\.isArray\(checkAvailabilityControls\)/,
     'schema-3 drafts should receive missing Galileo defaults while explicit empty control arrays remain intact',
+  );
+  assert.match(
+    contextSource,
+    /shouldMigrateHandoverAction\s*=\s*storedSchemaVersion\s*<\s*9[\s\S]*?!normalizedSelections\.includes\(['"]Handover['"]\)[\s\S]*?EAGLE_GREEN_HANDOVER_ACTION_ID/,
+    'schema-8 drafts should receive the Handover action and its seeded control',
+  );
+  assert.match(
+    contextSource,
+    /shouldMigrateHandoverTurnRule\s*=\s*storedSchemaVersion\s*<\s*10[\s\S]*?control\.id === EAGLE_GREEN_HANDOVER_CONTROL_ID[\s\S]*?structuredClone\(seededHandoverControl\)/,
+    'schema-9 drafts should receive the turn-based Handover rule',
   );
   assert.match(
     contextSource,
@@ -294,8 +367,8 @@ test('capability summary cards navigate to their respective configuration sectio
   assert.match(styles, /\.agent-studio-connected-summary__link:focus-visible\s*\{[^}]*outline:/);
   assert.match(
     source,
-    /label:\s*['"]Actions['"][\s\S]*?value:\s*connectedCapabilityTotals\.actions[\s\S]*?['"]1 Transfer, 2 MCPs['"][\s\S]*?id:\s*['"]actionControl['"][\s\S]*?label:\s*['"]Action control['"][\s\S]*?value:\s*connectedCapabilityTotals\.actionControls[\s\S]*?['"]1 active · Steer['"]/,
-    'Actions should remain intact while Action control receives its own active-control summary tile',
+    /label:\s*['"]Actions['"][\s\S]*?value:\s*connectedCapabilityTotals\.actions[\s\S]*?['"]2 Transfers, 2 MCPs['"][\s\S]*?id:\s*['"]actionControl['"][\s\S]*?label:\s*['"]Agent control['"][\s\S]*?value:\s*connectedCapabilityTotals\.actionControls[\s\S]*?['"]2 active · Steer['"]/,
+    'Actions should remain intact while Agent control receives its own active-control summary tile',
   );
   assert.match(
     styles,
@@ -389,7 +462,7 @@ test('Actions exposes the Galileo recommendation flow beside Add actions', () =>
   );
   assert.match(
     controlsSource,
-    /title="Recommended action controls"[\s\S]*?Nothing is published automatically\./,
+    /title="Recommended agent controls"[\s\S]*?Nothing is published automatically\./,
     'the dialog should explain that generated controls are not published automatically',
   );
   assert.match(
@@ -466,7 +539,7 @@ test('Galileo evaluation timing uses a native radio group', () => {
   );
 });
 
-test('Galileo action controls use the Figma summary and a direct-entry creation wizard', () => {
+test('Galileo agent controls use the Figma summary and a direct-entry creation wizard', () => {
   const controlsSource = readSource('../../pages/agent/ActionControls.tsx');
   const upliftFieldsSource = readSource('../../components/shared/UpliftMomentumField.tsx');
   const upliftButtonSource = readSource('../../components/shared/UpliftMomentumButton.tsx');
@@ -485,12 +558,12 @@ test('Galileo action controls use the Figma summary and a direct-entry creation 
   );
   assert.match(
     controlsSource,
-    /className="galileo-action-control-studio__header-copy"[\s\S]*?\{isCreatingControl \? 'Create action control' : 'Action control'\}: \{contextActionDisplayName\}[\s\S]*?Configure when Galileo evaluates/,
+    /className="galileo-action-control-studio__header-copy"[\s\S]*?\{isCreatingControl \? 'Create agent control' : 'Agent control'\}: \{contextActionDisplayName\}[\s\S]*?Configure when Galileo evaluates/,
     'the header should include the action name and retain its contextual subtitle',
   );
   assert.match(
     controlsSource,
-    /<UpliftMomentumButton[\s\S]*?className="galileo-action-control-studio__close"[\s\S]*?aria-label="Close action control"[\s\S]*?<Icon name="cancel" weight="regular" size=\{32\}/,
+    /<UpliftMomentumButton[\s\S]*?className="galileo-action-control-studio__close"[\s\S]*?aria-label="Close agent control"[\s\S]*?<Icon name="cancel" weight="regular" size=\{32\}/,
     'the header should use a React-safe Momentum close icon inside the reusable Uplift button',
   );
   assert.match(
@@ -646,7 +719,7 @@ test('Galileo action controls use the Figma summary and a direct-entry creation 
   assert.match(
     controlsSource,
     /<UpliftMomentumInput[\s\S]*?onInput=[\s\S]*?<UpliftMomentumTextarea[\s\S]*?helpText=[\s\S]*?<UpliftMomentumSelect[\s\S]*?<MomentumSelectlistbox>[\s\S]*?<MomentumOption/,
-    'every editable Action Control field should reuse the Uplift Momentum layer and keystroke-level events',
+    'every editable Agent control field should reuse the Uplift Momentum layer and keystroke-level events',
   );
   assert.match(
     upliftButtonSource,
@@ -656,7 +729,7 @@ test('Galileo action controls use the Figma summary and a direct-entry creation 
   assert.match(
     controlsSource,
     /<UpliftMomentumButton[\s\S]*?className=\{`galileo-action-control-edit-toggle[\s\S]*?<UpliftMomentumButton[\s\S]*?className="galileo-action-control-delete"[\s\S]*?Save changes/,
-    'Action Control buttons should reuse the stored Uplift Momentum component',
+    'Agent control buttons should reuse the stored Uplift Momentum component',
   );
   assert.match(
     figmaStyles,
@@ -685,8 +758,13 @@ test('Galileo action controls use the Figma summary and a direct-entry creation 
   );
   assert.match(
     controlsSource,
-    /className="galileo-action-control-condition-source"[\s\S]*?<span>Condition source<\/span>[\s\S]*?<p>Action input<\/p>/,
-    'Condition source should be concise read-only text instead of a disabled field',
+    /className="galileo-action-control-condition-source"[\s\S]*?<span>Available variables<\/span>[\s\S]*?ACTION_INPUT_VARIABLES\.map[\s\S]*?\{\{event_time\}\}/,
+    'the editor should list every available condition variable in template format',
+  );
+  assert.match(
+    controlsSource,
+    /className="galileo-action-control-condition galileo-action-control-condition--time-window"[\s\S]*?>AND<\/span>[\s\S]*?\{\{event_time\}\}[\s\S]*?>is between<\/span>[\s\S]*?type="time"[\s\S]*?timeWindow\.start[\s\S]*?type="time"[\s\S]*?timeWindow\.end/,
+    'the seeded control should show an editable time window as a required AND condition',
   );
   assert.match(
     controlsSource,
@@ -705,7 +783,7 @@ test('Galileo action controls use the Figma summary and a direct-entry creation 
   );
   assert.match(
     controlsSource,
-    /<h2 id="galileo-action-control-title">[\s\S]*?\{isCreatingControl \? 'Create action control' : 'Action control'\}: \{contextActionDisplayName\}[\s\S]*?<\/h2>[\s\S]*?Review how Galileo evaluates \$\{contextActionDisplayName\}/,
+    /<h2 id="galileo-action-control-title">[\s\S]*?\{isCreatingControl \? 'Create agent control' : 'Agent control'\}: \{contextActionDisplayName\}[\s\S]*?<\/h2>[\s\S]*?Review how Galileo evaluates \$\{contextActionDisplayName\}/,
     'the workspace should show the action name in the title and retain the contextual subheading',
   );
   assert.doesNotMatch(
@@ -800,8 +878,8 @@ test('Galileo action controls use the Figma summary and a direct-entry creation 
   );
   assert.match(
     controlsSource,
-    /<h3>Available after action control intervenes<\/h3>/,
-    'the gated action title should describe the action control intervention directly',
+    /<h3>Available after agent control intervenes<\/h3>/,
+    'the gated action title should describe the agent control intervention directly',
   );
   assert.doesNotMatch(
     controlsSource,
@@ -828,6 +906,7 @@ test('the Actions table owns Galileo control status without a duplicate page ban
     /Galileo recommendation is active|Galileo found 1 recommended control|galileo-action-control-recommendation/,
     'the Actions page should not repeat row-level Galileo status in a page banner',
   );
+  assert.doesNotMatch(source, /Provider type|col-provider-type|providerType/, 'the Actions table should omit provider type');
   assert.match(
     source,
     /className="col-galileo">Controls<[\s\S]*?className="galileo-action-control-button/,
@@ -835,7 +914,7 @@ test('the Actions table owns Galileo control status without a duplicate page ban
   );
 });
 
-test('action control activity matches the Figma card and discloses its selected state', () => {
+test('agent control activity matches the Figma card and discloses its selected state', () => {
   const source = readSource('../../pages/agent/AgentStudioLanding.tsx');
   const styles = readSource('../../products/ai-agent-studio/components.css');
 
@@ -846,7 +925,7 @@ test('action control activity matches the Figma card and discloses its selected 
   );
   assert.match(
     source,
-    /Action control activity during \$\{operationalTimeRangeLabel\.toLowerCase\(\)\}[\s\S]*?Evaluated[\s\S]*?agent-studio-action-control-flow__divider[\s\S]*?Matched/,
+    /Agent control activity during \$\{operationalTimeRangeLabel\.toLowerCase\(\)\}[\s\S]*?Evaluated[\s\S]*?agent-studio-action-control-flow__divider[\s\S]*?Matched/,
     'the visible hierarchy should identify the time-scoped activity before the evaluated and matched totals',
   );
   assert.doesNotMatch(source, />\s*Control checks\s*</, 'the evaluated row should not repeat a redundant eyebrow label');
@@ -864,6 +943,11 @@ test('action control activity matches the Figma card and discloses its selected 
     source,
     /const actionControlSpotlightDecision = \[\.\.\.actionControlDecisions\][\s\S]*?\.filter\(decision => decision\.matched\)[\s\S]*?\.sort\(/,
     'the spotlight should independently resolve the latest matched decision',
+  );
+  assert.match(
+    source,
+    /useState<OverviewIntervention \| null>\([\s\S]*?agentId === CISCO_LIVE_PRIMARY_AGENT_ID \? ['"]action_control['"] : null[\s\S]*?setSelectedOverviewIntervention\(agentId === CISCO_LIVE_PRIMARY_AGENT_ID \? ['"]action_control['"] : null\)/,
+    'EAGLE GREEN should open with its latest matched decision selected and restore that default when the agent changes',
   );
   assert.match(
     source,
@@ -1027,17 +1111,17 @@ test('agent navigation groups deployment destinations under Deploy and renders F
   );
 });
 
-test('agent list, Overview, and configuration share the responsive high-visibility aurora', () => {
+test('agent list, Overview, configuration, and Observability share the responsive high-visibility aurora', () => {
   const layoutSource = readSource('../../components/layout/MainLayout.tsx');
   const styles = readSource('../../products/ai-agent-studio/components.css');
 
   assert.ok(
     layoutSource.includes("const isAgentsList = /^\\/agents\\/?$/.test(location.pathname);") &&
       layoutSource.includes("isAgentContext && /^\\/agents\\/[^/]+\\/configure\\/?$/.test(location.pathname);") &&
-      layoutSource.includes('isAgentsList || isAgentOverview || isAgentConfigure') &&
+      layoutSource.includes('isAgentsList || isAgentOverview || isAgentConfigure || isObservability') &&
       layoutSource.includes('app--ai__bg--studio-aurora') &&
       layoutSource.includes('app--ai--studio-aurora'),
-    'the agent list, exact Overview, and all configuration sections should receive the shared aurora modifiers',
+    'the agent list, exact Overview, all configuration sections, and Observability should receive the shared aurora modifiers',
   );
   assert.match(
     styles,
@@ -1046,8 +1130,8 @@ test('agent list, Overview, and configuration share the responsive high-visibili
   );
   assert.match(
     styles,
-    /\.app--ai--studio-aurora \.primary-content\.ai-agents-page,[\s\S]*?\.primary-content\.agent-studio-landing,[\s\S]*?\.primary-content\.action-config-v2-page\s*\{[^}]*54%[^}]*backdrop-filter:\s*blur\(44px\)/,
-    'the list, Overview, and configuration surfaces should let more aurora color pass through while preserving glass separation',
+    /\.app--ai--studio-aurora \.primary-content\.ai-agents-page,[\s\S]*?\.primary-content\.agent-studio-landing,[\s\S]*?\.primary-content\.action-config-v2-page,[\s\S]*?\.clus-kpi-dashboard-root\s*\{[^}]*54%[^}]*backdrop-filter:\s*blur\(44px\)/,
+    'the list, Overview, configuration, and Observability surfaces should let more aurora color pass through while preserving glass separation',
   );
   assert.match(
     styles,
@@ -1110,7 +1194,7 @@ test('configuration and monitor destinations reuse the Overview page-heading con
   );
   assert.match(
     sharedStyles,
-    /\.action-config-v2-table-wrap--actions\s*\{[^}]*overflow-x:\s*hidden;[\s\S]*?\.action-config-v2-table--actions\s*\{[^}]*min-width:\s*0;[\s\S]*?\.action-config-v2-table--actions \.col-action-name\s*\{\s*width:\s*16%;[\s\S]*?\.action-config-v2-table--actions \.col-created-by\s*\{\s*width:\s*8%;[\s\S]*?\.action-config-v2-table--actions \.col-description\s*\{\s*width:\s*19%;[\s\S]*?\.action-config-v2-table--actions \.col-galileo\s*\{\s*width:\s*18%;/,
+    /\.action-config-v2-table-wrap--actions\s*\{[^}]*overflow-x:\s*hidden;[\s\S]*?\.action-config-v2-table--actions\s*\{[^}]*min-width:\s*0;[\s\S]*?\.action-config-v2-table--actions \.col-action-name\s*\{\s*width:\s*18%;[\s\S]*?\.action-config-v2-table--actions \.col-created-by\s*\{\s*width:\s*8%;[\s\S]*?\.action-config-v2-table--actions \.col-description\s*\{\s*width:\s*22%;[\s\S]*?\.action-config-v2-table--actions \.col-galileo\s*\{\s*width:\s*21%;/,
     'the responsive Actions table should fit the Galileo status and row actions without horizontal scrolling',
   );
   assert.match(
@@ -1151,7 +1235,7 @@ test('operational status presents its metrics as a compact table with a dashboar
   assert.match(
     studioSource,
     /label: 'Control evaluations', value: '2'[\s\S]*?label: 'Steer outcomes', value: '1'/,
-    'the operational table should include the two trace-derived action control metrics',
+    'the operational table should include the two trace-derived agent control metrics',
   );
   assert.doesNotMatch(
     studioSource,
@@ -1166,7 +1250,7 @@ test('operational status presents its metrics as a compact table with a dashboar
   );
 });
 
-test('EAGLE GREEN pins action control metrics instead of fulfilment latency', () => {
+test('EAGLE GREEN pins agent control metrics instead of fulfilment latency', () => {
   const dashboardSource = readSource('../../features/clus-kpi-dashboard/ClusKpiDashboardRoot.tsx');
   const defaultPins = dashboardSource.match(/const DEFAULT_PINNED_CARD_IDS = \[([\s\S]*?)\];/)?.[1] ?? '';
 

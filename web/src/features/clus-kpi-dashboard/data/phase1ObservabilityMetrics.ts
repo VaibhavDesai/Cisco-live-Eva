@@ -3,47 +3,21 @@
  * Demo values are synthetic but directionally consistent with illustrative targets.
  */
 
-import type { KpiChartType, KpiThresholdStatus, SparklineKind } from '../kpiTypes';
+import type { KpiChartType, SparklineKind } from '../kpiTypes';
 
 /** Section order on the Observability dashboard (matches CSV). */
 export const KPI_OBSERVABILITY_CATEGORY_ORDER = [
+  'Business Impact',
   'Voice usage',
   'Digital usage',
   'Action Performance',
   'AI Quality',
   'Security',
-  'Business Impact',
   'Customer Experience',
   'Digital-specific',
   'Knowledge Performance',
   'Voice-specific',
 ] as const;
-
-/** Right-side Observability section header: projection title + date chip. */
-export type ObservabilitySectionHeaderSupplement = {
-  title: string;
-  dateLabel: string;
-  /** Threshold chrome on projection KPI card (demo). */
-  thresholdStatus?: KpiThresholdStatus;
-};
-
-/** Stable ids for pin/drag and pinned-bar lookup (not in metric catalog). */
-export const OBSERVABILITY_PROJECTION_DIGITAL_ID = 'obs-projection-digital';
-
-export function observabilityProjectionIdForCategory(category: string): string | null {
-  if (category === 'Digital usage') return OBSERVABILITY_PROJECTION_DIGITAL_ID;
-  return null;
-}
-
-export const KPI_OBSERVABILITY_SECTION_HEADER_SUPPLEMENT: Partial<
-  Record<(typeof KPI_OBSERVABILITY_CATEGORY_ORDER)[number], ObservabilitySectionHeaderSupplement>
-> = {
-  'Digital usage': {
-    title: 'Projected message exhaustion',
-    dateLabel: 'Jul 02',
-    thresholdStatus: 'good',
-  },
-};
 
 export interface Phase1MetricSeed {
   id: string;

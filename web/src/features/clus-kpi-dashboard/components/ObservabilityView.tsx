@@ -1,16 +1,10 @@
 import { Fragment, useEffect } from 'react';
 import type { DateRange } from 'react-day-picker';
 import { ck } from '../clus-kpi-theme';
-import {
-  KPI_OBSERVABILITY_SECTION_HEADER_SUPPLEMENT,
-  OBSERVABILITY_PROJECTION_DIGITAL_ID,
-  observabilityProjectionIdForCategory,
-} from '../data/phase1ObservabilityMetrics';
 import type { KPIData } from './kpiData';
 import { kpiExpandedChartAxisProps } from '../kpiChartAxis';
 import { KPICard } from './KPICard';
 import { KPIChart } from './KPIChart';
-import { ObservabilityProjectionCard } from './ObservabilityProjectionCard';
 import {
   ACTION_CONTROL_OBSERVABILITY_CATEGORY,
   ActionControlTracePanel,
@@ -65,11 +59,6 @@ export function ObservabilityView({
               <h2 className={`${ck.sectionHeading} mb-4`}>Pinned</h2>
               <div className="kpi-card-grid">
                 {pinnedCardIds.map((pinnedId, index) => {
-                  const projSup =
-                    pinnedId === OBSERVABILITY_PROJECTION_DIGITAL_ID
-                      ? KPI_OBSERVABILITY_SECTION_HEADER_SUPPLEMENT['Digital usage']
-                      : undefined;
-
                   const isLastInRow =
                     (index + 1) % CARDS_PER_ROW === 0 || index === pinnedCardIds.length - 1;
                   const currentRowStart = Math.floor(index / CARDS_PER_ROW) * CARDS_PER_ROW;
@@ -109,24 +98,6 @@ export function ObservabilityView({
                       </div>
                     ) : null;
 
-                  if (projSup) {
-                    return (
-                      <Fragment key={pinnedId}>
-                        <ObservabilityProjectionCard
-                          cardId={pinnedId}
-                          title={projSup.title}
-                          dateLabel={projSup.dateLabel}
-                          thresholdStatus={projSup.thresholdStatus}
-                          isPinned
-                          onPinToggle={(e) => onPinToggle(pinnedId, e)}
-                          dragIndex={index}
-                          onMoveCard={onMoveCard}
-                        />
-                        {expandedChart}
-                      </Fragment>
-                    );
-                  }
-
                   const kpi = filteredKpiData.find((k) => k.id === pinnedId);
                   if (!kpi) return null;
 
@@ -160,11 +131,6 @@ export function ObservabilityView({
         if (unpinnedKpis.length === 0) {
           return null;
         }
-
-        const sectionSupplement = KPI_OBSERVABILITY_SECTION_HEADER_SUPPLEMENT[
-          category as keyof typeof KPI_OBSERVABILITY_SECTION_HEADER_SUPPLEMENT
-        ];
-        const projectionCardId = observabilityProjectionIdForCategory(category);
 
         return (
           <div key={category}>
@@ -217,15 +183,6 @@ export function ObservabilityView({
                   </Fragment>
                 );
               })}
-              {sectionSupplement && projectionCardId && !pinnedCardIds.includes(projectionCardId) ? (
-                <ObservabilityProjectionCard
-                  cardId={projectionCardId}
-                  title={sectionSupplement.title}
-                  dateLabel={sectionSupplement.dateLabel}
-                  thresholdStatus={sectionSupplement.thresholdStatus}
-                  onPinToggle={(e) => onPinToggle(projectionCardId, e)}
-                />
-              ) : null}
             </div>
           </div>
         );
