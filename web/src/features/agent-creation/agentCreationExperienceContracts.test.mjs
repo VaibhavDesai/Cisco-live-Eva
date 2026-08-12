@@ -32,7 +32,7 @@ test('Observability shares the agent workspace glass and prioritizes Business Im
   );
   assert.match(
     studioStyles,
-    /\.primary-content\.action-config-v2-page,[\s\S]*?\.clus-kpi-dashboard-root\s*\{[^}]*54%[^}]*backdrop-filter:\s*blur\(44px\)/,
+    /\.primary-content\.action-config-v2-page,[\s\S]*?\.clus-kpi-dashboard-root\s*\{[^}]*36%[^}]*backdrop-filter:\s*blur\(28px\)/,
     'Observability should use the same translucent surface as Overview and Configure',
   );
   assert.match(
@@ -52,7 +52,7 @@ test('Observability shares the agent workspace glass and prioritizes Business Im
   );
   assert.match(
     observabilityStyles,
-    /\.kpi-card\s*\{[^}]*--kpi-card-surface:\s*color-mix\([\s\S]*?background-solid-primary-normal\) 18%,[\s\S]*?background-glass-normal[\s\S]*?\.kpi-card--glass\s*\{[^}]*background:\s*var\(--kpi-card-surface\);/,
+    /\.kpi-card\s*\{[^}]*--kpi-card-surface:\s*color-mix\([\s\S]*?background-solid-primary-normal\) 24%,[\s\S]*?background-glass-normal[\s\S]*?\.kpi-card--glass\s*\{[^}]*background:\s*var\(--kpi-card-surface\);/,
     'metric cards should use a slightly more opaque surface so the aurora stays behind the data',
   );
   assert.match(
@@ -64,7 +64,7 @@ test('Observability shares the agent workspace glass and prioritizes Business Im
   assert.match(observabilityStyles, /\.clus-kpi-splunk-button\s*\{[^}]*margin-left:\s*auto;/);
 });
 
-test('EAGLE GREEN separates Galileo large-event routing from payment data protection', () => {
+test('EAGLE GREEN combines Galileo routing and payment protection in one session', () => {
   const demoSource = readSource('../../demo/ciscoLiveDemo.ts');
   const seedSource = readSource('../../demo/ciscoLiveSeed.ts');
   const configureSource = readSource('../../pages/agent/ActionConfigureV2.tsx');
@@ -122,18 +122,34 @@ test('EAGLE GREEN separates Galileo large-event routing from payment data protec
   assert.doesNotMatch(policyStudioSource, /medical advice|healthcare clinic|Large reservation approval/);
   assert.match(
     demoSource,
-    /id:\s*['"]SES-GT-1042['"][\s\S]*?guardrailTriggered:\s*false[\s\S]*?actionControlTriggered:\s*LARGE_EVENT_ACTION_CONTROL\.event\.actionControl\.matched[\s\S]*?id:\s*['"]SES-GT-1045['"][\s\S]*?guardrailTriggered:\s*true/,
-    'the large-event routing and payment-protection stories should remain separate sessions for the same customer',
+    /id:\s*['"]SES-GT-1042['"][\s\S]*?messages:\s*9[\s\S]*?guardrailTriggered:\s*true[\s\S]*?actionControlTriggered:\s*LARGE_EVENT_ACTION_CONTROL\.event\.actionControl\.matched/,
+    'the full Kristin conversation should combine payment protection and agent control evidence in one session',
+  );
+  assert.doesNotMatch(demoSource, /id:\s*['"]SES-GT-1045['"]/);
+  assert.match(
+    demoSource,
+    /id:\s*['"]SES-GT-1042['"][\s\S]*?connectedSystems:\s*\[['"]VIP customer profile['"],\s*['"]CRM['"],\s*['"]AI Defense['"],\s*['"]Secure payment flow['"],\s*['"]VIP event concierge['"]\]/,
+    'the combined session should list every system represented in its transcript',
   );
   assert.match(
     demoSource,
-    /id:\s*['"]SES-GT-1042['"][\s\S]*?connectedSystems:\s*\[['"]VIP customer profile['"],\s*['"]VIP event concierge['"]\]/,
-    'the large-event session should list only the two systems represented in its designed handoff',
+    /id:\s*['"]SES-GT-1042['"][\s\S]*?text:\s*['"]Hello Kristin! Thank you for being a Super Uber Diamond Elite Golfer\. We truly value your business\. How can we help you today\?['"][\s\S]*?AI Memory: customer profile[\s\S]*?CRM integration/,
+    'the combined transcript should preserve the requested memory and CRM evidence',
   );
   assert.match(
     demoSource,
-    /id:\s*['"]SES-GT-1045['"][\s\S]*?customer:\s*['"]Kristin Gioberto['"][\s\S]*?messages:\s*6[\s\S]*?id:\s*['"]evt-1045-1['"][\s\S]*?id:\s*['"]evt-1045-8['"]/,
-    'the payment-protection session should include all six conversation messages plus its system and guardrail events',
+    /id:\s*['"]evt-6['"][\s\S]*?text:\s*['"]For this, we need a credit card down payment\. We have your American Express Centurion Black Card on file, but it is expired\.['"][\s\S]*?time:\s*['"]9:41 AM['"]/,
+    'the payment prompt should stop after explaining that the saved card is expired',
+  );
+  assert.doesNotMatch(
+    demoSource,
+    /id:\s*['"]evt-6['"][\s\S]*?annotations:\s*\[[\s\S]*?id:\s*['"]evt-7['"]/,
+    'the payment prompt should not show a PCI compliance chip',
+  );
+  assert.match(
+    demoSource,
+    /id:\s*['"]SES-GT-1042['"][\s\S]*?id:\s*['"]evt-12['"][\s\S]*?text:\s*['"]That’s quite a crowd! For a group that size, let me get you over to our Events team\. One moment please\./,
+    'the large-event handoff should use the approved conversational response',
   );
   assert.match(
     demoSource,
@@ -141,6 +157,33 @@ test('EAGLE GREEN separates Galileo large-event routing from payment data protec
     'the transcript event should identify the payment-data guardrail trigger without retaining the spoken details',
   );
   assert.match(sessionsSource, /event\.kind === ['"]action_control['"][\s\S]*?Agent control/);
+  assert.match(
+    sessionsSource,
+    /event\.annotations[\s\S]*?<ConfigurationCategoryIcon[\s\S]*?annotation\.kind === ['"]memory['"][\s\S]*?['"]memory['"][\s\S]*?annotation\.kind === ['"]integration['"][\s\S]*?['"]action['"][\s\S]*?['"]guardrail['"]/,
+    'session evidence chips should reuse the Configure icons for memory, actions, and guardrails',
+  );
+  assert.match(sessionsSource, /type="action"[\s\S]*?\{session\.outcome\}/);
+  assert.match(sessionsSource, /event\.kind === ['"]action_control['"][\s\S]*?icon="automation"/);
+  assert.match(
+    sessionsSource,
+    /agent-session-detail-title-row[\s\S]*?<h1>\{session\.id\}<\/h1>/,
+    'session details should use the Session ID as the page title while the topic stays in the list',
+  );
+  assert.doesNotMatch(
+    sessionsSource,
+    /Connected systems|Systems used in this session|agent-session-systems-card/,
+    'session details should not render a connected-systems sidebar section',
+  );
+  assert.match(
+    sessionsSource,
+    /\{actionControl && \([\s\S]*?agent-session-policy-card--action-control[\s\S]*?<ConfigurationCategoryIcon type="action-control" size=\{20\}[\s\S]*?\{session\.guardrail && \([\s\S]*?<ConfigurationCategoryIcon type="guardrail" size=\{20\}[\s\S]*?Review guardrail/,
+    'the combined session should show both agent control and guardrail evidence cards',
+  );
+  assert.match(
+    studioStyles,
+    /\.agent-session-policy-card__header > \.configuration-category-icon:first-child\s*\{[^}]*width:\s*32px;[^}]*height:\s*32px;[^}]*flex-basis:\s*32px;/,
+    'session policy cards should give the existing 20px icons a roomy 32px wrapper',
+  );
   assert.match(
     sessionsSource,
     /<h2>\{actionControl\.unlockedActionNames\[0\] \?\? actionControl\.controlTitle\}<\/h2>/,
@@ -163,8 +206,18 @@ test('EAGLE GREEN separates Galileo large-event routing from payment data protec
   );
   assert.match(
     studioStyles,
-    /\.agent-session-metadata-icons\s*>\s*\.agent-session-metadata-icons__action-control\s*\{[\s\S]*?color:\s*var\(--mds-color-theme-common-text-primary-normal,\s*#fff\)/,
-    'the Agent control session badge should use a white foreground for both its label and inherited icon',
+    /\.agent-session-metadata-icons\s*>\s*span\s*\{[^}]*color:\s*var\(--mds-color-theme-common-text-primary-normal,\s*#fff\)/,
+    'all session metadata icons should use the same white foreground',
+  );
+  assert.match(
+    studioStyles,
+    /\.agent-session-detail-header\s*\{[^}]*display:\s*grid;[^}]*grid-template-columns:\s*minmax\(0, 1\.65fr\) minmax\(300px, 0\.75fr\);[^}]*padding:\s*0;/,
+    'the session detail header should align to the transcript column without adding vertical padding',
+  );
+  assert.match(
+    studioStyles,
+    /@media \(max-width:\s*1180px\)[\s\S]*?\.agent-session-detail-header\s*\{[^}]*grid-template-columns:\s*minmax\(0, 1fr\);/,
+    'the session detail header should return to full width with the single-column detail layout',
   );
   assert.match(
     studioStyles,
@@ -278,8 +331,8 @@ test('operational status shows a compact session event table filtered by the sel
   );
   assert.match(
     source,
-    /if \(outcome === ['"]Transferred['"]\) return ['"]warning['"][\s\S]*?if \(outcome === ['"]Resolved['"]\) return ['"]success['"]/,
-    'transferred sessions should use the yellow warning treatment while resolved sessions remain green',
+    /if \(outcome === ['"]Transferred['"]\) return ['"]success['"][\s\S]*?if \(outcome === ['"]Resolved['"]\) return ['"]success['"]/,
+    'transferred and resolved sessions should both use the green success treatment',
   );
   assert.match(
     styles,
@@ -768,8 +821,13 @@ test('Galileo agent controls use the Figma summary and a direct-entry creation w
   );
   assert.match(
     controlsSource,
-    /className="galileo-action-control-condition galileo-action-control-condition--time-window"[\s\S]*?>AND<\/span>[\s\S]*?\{\{event_time\}\}[\s\S]*?>is between<\/span>[\s\S]*?type="time"[\s\S]*?timeWindow\.start[\s\S]*?type="time"[\s\S]*?timeWindow\.end/,
-    'the seeded control should show an editable time window as a required AND condition',
+    /className="galileo-action-control-condition galileo-action-control-condition--time-window"[\s\S]*?>AND<\/span>[\s\S]*?\{\{event_time\}\}[\s\S]*?>is between<\/span>[\s\S]*?type="time"[\s\S]*?timeWindow\.start[\s\S]*?type="time"[\s\S]*?timeWindow\.end[\s\S]*?aria-label="Remove event time condition"[\s\S]*?onClick=\{removeTimeWindow\}[\s\S]*?<Icon name="delete"/,
+    'the seeded control should show an editable time window with the same delete affordance as other conditions',
+  );
+  assert.match(
+    controlsSource,
+    /const removeTimeWindow = \(\) => \{[\s\S]*?timeWindow:\s*undefined/,
+    'removing the event-time row should clear only the time-window condition from the draft',
   );
   assert.match(
     controlsSource,
@@ -803,8 +861,8 @@ test('Galileo agent controls use the Figma summary and a direct-entry creation w
   );
   assert.match(
     figmaStyles,
-    /\.galileo-action-control-workspace\s*\{[^}]*padding:\s*0 0 40px;[\s\S]*?\.galileo-action-control-summary__flow\s*\{[^}]*min-height:\s*160px;[^}]*grid-template-columns:\s*210px 32px 228px 32px minmax\(0, 1fr\);[^}]*gap:\s*4px;/,
-    'the summary should reproduce the Figma node’s fixed stages, two Momentum-arrow slots, and flexible outcomes column',
+    /\.galileo-action-control-workspace\s*\{[^}]*padding:\s*0 0 40px;[\s\S]*?\.galileo-action-control-summary__flow\s*\{[^}]*min-height:\s*160px;[^}]*grid-template-columns:\s*210px 32px 380px 32px minmax\(0, 1fr\);[^}]*gap:\s*4px;/,
+    'the summary should give compound decisions more room while keeping two Momentum-arrow slots and a flexible outcomes column',
   );
   assert.match(
     controlsSource,
@@ -1032,6 +1090,11 @@ test('overview and navigation reuse the same capability icon language', () => {
     'Actions should use the Tools icon with the same visual weight as the other overview glyphs',
   );
   assert.match(
+    categoryIconSource,
+    /type === ['"]action-control['"][\s\S]*?<Icon name="automation" weight="bold"/,
+    'Agent control should use the same steer icon as its Steered status',
+  );
+  assert.match(
     sidebarSource,
     /section:\s*['"]Knowledge['"][\s\S]*?icon:\s*<KnowledgeBookIcon size=\{24\} \/>/,
     'Knowledge navigation should reuse the overview book icon',
@@ -1135,13 +1198,23 @@ test('agent list, Overview, configuration, and Observability share the responsiv
   );
   assert.match(
     styles,
-    /\.app--ai--studio-aurora \.primary-content\.ai-agents-page,[\s\S]*?\.primary-content\.agent-studio-landing,[\s\S]*?\.primary-content\.action-config-v2-page,[\s\S]*?\.clus-kpi-dashboard-root\s*\{[^}]*54%[^}]*backdrop-filter:\s*blur\(44px\)/,
+    /\.app--ai--studio-aurora \.primary-content\.ai-agents-page,[\s\S]*?\.primary-content\.agent-studio-landing,[\s\S]*?\.primary-content\.action-config-v2-page,[\s\S]*?\.clus-kpi-dashboard-root\s*\{[^}]*36%[^}]*backdrop-filter:\s*blur\(28px\)/,
     'the list, Overview, configuration, and Observability surfaces should let more aurora color pass through while preserving glass separation',
   );
   assert.match(
     styles,
     /@media \(max-width:\s*767px\)[\s\S]*?\.app--ai__bg--studio-aurora::before\s*\{[^}]*width:\s*160vw;/,
     'compact screens should retain a broad center-crossing blue field',
+  );
+  assert.match(
+    styles,
+    /@media \(max-width:\s*767px\)[\s\S]*?\.app--ai--studio-aurora \.primary-content\.ai-agents-page,[\s\S]*?\.clus-kpi-dashboard-root\s*\{[^}]*42%/,
+    'compact screens should keep a slightly stronger readable glass layer without hiding the aurora',
+  );
+  assert.match(
+    styles,
+    /\.primary-content\.agent-studio-landing\s*>\s*\.agent-header-sticky,[\s\S]*?\.agent-header-sticky::before\s*\{[^}]*background:\s*transparent;[\s\S]*?\.agent-header-sticky\.agent-header-stuck,[\s\S]*?\.agent-header-sticky\.agent-header-stuck::before\s*\{[^}]*background:\s*var\(--mds-color-theme-background-solid-primary-normal\);/,
+    'the Overview identity bar should stay transparent at rest and become solid only while stuck',
   );
 });
 
@@ -1285,14 +1358,26 @@ test('selected guardrail banner opens a concrete session detail', () => {
     'the action-control and guardrail spotlights should each resolve the concrete Session that owns their event',
   );
   assert.match(studioSource, /eagleGuardrailSessionPath[\s\S]*?source=overview/);
-  assert.match(sessionsSource, /const activeSession = sessionIdQuery[\s\S]*?sessions\.find/);
-  assert.match(sessionsSource, />Session details</);
-  assert.match(sessionsSource, /Conversation transcript/);
   assert.match(
     sessionsSource,
-    /session\.guardrailTriggered\s*&&\s*<Badge variant="warning">Guardrail triggered<\/Badge>/,
-    'the session status chip should describe the event instead of the configured enforcement mode',
+    /const canonicalSessionId = sessionIdQuery\.toLowerCase\(\) === ['"]ses-gt-1045['"][\s\S]*?['"]SES-GT-1042['"][\s\S]*?const activeSession = canonicalSessionId[\s\S]*?sessions\.find/,
+    'legacy payment-session links should resolve to the combined session detail',
   );
+  assert.match(
+    sessionsSource,
+    /sessionIdQuery\.toLowerCase\(\) === ['"]ses-gt-1045['"][\s\S]*?<Navigate[\s\S]*?sessionId=SES-GT-1042[\s\S]*?replace/,
+    'legacy payment-session URLs should normalize to the combined session ID',
+  );
+  assert.doesNotMatch(
+    sessionsSource,
+    />Session details</,
+    'the session detail topbar should show only its source-aware back action',
+  );
+  assert.match(sessionsSource, /Conversation transcript/);
+  const sessionTitleRow = sessionsSource.match(/<div className="agent-session-detail-title-row">([\s\S]*?)<\/div>/)?.[1] ?? '';
+  assert.match(sessionTitleRow, /session\.outcome/);
+  assert.doesNotMatch(sessionTitleRow, /Agent control|Guardrail triggered/);
+  assert.match(sessionsSource, /agent-session-message__annotation--\$\{annotation\.kind\}/);
   assert.match(
     sessionsSource,
     /Back to observability[\s\S]*?\/observability\?agent=\$\{encodeURIComponent\(agent\.name\)\}/,
@@ -2033,7 +2118,7 @@ test('AI agent list cards use the native Uplift card with a visible 16px grid ga
   );
   assert.match(
     styles.slice(cardRuleStart, cardRuleEnd),
-    /background:[^}]*background-glass-normal[^}]*backdrop-filter:\s*blur\(24px\) saturate\(130%\)[^}]*box-shadow:/,
+    /--ai-agents-agent-card-glass:\s*color-mix\([^}]*background-glass-normal[^}]*68%[^}]*transparent[^}]*background:[^}]*var\(--ai-agents-agent-card-glass\)[^}]*backdrop-filter:\s*blur\(24px\) saturate\(130%\)[^}]*box-shadow:/,
     'every agent tile should let the shared aurora pass through a readable glass surface',
   );
   assert.match(
@@ -2043,7 +2128,7 @@ test('AI agent list cards use the native Uplift card with a visible 16px grid ga
   );
   assert.match(
     styles,
-    /\.secondary-content\.ai-agents-dashboard mdc-card\.ai-agents-agent-card--clickable:hover,[\s\S]*?:focus-within\s*\{[^}]*border-color:\s*color-mix\(in srgb, var\(--text-primary\) 42%, var\(--outline-color\)\);[^}]*background:[^}]*background-glass-normal[^}]*box-shadow:[^}]*transform:\s*translateY\(-2px\);/,
+    /\.secondary-content\.ai-agents-dashboard mdc-card\.ai-agents-agent-card--clickable:hover,[\s\S]*?:focus-within\s*\{[^}]*border-color:\s*color-mix\(in srgb, var\(--text-primary\) 42%, var\(--outline-color\)\);[^}]*background:[^}]*var\(--ai-agents-agent-card-glass\)[^}]*box-shadow:[^}]*transform:\s*translateY\(-2px\);/,
     'hover should preserve the glass and use a neutral elevated outline rather than a blue border',
   );
   assert.doesNotMatch(

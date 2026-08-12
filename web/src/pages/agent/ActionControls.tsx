@@ -1619,6 +1619,13 @@ export function ActionControlManagerDialog({
     } : current);
   };
 
+  const removeTimeWindow = () => {
+    setDraft(current => current ? {
+      ...current,
+      timeWindow: undefined,
+    } : current);
+  };
+
   const addCondition = () => {
     const stamp = Date.now().toString(36);
     setDraft(current => current ? {
@@ -2183,6 +2190,15 @@ export function ActionControlManagerDialog({
                             })}
                           />
                         </div>
+                        <UpliftMomentumButton
+                          type="button"
+                          variant="tertiary"
+                          size={24}
+                          aria-label="Remove event time condition"
+                          onClick={removeTimeWindow}
+                        >
+                          <Icon name="delete" weight="bold" size="sm" />
+                        </UpliftMomentumButton>
                       </div>
                     )}
                   </div>

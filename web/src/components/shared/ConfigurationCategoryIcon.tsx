@@ -21,11 +21,11 @@ export function KnowledgeBookIcon({ size = 16 }: { size?: number }) {
   );
 }
 
-export default function ConfigurationCategoryIcon({ type }: { type: ConfigurationCategory }) {
+export default function ConfigurationCategoryIcon({ type, size = 12 }: { type: ConfigurationCategory; size?: number }) {
   if (type === 'action') {
     return (
       <span className="configuration-category-icon configuration-category-icon--action" aria-hidden="true">
-        <Icon name="tools" weight="regular" size="xs" />
+        <Icon name="tools" weight="regular" size={size} />
       </span>
     );
   }
@@ -33,7 +33,7 @@ export default function ConfigurationCategoryIcon({ type }: { type: Configuratio
   if (type === 'action-control') {
     return (
       <span className="configuration-category-icon configuration-category-icon--action-control" aria-hidden="true">
-        <Icon name="workflow-deployments" weight="regular" size="xs" />
+        <Icon name="automation" weight="bold" size={size} />
       </span>
     );
   }
@@ -41,7 +41,7 @@ export default function ConfigurationCategoryIcon({ type }: { type: Configuratio
   if (type === 'orchestration') {
     return (
       <span className="configuration-category-icon configuration-category-icon--orchestration" aria-hidden="true">
-        <Icon name="people" weight="regular" size="xs" />
+        <Icon name="people" weight="regular" size={size} />
       </span>
     );
   }
@@ -49,7 +49,7 @@ export default function ConfigurationCategoryIcon({ type }: { type: Configuratio
   if (type === 'guardrail') {
     return (
       <span className="configuration-category-icon configuration-category-icon--guardrail" aria-hidden="true">
-        <Icon name="shield" weight="regular" size="xs" />
+        <Icon name="shield" weight="regular" size={size} />
       </span>
     );
   }
@@ -57,14 +57,14 @@ export default function ConfigurationCategoryIcon({ type }: { type: Configuratio
   if (type === 'memory') {
     return (
       <span className="configuration-category-icon configuration-category-icon--memory" aria-hidden="true">
-        <Icon name="mind-map" weight="regular" size="xs" />
+        <Icon name="mind-map" weight="regular" size={size} />
       </span>
     );
   }
 
   return (
     <span className="configuration-category-icon configuration-category-icon--knowledge" aria-hidden="true">
-      <KnowledgeBookIcon />
+      <KnowledgeBookIcon size={size} />
     </span>
   );
 }

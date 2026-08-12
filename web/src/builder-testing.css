@@ -866,7 +866,7 @@ mdc-dialog.delete-variable-confirm-dialog[visible] {
 .kpi-card {
   --kpi-card-surface: color-mix(
     in srgb,
-    var(--mds-color-theme-background-solid-primary-normal) 18%,
+    var(--mds-color-theme-background-solid-primary-normal) 24%,
     var(--mds-color-theme-background-glass-normal, rgba(255, 255, 255, 0.05))
   );
   position: relative;

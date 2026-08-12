@@ -601,6 +601,7 @@ export function getCiscoLiveObservability(agentId: string): CiscoLiveObservabili
 
 export type CiscoLiveSessionOutcome = 'Resolved' | 'Transferred' | 'In progress';
 export type CiscoLiveSessionEventKind = 'customer' | 'agent' | 'system' | 'action_control' | 'guardrail' | 'handoff';
+export type CiscoLiveSessionAnnotationKind = 'memory' | 'integration' | 'compliance';
 
 export type CiscoLiveActionControlBehavior = GalileoActionControlBehavior;
 export type CiscoLiveActionControlTiming = GalileoActionControlTiming;
@@ -644,6 +645,10 @@ export interface CiscoLiveSessionEvent {
   time: string;
   title?: string;
   detail?: string;
+  annotations?: Array<{
+    kind: CiscoLiveSessionAnnotationKind;
+    label: string;
+  }>;
   actionControl?: CiscoLiveActionControlDecision;
 }
 
@@ -788,7 +793,7 @@ function createSeededActionControlEvent({
 }
 
 const LARGE_EVENT_INVOCATION: SeededActionControlEventOptions = {
-  id: 'evt-6',
+  id: 'evt-11',
   time: '9:42 AM',
   actionId: GALILEO_ACTION_IDS.checkAvailability,
   inputs: { party_size: 1000, requested_bays: 100 },
@@ -831,151 +836,111 @@ export const CISCO_LIVE_SESSIONS_BY_AGENT: Record<string, CiscoLiveSession[]> = 
       topic: 'Large group reservation',
       updated: '2 minutes ago',
       startedAt: 'Today at 9:38 AM',
-      messages: 14,
+      messages: 9,
       duration: '4m 18s',
       outcome: 'Transferred',
-      guardrailTriggered: false,
+      guardrailTriggered: true,
       actionControlTriggered: LARGE_EVENT_ACTION_CONTROL.event.actionControl.matched,
       transferred: true,
-      summary: 'Check Availability completed. A post-action Galileo control matched the 1,000-person request, stopped the standard automated path, and unlocked Transfer to VIP team.',
-      connectedSystems: ['VIP customer profile', 'VIP event concierge'],
+      summary: 'Payment data protection blocked spoken card details, then an agent control matched the 1,000-person request and transferred the caller to the Events team.',
+      guardrail: {
+        id: 'custom-payment-data-protection',
+        name: 'Payment data protection',
+        policy: 'Do not request, repeat, process, or store full card numbers, expiration dates, or security codes in a voice conversation',
+        detected: 'The verified customer began speaking payment card details during the payment step',
+        action: 'Suppressed the sensitive audio, redacted the transcript, and redirected the customer to the approved secure payment link',
+        result: 'No payment card details were retained, repeated, or processed in the conversation',
+        status: 'Working as designed',
+      },
+      connectedSystems: ['VIP customer profile', 'CRM', 'AI Defense', 'Secure payment flow', 'VIP event concierge'],
       transcript: [
-        {
-          id: 'evt-1',
-          kind: 'system',
-          speaker: 'System',
-          text: 'VIP profile matched by phone number. Date-of-birth verification completed.',
-          time: '9:38 AM',
-        },
         {
           id: 'evt-2',
           kind: 'agent',
           speaker: 'EAGLE GREEN VIP Reservations',
-          text: 'Hello Kristin. Thank you for being a Super Uber Diamond Elite Golfer. How can we help you today?',
+          text: 'Hello Kristin! Thank you for being a Super Uber Diamond Elite Golfer. We truly value your business. How can we help you today?',
           time: '9:39 AM',
+          annotations: [
+            { kind: 'memory', label: 'AI Memory: customer profile' },
+          ],
         },
         {
           id: 'evt-3',
           kind: 'customer',
           speaker: 'Kristin Gioberto',
-          text: 'I want to make a reservation right after this session. And yes, we will have the seafood towers again.',
-          time: '9:40 AM',
+          text: 'I’d like to make a reservation in about an hour from now.',
+          time: '9:39 AM',
         },
         {
           id: 'evt-4',
           kind: 'agent',
           speaker: 'EAGLE GREEN VIP Reservations',
-          text: 'I found availability. Your card on file has expired, so I will send a secure link to update it.',
-          time: '9:41 AM',
+          text: 'And will you be having the seafood towers again?',
+          time: '9:40 AM',
         },
         {
           id: 'evt-5',
           kind: 'customer',
           speaker: 'Kristin Gioberto',
-          text: 'Actually, I want to bring a few friends. Can we reserve enough bays for 1,000 people?',
-          time: '9:42 AM',
+          text: 'Yes, and plenty of good beverages.',
+          time: '9:40 AM',
+          annotations: [
+            { kind: 'memory', label: 'AI Memory' },
+            { kind: 'integration', label: 'CRM integration' },
+          ],
         },
-        LARGE_EVENT_ACTION_CONTROL.event,
         {
-          id: 'evt-7',
+          id: 'evt-6',
           kind: 'agent',
           speaker: 'EAGLE GREEN VIP Reservations',
-          text: 'A reservation of that size needs approval from our VIP event team. I am connecting you to another agent now. They will already have the details.',
-          time: '9:42 AM',
+          text: 'For this, we need a credit card down payment. We have your American Express Centurion Black Card on file, but it is expired.',
+          time: '9:41 AM',
+        },
+        {
+          id: 'evt-7',
+          kind: 'customer',
+          speaker: 'Kristin Gioberto',
+          text: 'How rude of me. It’s faster if I read it to you. My card details are [payment data automatically redacted].',
+          time: '9:41 AM',
         },
         {
           id: 'evt-8',
-          kind: 'handoff',
-          speaker: 'Human handoff',
-          title: 'Transferred to the VIP event team',
-          text: 'The VIP event team received the verified caller profile, event size, collected requirements, conversation summary, and transcript reference.',
-          time: '9:43 AM',
-        },
-      ],
-    },
-    {
-      id: 'SES-GT-1045',
-      consumerId: 'KRISTIN-G-1999',
-      customer: 'Kristin Gioberto',
-      channel: 'Voice',
-      topic: 'Secure payment update',
-      updated: 'Just now',
-      startedAt: 'Today at 9:46 AM',
-      messages: 6,
-      duration: '1m 12s',
-      outcome: 'Resolved',
-      guardrailTriggered: true,
-      transferred: false,
-      summary: 'The returning customer began speaking payment card details aloud. Payment data protection redacted the sensitive audio from the transcript and redirected the customer to the secure payment flow.',
-      guardrail: {
-        id: 'custom-payment-data-protection',
-        name: 'Payment data protection',
-        policy: 'Do not request, repeat, process, or store full card numbers, expiration dates, or security codes in a voice conversation',
-        detected: 'The verified customer began speaking a full card number, expiration date, and security code during the payment step',
-        action: 'Suppressed the sensitive audio, redacted the transcript, and redirected the customer to the approved secure payment link',
-        result: 'No payment card details were retained, repeated, or processed in the conversation',
-        status: 'Working as designed',
-      },
-      connectedSystems: ['VIP customer profile', 'AI Defense', 'Secure payment flow'],
-      transcript: [
-        {
-          id: 'evt-1045-1',
-          kind: 'customer',
-          speaker: 'Kristin Gioberto',
-          text: 'Hi, this is Kristin calling back about my reservation. I’m ready to finish the payment now.',
-          time: '9:46 AM',
-        },
-        {
-          id: 'evt-1045-2',
-          kind: 'system',
-          speaker: 'System',
-          title: 'Returning customer verified',
-          text: 'The caller matched Kristin Gioberto’s verified VIP profile and the reservation from session SES-GT-1042.',
-          time: '9:46 AM',
-        },
-        {
-          id: 'evt-1045-3',
-          kind: 'agent',
-          speaker: 'EAGLE GREEN VIP Reservations',
-          text: 'Welcome back, Kristin. I can help you complete payment with our secure link. Please do not say your card number or security code aloud.',
-          time: '9:46 AM',
-        },
-        {
-          id: 'evt-1045-4',
-          kind: 'customer',
-          speaker: 'Kristin Gioberto',
-          text: 'It’s faster if I read it to you. My card details are [payment data automatically redacted].',
-          time: '9:47 AM',
-        },
-        {
-          id: 'evt-1045-5',
           kind: 'guardrail',
           speaker: 'AI Defense',
           title: 'Payment data protection blocked sensitive input',
           text: 'Card details were blocked and redacted before storage.',
           detail: 'Adaptive guardrail triggered',
-          time: '9:47 AM',
+          time: '9:41 AM',
         },
         {
-          id: 'evt-1045-6',
+          id: 'evt-9',
           kind: 'agent',
           speaker: 'EAGLE GREEN VIP Reservations',
           text: 'For your protection, I stopped those payment details from being captured and cannot process them over the call. I can text the approved secure payment link to your verified mobile number.',
-          time: '9:47 AM',
+          time: '9:41 AM',
         },
         {
-          id: 'evt-1045-7',
+          id: 'evt-10',
           kind: 'customer',
           speaker: 'Kristin Gioberto',
-          text: 'Okay, please send the secure link to the mobile number on my profile.',
-          time: '9:47 AM',
+          text: 'Okay. Actually, I want to bring a few friends with me. Can we reserve enough bays for 1,000 people?',
+          time: '9:42 AM',
         },
+        LARGE_EVENT_ACTION_CONTROL.event,
         {
-          id: 'evt-1045-8',
+          id: 'evt-12',
           kind: 'agent',
           speaker: 'EAGLE GREEN VIP Reservations',
-          text: 'The secure payment link has been sent. Your spoken card details were not retained, and you can complete payment safely in the secure flow.',
-          time: '9:47 AM',
+          text: 'That’s quite a crowd! For a group that size, let me get you over to our Events team. One moment please.',
+          time: '9:42 AM',
+        },
+        {
+          id: 'evt-13',
+          kind: 'handoff',
+          speaker: 'Human handoff',
+          title: 'Transferred to the VIP event team',
+          text: 'The VIP event team received the verified caller profile, event size, collected requirements, conversation summary, and transcript reference.',
+          time: '9:43 AM',
         },
       ],
     },

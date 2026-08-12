@@ -318,7 +318,7 @@ const actionControlDecisionAgeHours = (occurredAt: string): number => {
 };
 
 const sessionOutcomeVariant = (outcome: string): 'success' | 'warning' | 'info' => {
-  if (outcome === 'Transferred') return 'warning';
+  if (outcome === 'Transferred') return 'success';
   if (outcome === 'Resolved') return 'success';
   return 'info';
 };

@@ -147,19 +147,20 @@ test('EAGLE GREEN reports only payment data protection as triggered', () => {
     .filter(session => session.guardrailTriggered)
     .map(session => session.guardrail?.name);
   const reservationSession = sessions.find(session => session.id === 'SES-GT-1042');
-  const paymentSession = sessions.find(session => session.id === 'SES-GT-1045');
 
   assert.deepEqual(triggeredGuardrails, ['Payment data protection']);
   assert.equal(demo.getCiscoLiveGuardrailTriggerCount('VIP event confidentiality', agentId), 0);
   assert.equal(demo.getCiscoLiveGuardrailTriggerCount('Payment data protection', agentId), 1);
-  assert.equal(paymentSession?.customer, reservationSession?.customer);
-  assert.equal(paymentSession?.consumerId, reservationSession?.consumerId);
-  assert.equal(paymentSession?.messages, 6);
-  assert.equal(paymentSession?.transcript.length, 8);
-  assert.equal(paymentSession?.transcript[3]?.text.includes('[payment data automatically redacted]'), true);
-  assert.equal(paymentSession?.transcript[4]?.kind, 'guardrail');
-  assert.equal(paymentSession?.transcript[4]?.title, 'Payment data protection blocked sensitive input');
-  assert.equal(paymentSession?.guardrail?.result, 'No payment card details were retained, repeated, or processed in the conversation');
+  assert.equal(sessions.some(session => session.id === 'SES-GT-1045'), false);
+  assert.equal(reservationSession?.guardrailTriggered, true);
+  assert.equal(reservationSession?.actionControlTriggered, true);
+  assert.equal(reservationSession?.messages, 9);
+  assert.equal(reservationSession?.transcript.length, 12);
+  assert.equal(reservationSession?.transcript[5]?.text.includes('[payment data automatically redacted]'), true);
+  assert.equal(reservationSession?.transcript[6]?.kind, 'guardrail');
+  assert.equal(reservationSession?.transcript[6]?.title, 'Payment data protection blocked sensitive input');
+  assert.equal(reservationSession?.transcript[9]?.kind, 'action_control');
+  assert.equal(reservationSession?.guardrail?.result, 'No payment card details were retained, repeated, or processed in the conversation');
 });
 
 test('post-tool compound evaluation uses strict thresholds and a required session-time window', () => {

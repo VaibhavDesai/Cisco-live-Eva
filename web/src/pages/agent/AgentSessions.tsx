@@ -8,6 +8,7 @@ import Button from '../../components/shared/Button';
 import { Table, TableHead, TableBody, TableRow, TableHeader, TableCell } from '../../components/shared/Table';
 import Dropdown from '../../components/shared/Dropdown';
 import { Banner } from '../../components/shared/Banner';
+import ConfigurationCategoryIcon from '../../components/shared/ConfigurationCategoryIcon';
 import { Icon } from '../../icons';
 import {
   getCiscoLiveSessions,
@@ -137,18 +138,19 @@ function SessionDetail({
           <Icon name="arrow-left" weight="bold" size="sm" />
           {backLabel}
         </Button>
-        <span>Session details</span>
       </div>
 
       <header className="agent-session-detail-header">
         <div>
           <div className="agent-session-detail-title-row">
-            <h1>{session.topic}</h1>
-            <Badge variant={outcomeVariant(session.outcome)}>{session.outcome}</Badge>
-            {actionControl?.matched && (
-              <Badge variant="info">Agent control · {actionControlBehaviorLabel(actionControl.behavior)}</Badge>
-            )}
-            {session.guardrailTriggered && <Badge variant="warning">Guardrail triggered</Badge>}
+            <h1>{session.id}</h1>
+            <Badge
+              variant={outcomeVariant(session.outcome)}
+              className="agent-session-chip agent-session-chip--action"
+            >
+              <ConfigurationCategoryIcon type="action" />
+              {session.outcome}
+            </Badge>
           </div>
           <p>{session.summary}</p>
         </div>
@@ -161,7 +163,7 @@ function SessionDetail({
               <h2>Conversation transcript</h2>
               <p>{session.messages} messages • {session.duration}</p>
             </div>
-            <Badge variant="default">{session.channel}</Badge>
+            <Badge variant="default" className="agent-session-chip">{session.channel}</Badge>
           </div>
 
           <div className="agent-session-transcript" aria-label="Session conversation transcript">
@@ -232,6 +234,25 @@ function SessionDetail({
                     <time>{event.time}</time>
                   </div>
                   <p>{event.text}</p>
+                  {event.annotations && event.annotations.length > 0 && (
+                    <div className="agent-session-message__annotations" aria-label="Message evidence">
+                      {event.annotations.map((annotation) => (
+                        <span
+                          key={`${event.id}-${annotation.kind}-${annotation.label}`}
+                          className={`agent-session-message__annotation agent-session-message__annotation--${annotation.kind}`}
+                        >
+                          <ConfigurationCategoryIcon
+                            type={annotation.kind === 'memory'
+                              ? 'memory'
+                              : annotation.kind === 'integration'
+                                ? 'action'
+                                : 'guardrail'}
+                          />
+                          {annotation.label}
+                        </span>
+                      ))}
+                    </div>
+                  )}
                 </article>
               );
             }) : (
@@ -262,10 +283,10 @@ function SessionDetail({
             </dl>
           </Card>
 
-          {actionControl ? (
+          {actionControl && (
             <Card className="agent-session-policy-card agent-session-policy-card--action-control">
               <div className="agent-session-policy-card__header">
-                <span aria-hidden="true"><Icon name="automation" weight="bold" size="md" /></span>
+                <ConfigurationCategoryIcon type="action-control" size={20} />
                 <div>
                   <h2>{actionControl.unlockedActionNames[0] ?? actionControl.controlTitle}</h2>
                 </div>
@@ -291,10 +312,12 @@ function SessionDetail({
                 <div><dt>Result</dt><dd>{actionControlResultLabel}</dd></div>
               </dl>
             </Card>
-          ) : session.guardrail ? (
+          )}
+
+          {session.guardrail && (
             <Card className="agent-session-policy-card">
               <div className="agent-session-policy-card__header">
-                <span aria-hidden="true"><Icon name="shield" weight="bold" size="md" /></span>
+                <ConfigurationCategoryIcon type="guardrail" size={20} />
                 <div>
                   <h2>{session.guardrail.name}</h2>
                 </div>
@@ -314,23 +337,15 @@ function SessionDetail({
                 <div><dt>Result</dt><dd>{session.guardrail.result}</dd></div>
               </dl>
             </Card>
-          ) : (
+          )}
+
+          {!actionControl && !session.guardrail && (
             <Card className="agent-session-policy-card agent-session-policy-card--quiet">
               <Icon name="check-circle" weight="bold" size="md" />
               <div><h2>No policy intervention</h2><p>The session completed within the configured boundaries.</p></div>
             </Card>
           )}
 
-          <Card className="agent-session-systems-card">
-            <div className="agent-session-panel-heading">
-              <div><h2>Connected systems</h2><p>Systems used in this session</p></div>
-            </div>
-            <ul>
-              {session.connectedSystems.map((system) => (
-                <li key={system}><Icon name="check-circle" weight="bold" size="sm" />{system}</li>
-              ))}
-            </ul>
-          </Card>
         </aside>
       </div>
     </div>
@@ -344,6 +359,9 @@ export default function AgentSessions() {
   const { agents, agentDrafts, currentAgent, selectAgent } = useApp();
   const sessionIdQuery = searchParams.get('sessionId')?.trim() ?? '';
   const sourceQuery = searchParams.get('source')?.trim() ?? '';
+  const canonicalSessionId = sessionIdQuery.toLowerCase() === 'ses-gt-1045'
+    ? 'SES-GT-1042'
+    : sessionIdQuery;
   const [searchTerm, setSearchTerm] = useState('');
   const [outcomeFilter, setOutcomeFilter] = useState('all');
   const [guardrailOnly, setGuardrailOnly] = useState(false);
@@ -359,12 +377,20 @@ export default function AgentSessions() {
   }, [agent, currentAgent?.id, selectAgent]);
 
   if (!agent) return <Navigate to="/agents" replace />;
+  if (sessionIdQuery.toLowerCase() === 'ses-gt-1045') {
+    return (
+      <Navigate
+        to={`/agents/${encodeURIComponent(agent.id)}/sessions?sessionId=SES-GT-1042&source=${encodeURIComponent(sourceQuery || 'sessions')}`}
+        replace
+      />
+    );
+  }
 
   const actionValues = agentDrafts[agent.id]?.familyConfiguration.actions?.values;
   const agentSessions = getCiscoLiveSessions(agent.id, actionValues);
   const sessions = agentSessions.length > 0 ? agentSessions : getCiscoLiveSessions(CISCO_LIVE_PRIMARY_AGENT_ID);
-  const activeSession = sessionIdQuery
-    ? sessions.find((session) => session.id.toLowerCase() === sessionIdQuery.toLowerCase())
+  const activeSession = canonicalSessionId
+    ? sessions.find((session) => session.id.toLowerCase() === canonicalSessionId.toLowerCase())
     : undefined;
   const sessionBackNavigation = sourceQuery === 'observability'
     ? {
