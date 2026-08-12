@@ -864,6 +864,11 @@ mdc-dialog.delete-variable-confirm-dialog[visible] {
 }
 
 .kpi-card {
+  --kpi-card-surface: color-mix(
+    in srgb,
+    var(--mds-color-theme-background-solid-primary-normal) 18%,
+    var(--mds-color-theme-background-glass-normal, rgba(255, 255, 255, 0.05))
+  );
   position: relative;
   display: block;
   width: 100%;
@@ -905,7 +910,7 @@ mdc-dialog.delete-variable-confirm-dialog[visible] {
 }
 
 .kpi-card--glass {
-  background: var(--mds-color-theme-background-glass-normal, rgba(255, 255, 255, 0.05));
+  background: var(--kpi-card-surface);
   border: 1px solid var(--mds-color-theme-outline-glass-0, rgba(255, 255, 255, 0.11));
   /* No backdrop-filter here: nested blur inside `overflow: auto` main caused scroll compositing glitches. */
 }
@@ -914,7 +919,7 @@ mdc-dialog.delete-variable-confirm-dialog[visible] {
   background: color-mix(
     in srgb,
     var(--mds-color-theme-text-accent-normal) 12%,
-    var(--mds-color-theme-background-glass-normal, rgba(255, 255, 255, 0.05))
+    var(--kpi-card-surface)
   );
   box-shadow: 0 0 0 2px var(--mds-color-theme-text-accent-normal);
 }

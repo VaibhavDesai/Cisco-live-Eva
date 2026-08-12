@@ -51,6 +51,11 @@ test('Observability shares the agent workspace glass and prioritizes Business Im
     'all chart toolbar icon buttons should render as equal circular controls',
   );
   assert.match(
+    observabilityStyles,
+    /\.kpi-card\s*\{[^}]*--kpi-card-surface:\s*color-mix\([\s\S]*?background-solid-primary-normal\) 18%,[\s\S]*?background-glass-normal[\s\S]*?\.kpi-card--glass\s*\{[^}]*background:\s*var\(--kpi-card-surface\);/,
+    'metric cards should use a slightly more opaque surface so the aurora stays behind the data',
+  );
+  assert.match(
     observabilityRootSource,
     /className="clus-kpi-toolbar[\s\S]*?aria-label="Search metrics"[\s\S]*?aria-label="Date range"[\s\S]*?className="clus-kpi-splunk-button"[\s\S]*?Customize with Splunk[\s\S]*?<Icon name="launch"/,
     'the dashboard toolbar should offer a cross-launch action for Splunk customization',
