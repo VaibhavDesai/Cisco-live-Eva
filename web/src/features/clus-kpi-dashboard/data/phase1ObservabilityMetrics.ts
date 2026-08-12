@@ -19,7 +19,7 @@ export const KPI_OBSERVABILITY_CATEGORY_ORDER = [
   'Voice-specific',
 ] as const;
 
-/** Right-side Observability section header: projection title + date chip (Voice/Digital usage). */
+/** Right-side Observability section header: projection title + date chip. */
 export type ObservabilitySectionHeaderSupplement = {
   title: string;
   dateLabel: string;
@@ -28,11 +28,9 @@ export type ObservabilitySectionHeaderSupplement = {
 };
 
 /** Stable ids for pin/drag and pinned-bar lookup (not in metric catalog). */
-export const OBSERVABILITY_PROJECTION_VOICE_ID = 'obs-projection-voice';
 export const OBSERVABILITY_PROJECTION_DIGITAL_ID = 'obs-projection-digital';
 
 export function observabilityProjectionIdForCategory(category: string): string | null {
-  if (category === 'Voice usage') return OBSERVABILITY_PROJECTION_VOICE_ID;
   if (category === 'Digital usage') return OBSERVABILITY_PROJECTION_DIGITAL_ID;
   return null;
 }
@@ -40,11 +38,6 @@ export function observabilityProjectionIdForCategory(category: string): string |
 export const KPI_OBSERVABILITY_SECTION_HEADER_SUPPLEMENT: Partial<
   Record<(typeof KPI_OBSERVABILITY_CATEGORY_ORDER)[number], ObservabilitySectionHeaderSupplement>
 > = {
-  'Voice usage': {
-    title: 'Projected voice exhaustion',
-    dateLabel: 'Jun 14',
-    thresholdStatus: 'good',
-  },
   'Digital usage': {
     title: 'Projected message exhaustion',
     dateLabel: 'Jul 02',
@@ -93,7 +86,7 @@ export const phase1ObservabilityMetricSeeds: Phase1MetricSeed[] = [
     category: 'Voice usage',
     heading: 'Voice seconds consumed',
     description:
-      'Total voice seconds used in the current period against the allotted budget. Calculated as live, test, and debug seconds combined, divided by the contracted voice allotment. Shown as consumed of total with 17,700s remaining; use the section header projection to see whether the current burn rate will land inside the period.',
+      'Total voice seconds used in the current period against the allotted budget. Calculated as live, test, and debug seconds combined, divided by the contracted voice allotment. Shown as consumed of total with 17,700s remaining so you can track the current burn rate against the period budget.',
     value: '42,300',
     unit: '',
     change: '+12%',

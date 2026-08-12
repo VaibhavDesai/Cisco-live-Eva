@@ -4,7 +4,6 @@ import { ck } from '../clus-kpi-theme';
 import {
   KPI_OBSERVABILITY_SECTION_HEADER_SUPPLEMENT,
   OBSERVABILITY_PROJECTION_DIGITAL_ID,
-  OBSERVABILITY_PROJECTION_VOICE_ID,
   observabilityProjectionIdForCategory,
 } from '../data/phase1ObservabilityMetrics';
 import type { KPIData } from './kpiData';
@@ -67,11 +66,9 @@ export function ObservabilityView({
               <div className="kpi-card-grid">
                 {pinnedCardIds.map((pinnedId, index) => {
                   const projSup =
-                    pinnedId === OBSERVABILITY_PROJECTION_VOICE_ID
-                      ? KPI_OBSERVABILITY_SECTION_HEADER_SUPPLEMENT['Voice usage']
-                      : pinnedId === OBSERVABILITY_PROJECTION_DIGITAL_ID
-                        ? KPI_OBSERVABILITY_SECTION_HEADER_SUPPLEMENT['Digital usage']
-                        : undefined;
+                    pinnedId === OBSERVABILITY_PROJECTION_DIGITAL_ID
+                      ? KPI_OBSERVABILITY_SECTION_HEADER_SUPPLEMENT['Digital usage']
+                      : undefined;
 
                   const isLastInRow =
                     (index + 1) % CARDS_PER_ROW === 0 || index === pinnedCardIds.length - 1;

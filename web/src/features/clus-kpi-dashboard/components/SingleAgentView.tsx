@@ -29,7 +29,6 @@ import { agentData } from './AgentTable';
 import {
   KPI_OBSERVABILITY_SECTION_HEADER_SUPPLEMENT,
   OBSERVABILITY_PROJECTION_DIGITAL_ID,
-  OBSERVABILITY_PROJECTION_VOICE_ID,
   observabilityProjectionIdForCategory,
 } from '../data/phase1ObservabilityMetrics';
 import { ObservabilityConfigurationTab } from './ObservabilityConfigurationTab';
@@ -392,11 +391,9 @@ export function SingleAgentView({ agentName, onBack }: SingleAgentViewProps) {
                       {pinnedCardIds.map((pinnedId, index) => {
                         const CARDS_PER_ROW = 4;
                         const projSup =
-                          pinnedId === OBSERVABILITY_PROJECTION_VOICE_ID
-                            ? KPI_OBSERVABILITY_SECTION_HEADER_SUPPLEMENT['Voice usage']
-                            : pinnedId === OBSERVABILITY_PROJECTION_DIGITAL_ID
-                              ? KPI_OBSERVABILITY_SECTION_HEADER_SUPPLEMENT['Digital usage']
-                              : undefined;
+                          pinnedId === OBSERVABILITY_PROJECTION_DIGITAL_ID
+                            ? KPI_OBSERVABILITY_SECTION_HEADER_SUPPLEMENT['Digital usage']
+                            : undefined;
 
                         const isLastInRow =
                           (index + 1) % CARDS_PER_ROW === 0 || index === pinnedCardIds.length - 1;

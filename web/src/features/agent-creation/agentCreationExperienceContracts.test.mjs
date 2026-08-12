@@ -6,7 +6,7 @@ function readSource(relativePath) {
   return readFileSync(new URL(relativePath, import.meta.url), 'utf8');
 }
 
-test('EAGLE GREEN separates Galileo large-event routing from the VIP confidentiality guardrail', () => {
+test('EAGLE GREEN separates Galileo large-event routing from payment data protection', () => {
   const demoSource = readSource('../../demo/ciscoLiveDemo.ts');
   const seedSource = readSource('../../demo/ciscoLiveSeed.ts');
   const configureSource = readSource('../../pages/agent/ActionConfigureV2.tsx');
@@ -60,7 +60,7 @@ test('EAGLE GREEN separates Galileo large-event routing from the VIP confidentia
   assert.match(
     demoSource,
     /id:\s*['"]SES-GT-1042['"][\s\S]*?guardrailTriggered:\s*false[\s\S]*?actionControlTriggered:\s*LARGE_EVENT_ACTION_CONTROL\.event\.actionControl\.matched[\s\S]*?id:\s*['"]SES-GT-1045['"][\s\S]*?guardrailTriggered:\s*true/,
-    'the large-event and confidentiality stories should remain separate sessions',
+    'the large-event routing and payment-protection stories should remain separate sessions for the same customer',
   );
   assert.match(
     demoSource,
@@ -69,13 +69,13 @@ test('EAGLE GREEN separates Galileo large-event routing from the VIP confidentia
   );
   assert.match(
     demoSource,
-    /id:\s*['"]SES-GT-1045['"][\s\S]*?messages:\s*6[\s\S]*?id:\s*['"]evt-1045-1['"][\s\S]*?id:\s*['"]evt-1045-8['"]/,
-    'the confidentiality session should include all six conversation messages plus its system and guardrail events',
+    /id:\s*['"]SES-GT-1045['"][\s\S]*?customer:\s*['"]Kristin Gioberto['"][\s\S]*?messages:\s*6[\s\S]*?id:\s*['"]evt-1045-1['"][\s\S]*?id:\s*['"]evt-1045-8['"]/,
+    'the payment-protection session should include all six conversation messages plus its system and guardrail events',
   );
   assert.match(
     demoSource,
-    /title:\s*['"]VIP event confidentiality blocked a response['"][\s\S]*?detail:\s*['"]Adaptive guardrail triggered['"]/,
-    'the transcript event should identify the adaptive guardrail trigger directly',
+    /title:\s*['"]Payment data protection blocked sensitive input['"][\s\S]*?text:\s*['"]A full card number, expiration date, and security code were detected[\s\S]*?detail:\s*['"]Adaptive guardrail triggered['"]/,
+    'the transcript event should identify the payment-data guardrail trigger without retaining the spoken details',
   );
   assert.match(sessionsSource, /event\.kind === ['"]action_control['"][\s\S]*?Action control/);
   assert.match(
@@ -872,7 +872,7 @@ test('action control activity matches the Figma card and discloses its selected 
   );
   assert.match(
     source,
-    /\(showSelectedGuardrailDecision \|\| showSelectedActionControlDecision\)[\s\S]*?id=\{showSelectedActionControlDecision[\s\S]*?'agent-studio-action-control-decision-banner'[\s\S]*?title=\{showSelectedGuardrailDecision[\s\S]*?['"]VIP event details protected['"][\s\S]*?actionControlSpotlightUnlocked[\s\S]*?['"]Large event transfer unlocked['"][\s\S]*?['"]Standard path redirected['"]/,
+    /\(showSelectedGuardrailDecision \|\| showSelectedActionControlDecision\)[\s\S]*?id=\{showSelectedActionControlDecision[\s\S]*?'agent-studio-action-control-decision-banner'[\s\S]*?title=\{showSelectedGuardrailDecision[\s\S]*?selectedGuardrail\?\.item[\s\S]*?['"]Guardrail['"][\s\S]*?triggered[\s\S]*?actionControlSpotlightUnlocked[\s\S]*?['"]Large event transfer unlocked['"][\s\S]*?['"]Standard path redirected['"]/,
     'the latest matching decision should render only while its matched path is expanded',
   );
   assert.doesNotMatch(
@@ -1192,10 +1192,10 @@ test('selected guardrail banner opens a concrete session detail', () => {
   );
   assert.match(
     studioSource,
-    /actionControlSpotlightDecision\.sessionId[\s\S]*?SES-GT-1045/,
-    'the action-control spotlight should use its derived Session while the guardrail keeps its separate Session',
+    /actionControlSpotlightDecision\.sessionId[\s\S]*?allAgentSessions\.find\(session => \([\s\S]*?session\.guardrailTriggered[\s\S]*?eagleGuardrailSession\.id/,
+    'the action-control and guardrail spotlights should each resolve the concrete Session that owns their event',
   );
-  assert.match(studioSource, /source=observability/);
+  assert.match(studioSource, /eagleGuardrailSessionPath[\s\S]*?source=overview/);
   assert.match(sessionsSource, /const activeSession = sessionIdQuery[\s\S]*?sessions\.find/);
   assert.match(sessionsSource, />Session details</);
   assert.match(sessionsSource, /Conversation transcript/);

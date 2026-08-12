@@ -1310,7 +1310,13 @@ export default function AgentStudioLanding() {
   const eagleActionControlSessionPath = actionControlSpotlightDecision
     ? `${sessionsPath}?sessionId=${encodeURIComponent(actionControlSpotlightDecision.sessionId)}&source=overview`
     : sessionsPath;
-  const eagleGuardrailSessionPath = `${sessionsPath}?sessionId=SES-GT-1045&source=observability`;
+  const eagleGuardrailSession = allAgentSessions.find(session => (
+    session.guardrailTriggered && session.transcript.length > 0
+  ));
+  const eagleGuardrailEvent = eagleGuardrailSession?.transcript.find(event => event.kind === 'guardrail');
+  const eagleGuardrailSessionPath = eagleGuardrailSession
+    ? `${sessionsPath}?sessionId=${encodeURIComponent(eagleGuardrailSession.id)}&source=overview`
+    : sessionsPath;
   // The banner describes the event that owns the transcript being opened, so its
   // title/meta/description stay in sync with the session "View session" links to.
   const operationalEvent = getCiscoLiveObservability(operationalSessionLocator.agentId);
@@ -1847,7 +1853,7 @@ export default function AgentStudioLanding() {
                             icon={showSelectedGuardrailDecision ? 'shield' : 'automation'}
                             className="agent-studio-operational-event-banner agent-studio-connected-event-banner"
                             title={showSelectedGuardrailDecision
-                              ? 'VIP event details protected'
+                              ? `${selectedGuardrail?.item ?? 'Guardrail'} triggered`
                               : actionControlSpotlightUnlocked
                                 ? 'Large event transfer unlocked'
                                 : 'Standard path redirected'}
@@ -1877,8 +1883,10 @@ export default function AgentStudioLanding() {
                               </>
                             ) : (
                               <>
-                                <span className="agent-studio-operational-event-meta">SES-GT-1045 · 9:47 AM · Adaptive guardrail blocked response</span>
-                                <span>No guest, schedule, or access information was shared with the unverified caller.</span>
+                                <span className="agent-studio-operational-event-meta">
+                                  {eagleGuardrailSession?.id ?? 'Session'} · {eagleGuardrailEvent?.time ?? 'Just now'} · Adaptive guardrail blocked sensitive input
+                                </span>
+                                <span>{eagleGuardrailEvent?.text ?? 'Sensitive payment data was blocked and removed from the transcript.'}</span>
                               </>
                             )}
                             actions={[{

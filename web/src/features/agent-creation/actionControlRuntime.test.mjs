@@ -88,15 +88,26 @@ test('control previews format action inputs as template variables', () => {
   );
 });
 
-test('EAGLE GREEN reports only the VIP confidentiality guardrail as triggered', () => {
+test('EAGLE GREEN reports only payment data protection as triggered', () => {
   const agentId = 'golftop-vip-reservations';
-  const triggeredGuardrails = demo.getCiscoLiveSessions(agentId)
+  const sessions = demo.getCiscoLiveSessions(agentId);
+  const triggeredGuardrails = sessions
     .filter(session => session.guardrailTriggered)
     .map(session => session.guardrail?.name);
+  const reservationSession = sessions.find(session => session.id === 'SES-GT-1042');
+  const paymentSession = sessions.find(session => session.id === 'SES-GT-1045');
 
-  assert.deepEqual(triggeredGuardrails, ['VIP event confidentiality']);
-  assert.equal(demo.getCiscoLiveGuardrailTriggerCount('VIP event confidentiality', agentId), 1);
-  assert.equal(demo.getCiscoLiveGuardrailTriggerCount('Payment data protection', agentId), 0);
+  assert.deepEqual(triggeredGuardrails, ['Payment data protection']);
+  assert.equal(demo.getCiscoLiveGuardrailTriggerCount('VIP event confidentiality', agentId), 0);
+  assert.equal(demo.getCiscoLiveGuardrailTriggerCount('Payment data protection', agentId), 1);
+  assert.equal(paymentSession?.customer, reservationSession?.customer);
+  assert.equal(paymentSession?.consumerId, reservationSession?.consumerId);
+  assert.equal(paymentSession?.messages, 6);
+  assert.equal(paymentSession?.transcript.length, 8);
+  assert.equal(paymentSession?.transcript[3]?.text.includes('[payment data automatically redacted]'), true);
+  assert.equal(paymentSession?.transcript[4]?.kind, 'guardrail');
+  assert.equal(paymentSession?.transcript[4]?.title, 'Payment data protection blocked sensitive input');
+  assert.equal(paymentSession?.guardrail?.result, 'No payment card details were retained, repeated, or processed in the conversation');
 });
 
 test('post-tool OR evaluation uses strict thresholds and unlocks only after a matching Steer', () => {

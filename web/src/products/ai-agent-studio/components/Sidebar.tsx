@@ -21,7 +21,7 @@ const navItems: NavItem[] = [
   { path: '/settings', label: 'AI Engine', icon: 'tools-bold' },
 ];
 
-const ORGANIZATION_NAME = 'Renergize Healthcare';
+const ORGANIZATION_NAME = 'Eagle Green';
 
 /* Agent-scoped navigation. `section` maps to the ?section= query param that
    ActionConfigureV2 reads; `families` gates which agent families surface the
