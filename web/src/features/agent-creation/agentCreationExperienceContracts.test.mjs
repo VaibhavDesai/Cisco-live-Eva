@@ -44,11 +44,21 @@ test('Observability shares the agent workspace glass and prioritizes Business Im
     /pinnedFirstCategory\s*=\s*['"]Business Impact['"][\s\S]*?out:\s*string\[\]\s*=\s*\[pinnedFirstCategory\]/,
     'saved layouts should migrate Business Impact directly below Pinned',
   );
-  assert.match(chartSource, /clus-kpi-chart-toolbar[\s\S]*?aria-label="Chart view"[\s\S]*?aria-label="Table view"[\s\S]*?aria-label="Box zoom"[\s\S]*?aria-label="Reset zoom"/);
+  assert.match(chartSource, /clus-kpi-chart-toolbar[\s\S]*?aria-label="Chart view"[\s\S]*?aria-label="Table view"[\s\S]*?aria-label="Box zoom"[\s\S]*?aria-label="Reset zoom"[\s\S]*?aria-label="View interactions in Splunk"[\s\S]*?<StudioIcon name="launch"/);
   assert.match(
     observabilityStyles,
     /\.clus-kpi-chart-toolbar \.btn-group \.btn\s*\{[^}]*width:\s*32px;[^}]*min-width:\s*32px;[^}]*height:\s*32px;[^}]*padding:\s*0;[^}]*border-radius:\s*50%;/,
     'all chart toolbar icon buttons should render as equal circular controls',
+  );
+  assert.match(
+    observabilityStyles,
+    /\.clus-kpi-chart-toolbar \.clus-kpi-splunk-launch\s*\{[^}]*width:\s*32px;[^}]*min-width:\s*32px;[^}]*height:\s*32px;[^}]*padding:\s*0;[^}]*border-radius:\s*50%;/,
+    'the Splunk cross-launch should match the circular chart controls',
+  );
+  assert.match(
+    chartSource,
+    /className="clus-kpi-splunk-launch"[\s\S]*?https:\/\/www\.splunk\.com\/en_us\/products\/observability\.html[\s\S]*?_blank[\s\S]*?noopener,noreferrer/,
+    'the Splunk control should open the external observability experience safely',
   );
   assert.match(
     observabilityStyles,
@@ -57,11 +67,12 @@ test('Observability shares the agent workspace glass and prioritizes Business Im
   );
   assert.match(
     observabilityRootSource,
-    /className="clus-kpi-toolbar[\s\S]*?aria-label="Search metrics"[\s\S]*?aria-label="Date range"[\s\S]*?className="clus-kpi-splunk-button"[\s\S]*?Customize with Splunk[\s\S]*?<Icon name="launch"/,
-    'the dashboard toolbar should offer a cross-launch action for Splunk customization',
+    /className="clus-kpi-toolbar[\s\S]*?aria-label="Search metrics"[\s\S]*?aria-label="Date range"/,
+    'the dashboard toolbar should retain filters, metric search, and date range controls',
   );
+  assert.doesNotMatch(observabilityRootSource, /Customize with Splunk|clus-kpi-splunk-button/);
   assert.doesNotMatch(observabilityViewSource, /Customize with Splunk/);
-  assert.match(observabilityStyles, /\.clus-kpi-splunk-button\s*\{[^}]*margin-left:\s*auto;/);
+  assert.doesNotMatch(observabilityStyles, /\.clus-kpi-splunk-button/);
 });
 
 test('EAGLE GREEN combines Galileo routing and payment protection in one session', () => {
@@ -1295,6 +1306,7 @@ test('overview suggestions stay hidden while the section is paused', () => {
 
 test('operational status presents its metrics as a compact table with a dashboard link', () => {
   const studioSource = readSource('../../pages/agent/AgentStudioLanding.tsx');
+  const demoSource = readSource('../../demo/ciscoLiveDemo.ts');
   const styles = readSource('../../products/ai-agent-studio/components.css');
   assert.match(
     studioSource,
@@ -1312,9 +1324,9 @@ test('operational status presents its metrics as a compact table with a dashboar
     'the detailed dashboard should remain one explicit action away',
   );
   assert.match(
-    studioSource,
-    /label: 'Control evaluations', value: '2'[\s\S]*?label: 'Steer outcomes', value: '1'/,
-    'the operational table should include the two trace-derived agent control metrics',
+    demoSource,
+    /label: 'Control evaluations',[\s\S]*?value: '1,248'[\s\S]*?label: 'Steer outcomes',[\s\S]*?value: '742'/,
+    'the operational table should include the two 24-hour aggregate agent control metrics',
   );
   assert.doesNotMatch(
     studioSource,
@@ -1336,6 +1348,67 @@ test('EAGLE GREEN pins agent control metrics instead of fulfilment latency', () 
   assert.match(defaultPins, /'ac-control-evaluations'/);
   assert.match(defaultPins, /'ac-steer-outcomes'/);
   assert.doesNotMatch(defaultPins, /'ap-fulfilment-latency-p95'/);
+});
+
+test('EAGLE GREEN pinned metrics share the exact Overview values', () => {
+  const demoSource = readSource('../../demo/ciscoLiveDemo.ts');
+  const overviewSource = readSource('../../pages/agent/AgentStudioLanding.tsx');
+  const dashboardSource = readSource('../../features/clus-kpi-dashboard/ClusKpiDashboardRoot.tsx');
+
+  assert.match(
+    demoSource,
+    /CISCO_LIVE_OPERATIONAL_HEALTH_METRICS[\s\S]*?observabilityKpiId: 'kp-knowledge-coverage'[\s\S]*?value: '94\.8%'[\s\S]*?observabilityKpiId: 'sec-guardrails-trigger-flag'[\s\S]*?value: '0\.8%'[\s\S]*?observabilityKpiId: 'ce-containment-rate'[\s\S]*?value: '91\.6%'[\s\S]*?observabilityKpiId: 'ap-intent-success-rate'[\s\S]*?value: '97\.8%'[\s\S]*?observabilityKpiId: 'bi-autocsat-improvement'[\s\S]*?value: '8\.6%'[\s\S]*?observabilityKpiId: 'ce-csat-predictor'[\s\S]*?value: '4\.7\/5'/,
+    'the shared demo source should preserve every Overview headline value',
+  );
+  assert.match(
+    overviewSource,
+    /OPERATIONAL_HEALTH_METRICS\s*=\s*CISCO_LIVE_OPERATIONAL_HEALTH_METRICS/,
+    'Overview should render the shared metric source',
+  );
+  assert.match(
+    dashboardSource,
+    /function alignKpiWithCiscoLiveOverview[\s\S]*?CISCO_LIVE_OPERATIONAL_HEALTH_METRICS\.find[\s\S]*?thresholdStatus: 'good'[\s\S]*?overviewAlignedKpis[\s\S]*?actionControlKpis[\s\S]*?map\(alignKpiWithCiscoLiveOverview\)/,
+    'Observability should align both regular and trace-derived pinned metrics with Overview and keep their healthy status',
+  );
+});
+
+test('EAGLE GREEN shares its 24-hour agent control aggregate across Overview and Observability', () => {
+  const demoSource = readSource('../../demo/ciscoLiveDemo.ts');
+  const overviewSource = readSource('../../pages/agent/AgentStudioLanding.tsx');
+  const dashboardSource = readSource('../../features/clus-kpi-dashboard/ClusKpiDashboardRoot.tsx');
+
+  assert.match(
+    demoSource,
+    /CISCO_LIVE_ACTION_CONTROL_SUMMARY_24H[\s\S]*?evaluated: 1_248[\s\S]*?matched: 849[\s\S]*?notMatched: 399[\s\S]*?steered: 742[\s\S]*?matchRate: 68/,
+    'the shared aggregate should tell a credible high-volume exception-control story',
+  );
+  assert.match(overviewSource, /useState\('24h'\)/);
+  assert.match(
+    overviewSource,
+    /operationalTimeRange === '24h'[\s\S]*?CISCO_LIVE_ACTION_CONTROL_SUMMARY_24H[\s\S]*?: summarizeCiscoLiveActionControlDecisions/,
+    'Overview should use the shared aggregate for its default 24-hour view',
+  );
+  assert.match(
+    dashboardSource,
+    /function alignKpiWithCiscoLiveActionControl24h[\s\S]*?summary\.evaluated[\s\S]*?summary\.matchRate[\s\S]*?summary\.steered[\s\S]*?dateRange === '24h'/,
+    'Observability should use the same evaluated, match-rate, and steer totals',
+  );
+});
+
+test('EAGLE GREEN Business Impact isolates the voice productivity alert', () => {
+  const demoSource = readSource('../../demo/ciscoLiveDemo.ts');
+  const dashboardSource = readSource('../../features/clus-kpi-dashboard/ClusKpiDashboardRoot.tsx');
+
+  assert.match(
+    demoSource,
+    /CISCO_LIVE_BUSINESS_IMPACT_METRICS[\s\S]*?observabilityKpiId: 'bi-aht-reduction'[\s\S]*?value: '32\.4%'[\s\S]*?change: '\+4\.8%'[\s\S]*?thresholdStatus: 'good'[\s\S]*?observabilityKpiId: 'bi-first-contact-resolution'[\s\S]*?value: '92\.4%'[\s\S]*?thresholdStatus: 'good'[\s\S]*?observabilityKpiId: 'bi-ai-agent-productivity-voice'[\s\S]*?value: '77\.9%'[\s\S]*?change: '-5\.6%'[\s\S]*?thresholdStatus: 'bad'[\s\S]*?observabilityKpiId: 'bi-ai-agent-productivity-digital'[\s\S]*?value: '92\.9%'[\s\S]*?thresholdStatus: 'good'/,
+    'the demo should keep Voice productivity as the only Business Impact alert',
+  );
+  assert.match(
+    dashboardSource,
+    /function alignKpiWithCiscoLiveBusinessImpact[\s\S]*?CISCO_LIVE_BUSINESS_IMPACT_METRICS\.find[\s\S]*?map\(alignKpiWithCiscoLiveBusinessImpact\)/,
+    'the Eagle Green dashboard should apply the curated Business Impact story after agent scoping',
+  );
 });
 
 test('selected guardrail banner opens a concrete session detail', () => {

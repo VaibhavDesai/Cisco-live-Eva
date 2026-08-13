@@ -11,6 +11,148 @@ import {
 export const CISCO_LIVE_PRIMARY_AGENT_ID = 'golftop-vip-reservations';
 export const CISCO_LIVE_PRIMARY_AGENT_NAME = 'EAGLE GREEN VIP Reservations';
 
+export interface CiscoLiveActionControlDecisionSummary {
+  evaluated: number;
+  matched: number;
+  notMatched: number;
+  actionRan: number;
+  observed: number;
+  steered: number;
+  denied: number;
+  unlocked: number;
+  matchRate: number;
+}
+
+/** Curated 24-hour aggregate; individual seeded Sessions remain drill-down samples. */
+export const CISCO_LIVE_ACTION_CONTROL_SUMMARY_24H: CiscoLiveActionControlDecisionSummary = {
+  evaluated: 1_248,
+  matched: 849,
+  notMatched: 399,
+  actionRan: 1_014,
+  observed: 107,
+  steered: 742,
+  denied: 0,
+  unlocked: 107,
+  matchRate: 68,
+};
+
+export interface CiscoLiveOperationalHealthMetric {
+  id: string;
+  observabilityKpiId: string;
+  label: string;
+  value: string;
+  change: string;
+  isPositive: boolean;
+}
+
+/** Shared headline metrics for the primary agent's Overview and Observability views. */
+export const CISCO_LIVE_OPERATIONAL_HEALTH_METRICS: CiscoLiveOperationalHealthMetric[] = [
+  {
+    id: 'knowledge-coverage',
+    observabilityKpiId: 'kp-knowledge-coverage',
+    label: 'Knowledge coverage',
+    value: '94.8%',
+    change: '+4.6%',
+    isPositive: true,
+  },
+  {
+    id: 'guardrails-trigger-flag',
+    observabilityKpiId: 'sec-guardrails-trigger-flag',
+    label: 'Guardrails trigger flag',
+    value: '0.8%',
+    change: '-0.7%',
+    isPositive: true,
+  },
+  {
+    id: 'containment-rate',
+    observabilityKpiId: 'ce-containment-rate',
+    label: 'Containment rate',
+    value: '91.6%',
+    change: '+5.2%',
+    isPositive: true,
+  },
+  {
+    id: 'action-intent-success-rate',
+    observabilityKpiId: 'ap-intent-success-rate',
+    label: 'Action/intent success rate',
+    value: '97.8%',
+    change: '+2.4%',
+    isPositive: true,
+  },
+  {
+    id: 'control-evaluations',
+    observabilityKpiId: 'ac-control-evaluations',
+    label: 'Control evaluations',
+    value: '1,248',
+    change: '24h aggregate',
+    isPositive: true,
+  },
+  {
+    id: 'steer-outcomes',
+    observabilityKpiId: 'ac-steer-outcomes',
+    label: 'Steer outcomes',
+    value: '742',
+    change: '24h aggregate',
+    isPositive: true,
+  },
+  {
+    id: 'autocsat-improvement',
+    observabilityKpiId: 'bi-autocsat-improvement',
+    label: 'AutoCSAT improvement',
+    value: '8.6%',
+    change: '+3.4%',
+    isPositive: true,
+  },
+  {
+    id: 'csat-predictor',
+    observabilityKpiId: 'ce-csat-predictor',
+    label: 'CSAT predictor (AutoCSAT)',
+    value: '4.7/5',
+    change: '+8.1%',
+    isPositive: true,
+  },
+];
+
+export interface CiscoLiveBusinessImpactMetric {
+  observabilityKpiId: string;
+  value: string;
+  change: string;
+  isPositive: boolean;
+  thresholdStatus: 'good' | 'bad';
+}
+
+/** Business Impact story: voice productivity is the single signal that needs investigation. */
+export const CISCO_LIVE_BUSINESS_IMPACT_METRICS: CiscoLiveBusinessImpactMetric[] = [
+  {
+    observabilityKpiId: 'bi-aht-reduction',
+    value: '32.4%',
+    change: '+4.8%',
+    isPositive: true,
+    thresholdStatus: 'good',
+  },
+  {
+    observabilityKpiId: 'bi-first-contact-resolution',
+    value: '92.4%',
+    change: '+2.1%',
+    isPositive: true,
+    thresholdStatus: 'good',
+  },
+  {
+    observabilityKpiId: 'bi-ai-agent-productivity-voice',
+    value: '77.9%',
+    change: '-5.6%',
+    isPositive: false,
+    thresholdStatus: 'bad',
+  },
+  {
+    observabilityKpiId: 'bi-ai-agent-productivity-digital',
+    value: '92.9%',
+    change: '+3.3%',
+    isPositive: true,
+    thresholdStatus: 'good',
+  },
+];
+
 export interface CiscoLiveGuardrailDefinition {
   id: string;
   name: string;
@@ -1192,18 +1334,6 @@ export interface CiscoLiveActionControlDecisionRecord extends CiscoLiveActionCon
   sessionId: string;
   timestamp: string;
   occurredAt: string;
-}
-
-export interface CiscoLiveActionControlDecisionSummary {
-  evaluated: number;
-  matched: number;
-  notMatched: number;
-  actionRan: number;
-  observed: number;
-  steered: number;
-  denied: number;
-  unlocked: number;
-  matchRate: number;
 }
 
 export function summarizeCiscoLiveActionControlDecisions(

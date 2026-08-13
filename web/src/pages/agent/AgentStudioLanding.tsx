@@ -38,6 +38,8 @@ import { useApp, type Agent } from '../../contexts/AppContext';
 import { useDesignVariation } from '../../contexts/DesignVariationContext';
 import { getElevenLabsConversationSignedUrl, getVoicePreviewErrorMessage } from '../../api/ciscoAi';
 import {
+  CISCO_LIVE_ACTION_CONTROL_SUMMARY_24H,
+  CISCO_LIVE_OPERATIONAL_HEALTH_METRICS,
   CISCO_LIVE_PRIMARY_AGENT_ID,
   getCiscoLiveActionMetric,
   getCiscoLiveActionControlDecisions,
@@ -266,23 +268,7 @@ const OPERATIONAL_HEALTH_GAP = Number(
   (OPERATIONAL_HEALTH.score - OPERATIONAL_HEALTH.target).toFixed(1),
 );
 
-interface OperationalHealthMetric {
-  id: string;
-  label: string;
-  value: string;
-  change: string;
-}
-
-const OPERATIONAL_HEALTH_METRICS: OperationalHealthMetric[] = [
-  { id: 'knowledge-coverage', label: 'Knowledge coverage', value: '94.8%', change: '+4.6%' },
-  { id: 'guardrails-trigger-flag', label: 'Guardrails trigger flag', value: '0.8%', change: '-0.7%' },
-  { id: 'containment-rate', label: 'Containment rate', value: '91.6%', change: '+5.2%' },
-  { id: 'action-intent-success-rate', label: 'Action/intent success rate', value: '97.8%', change: '+2.4%' },
-  { id: 'control-evaluations', label: 'Control evaluations', value: '2', change: 'Trace derived' },
-  { id: 'steer-outcomes', label: 'Steer outcomes', value: '1', change: 'Trace derived' },
-  { id: 'autocsat-improvement', label: 'AutoCSAT improvement', value: '8.6%', change: '+3.4%' },
-  { id: 'csat-predictor', label: 'CSAT predictor (AutoCSAT)', value: '4.7/5', change: '+8.1%' },
-];
+const OPERATIONAL_HEALTH_METRICS = CISCO_LIVE_OPERATIONAL_HEALTH_METRICS;
 
 const OPERATIONAL_TIME_RANGE_OPTIONS = [
   { value: '1h', label: 'Past 1 hour' },
@@ -441,7 +427,7 @@ export default function AgentStudioLanding() {
   const [previewExpanded, setPreviewExpanded] = useState(false);
   const [previewInteractionEnded, setPreviewInteractionEnded] = useState(false);
   const [previewWidgetOpen, setPreviewWidgetOpen] = useState(false);
-  const [operationalTimeRange, setOperationalTimeRange] = useState('6h');
+  const [operationalTimeRange, setOperationalTimeRange] = useState('24h');
   const [selectedGuardrailActivity, setSelectedGuardrailActivity] = useState<string | null | undefined>(undefined);
   const [selectedOverviewIntervention, setSelectedOverviewIntervention] = useState<OverviewIntervention | null>(
     () => (agentId === CISCO_LIVE_PRIMARY_AGENT_ID ? 'action_control' : null),
@@ -1256,7 +1242,9 @@ export default function AgentStudioLanding() {
     ? getCiscoLiveActionControlDecisions(agent.id, actionConfigurationValues)
     : [])
     .filter(decision => actionControlDecisionAgeHours(decision.occurredAt) <= operationalTimeRangeHours);
-  const actionControlFlow = summarizeCiscoLiveActionControlDecisions(actionControlDecisions);
+  const actionControlFlow = usesEagleGreenShowcaseMetrics && operationalTimeRange === '24h'
+    ? CISCO_LIVE_ACTION_CONTROL_SUMMARY_24H
+    : summarizeCiscoLiveActionControlDecisions(actionControlDecisions);
   const actionControlSpotlightDecision = [...actionControlDecisions]
     .filter(decision => decision.matched)
     .sort((a, b) => Date.parse(b.occurredAt) - Date.parse(a.occurredAt))[0];

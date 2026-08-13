@@ -829,6 +829,23 @@ export function KPIChart({
             <StudioIcon name="reset" weight="bold" size={14} />
           </SharedButton>
         </div>
+
+        {showViewModeToggle ? (
+          <SharedButton
+            variant="secondary"
+            size="sm"
+            className="clus-kpi-splunk-launch"
+            onClick={() => window.open(
+              'https://www.splunk.com/en_us/products/observability.html',
+              '_blank',
+              'noopener,noreferrer',
+            )}
+            title="View interactions in Splunk"
+            aria-label="View interactions in Splunk"
+          >
+            <StudioIcon name="launch" weight="bold" size={14} />
+          </SharedButton>
+        ) : null}
       </div>
     </div>
   );

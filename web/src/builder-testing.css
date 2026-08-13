@@ -469,10 +469,12 @@ mdc-dialog.delete-variable-confirm-dialog[visible] {
   border-radius: 50%;
 }
 
-.clus-kpi-splunk-button {
-  flex: 0 0 auto;
-  margin-left: auto;
-  gap: 8px;
+.clus-kpi-chart-toolbar .clus-kpi-splunk-launch {
+  width: 32px;
+  min-width: 32px;
+  height: 32px;
+  padding: 0;
+  border-radius: 50%;
 }
 
 /* Observability Settings layout — matches the compact builder configuration screen. */

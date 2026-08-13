@@ -37,6 +37,9 @@ import type { KPIData } from './kpiTypes';
 import { parseKpiNumericValue } from './kpiThresholdPresentation';
 import { useApp } from '../../contexts/AppContext';
 import {
+  CISCO_LIVE_ACTION_CONTROL_SUMMARY_24H,
+  CISCO_LIVE_BUSINESS_IMPACT_METRICS,
+  CISCO_LIVE_OPERATIONAL_HEALTH_METRICS,
   CISCO_LIVE_PRIMARY_AGENT_ID,
   CISCO_LIVE_PRIMARY_AGENT_NAME,
 } from '../../demo/ciscoLiveDemo';
@@ -160,6 +163,69 @@ function scopeKpiToAgent(kpi: KPIData, agentName: string): KPIData {
     sparklineData,
     change,
     isPositive,
+  };
+}
+
+function alignKpiWithCiscoLiveOverview(kpi: KPIData): KPIData {
+  const overviewMetric = CISCO_LIVE_OPERATIONAL_HEALTH_METRICS.find(
+    metric => metric.observabilityKpiId === kpi.id,
+  );
+  if (!overviewMetric) return kpi;
+
+  let value = overviewMetric.value;
+  let unit = kpi.unit;
+  if (unit === '%' && value.endsWith('%')) value = value.slice(0, -1);
+  if (unit === '/5' && value.endsWith('/5')) value = value.slice(0, -2);
+
+  return {
+    ...kpi,
+    value,
+    unit,
+    change: overviewMetric.change,
+    isPositive: overviewMetric.isPositive,
+    thresholdStatus: 'good',
+  };
+}
+
+function alignKpiWithCiscoLiveBusinessImpact(kpi: KPIData): KPIData {
+  const storyMetric = CISCO_LIVE_BUSINESS_IMPACT_METRICS.find(
+    metric => metric.observabilityKpiId === kpi.id,
+  );
+  if (!storyMetric) return kpi;
+
+  let value = storyMetric.value;
+  let unit = kpi.unit;
+  if (unit === '%' && value.endsWith('%')) value = value.slice(0, -1);
+
+  return {
+    ...kpi,
+    value,
+    unit,
+    change: storyMetric.change,
+    isPositive: storyMetric.isPositive,
+    thresholdStatus: storyMetric.thresholdStatus,
+  };
+}
+
+function alignKpiWithCiscoLiveActionControl24h(kpi: KPIData): KPIData {
+  const summary = CISCO_LIVE_ACTION_CONTROL_SUMMARY_24H;
+  const valuesById: Record<string, { value: string; unit?: string }> = {
+    'ac-control-evaluations': { value: summary.evaluated.toLocaleString('en-US') },
+    'ac-control-match-rate': { value: String(summary.matchRate), unit: '%' },
+    'ac-steer-outcomes': { value: summary.steered.toLocaleString('en-US') },
+    'ac-denied-actions': { value: summary.denied.toLocaleString('en-US') },
+    'ac-gated-action-unlocks': { value: summary.unlocked.toLocaleString('en-US') },
+  };
+  const aligned = valuesById[kpi.id];
+  if (!aligned) return kpi;
+
+  return {
+    ...kpi,
+    value: aligned.value,
+    unit: aligned.unit ?? kpi.unit,
+    change: '24h aggregate',
+    changeTone: 'neutral',
+    thresholdStatus: 'good',
   };
 }
 
@@ -301,6 +367,10 @@ export function ClusKpiDashboardRoot() {
 
     if (!isEagleGreenObservabilityAgent(dashboardAgentFilter)) return scopedKpis;
 
+    const overviewAlignedKpis = scopedKpis
+      .map(alignKpiWithCiscoLiveOverview)
+      .map(alignKpiWithCiscoLiveBusinessImpact);
+
     const query = searchQuery.trim().toLowerCase();
     const actionControlKpis = buildEagleActionControlKpis({
       dateRange,
@@ -311,7 +381,10 @@ export function ClusKpiDashboardRoot() {
       || kpi.heading.toLowerCase().includes(query)
       || kpi.description.toLowerCase().includes(query)
     ));
-    return [...scopedKpis, ...actionControlKpis];
+    const alignedActionControlKpis = actionControlKpis
+      .map(alignKpiWithCiscoLiveOverview)
+      .map(kpi => dateRange === '24h' ? alignKpiWithCiscoLiveActionControl24h(kpi) : kpi);
+    return [...overviewAlignedKpis, ...alignedActionControlKpis];
   }, [
     filteredKpiData,
     dashboardAgentFilter,
@@ -396,21 +469,6 @@ export function ClusKpiDashboardRoot() {
             className="clus-kpi-date-select"
           />
         </div>
-
-        <SharedButton
-          type="button"
-          variant="secondary"
-          size="sm"
-          className="clus-kpi-splunk-button"
-          onClick={() => window.open(
-            'https://www.splunk.com/en_us/products/observability.html',
-            '_blank',
-            'noopener,noreferrer',
-          )}
-        >
-          <span>Customize with Splunk</span>
-          <Icon name="launch" weight="bold" size={16} />
-        </SharedButton>
 
       </div>
 
