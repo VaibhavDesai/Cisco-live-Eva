@@ -23,6 +23,7 @@ test('Observability shares the agent workspace glass and prioritizes Business Im
   const observabilityRootSource = readSource('../clus-kpi-dashboard/ClusKpiDashboardRoot.tsx');
   const observabilityViewSource = readSource('../clus-kpi-dashboard/components/ObservabilityView.tsx');
   const chartSource = readSource('../clus-kpi-dashboard/components/KPIChart.tsx');
+  const splunkSource = readSource('../clus-kpi-dashboard/components/SplunkSessionModal.tsx');
   const metricSource = readSource('../clus-kpi-dashboard/data/phase1ObservabilityMetrics.ts');
   const configurationSource = readSource('../clus-kpi-dashboard/observabilityConfiguration.ts');
 
@@ -57,8 +58,35 @@ test('Observability shares the agent workspace glass and prioritizes Business Im
   );
   assert.match(
     chartSource,
-    /className="clus-kpi-splunk-launch"[\s\S]*?https:\/\/www\.splunk\.com\/en_us\/products\/observability\.html[\s\S]*?_blank[\s\S]*?noopener,noreferrer/,
-    'the Splunk control should open the external observability experience safely',
+    /className="clus-kpi-splunk-launch"[\s\S]*?onClick=\{\(\) => setSplunkSessionOpen\(true\)\}[\s\S]*?<SplunkSessionModal[\s\S]*?sourceMetric=\{heading\}/,
+    'the Splunk control should open the full-page local cross-launch preview',
+  );
+  assert.doesNotMatch(chartSource, /window\.open\(/);
+  assert.match(
+    splunkSource,
+    /AGENT_NAME = 'EAGLE GREEN VIP Reservations'[\s\S]*?AI goal completion'[\s\S]*?value: 'false'[\s\S]*?Transfer action completed'[\s\S]*?value: 'true'[\s\S]*?AI productivity contribution'[\s\S]*?value: 'false'/,
+    'the preview should distinguish a successful handoff from an incomplete AI goal',
+  );
+  assert.match(
+    splunkSource,
+    /goal_completion_rate'[\s\S]*?value: '0%'[\s\S]*?contained'[\s\S]*?value: 'false'[\s\S]*?handoff_completed'[\s\S]*?value: 'true'[\s\S]*?fallback_triggered'[\s\S]*?value: 'false'/,
+    'session metrics should remain internally consistent with an intentional transfer',
+  );
+  assert.match(
+    splunkSource,
+    /action\.check_availability[\s\S]*?150 guests[\s\S]*?control\.large_event_transfer[\s\S]*?Representative session contributing to 77\.9% voice productivity[\s\S]*?human event specialist[\s\S]*?Availability checked/,
+    'the trace should connect the early human request to the large-event control and productivity story',
+  );
+  assert.doesNotMatch(splunkSource, /containment_percentage|fulfilment_success_rate|goal_completion_percentage|AVERAGE/);
+  assert.match(
+    observabilityStyles,
+    /\.splunk-preview-modal\.modal\s*\{[^}]*width:\s*100vw;[^}]*height:\s*100dvh;[^}]*border-radius:\s*0;/,
+    'the simulated cross-launch should fill the viewport',
+  );
+  assert.match(
+    observabilityStyles,
+    /\.splunk-preview-session-grid\s*\{[^}]*grid-row:\s*4;[\s\S]*?\.splunk-preview-alt-view\s*\{[^}]*grid-row:\s*4;/,
+    'all Splunk detail views should occupy the flexible final row so dividers reach the viewport edge',
   );
   assert.match(
     observabilityStyles,
@@ -1325,8 +1353,8 @@ test('operational status presents its metrics as a compact table with a dashboar
   );
   assert.match(
     demoSource,
-    /label: 'Control evaluations',[\s\S]*?value: '1,248'[\s\S]*?label: 'Steer outcomes',[\s\S]*?value: '742'/,
-    'the operational table should include the two 24-hour aggregate agent control metrics',
+    /label: 'Control evaluations',[\s\S]*?value: '18'[\s\S]*?change: '6h aggregate'[\s\S]*?label: 'Steer outcomes',[\s\S]*?value: '3'[\s\S]*?change: '6h aggregate'/,
+    'the operational table should include the two six-hour aggregate agent control metrics',
   );
   assert.doesNotMatch(
     studioSource,
@@ -1372,21 +1400,21 @@ test('EAGLE GREEN pinned metrics share the exact Overview values', () => {
   );
 });
 
-test('EAGLE GREEN shares its 24-hour agent control aggregate across Overview and Observability', () => {
+test('EAGLE GREEN uses proportionate six-hour and 24-hour agent control aggregates', () => {
   const demoSource = readSource('../../demo/ciscoLiveDemo.ts');
   const overviewSource = readSource('../../pages/agent/AgentStudioLanding.tsx');
   const dashboardSource = readSource('../../features/clus-kpi-dashboard/ClusKpiDashboardRoot.tsx');
 
   assert.match(
     demoSource,
-    /CISCO_LIVE_ACTION_CONTROL_SUMMARY_24H[\s\S]*?evaluated: 1_248[\s\S]*?matched: 849[\s\S]*?notMatched: 399[\s\S]*?steered: 742[\s\S]*?matchRate: 68/,
-    'the shared aggregate should tell a credible high-volume exception-control story',
+    /CISCO_LIVE_ACTION_CONTROL_SUMMARY_6H[\s\S]*?evaluated: 18[\s\S]*?matched: 4[\s\S]*?notMatched: 14[\s\S]*?steered: 3[\s\S]*?unlocked: 1[\s\S]*?matchRate: 22[\s\S]*?CISCO_LIVE_ACTION_CONTROL_SUMMARY_24H[\s\S]*?evaluated: 64[\s\S]*?matched: 14[\s\S]*?notMatched: 50[\s\S]*?steered: 11[\s\S]*?unlocked: 3[\s\S]*?matchRate: 22/,
+    'the aggregates should remain credible for a focused demo window',
   );
-  assert.match(overviewSource, /useState\('24h'\)/);
+  assert.match(overviewSource, /useState\('6h'\)/);
   assert.match(
     overviewSource,
-    /operationalTimeRange === '24h'[\s\S]*?CISCO_LIVE_ACTION_CONTROL_SUMMARY_24H[\s\S]*?: summarizeCiscoLiveActionControlDecisions/,
-    'Overview should use the shared aggregate for its default 24-hour view',
+    /operationalTimeRange === '6h'[\s\S]*?CISCO_LIVE_ACTION_CONTROL_SUMMARY_6H[\s\S]*?operationalTimeRange === '24h'[\s\S]*?CISCO_LIVE_ACTION_CONTROL_SUMMARY_24H/,
+    'Overview should use the six-hour aggregate by default and preserve the 24-hour option',
   );
   assert.match(
     dashboardSource,

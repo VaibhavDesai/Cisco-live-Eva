@@ -21,6 +21,7 @@ import SharedButton from '../../../components/shared/Button';
 import { Icon } from '../momentum';
 import { Icon as StudioIcon } from '../../../icons';
 import { RecentInteractions } from './RecentInteractions';
+import { SplunkSessionModal } from './SplunkSessionModal';
 
 interface KPIChartProps {
   heading: string;
@@ -313,6 +314,7 @@ export function KPIChart({
   const [, setZoomedRange] = useState<{ start: number; end: number } | null>(null);
   const [isZoomMode, setIsZoomMode] = useState(false);
   const [isBoxZoomActive, setIsBoxZoomActive] = useState(false);
+  const [splunkSessionOpen, setSplunkSessionOpen] = useState(false);
   const chartRef = useRef<any>(null);
   const chartColors = useMdsChartThemeColors();
 
@@ -835,11 +837,7 @@ export function KPIChart({
             variant="secondary"
             size="sm"
             className="clus-kpi-splunk-launch"
-            onClick={() => window.open(
-              'https://www.splunk.com/en_us/products/observability.html',
-              '_blank',
-              'noopener,noreferrer',
-            )}
+            onClick={() => setSplunkSessionOpen(true)}
             title="View interactions in Splunk"
             aria-label="View interactions in Splunk"
           >
@@ -847,6 +845,12 @@ export function KPIChart({
           </SharedButton>
         ) : null}
       </div>
+      {splunkSessionOpen ? (
+        <SplunkSessionModal
+          sourceMetric={heading}
+          onClose={() => setSplunkSessionOpen(false)}
+        />
+      ) : null}
     </div>
   );
 }

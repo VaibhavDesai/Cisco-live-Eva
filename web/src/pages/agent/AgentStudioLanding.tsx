@@ -39,6 +39,7 @@ import { useDesignVariation } from '../../contexts/DesignVariationContext';
 import { getElevenLabsConversationSignedUrl, getVoicePreviewErrorMessage } from '../../api/ciscoAi';
 import {
   CISCO_LIVE_ACTION_CONTROL_SUMMARY_24H,
+  CISCO_LIVE_ACTION_CONTROL_SUMMARY_6H,
   CISCO_LIVE_OPERATIONAL_HEALTH_METRICS,
   CISCO_LIVE_PRIMARY_AGENT_ID,
   getCiscoLiveActionMetric,
@@ -427,7 +428,7 @@ export default function AgentStudioLanding() {
   const [previewExpanded, setPreviewExpanded] = useState(false);
   const [previewInteractionEnded, setPreviewInteractionEnded] = useState(false);
   const [previewWidgetOpen, setPreviewWidgetOpen] = useState(false);
-  const [operationalTimeRange, setOperationalTimeRange] = useState('24h');
+  const [operationalTimeRange, setOperationalTimeRange] = useState('6h');
   const [selectedGuardrailActivity, setSelectedGuardrailActivity] = useState<string | null | undefined>(undefined);
   const [selectedOverviewIntervention, setSelectedOverviewIntervention] = useState<OverviewIntervention | null>(
     () => (agentId === CISCO_LIVE_PRIMARY_AGENT_ID ? 'action_control' : null),
@@ -1242,8 +1243,12 @@ export default function AgentStudioLanding() {
     ? getCiscoLiveActionControlDecisions(agent.id, actionConfigurationValues)
     : [])
     .filter(decision => actionControlDecisionAgeHours(decision.occurredAt) <= operationalTimeRangeHours);
-  const actionControlFlow = usesEagleGreenShowcaseMetrics && operationalTimeRange === '24h'
-    ? CISCO_LIVE_ACTION_CONTROL_SUMMARY_24H
+  const actionControlFlow = usesEagleGreenShowcaseMetrics
+    ? operationalTimeRange === '6h'
+      ? CISCO_LIVE_ACTION_CONTROL_SUMMARY_6H
+      : operationalTimeRange === '24h'
+        ? CISCO_LIVE_ACTION_CONTROL_SUMMARY_24H
+        : summarizeCiscoLiveActionControlDecisions(actionControlDecisions)
     : summarizeCiscoLiveActionControlDecisions(actionControlDecisions);
   const actionControlSpotlightDecision = [...actionControlDecisions]
     .filter(decision => decision.matched)

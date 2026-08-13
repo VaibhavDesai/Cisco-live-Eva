@@ -23,17 +23,30 @@ export interface CiscoLiveActionControlDecisionSummary {
   matchRate: number;
 }
 
+/** Curated six-hour aggregate for the default Overview window. */
+export const CISCO_LIVE_ACTION_CONTROL_SUMMARY_6H: CiscoLiveActionControlDecisionSummary = {
+  evaluated: 18,
+  matched: 4,
+  notMatched: 14,
+  actionRan: 16,
+  observed: 1,
+  steered: 3,
+  denied: 0,
+  unlocked: 1,
+  matchRate: 22,
+};
+
 /** Curated 24-hour aggregate; individual seeded Sessions remain drill-down samples. */
 export const CISCO_LIVE_ACTION_CONTROL_SUMMARY_24H: CiscoLiveActionControlDecisionSummary = {
-  evaluated: 1_248,
-  matched: 849,
-  notMatched: 399,
-  actionRan: 1_014,
-  observed: 107,
-  steered: 742,
+  evaluated: 64,
+  matched: 14,
+  notMatched: 50,
+  actionRan: 58,
+  observed: 3,
+  steered: 11,
   denied: 0,
-  unlocked: 107,
-  matchRate: 68,
+  unlocked: 3,
+  matchRate: 22,
 };
 
 export interface CiscoLiveOperationalHealthMetric {
@@ -83,16 +96,16 @@ export const CISCO_LIVE_OPERATIONAL_HEALTH_METRICS: CiscoLiveOperationalHealthMe
     id: 'control-evaluations',
     observabilityKpiId: 'ac-control-evaluations',
     label: 'Control evaluations',
-    value: '1,248',
-    change: '24h aggregate',
+    value: '18',
+    change: '6h aggregate',
     isPositive: true,
   },
   {
     id: 'steer-outcomes',
     observabilityKpiId: 'ac-steer-outcomes',
     label: 'Steer outcomes',
-    value: '742',
-    change: '24h aggregate',
+    value: '3',
+    change: '6h aggregate',
     isPositive: true,
   },
   {
