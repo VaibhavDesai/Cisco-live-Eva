@@ -514,21 +514,6 @@ html[data-product='ai-agent-studio'] .app-header__menu-row-hint {
   outline-offset: -2px;
 }
 
-.sidebar-agent-progress-title {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 0 8px 12px;
-  color: var(--text-primary);
-}
-
-.sidebar-agent-progress-title h2 {
-  margin: 0;
-  font-size: var(--font-size-heading-small, 20px);
-  font-weight: var(--font-weight-semibold, 600);
-  line-height: var(--font-lineheight-heading-small, 28px);
-}
-
 .uplift-agent-panel .sidebar-agent-nav .sidenav__item {
   gap: 12px;
 }

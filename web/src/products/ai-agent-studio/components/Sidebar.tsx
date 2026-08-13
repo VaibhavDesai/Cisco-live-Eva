@@ -176,10 +176,6 @@ export default function Sidebar({
             <Icon name="arrow-left" weight="bold" size="xs" />
             <span>Back to AI Agents</span>
           </Link>
-          <div className="sidebar-agent-progress-title">
-            <Icon name="list-menu" weight="bold" size={20} />
-            <h2>Progress</h2>
-          </div>
           <SideNav aria-label="Agent navigation" className="sidebar-agent-nav">
             <SideNav.Upper>
               <SideNav.Item

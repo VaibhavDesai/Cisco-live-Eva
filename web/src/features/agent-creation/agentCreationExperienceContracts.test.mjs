@@ -1113,9 +1113,10 @@ test('agent navigation uses the floating Uplift rail with collapse and expand ha
 
   assert.match(
     sidebarSource,
-    /className="sidebar uplift-agent-panel"[\s\S]*?aria-label="Collapse agent navigation"[\s\S]*?className="sidebar-agent-back-link"[\s\S]*?<Icon name="list-menu" weight="bold" size=\{20\}[\s\S]*?<h2>Progress<\/h2>/,
-    'the expanded agent rail should preserve the Uplift hierarchy and collapse control',
+    /className="sidebar uplift-agent-panel"[\s\S]*?aria-label="Collapse agent navigation"[\s\S]*?className="sidebar-agent-back-link"[\s\S]*?<SideNav aria-label="Agent navigation"/,
+    'the expanded agent rail should move directly from its back link into agent navigation',
   );
+  assert.doesNotMatch(sidebarSource, /<h2>Progress<\/h2>|sidebar-agent-progress-title/);
   assert.match(
     sidebarSource,
     /className="uplift-agent-panel-handle"[\s\S]*?aria-label="Open agent navigation"[\s\S]*?openAgentPanel\(true\)/,
