@@ -52,7 +52,7 @@ export default function AgentAnalytics() {
       <AgentHeader agent={agent} activeTab="analytics" showPublishButton={false} showTabs={false} />
       <AgentWorkspacePageHeading title="Testing" />
 
-      <div className="secondary-content agent-testing-page agent-testing-page--builder">
+      <div className="secondary-content agent-testing-page agent-testing-page--builder agent-workspace-section-canvas">
         <ThemeModeProvider>
           <BuilderTestingProviders>
             <SimulatedTestingResultsProvider>

@@ -1875,7 +1875,7 @@ export default function ActionConfigureV2() {
       <AgentHeader agent={agent} activeTab="configure" showPublishButton={false} showTabs={false} headerRight={headerActions} />
       <AgentWorkspacePageHeading title={pageTitle} actions={pageActions} />
 
-      <div className="action-config-v2-shell">
+      <div className="action-config-v2-shell agent-workspace-section-canvas">
         <div className="action-config-v2-card">
 
           {activeSection === 'Channels' && (

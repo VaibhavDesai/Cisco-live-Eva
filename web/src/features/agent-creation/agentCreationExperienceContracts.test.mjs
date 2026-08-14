@@ -243,6 +243,14 @@ test('EAGLE GREEN combines adaptive guardrails and Galileo routing in its sessio
     /\.agent-session-policy-card__header > \.configuration-category-icon:first-child\s*\{[^}]*width:\s*32px;[^}]*height:\s*32px;[^}]*flex-basis:\s*32px;/,
     'session policy cards should give the existing 20px icons a roomy 32px wrapper',
   );
+  const sessionPolicyIconRule = studioStyles.match(
+    /\.agent-session-policy-card__header > \.configuration-category-icon:first-child\s*\{[^}]*\}/,
+  )?.[0] ?? '';
+  assert.doesNotMatch(
+    sessionPolicyIconRule,
+    /color:/,
+    'session policy icons should inherit their category accent instead of being forced into a warning color',
+  );
   assert.match(
     sessionsSource,
     /<h2 id=\{`\$\{ACTION_CONTROL_PANEL_ID\}-heading`\}>[\s\S]*?\{actionControl\.unlockedActionNames\[0\] \?\? actionControl\.controlTitle\}[\s\S]*?<\/h2>/,
@@ -1234,8 +1242,8 @@ test('agent control activity matches the Figma card and discloses its selected s
   );
   assert.match(
     styles,
-    /\.agent-studio-connected-chart\.is-detail-selected\s*\{[^}]*border-color:\s*color-mix\(in srgb, var\(--agent-studio-detail-accent\) 72%, var\(--border-color\)\);[^}]*\}/,
-    'the selected activity card should keep only a restrained semantic border',
+    /\.agent-studio-connected-chart\.is-detail-selected\s*\{[^}]*border-width:\s*var\(--border-width-medium\);[^}]*border-color:\s*color-mix\(in srgb, var\(--agent-studio-detail-accent\) 72%, var\(--border-color\)\);[^}]*\}/,
+    'the selected activity card should use a clear two-pixel semantic border',
   );
   const selectedActivityCardRule = styles.match(
     /\.agent-studio-connected-chart\.is-detail-selected\s*\{[^}]*\}/,
@@ -1247,8 +1255,8 @@ test('agent control activity matches the Figma card and discloses its selected s
   );
   assert.match(
     styles,
-    /\.agent-studio-connected-chart\.is-detail-interactive--action-control,[\s\S]*?--agent-studio-detail-accent:\s*var\(--accent-color\);[\s\S]*?\.agent-studio-connected-chart\.is-detail-interactive--guardrail,[\s\S]*?--agent-studio-detail-accent:\s*var\(--warning-color\);/,
-    'Agent control and Guardrail activity cards should use their corresponding accent colors',
+    /\.agent-studio-connected-chart\.is-detail-interactive--action-control,[\s\S]*?--agent-studio-detail-accent:\s*var\(--accent-color\);[\s\S]*?\.agent-studio-connected-chart\.is-detail-interactive--guardrail,[\s\S]*?--agent-studio-detail-accent:\s*var\(--accent-color\);/,
+    'Agent control and Guardrail activity cards should share the same blue interaction accent',
   );
   assert.match(
     styles,
@@ -1469,10 +1477,19 @@ test('configuration and monitor destinations reuse the Overview page-heading con
   assert.match(testingSource, /className="primary-content agent-workspace-page"[\s\S]*?<AgentWorkspacePageHeading title="Testing"/);
   assert.match(sessionsSource, /className="primary-content agent-workspace-page"[\s\S]*?<AgentWorkspacePageHeading[\s\S]*?title="Sessions"/);
   assert.match(historySource, /className="primary-content agent-workspace-page"[\s\S]*?<AgentWorkspacePageHeading title="History"/);
+  assert.match(configureSource, /className="action-config-v2-shell agent-workspace-section-canvas"/);
+  assert.match(testingSource, /className="secondary-content agent-testing-page agent-testing-page--builder agent-workspace-section-canvas"/);
+  assert.match(sessionsSource, /agent-sessions-page agent-workspace-section-canvas/);
+  assert.match(historySource, /className="secondary-content agent-workspace-section-canvas"/);
   assert.match(
     productStyles,
     /\.agent-studio-landing,\s*\.agent-workspace-page\s*\{[^}]*gap:\s*var\(--spacing-medium\);/,
     'Overview and the other agent pages should share the same vertical rhythm',
+  );
+  assert.match(
+    productStyles,
+    /\.agent-workspace-section-canvas\s*\{[^}]*padding:\s*var\(--spacing-medium\);[^}]*border:\s*0;[^}]*border-radius:\s*var\(--border-radius-medium, 8px\);[^}]*background:\s*color-mix\(in srgb, var\(--bg-card\) 88%, transparent\);[^}]*box-shadow:\s*none;/,
+    'Configure, Deploy, and Monitor content should reuse the Overview capability-card surface',
   );
   assert.match(
     productStyles,
@@ -1694,8 +1711,8 @@ test('selected guardrail activity opens its original event banner', () => {
 
   assert.match(
     studioSource,
-    /id=\{detailId\}[\s\S]*?hidden=\{!isDetailSelected\}[\s\S]*?<Banner[\s\S]*?type=\{tileId === ['"]guardrails['"] \? ['"]warning['"] : ['"]info['"]\}[\s\S]*?eagleGuardrailSessionPath/,
-    'the selected guardrail event should use the original warning banner and link to its session',
+    /id=\{detailId\}[\s\S]*?hidden=\{!isDetailSelected\}[\s\S]*?<Banner[\s\S]*?type="info"[\s\S]*?eagleGuardrailSessionPath/,
+    'the selected guardrail event should share the agent-control information banner and link to its session',
   );
   assert.match(
     studioSource,
@@ -1714,8 +1731,13 @@ test('selected guardrail activity opens its original event banner', () => {
   );
   assert.match(
     styles,
-    /button\.agent-studio-guardrail-chart__plot\.is-selected \.agent-studio-guardrail-chart__track i\s*\{[^}]*background:\s*var\(--warning-color\);/,
-    'the selected guardrail should highlight only its filled bar in the warning color',
+    /button\.agent-studio-guardrail-chart__plot\.is-selected \.agent-studio-guardrail-chart__track i\s*\{[^}]*background:\s*var\(--mds-color-theme-outline-label-lime\);/,
+    'the selected guardrail should highlight only its filled bar in the protection accent',
+  );
+  assert.match(
+    styles,
+    /\.configuration-category-icon--guardrail\s*\{[^}]*color:\s*var\(--mds-color-theme-outline-label-lime\);[\s\S]*?\.agent-studio-capability-signal__track--guardrail > span\s*\{[^}]*background:\s*var\(--mds-color-theme-outline-label-lime\);|\.agent-studio-capability-signal__track--guardrail > span\s*\{[^}]*background:\s*var\(--mds-color-theme-outline-label-lime\);[\s\S]*?\.configuration-category-icon--guardrail\s*\{[^}]*color:\s*var\(--mds-color-theme-outline-label-lime\);/,
+    'guardrail capability icons and signal bars should use a non-warning protection accent',
   );
   assert.doesNotMatch(
     styles,

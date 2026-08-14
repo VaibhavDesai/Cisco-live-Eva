@@ -61,7 +61,7 @@ export default function AgentHistory() {
       <AgentHeader agent={agent} activeTab="history" showPublishButton={false} showTabs={false} />
       <AgentWorkspacePageHeading title="History" />
 
-      <div className="secondary-content">
+      <div className="secondary-content agent-workspace-section-canvas">
         <Card style={{ padding: 0 }}>
           {CHANGELOG.map((entry, index) => (
             <div

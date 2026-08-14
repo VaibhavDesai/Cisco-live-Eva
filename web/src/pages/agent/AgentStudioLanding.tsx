@@ -1924,7 +1924,7 @@ export default function AgentStudioLanding() {
                               hidden={!isDetailSelected}
                             >
                               <Banner
-                                type={tileId === 'guardrails' ? 'warning' : 'info'}
+                                type="info"
                                 role="region"
                                 ariaLabel={tileId === 'guardrails'
                                   ? `${selectedGuardrail?.item ?? 'Guardrail'} trigger details`

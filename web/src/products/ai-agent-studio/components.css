@@ -1279,6 +1279,18 @@ html[data-product='ai-agent-studio'] .app-header__menu-row-hint {
   padding-bottom: var(--spacing-x-large);
 }
 
+/* Reuse the Overview capability card as the section canvas for every
+   Configure, Deploy, and Monitor destination. Keep layout and overflow owned
+   by each page so menus, tables, and dialogs retain their existing behavior. */
+.agent-workspace-section-canvas {
+  min-width: 0;
+  padding: var(--spacing-medium);
+  border: 0;
+  border-radius: var(--border-radius-medium, 8px);
+  background: color-mix(in srgb, var(--bg-card) 88%, transparent);
+  box-shadow: none;
+}
+
 .agent-studio-landing > .agent-header-sticky,
 .agent-workspace-page > .agent-header-sticky,
 .agent-studio-hero__header,
@@ -2374,10 +2386,11 @@ html[data-product='ai-agent-studio'] .app-header__menu-row-hint {
 
 .agent-studio-connected-chart.is-detail-interactive--guardrail,
 .agent-studio-connected-chart.is-detail-selected--guardrail {
-  --agent-studio-detail-accent: var(--warning-color);
+  --agent-studio-detail-accent: var(--accent-color);
 }
 
 .agent-studio-connected-chart.is-detail-selected {
+  border-width: var(--border-width-medium);
   border-color: color-mix(in srgb, var(--agent-studio-detail-accent) 72%, var(--border-color));
 }
 
@@ -3028,7 +3041,7 @@ html[data-product='ai-agent-studio'] .app-header__menu-row-hint {
 }
 
 .agent-studio-capability-signal__track--guardrail > span {
-  background: var(--mds-color-theme-outline-label-gold);
+  background: var(--mds-color-theme-outline-label-lime);
 }
 
 .agent-studio-capability-signal small {
@@ -3176,11 +3189,11 @@ button.agent-studio-guardrail-chart__plot:focus-visible .agent-studio-guardrail-
   display: block;
   height: 100%;
   border-radius: inherit;
-  background: color-mix(in srgb, var(--mds-color-theme-outline-label-gold) 72%, var(--bg-primary));
+  background: color-mix(in srgb, var(--mds-color-theme-outline-label-lime) 72%, var(--bg-primary));
 }
 
 button.agent-studio-guardrail-chart__plot.is-selected .agent-studio-guardrail-chart__track i {
-  background: var(--warning-color);
+  background: var(--mds-color-theme-outline-label-lime);
 }
 
 .agent-studio-guardrail-chart__label small {
@@ -4215,7 +4228,6 @@ button.agent-studio-guardrail-chart__plot.is-selected .agent-studio-guardrail-ch
   flex-basis: 32px;
   align-items: center;
   justify-content: center;
-  color: var(--warning-color);
 }
 
 .agent-session-policy-card__header > .configuration-category-icon:first-child svg {
@@ -4347,7 +4359,7 @@ button.agent-studio-guardrail-chart__plot.is-selected .agent-studio-guardrail-ch
 }
 
 .configuration-category-icon--guardrail {
-  color: var(--mds-color-theme-outline-label-gold);
+  color: var(--mds-color-theme-outline-label-lime);
 }
 
 /* Per-connection health indicator */

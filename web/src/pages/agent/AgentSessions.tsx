@@ -497,7 +497,7 @@ export default function AgentSessions() {
         />
       )}
 
-      <div className={`agent-sessions-page${activeSession ? '' : ' secondary-content'}`}>
+      <div className={`agent-sessions-page agent-workspace-section-canvas${activeSession ? '' : ' secondary-content'}`}>
         {activeSession ? (
           <SessionDetail
             session={activeSession}
