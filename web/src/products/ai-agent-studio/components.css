@@ -414,20 +414,25 @@ html[data-product='ai-agent-studio'] .app-header__menu-row-hint {
   pointer-events: none;
 }
 
-/* Let the Overview aurora continue behind the agent identity until the
+/* Let the workspace aurora continue behind the agent identity until the
    identity bar becomes sticky; once scrolling starts, use a solid surface so
    content cannot pass visually beneath the pinned header. */
 .app--ai--agent-context .main > .primary-content.agent-studio-landing > .agent-header-sticky,
-.app--ai--agent-context .main > .primary-content.agent-studio-landing > .agent-header-sticky::before {
+.app--ai--agent-context .main > .primary-content.agent-studio-landing > .agent-header-sticky::before,
+.app--ai--agent-context .main > .primary-content.agent-workspace-page > .agent-header-sticky,
+.app--ai--agent-context .main > .primary-content.agent-workspace-page > .agent-header-sticky::before {
   background: transparent;
 }
 
-.app--ai--agent-context .main > .primary-content.agent-studio-landing > .agent-header-sticky::before {
+.app--ai--agent-context .main > .primary-content.agent-studio-landing > .agent-header-sticky::before,
+.app--ai--agent-context .main > .primary-content.agent-workspace-page > .agent-header-sticky::before {
   transition: background 0.2s ease;
 }
 
 .app--ai--agent-context .main > .primary-content.agent-studio-landing > .agent-header-sticky.agent-header-stuck,
-.app--ai--agent-context .main > .primary-content.agent-studio-landing > .agent-header-sticky.agent-header-stuck::before {
+.app--ai--agent-context .main > .primary-content.agent-studio-landing > .agent-header-sticky.agent-header-stuck::before,
+.app--ai--agent-context .main > .primary-content.agent-workspace-page > .agent-header-sticky.agent-header-stuck,
+.app--ai--agent-context .main > .primary-content.agent-workspace-page > .agent-header-sticky.agent-header-stuck::before {
   background: var(--mds-color-theme-background-solid-primary-normal);
 }
 
@@ -1287,7 +1292,7 @@ html[data-product='ai-agent-studio'] .app-header__menu-row-hint {
   padding: var(--spacing-medium);
   border: 0;
   border-radius: var(--border-radius-medium, 8px);
-  background: color-mix(in srgb, var(--bg-card) 88%, transparent);
+  background: var(--mds-color-theme-background-glass-medium, rgba(0, 0, 0, 0.6));
   box-shadow: none;
 }
 
@@ -1537,7 +1542,7 @@ html[data-product='ai-agent-studio'] .app-header__menu-row-hint {
 .agent-studio-step-card.card {
   height: 100%;
   border-color: color-mix(in srgb, var(--border-color) 72%, transparent);
-  background: color-mix(in srgb, var(--bg-card) 88%, transparent);
+  background: var(--mds-color-theme-background-glass-medium, rgba(0, 0, 0, 0.6));
   box-shadow: none;
 }
 
@@ -10560,42 +10565,31 @@ button.agent-studio-guardrail-chart__plot.is-selected .agent-studio-guardrail-ch
   height: 100%;
 }
 
-/* Eva landing composer needs to fill the page frame instead of the shared AI
-   footer's centered max-width layout. The same shell clipping is needed by
-   the form-builder variation: its `.main` has `margin-top: 64px` but the
-   base `.main` height is `calc(100vh - 56px)`, so without an override the
-   element overflows the viewport by 8px and triggers a body/html-level
-   scrollbar pinned to the very right edge of the page. Scoping by
-   `:has(.eva-form-builder.primary-content)` re-uses the same shell pin we
-   already use for the chat landing/build view, which keeps the fix opt-in
-   to the Eva agent surfaces. Keep this scoped to Agents. */
-html[data-product='ai-agent-studio']:has(.eva-agents-landing--flush),
-html[data-product='ai-agent-studio']:has(.eva-agents-landing--flush) body,
-html[data-product='ai-agent-studio']:has(.eva-agents-landing--flush) #root,
-html[data-product='ai-agent-studio']:has(.eva-agents-landing--flush) .app-shell-root,
-html[data-product='ai-agent-studio']:has(.eva-form-builder.primary-content),
-html[data-product='ai-agent-studio']:has(.eva-form-builder.primary-content) body,
-html[data-product='ai-agent-studio']:has(.eva-form-builder.primary-content) #root,
-html[data-product='ai-agent-studio']:has(.eva-form-builder.primary-content) .app-shell-root {
+/* The shared Studio shell owns the viewport; each route then assigns scrolling
+   to its content surface. `.main` starts 64px below the app header, while its
+   legacy base height subtracts only 56px. Without this correction every
+   Studio route becomes 8px taller than the viewport and the document adds a
+   redundant parent scrollbar beside the route's own scroll container. */
+html[data-product='ai-agent-studio']:has(.app--ai),
+html[data-product='ai-agent-studio']:has(.app--ai) body,
+html[data-product='ai-agent-studio']:has(.app--ai) #root,
+html[data-product='ai-agent-studio']:has(.app--ai) .app-shell-root {
   height: 100vh;
   height: 100dvh;
   min-height: 0;
   overflow: hidden;
 }
 
-.app--ai:has(.eva-agents-landing--flush),
-.app--ai:has(.eva-form-builder.primary-content) {
+.app--ai {
   height: 100vh;
   height: 100dvh;
   min-height: 0;
   overflow: hidden;
 }
 
-.app--ai .main:has(.eva-agents-landing--flush),
-.app--ai .main:has(.eva-form-builder.primary-content) {
+.app--ai .main {
   height: calc(100vh - var(--spacing-big));
   height: calc(100dvh - var(--spacing-big));
-  overflow: hidden;
 }
 
 .eva-agents-landing--flush.primary-content {

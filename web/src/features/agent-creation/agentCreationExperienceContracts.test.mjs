@@ -520,6 +520,11 @@ test('overview cards can be reordered and persist their layout per agent', () =>
     /\.agent-studio-card--operational\.card,\s*\.agent-studio-card--connections\.card\s*\{[^}]*border:\s*0;/,
     'Capability usage and Operational status should share a borderless outer container',
   );
+  assert.match(
+    styles,
+    /\.agent-studio-card\.card,\s*\.agent-studio-step-card\.card\s*\{[^}]*background:\s*var\(--mds-color-theme-background-glass-medium, rgba\(0, 0, 0, 0\.6\)\);/,
+    'Overview outer cards should use the dark translucent surface token',
+  );
 });
 
 test('capability summary cards navigate to their respective configuration sections', () => {
@@ -1453,6 +1458,11 @@ test('agent list, Overview, configuration, and Observability share the responsiv
     /\.primary-content\.agent-studio-landing\s*>\s*\.agent-header-sticky,[\s\S]*?\.agent-header-sticky::before\s*\{[^}]*background:\s*transparent;[\s\S]*?\.agent-header-sticky\.agent-header-stuck,[\s\S]*?\.agent-header-sticky\.agent-header-stuck::before\s*\{[^}]*background:\s*var\(--mds-color-theme-background-solid-primary-normal\);/,
     'the Overview identity bar should stay transparent at rest and become solid only while stuck',
   );
+  assert.match(
+    styles,
+    /\.primary-content\.agent-workspace-page\s*>\s*\.agent-header-sticky,[\s\S]*?\.primary-content\.agent-workspace-page\s*>\s*\.agent-header-sticky::before\s*\{[^}]*background:\s*transparent;[\s\S]*?\.primary-content\.agent-workspace-page\s*>\s*\.agent-header-sticky\.agent-header-stuck,[\s\S]*?\.primary-content\.agent-workspace-page\s*>\s*\.agent-header-sticky\.agent-header-stuck::before\s*\{[^}]*background:\s*var\(--mds-color-theme-background-solid-primary-normal\);/,
+    'configuration and monitor identity bars should stay transparent until scrolling makes them sticky',
+  );
 });
 
 test('configuration and monitor destinations reuse the Overview page-heading contract', () => {
@@ -1488,8 +1498,8 @@ test('configuration and monitor destinations reuse the Overview page-heading con
   );
   assert.match(
     productStyles,
-    /\.agent-workspace-section-canvas\s*\{[^}]*padding:\s*var\(--spacing-medium\);[^}]*border:\s*0;[^}]*border-radius:\s*var\(--border-radius-medium, 8px\);[^}]*background:\s*color-mix\(in srgb, var\(--bg-card\) 88%, transparent\);[^}]*box-shadow:\s*none;/,
-    'Configure, Deploy, and Monitor content should reuse the Overview capability-card surface',
+    /\.agent-workspace-section-canvas\s*\{[^}]*padding:\s*var\(--spacing-medium\);[^}]*border:\s*0;[^}]*border-radius:\s*var\(--border-radius-medium, 8px\);[^}]*background:\s*var\(--mds-color-theme-background-glass-medium, rgba\(0, 0, 0, 0\.6\)\);[^}]*box-shadow:\s*none;/,
+    'Configure, Deploy, and Monitor content should reuse the dark Overview section surface',
   );
   assert.match(
     productStyles,
@@ -2567,6 +2577,26 @@ test('AI agent list cards use the native Uplift card with a visible 16px grid ga
     styles,
     /\.ai-agents-agent-name-button:hover\s*\{[^}]*text-decoration:\s*underline;/,
     'agent card titles should not underline independently on hover',
+  );
+});
+
+test('Studio routes keep document scrolling locked to one route-level surface', () => {
+  const styles = readSource('../../products/ai-agent-studio/components.css');
+
+  assert.match(
+    styles,
+    /html\[data-product=['"]ai-agent-studio['"]\]:has\(\.app--ai\),[\s\S]*?\.app-shell-root\s*\{[^}]*height:\s*100dvh;[^}]*min-height:\s*0;[^}]*overflow:\s*hidden;/,
+    'Studio routes should not create a second document-level scrollbar',
+  );
+  assert.match(
+    styles,
+    /\.app--ai \.main\s*\{[^}]*height:\s*calc\(100dvh - var\(--spacing-big\)\);/,
+    'the main region should account for the full 64px application header',
+  );
+  assert.match(
+    styles,
+    /\.app--ai \.primary-content\s*\{[^}]*height:\s*100%;[^}]*min-height:\s*0;[^}]*overflow-y:\s*auto;/,
+    'the primary content should remain the single vertical scroll owner',
   );
 });
 
