@@ -86,6 +86,18 @@ html[data-product='ai-agent-studio']:has(.eva-first-interface--landing) .app--ai
   filter: blur(clamp(88px, 7vw, 132px));
 }
 
+/* Keep the shared field behind the fixed header on every aurora route, then
+   extend it beneath the transparent main navigation on top-level pages. */
+html[data-product='ai-agent-studio']:has(.app--ai--studio-aurora)
+  .app--ai__bg--studio-aurora::before {
+  bottom: clamp(-18rem, -18vh, -10rem);
+}
+
+html[data-product='ai-agent-studio']:has(.app--ai--studio-aurora:not(.app--ai--agent-context))
+  .app--ai__bg--studio-aurora::before {
+  left: clamp(-2rem, 2vw, 2rem);
+}
+
 .app--ai__bg--studio-aurora::after {
   right: auto;
   left: clamp(58%, 69vw, 76%);
@@ -115,7 +127,8 @@ html[data-product='ai-agent-studio']:has(.eva-first-interface--landing) .app--ai
 
 .app--ai .header,
 html[data-product='ai-agent-studio'] .app-header {
-  background: transparent;
+  background: none;
+  border-bottom: 0;
   z-index: 100;
 }
 
@@ -236,6 +249,12 @@ html[data-product='ai-agent-studio'] .app-header__menu-row-hint {
   z-index: 90;
 }
 
+/* The workspace navigation is a transparent rail over the shared aurora.
+   Agent detail keeps its independent floating glass panel treatment. */
+.app--ai--studio-aurora:not(.app--ai--agent-context) > .sidebar {
+  background: none;
+}
+
 .app--ai .main {
   z-index: 1;
   overflow: hidden;
@@ -257,9 +276,19 @@ html[data-product='ai-agent-studio'] .app-header__menu-row-hint {
 .app--ai--studio-aurora .primary-content.agent-studio-landing,
 .app--ai--studio-aurora .primary-content.action-config-v2-page,
 .app--ai--studio-aurora .clus-kpi-dashboard-root {
-  background: color-mix(in srgb, var(--mds-color-theme-background-solid-primary-normal) 36%, transparent);
   backdrop-filter: blur(28px);
   -webkit-backdrop-filter: blur(28px);
+}
+
+.app--ai--studio-aurora .primary-content.agent-studio-landing,
+.app--ai--studio-aurora .primary-content.action-config-v2-page {
+  background: color-mix(in srgb, var(--mds-color-theme-background-solid-primary-normal) 36%, transparent);
+}
+
+.app--ai--studio-aurora .primary-content.ai-agents-page,
+.app--ai--studio-aurora .clus-kpi-dashboard-root {
+  background: rgba(0, 0, 0, 0.5);
+  border: none;
 }
 
 @media (max-width: 767px) {
@@ -277,16 +306,20 @@ html[data-product='ai-agent-studio'] .app-header__menu-row-hint {
     height: 100vw;
   }
 
-  .app--ai--studio-aurora .primary-content.ai-agents-page,
   .app--ai--studio-aurora .primary-content.agent-studio-landing,
-  .app--ai--studio-aurora .primary-content.action-config-v2-page,
-  .app--ai--studio-aurora .clus-kpi-dashboard-root {
+  .app--ai--studio-aurora .primary-content.action-config-v2-page {
     background: color-mix(in srgb, var(--mds-color-theme-background-solid-primary-normal) 42%, transparent);
   }
 }
 
 [data-theme='light'] .app--ai .primary-content {
   background: color-mix(in srgb, var(--mds-color-theme-background-solid-primary-normal) 60%, transparent);
+}
+
+[data-theme='light'] .app--ai--studio-aurora .primary-content.ai-agents-page,
+[data-theme='light'] .app--ai--studio-aurora .clus-kpi-dashboard-root {
+  background: color-mix(in srgb, var(--mds-color-theme-background-solid-primary-normal) 60%, transparent);
+  border: none;
 }
 
 /* Sidebar */
@@ -416,7 +449,7 @@ html[data-product='ai-agent-studio'] .app-header__menu-row-hint {
   box-sizing: border-box !important;
   padding: 12px 12px 12px 0 !important;
   overflow: visible !important;
-  border: var(--border-width-small) solid var(--border-color) !important;
+  border: 0 !important;
   border-radius: 12px !important;
   background: var(--bg-glass) !important;
   color: var(--text-primary);
@@ -438,8 +471,7 @@ html[data-product='ai-agent-studio'] .app-header__menu-row-hint {
   align-items: center;
   justify-content: center;
   padding: 0;
-  border: 1px solid var(--mds-color-theme-outline-glass-0, rgba(255, 255, 255, 0.11));
-  border-left: 0;
+  border: 0;
   border-radius: 0 10px 10px 0;
   background: var(--uplift-core-container-background);
   backdrop-filter: blur(10px);
@@ -534,8 +566,7 @@ html[data-product='ai-agent-studio'] .app-header__menu-row-hint {
   align-items: center;
   justify-content: center;
   padding: 0;
-  border: 1px solid var(--mds-color-theme-outline-glass-0, rgba(255, 255, 255, 0.11));
-  border-left: 0;
+  border: 0;
   border-radius: 0 10px 10px 0;
   background: var(--uplift-core-container-background);
   backdrop-filter: blur(10px);
@@ -1581,6 +1612,7 @@ html[data-product='ai-agent-studio'] .app-header__menu-row-hint {
 .agent-studio-card--operational.card,
 .agent-studio-card--connections.card {
   grid-column: 1 / -1;
+  border: 0;
 }
 
 .agent-studio-card--operational .card-header {

@@ -21,14 +21,20 @@ import {
   type EntitlementState,
 } from '../features/agent-creation/agentCreationModel';
 import {
+  buildCiscoLiveInstructions,
+  buildDefaultCiscoLiveInstructions,
   buildCiscoLiveSeed,
   EAGLE_GREEN_ACTION_CONTROL_ID,
   EAGLE_GREEN_ACTION_CONTROL_VALUES,
   EAGLE_GREEN_CHECK_AVAILABILITY_ACTION_ID,
   EAGLE_GREEN_HANDOVER_ACTION_ID,
   EAGLE_GREEN_HANDOVER_CONTROL_ID,
+  EAGLE_GREEN_LEGACY_VIP_RESERVATION_INSTRUCTIONS,
 } from '../demo/ciscoLiveSeed';
 import {
+  CISCO_LIVE_AGENTS,
+  CISCO_LIVE_PERSONALIZED_DIETARY_ALCOHOL_GUARDRAIL,
+  CISCO_LIVE_PERSONALIZED_DIETARY_ALCOHOL_SECURITY_RULE,
   CISCO_LIVE_PRIMARY_AGENT_ID,
   CISCO_LIVE_VIP_EVENT_CONFIDENTIALITY_GUARDRAIL,
 } from '../demo/ciscoLiveDemo';
@@ -112,7 +118,7 @@ export interface AppContextValue {
 }
 
 interface PersistedAgentState {
-  schemaVersion: 10;
+  schemaVersion: 14;
   agents: AgentsMap;
   agentDrafts: AgentDraftsMap;
 }
@@ -120,7 +126,7 @@ interface PersistedAgentState {
 export const APP_AGENT_STORAGE_KEY = 'webex-ai-agent-studio-agents-v1';
 
 const emptyAgentState = (): PersistedAgentState => ({
-  schemaVersion: 10,
+  schemaVersion: 14,
   agents: {},
   agentDrafts: {},
 });
@@ -130,6 +136,7 @@ const isRecord = (value: unknown): value is Record<string, unknown> =>
 
 const LEGACY_LARGE_RESERVATION_GUARDRAIL_ID = 'custom-large-reservation-approval';
 const LEGACY_LARGE_RESERVATION_GUARDRAIL_NAME = 'large reservation approval';
+const RETIRED_PRIMARY_PREBUILT_GUARDRAIL_NAMES = new Set(['toxicity', 'jailbreak']);
 
 const normalizedGuardrailField = (value: unknown) =>
   typeof value === 'string' ? value.trim().toLowerCase() : '';
@@ -148,29 +155,49 @@ const isCurrentVipConfidentialityGuardrail = (value: unknown): boolean => {
       === CISCO_LIVE_VIP_EVENT_CONFIDENTIALITY_GUARDRAIL.name.toLowerCase();
 };
 
-const migrateStoredCustomGuardrails = (value: unknown): { value: unknown; changed: boolean } => {
-  if (!Array.isArray(value) || !value.some(isLegacyLargeReservationGuardrail)) {
+const isCurrentPersonalizedDietaryAlcoholGuardrail = (value: unknown): boolean => {
+  if (!isRecord(value)) return false;
+  return normalizedGuardrailField(value.id)
+      === CISCO_LIVE_PERSONALIZED_DIETARY_ALCOHOL_GUARDRAIL.id.toLowerCase()
+    || normalizedGuardrailField(value.name)
+      === CISCO_LIVE_PERSONALIZED_DIETARY_ALCOHOL_GUARDRAIL.name.toLowerCase();
+};
+
+const migrateStoredCustomGuardrails = (
+  value: unknown,
+  addPersonalizedDietaryAlcoholGuardrail: boolean,
+  removeVipEventConfidentialityGuardrail: boolean,
+): { value: unknown; changed: boolean } => {
+  if (!Array.isArray(value)) {
     return { value, changed: false };
   }
 
-  // If a current confidentiality guardrail is already present, keep it and
-  // remove the obsolete large-reservation copy. Otherwise replace the first
-  // obsolete copy with the complete current definition. Unrelated user-created
+  // Schema 14 retires the seeded VIP confidentiality policy and its obsolete
+  // large-reservation predecessor from the primary demo. Unrelated custom
   // guardrails remain untouched and in their original order.
-  let hasCurrentGuardrail = value.some(isCurrentVipConfidentialityGuardrail);
-  const migrated = value.flatMap((item) => {
-    if (!isLegacyLargeReservationGuardrail(item)) return [item];
-    if (hasCurrentGuardrail) return [];
+  let migrated = removeVipEventConfidentialityGuardrail
+    ? value.filter(item => (
+      !isLegacyLargeReservationGuardrail(item)
+      && !isCurrentVipConfidentialityGuardrail(item)
+    ))
+    : value;
+  let changed = migrated.length !== value.length;
+  if (
+    addPersonalizedDietaryAlcoholGuardrail
+    && !migrated.some(isCurrentPersonalizedDietaryAlcoholGuardrail)
+  ) {
+    migrated = [
+      ...migrated,
+      {
+        ...structuredClone(CISCO_LIVE_PERSONALIZED_DIETARY_ALCOHOL_GUARDRAIL),
+        enabled: true,
+        versions: [],
+      },
+    ];
+    changed = true;
+  }
 
-    hasCurrentGuardrail = true;
-    return [{
-      ...structuredClone(CISCO_LIVE_VIP_EVENT_CONFIDENTIALITY_GUARDRAIL),
-      enabled: typeof item.enabled === 'boolean' ? item.enabled : true,
-      versions: [],
-    }];
-  });
-
-  return { value: migrated, changed: true };
+  return { value: migrated, changed };
 };
 
 // The Cisco Live demo agents are always seeded so they appear on /agents fully
@@ -185,6 +212,9 @@ const migratePrimaryDemoDraft = (draft: AgentDraft, storedSchemaVersion: number)
   const shouldMigrateLargeEventControlMatchMode = storedSchemaVersion < 8;
   const shouldMigrateHandoverAction = storedSchemaVersion < 9;
   const shouldMigrateHandoverTurnRule = storedSchemaVersion < 10;
+  const shouldAddPersonalizedDietaryAlcoholGuardrail = storedSchemaVersion < 11;
+  const shouldMigratePrimaryInstructions = storedSchemaVersion < 13;
+  const shouldRemoveVipEventConfidentialityGuardrail = storedSchemaVersion < 14;
   let migratedActions = actions;
   if (actions && (
     shouldMigrateLegacyActions
@@ -325,22 +355,43 @@ const migratePrimaryDemoDraft = (draft: AgentDraft, storedSchemaVersion: number)
   const existingSecuritySelections = Array.isArray(securityValues.selections)
     ? securityValues.selections.filter((item): item is string => typeof item === 'string')
     : [];
-  let hasVipConfidentialitySelection = false;
-  const migratedSecuritySelections = existingSecuritySelections.flatMap((item) => {
-    const normalizedItem = item.trim().toLowerCase();
-    const isLegacySelection = normalizedItem === LEGACY_LARGE_RESERVATION_GUARDRAIL_NAME;
-    const isCurrentSelection = normalizedItem
-      === CISCO_LIVE_VIP_EVENT_CONFIDENTIALITY_GUARDRAIL.name.toLowerCase();
-    if (!isLegacySelection && !isCurrentSelection) return [item];
-    if (hasVipConfidentialitySelection) return [];
-
-    hasVipConfidentialitySelection = true;
-    return [isLegacySelection ? CISCO_LIVE_VIP_EVENT_CONFIDENTIALITY_GUARDRAIL.name : item];
-  });
+  let migratedSecuritySelections = shouldRemoveVipEventConfidentialityGuardrail
+    ? existingSecuritySelections.filter((item) => {
+      const normalizedItem = item.trim().toLowerCase();
+      return normalizedItem !== LEGACY_LARGE_RESERVATION_GUARDRAIL_NAME
+        && normalizedItem !== CISCO_LIVE_VIP_EVENT_CONFIDENTIALITY_GUARDRAIL.name.toLowerCase()
+        && !RETIRED_PRIMARY_PREBUILT_GUARDRAIL_NAMES.has(normalizedItem);
+    })
+    : existingSecuritySelections;
+  const customGuardrailsMigration = migrateStoredCustomGuardrails(
+    securityValues.customGuardrails,
+    shouldAddPersonalizedDietaryAlcoholGuardrail,
+    shouldRemoveVipEventConfidentialityGuardrail,
+  );
+  const migratedPersonalizedGuardrail = Array.isArray(customGuardrailsMigration.value)
+    ? customGuardrailsMigration.value.find(isCurrentPersonalizedDietaryAlcoholGuardrail)
+    : undefined;
+  const hasPersonalizedGuardrailSelection = migratedSecuritySelections.some(
+    item => normalizedGuardrailField(item)
+      === CISCO_LIVE_PERSONALIZED_DIETARY_ALCOHOL_GUARDRAIL.name.toLowerCase(),
+  );
+  const personalizedGuardrailUsesSeedFallback = !Array.isArray(customGuardrailsMigration.value);
+  const personalizedGuardrailIsEnabled = isRecord(migratedPersonalizedGuardrail)
+    ? migratedPersonalizedGuardrail.enabled !== false
+    : personalizedGuardrailUsesSeedFallback;
+  if (
+    shouldAddPersonalizedDietaryAlcoholGuardrail
+    && personalizedGuardrailIsEnabled
+    && !hasPersonalizedGuardrailSelection
+  ) {
+    migratedSecuritySelections = [
+      ...migratedSecuritySelections,
+      CISCO_LIVE_PERSONALIZED_DIETARY_ALCOHOL_GUARDRAIL.name,
+    ];
+  }
   const selectionsChanged = migratedSecuritySelections.some(
     (selection, index) => selection !== existingSecuritySelections[index],
   ) || migratedSecuritySelections.length !== existingSecuritySelections.length;
-  const customGuardrailsMigration = migrateStoredCustomGuardrails(securityValues.customGuardrails);
   const securityChanged = Boolean(security) && (selectionsChanged || customGuardrailsMigration.changed);
   const migratedSecurity = securityChanged && security ? {
     ...security,
@@ -353,10 +404,43 @@ const migratePrimaryDemoDraft = (draft: AgentDraft, storedSchemaVersion: number)
     },
   } : security;
 
-  if (migratedActions === actions && migratedSecurity === security) return draft;
+  const primaryDefinition = CISCO_LIVE_AGENTS.find(
+    candidate => candidate.id === CISCO_LIVE_PRIMARY_AGENT_ID,
+  );
+  const knownSeededPrimaryInstructions = primaryDefinition
+    ? [
+      buildDefaultCiscoLiveInstructions(primaryDefinition),
+      buildDefaultCiscoLiveInstructions({
+        ...primaryDefinition,
+        securityRules: primaryDefinition.securityRules.filter(
+          rule => rule !== CISCO_LIVE_PERSONALIZED_DIETARY_ALCOHOL_SECURITY_RULE,
+        ),
+      }),
+      EAGLE_GREEN_LEGACY_VIP_RESERVATION_INSTRUCTIONS,
+    ]
+    : [];
+  const storedPrimaryInstructions = draft.instructions.content.trim();
+  const instructionsChanged = Boolean(
+    shouldMigratePrimaryInstructions
+    && primaryDefinition
+    && knownSeededPrimaryInstructions.some(
+      instructions => storedPrimaryInstructions === instructions.trim(),
+    ),
+  );
+  const migratedInstructions = instructionsChanged && primaryDefinition ? {
+    ...draft.instructions,
+    content: buildCiscoLiveInstructions(primaryDefinition),
+  } : draft.instructions;
+
+  if (
+    migratedActions === actions
+    && migratedSecurity === security
+    && migratedInstructions === draft.instructions
+  ) return draft;
 
   return {
     ...draft,
+    instructions: migratedInstructions,
     familyConfiguration: {
       ...draft.familyConfiguration,
       ...(migratedActions ? { actions: migratedActions } : {}),
@@ -380,7 +464,7 @@ const withCiscoLiveSeed = (
     );
   }
   return {
-    schemaVersion: 10,
+    schemaVersion: 14,
     agents: { ...seed.agents, ...agents },
     agentDrafts: { ...seed.agentDrafts, ...migratedDrafts },
   };

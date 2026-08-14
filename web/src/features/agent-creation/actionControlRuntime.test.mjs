@@ -140,17 +140,27 @@ test('Handover nudges early requests and transfers at turn 5', () => {
   assert.equal(eligibleRequest.shouldExecuteAction, true);
 });
 
-test('EAGLE GREEN reports only payment data protection as triggered', () => {
+test('EAGLE GREEN reports payment and personalized-advice guardrails as triggered', () => {
   const agentId = 'golftop-vip-reservations';
+  const primaryAgent = demo.CISCO_LIVE_AGENTS.find(agent => agent.id === agentId);
   const sessions = demo.getCiscoLiveSessions(agentId);
   const triggeredGuardrails = sessions
     .filter(session => session.guardrailTriggered)
     .map(session => session.guardrail?.name);
   const reservationSession = sessions.find(session => session.id === 'SES-GT-1042');
+  const retirementSession = sessions.find(session => session.id === 'SES-GT-1029');
 
-  assert.deepEqual(triggeredGuardrails, ['Payment data protection']);
-  assert.equal(demo.getCiscoLiveGuardrailTriggerCount('VIP event confidentiality', agentId), 0);
+  assert.deepEqual(triggeredGuardrails, [
+    'Payment data protection',
+    'No Personalized Dietary & Alcohol Advice',
+  ]);
+  assert.deepEqual(primaryAgent?.prebuiltGuardrailIds, ['priv-pii', 'priv-credit-card']);
+  assert.deepEqual(
+    primaryAgent?.customGuardrails.map(guardrail => guardrail.name),
+    ['Payment data protection', 'No Personalized Dietary & Alcohol Advice'],
+  );
   assert.equal(demo.getCiscoLiveGuardrailTriggerCount('Payment data protection', agentId), 1);
+  assert.equal(demo.getCiscoLiveGuardrailTriggerCount('No Personalized Dietary & Alcohol Advice', agentId), 1);
   assert.equal(sessions.some(session => session.id === 'SES-GT-1045'), false);
   assert.equal(reservationSession?.guardrailTriggered, true);
   assert.equal(reservationSession?.actionControlTriggered, true);
@@ -161,6 +171,22 @@ test('EAGLE GREEN reports only payment data protection as triggered', () => {
   assert.equal(reservationSession?.transcript[6]?.title, 'Payment data protection blocked sensitive input');
   assert.equal(reservationSession?.transcript[9]?.kind, 'action_control');
   assert.equal(reservationSession?.guardrail?.result, 'No payment card details were retained, repeated, or processed in the conversation');
+  assert.equal(retirementSession?.guardrailTriggered, true);
+  assert.equal(retirementSession?.guardrail?.id, 'custom-no-personalized-dietary-alcohol-advice');
+  assert.equal(retirementSession?.outcome, 'In progress');
+  assert.equal(retirementSession?.messages, 5);
+  assert.equal(retirementSession?.transcript.length, 6);
+  assert.equal(retirementSession?.transcript[4]?.kind, 'guardrail');
+  assert.equal(retirementSession?.transcript[4]?.title, 'No Personalized Dietary & Alcohol Advice blocked response');
+  assert.equal(
+    retirementSession?.transcript[5]?.text,
+    'I can share the published sodium and nutrition information for our dishes and show you our non-alcoholic beverage options. I cannot determine which items or amount of alcohol would be safe based on a medical condition or medication. Once you make your selections, I can add them to the reservation.',
+  );
+  const deliveredRetirementAgentText = retirementSession?.transcript
+    .filter(event => event.kind === 'agent')
+    .map(event => event.text)
+    .join(' ') ?? '';
+  assert.equal(deliveredRetirementAgentText.includes('One glass of red wine should also be safe'), false);
 });
 
 test('post-tool compound evaluation uses strict thresholds and a required session-time window', () => {

@@ -13,6 +13,12 @@ import type { EvaAgentDraft, EvaKnowledgeRecommendation } from './types';
 
 const STORYLINE_UPDATED_AT = '2026-07-13T16:30:00.000Z';
 
+const formatConjunctionList = (items: string[]): string => {
+  if (items.length < 2) return items[0] ?? '';
+  if (items.length === 2) return `${items[0]} and ${items[1]}`;
+  return `${items.slice(0, -1).join(', ')}, and ${items.at(-1)}`;
+};
+
 export function getCiscoLiveAgentDefinition(agentId?: string, agentName?: string) {
   return CISCO_LIVE_AGENTS.find(agent =>
     (agentId && agent.id === agentId) || (agentName && agent.name === agentName),
@@ -59,7 +65,9 @@ export function buildCiscoLiveEvaSession(
   const hasVoice = agent.selectedChannels.includes('voice');
   const knowledgeSummary = agent.knowledgeSources.map(source => source.name).join(', ');
   const actionSummary = agent.actions.join(', ');
-  const guardrailSummary = agent.customGuardrails.map(guardrail => guardrail.name).join(' and ');
+  const guardrailSummary = formatConjunctionList(
+    agent.customGuardrails.map(guardrail => guardrail.name),
+  );
 
   return {
     sourceAgentId: agent.id,

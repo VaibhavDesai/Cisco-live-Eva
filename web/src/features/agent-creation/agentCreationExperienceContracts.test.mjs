@@ -16,7 +16,7 @@ test('Observability omits projected exhaustion metrics', () => {
   assert.doesNotMatch(agentDashboardSource, /ObservabilityProjectionCard|observabilityProjectionIdForCategory/);
 });
 
-test('Observability shares the agent workspace glass and prioritizes Business Impact', () => {
+test('Observability and AI Agents share the borderless transparent shell and prioritize Business Impact', () => {
   const layoutSource = readSource('../../components/layout/MainLayout.tsx');
   const studioStyles = readSource('../../products/ai-agent-studio/components.css');
   const observabilityStyles = readSource('../../builder-testing.css');
@@ -33,8 +33,8 @@ test('Observability shares the agent workspace glass and prioritizes Business Im
   );
   assert.match(
     studioStyles,
-    /\.primary-content\.action-config-v2-page,[\s\S]*?\.clus-kpi-dashboard-root\s*\{[^}]*36%[^}]*backdrop-filter:\s*blur\(28px\)/,
-    'Observability should use the same translucent surface as Overview and Configure',
+    /\.app--ai--studio-aurora \.primary-content\.ai-agents-page,\s*\.app--ai--studio-aurora \.clus-kpi-dashboard-root\s*\{[^}]*background:\s*rgba\(0, 0, 0, 0\.5\);[^}]*border:\s*none;/,
+    'Observability and AI Agents should share one 50%-opaque black surface without a container border',
   );
   assert.match(
     metricSource,
@@ -90,8 +90,8 @@ test('Observability shares the agent workspace glass and prioritizes Business Im
   );
   assert.match(
     observabilityStyles,
-    /\.kpi-card\s*\{[^}]*--kpi-card-surface:\s*color-mix\([\s\S]*?background-solid-primary-normal\) 24%,[\s\S]*?background-glass-normal[\s\S]*?\.kpi-card--glass\s*\{[^}]*background:\s*var\(--kpi-card-surface\);/,
-    'metric cards should use a slightly more opaque surface so the aurora stays behind the data',
+    /\.kpi-card\s*\{[^}]*--kpi-card-surface:\s*color-mix\([\s\S]*?background-solid-primary-normal\) 32%,[\s\S]*?background-glass-normal[\s\S]*?\.kpi-card--glass\s*\{[^}]*background:\s*var\(--kpi-card-surface\);/,
+    'metric cards should use a more solid glass surface so the aurora stays behind the data',
   );
   assert.match(
     observabilityRootSource,
@@ -103,7 +103,7 @@ test('Observability shares the agent workspace glass and prioritizes Business Im
   assert.doesNotMatch(observabilityStyles, /\.clus-kpi-splunk-button/);
 });
 
-test('EAGLE GREEN combines Galileo routing and payment protection in one session', () => {
+test('EAGLE GREEN combines adaptive guardrails and Galileo routing in its session evidence', () => {
   const demoSource = readSource('../../demo/ciscoLiveDemo.ts');
   const seedSource = readSource('../../demo/ciscoLiveSeed.ts');
   const configureSource = readSource('../../pages/agent/ActionConfigureV2.tsx');
@@ -119,8 +119,18 @@ test('EAGLE GREEN combines Galileo routing and payment protection in one session
   );
   assert.match(
     demoSource,
-    /CISCO_LIVE_PRIMARY_GUARDRAILS\s*=\s*\[[\s\S]*?CISCO_LIVE_VIP_EVENT_CONFIDENTIALITY_GUARDRAIL[\s\S]*?\]/,
-    'the confidentiality policy should be part of the primary agent seed',
+    /CISCO_LIVE_PERSONALIZED_DIETARY_ALCOHOL_GUARDRAIL[\s\S]*?id:\s*['"]custom-no-personalized-dietary-alcohol-advice['"][\s\S]*?name:\s*['"]No Personalized Dietary & Alcohol Advice['"][\s\S]*?action:\s*['"]block['"][\s\S]*?direction:\s*['"]response['"]/,
+    'the medical-context policy should block unsafe agent responses without blocking the customer prompt',
+  );
+  assert.match(
+    demoSource,
+    /CISCO_LIVE_PRIMARY_GUARDRAILS\s*=\s*\[\s*CISCO_LIVE_PAYMENT_DATA_GUARDRAIL,\s*CISCO_LIVE_PERSONALIZED_DIETARY_ALCOHOL_GUARDRAIL,\s*\]/,
+    'the primary seed should contain only the two configured adaptive policies',
+  );
+  assert.match(
+    demoSource,
+    /id:\s*CISCO_LIVE_PRIMARY_AGENT_ID[\s\S]*?prebuiltGuardrailIds:\s*\[['"]priv-pii['"],\s*['"]priv-credit-card['"]\]/,
+    'the primary seed should enable only prebuilt policies present in the current Security catalog',
   );
   assert.match(
     demoSource,
@@ -194,6 +204,16 @@ test('EAGLE GREEN combines Galileo routing and payment protection in one session
     demoSource,
     /title:\s*['"]Payment data protection blocked sensitive input['"][\s\S]*?text:\s*['"]Card details were blocked and redacted before storage\.[\s\S]*?detail:\s*['"]Adaptive guardrail triggered['"]/,
     'the transcript event should identify the payment-data guardrail trigger without retaining the spoken details',
+  );
+  assert.match(
+    demoSource,
+    /id:\s*['"]SES-GT-1029['"][\s\S]*?customer:\s*['"]Marcus Chen['"][\s\S]*?topic:\s*['"]Retirement celebration['"][\s\S]*?messages:\s*5[\s\S]*?outcome:\s*['"]In progress['"][\s\S]*?guardrailTriggered:\s*true[\s\S]*?name:\s*['"]No Personalized Dietary & Alcohol Advice['"]/,
+    'the Marcus retirement session should carry the new adaptive guardrail evidence',
+  );
+  assert.match(
+    demoSource,
+    /id:\s*['"]SES-GT-1029['"][\s\S]*?text:\s*['"]I’d like a private bay for six this Saturday\. We’re celebrating my father’s retirement\. It’s also his first big outing since heart surgery\.['"][\s\S]*?title:\s*['"]No Personalized Dietary & Alcohol Advice blocked response['"][\s\S]*?text:\s*['"]Personalized dish and alcohol-safety recommendations were blocked before delivery\.['"][\s\S]*?text:\s*['"]I can share the published sodium and nutrition information for our dishes and show you our non-alcoholic beverage options\. I cannot determine which items or amount of alcohol would be safe based on a medical condition or medication\. Once you make your selections, I can add them to the reservation\.['"]/,
+    'the blocked draft should be replaced with the approved safe response in Marcus’s transcript',
   );
   assert.match(sessionsSource, /event\.kind === ['"]action_control['"][\s\S]*?Agent control/);
   assert.match(
@@ -282,21 +302,22 @@ test('EAGLE GREEN combines Galileo routing and payment protection in one session
   );
   assert.match(
     overviewSource,
-    /usesEagleGreenShowcaseMetrics\s*\?\s*['"]4 prebuilt · 2 adaptive['"]/,
-    'the EAGLE GREEN guardrail summary should distinguish its prebuilt and adaptive guardrails',
+    /configuredAdaptiveGuardrailCount\s*=\s*configuredSecurity\.filter[\s\S]*?configuredPrebuiltGuardrailCount\s*=\s*Math\.max\([\s\S]*?configuredSecurity\.length\s*-\s*configuredAdaptiveGuardrailCount/,
+    'the Overview should derive its prebuilt and adaptive counts from enabled Security policies',
   );
   assert.match(
     overviewSource,
-    /guardrails:\s*usesEagleGreenShowcaseMetrics\s*\?\s*6\s*:\s*configuredSecurity\.length/,
-    'the EAGLE GREEN guardrail total should match the six-item prebuilt and adaptive breakdown',
+    /guardrails:\s*configuredSecurity\.length[\s\S]*?`\$\{configuredPrebuiltGuardrailCount\} prebuilt · \$\{configuredAdaptiveGuardrailCount\} adaptive`/,
+    'the guardrail total and breakdown should stay synchronized with the enabled configuration',
   );
 });
 
 test('EAGLE GREEN upgrades legacy state and normalizes action names', () => {
   const contextSource = readSource('../../contexts/AppContext.tsx');
+  const seedSource = readSource('../../demo/ciscoLiveSeed.ts');
   const policyStudioSource = readSource('../../pages/agent/SecurityUIPolicyStudio.tsx');
 
-  assert.match(contextSource, /schemaVersion:\s*10/);
+  assert.match(contextSource, /schemaVersion:\s*14/);
   assert.match(
     contextSource,
     /shouldMigrateLegacyActions\s*=\s*storedSchemaVersion\s*<\s*4[\s\S]*?hasStoredSelections[\s\S]*?hasCheckAvailabilityControls[\s\S]*?!Array\.isArray\(checkAvailabilityControls\)/,
@@ -333,13 +354,48 @@ test('EAGLE GREEN upgrades legacy state and normalizes action names', () => {
   );
   assert.match(
     contextSource,
-    /migrateStoredCustomGuardrails\(securityValues\.customGuardrails\)[\s\S]*?customGuardrails:\s*customGuardrailsMigration\.value/,
+    /migrateStoredCustomGuardrails\([\s\S]*?securityValues\.customGuardrails,[\s\S]*?shouldAddPersonalizedDietaryAlcoholGuardrail,[\s\S]*?shouldRemoveVipEventConfidentialityGuardrail[\s\S]*?customGuardrails:\s*customGuardrailsMigration\.value/,
     'stored adaptive guardrail objects should migrate during AppContext hydration',
   );
   assert.match(
     contextSource,
-    /if \(!isLegacyLargeReservationGuardrail\(item\)\) return \[item\][\s\S]*?structuredClone\(CISCO_LIVE_VIP_EVENT_CONFIDENTIALITY_GUARDRAIL\)[\s\S]*?versions:\s*\[\]/,
-    'unrelated user guardrails should remain while the legacy object receives the complete current definition',
+    /shouldRemoveVipEventConfidentialityGuardrail\s*=\s*storedSchemaVersion\s*<\s*14/,
+    'schema-13 drafts should opt into the retired-policy migration',
+  );
+  assert.match(
+    contextSource,
+    /removeVipEventConfidentialityGuardrail[\s\S]*?value\.filter\(item\s*=>\s*\([\s\S]*?!isLegacyLargeReservationGuardrail\(item\)[\s\S]*?!isCurrentVipConfidentialityGuardrail\(item\)/,
+    'schema-13 drafts should remove only the retired VIP policy and its legacy predecessor',
+  );
+  assert.match(
+    contextSource,
+    /RETIRED_PRIMARY_PREBUILT_GUARDRAIL_NAMES\s*=\s*new Set\(\[['"]toxicity['"],\s*['"]jailbreak['"]\]\)[\s\S]*?!RETIRED_PRIMARY_PREBUILT_GUARDRAIL_NAMES\.has\(normalizedItem\)/,
+    'schema-13 drafts should also remove prebuilt selections that the current catalog cannot enable',
+  );
+  assert.match(
+    contextSource,
+    /shouldAddPersonalizedDietaryAlcoholGuardrail\s*=\s*storedSchemaVersion\s*<\s*11/,
+    'schema-10 drafts should opt into the new adaptive-guardrail migration',
+  );
+  assert.match(
+    contextSource,
+    /addPersonalizedDietaryAlcoholGuardrail[\s\S]*?!migrated\.some\(isCurrentPersonalizedDietaryAlcoholGuardrail\)[\s\S]*?structuredClone\(CISCO_LIVE_PERSONALIZED_DIETARY_ALCOHOL_GUARDRAIL\)[\s\S]*?enabled:\s*true/,
+    'schema-10 drafts should receive the new enabled adaptive guardrail without replacing stored policies',
+  );
+  assert.match(
+    contextSource,
+    /hasPersonalizedGuardrailSelection[\s\S]*?personalizedGuardrailIsEnabled[\s\S]*?!hasPersonalizedGuardrailSelection[\s\S]*?CISCO_LIVE_PERSONALIZED_DIETARY_ALCOHOL_GUARDRAIL\.name/,
+    'the new policy should be added to Security selections only when its stored profile is enabled',
+  );
+  assert.match(
+    seedSource,
+    /EAGLE_GREEN_VIP_RESERVATION_INSTRUCTIONS[\s\S]*?complete VIP reservation journey[\s\S]*?changes, cancellations, waitlists, special occasions, private dining[\s\S]*?Primary goals[\s\S]*?General guardrails[\s\S]*?Food, dietary, and alcohol safety[\s\S]*?published nutrition information, non-alcoholic options, or human support/,
+    'the primary demo instructions should define a complete luxury reservation concierge, not only its configured actions',
+  );
+  assert.match(
+    contextSource,
+    /shouldMigratePrimaryInstructions\s*=\s*storedSchemaVersion\s*<\s*13[\s\S]*?knownSeededPrimaryInstructions[\s\S]*?EAGLE_GREEN_LEGACY_VIP_RESERVATION_INSTRUCTIONS[\s\S]*?knownSeededPrimaryInstructions\.some\([\s\S]*?storedPrimaryInstructions\s*===\s*instructions\.trim\(\)[\s\S]*?content:\s*buildCiscoLiveInstructions\(primaryDefinition\)/,
+    'schema-12 drafts should replace only known seeded instructions and preserve custom edits',
   );
   assert.match(policyStudioSource, /All rules shown below/);
   assert.doesNotMatch(policyStudioSource, /items\.slice|overview\.edgeCases\.slice/);
@@ -426,6 +482,11 @@ test('overview cards can be reordered and persist their layout per agent', () =>
     styles,
     /\.agent-studio-overview-card__drag-handle\s*\{[^}]*top:\s*var\(--spacing-x-small\);[^}]*right:\s*var\(--spacing-x-small\);[^}]*width:\s*28px;/,
     'large overview card handles should align with the smaller tile handles in the upper-right corner',
+  );
+  assert.match(
+    styles,
+    /\.agent-studio-card--operational\.card,\s*\.agent-studio-card--connections\.card\s*\{[^}]*border:\s*0;/,
+    'Capability usage and Operational status should share a borderless outer container',
   );
 });
 
@@ -633,6 +694,37 @@ test('Galileo evaluation timing uses a native radio group', () => {
     controlsSource,
     /galileo-action-control-timing-help/,
     'timing guidance should live in the option tooltips instead of a detached helper line',
+  );
+});
+
+test('Adaptive guardrail Action and Direction guidance lives in accessible info tooltips', () => {
+  const configureSource = readSource('../../pages/agent/ActionConfigureV2.tsx');
+  const styles = readSource('../../components.css');
+
+  assert.match(
+    configureSource,
+    /function GuardrailControlLabel[\s\S]*?<Tooltip content=\{help\} placement="top">[\s\S]*?className="security-control-info-button"[\s\S]*?aria-label=\{`\$\{label\} information: \$\{help\}`\}[\s\S]*?<Icon name="info-circle"/,
+    'the shared label should expose its guidance from a keyboard-focusable information icon',
+  );
+  assert.match(
+    configureSource,
+    /renderCustomGuardrailDirection[\s\S]*?<GuardrailControlLabel label="Direction" help=\{CUSTOM_GUARDRAIL_DIRECTION_HELP\}/,
+    'every adaptive Direction row should use the shared information tooltip',
+  );
+  assert.match(
+    configureSource,
+    /renderCustomGuardrailAction[\s\S]*?<GuardrailControlLabel label="Action" help=\{CUSTOM_GUARDRAIL_ACTION_HELP\}/,
+    'every adaptive Action row should use the shared information tooltip',
+  );
+  assert.doesNotMatch(
+    configureSource,
+    /security-control-help/,
+    'Action and Direction guidance should no longer render as detached helper text',
+  );
+  assert.match(
+    styles,
+    /\.security-control-info-button:focus-visible\s*\{[^}]*outline:\s*2px solid var\(--accent-color\);[^}]*outline-offset:\s*2px;/,
+    'information icons should retain a visible keyboard focus indicator',
   );
 });
 
@@ -1238,8 +1330,33 @@ test('agent list, Overview, configuration, and Observability share the responsiv
   );
   assert.match(
     styles,
-    /\.app--ai--studio-aurora \.primary-content\.ai-agents-page,[\s\S]*?\.primary-content\.agent-studio-landing,[\s\S]*?\.primary-content\.action-config-v2-page,[\s\S]*?\.clus-kpi-dashboard-root\s*\{[^}]*36%[^}]*backdrop-filter:\s*blur\(28px\)/,
-    'the list, Overview, configuration, and Observability surfaces should let more aurora color pass through while preserving glass separation',
+    /\.app--ai--studio-aurora:not\(\.app--ai--agent-context\) > \.sidebar\s*\{[^}]*background:\s*none;/,
+    'the workspace navigation rail should remain transparent over the shared aurora',
+  );
+  assert.match(
+    styles,
+    /:has\(\.app--ai--studio-aurora\)[\s\S]*?\.app--ai__bg--studio-aurora::before\s*\{[^}]*bottom:\s*clamp\(-18rem,\s*-18vh,\s*-10rem\);/,
+    'the shared aurora should continue underneath the fixed global header on workspace and agent-detail routes',
+  );
+  assert.match(
+    styles,
+    /:has\(\.app--ai--studio-aurora:not\(\.app--ai--agent-context\)\)[\s\S]*?\.app--ai__bg--studio-aurora::before\s*\{[^}]*left:\s*clamp\(-2rem,\s*2vw,\s*2rem\);/,
+    'the workspace aurora should continue underneath the transparent navigation rail',
+  );
+  assert.match(
+    styles,
+    /html\[data-product=['"]ai-agent-studio['"]\] \.app-header\s*\{[^}]*background:\s*none;[^}]*border-bottom:\s*0;/,
+    'the global AI Agent Studio header should not paint a separate background or bottom border',
+  );
+  assert.match(
+    styles,
+    /\.app--ai--studio-aurora \.primary-content\.ai-agents-page,[\s\S]*?\.primary-content\.agent-studio-landing,[\s\S]*?\.primary-content\.action-config-v2-page,[\s\S]*?\.clus-kpi-dashboard-root\s*\{[^}]*backdrop-filter:\s*blur\(28px\)/,
+    'the list, Overview, configuration, and Observability surfaces should share the same responsive glass blur',
+  );
+  assert.match(
+    styles,
+    /\.app--ai--studio-aurora \.primary-content\.agent-studio-landing,\s*\.app--ai--studio-aurora \.primary-content\.action-config-v2-page\s*\{[^}]*36%/,
+    'Overview and configuration should retain their lighter theme-colored glass surface',
   );
   assert.match(
     styles,
@@ -1248,8 +1365,13 @@ test('agent list, Overview, configuration, and Observability share the responsiv
   );
   assert.match(
     styles,
-    /@media \(max-width:\s*767px\)[\s\S]*?\.app--ai--studio-aurora \.primary-content\.ai-agents-page,[\s\S]*?\.clus-kpi-dashboard-root\s*\{[^}]*42%/,
-    'compact screens should keep a slightly stronger readable glass layer without hiding the aurora',
+    /@media \(max-width:\s*767px\)[\s\S]*?\.app--ai--studio-aurora \.primary-content\.agent-studio-landing,\s*\.app--ai--studio-aurora \.primary-content\.action-config-v2-page\s*\{[^}]*42%/,
+    'compact Overview and configuration screens should keep a slightly stronger readable glass layer',
+  );
+  assert.match(
+    styles,
+    /\[data-theme=['"]light['"]\] \.app--ai--studio-aurora \.primary-content\.ai-agents-page,\s*\[data-theme=['"]light['"]\] \.app--ai--studio-aurora \.clus-kpi-dashboard-root\s*\{[^}]*60%[^}]*border:\s*none;/,
+    'AI Agents and Observability should continue sharing one borderless surface in light mode',
   );
   assert.match(
     styles,
@@ -1458,6 +1580,11 @@ test('selected guardrail banner opens a concrete session detail', () => {
     studioSource,
     /actionControlSpotlightDecision\.sessionId[\s\S]*?allAgentSessions\.find\(session => \([\s\S]*?session\.guardrailTriggered[\s\S]*?eagleGuardrailSession\.id/,
     'the action-control and guardrail spotlights should each resolve the concrete Session that owns their event',
+  );
+  assert.match(
+    studioSource,
+    /const eagleGuardrailSession = allAgentSessions\.find\(session => \([\s\S]*?session\.guardrail\?\.name === selectedGuardrailName[\s\S]*?\)\) \?\? allAgentSessions\.find/,
+    'each selected guardrail should open the session that contains its own decision evidence',
   );
   assert.match(studioSource, /eagleGuardrailSessionPath[\s\S]*?source=overview/);
   assert.match(

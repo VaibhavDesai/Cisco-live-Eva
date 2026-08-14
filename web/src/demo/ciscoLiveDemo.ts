@@ -235,9 +235,40 @@ export const CISCO_LIVE_PAYMENT_DATA_GUARDRAIL: CiscoLiveGuardrailDefinition = {
   },
 };
 
+export const CISCO_LIVE_PERSONALIZED_DIETARY_ALCOHOL_GUARDRAIL: CiscoLiveGuardrailDefinition = {
+  id: 'custom-no-personalized-dietary-alcohol-advice',
+  name: 'No Personalized Dietary & Alcohol Advice',
+  description: 'Prevents the agent from deciding which food, beverage, or amount of alcohol is safe for a guest based on a medical condition, procedure, or medication, while allowing published nutrition information and non-alcoholic options.',
+  action: 'block',
+  direction: 'response',
+  createdBy: 'Vinod Muthukrishnan',
+  createdAt: 'Aug 14, 2026',
+  overview: {
+    blocked: [
+      { text: 'Recommend dishes as safe or appropriate for a medical condition, recent procedure, or medication' },
+      { text: 'State that an alcoholic drink or amount of alcohol is safe with a medication or medical condition' },
+      { text: 'Interpret published nutrition information as personalized medical guidance' },
+    ],
+    allowed: [
+      { text: 'Share published ingredient, sodium, and nutrition information without interpreting medical safety' },
+      { text: 'Show non-alcoholic beverage options' },
+      { text: 'Add the guest\'s selections to the reservation after they make their own choice' },
+      { text: 'Offer live agent support without giving personalized medical advice' },
+    ],
+    edgeCases: [
+      { text: 'Distinguish a general dietary preference from a request tied to a condition, procedure, or medication' },
+      { text: 'If an item is labeled low sodium, share the published label without saying it is safe for the guest' },
+      { text: 'If a request mixes menu facts with medical-safety advice, answer only the factual portion and state the boundary' },
+    ],
+  },
+};
+
+export const CISCO_LIVE_PERSONALIZED_DIETARY_ALCOHOL_SECURITY_RULE =
+  'Do not personalize dietary or alcohol safety advice based on medical conditions, procedures, or medications';
+
 export const CISCO_LIVE_PRIMARY_GUARDRAILS = [
-  CISCO_LIVE_VIP_EVENT_CONFIDENTIALITY_GUARDRAIL,
   CISCO_LIVE_PAYMENT_DATA_GUARDRAIL,
+  CISCO_LIVE_PERSONALIZED_DIETARY_ALCOHOL_GUARDRAIL,
 ];
 
 export const CISCO_LIVE_EVENT_OPERATIONS_GUARDRAIL: CiscoLiveGuardrailDefinition = {
@@ -458,11 +489,12 @@ export const CISCO_LIVE_AGENTS: CiscoLiveAgentDefinition[] = [
       'Verify identity before using a VIP customer profile',
       'Never collect or repeat full payment card details',
       'Protect VIP guest, schedule, access, security, and reservation details from unverified requesters',
+      CISCO_LIVE_PERSONALIZED_DIETARY_ALCOHOL_SECURITY_RULE,
       'Preserve the conversation context during every human handoff',
     ],
     welcomeMessage: 'Welcome to Gofie. I can help with availability, VIP reservations, and secure payment updates. How can I help today?',
     customGuardrails: CISCO_LIVE_PRIMARY_GUARDRAILS,
-    prebuiltGuardrailIds: ['std-toxicity', 'std-jailbreak', 'priv-pii', 'priv-credit-card'],
+    prebuiltGuardrailIds: ['priv-pii', 'priv-credit-card'],
     selectedChannels: ['voice'],
     templateId: 'customer-support',
     agentType: 'Scripted agent',
@@ -1152,20 +1184,74 @@ export const CISCO_LIVE_SESSIONS_BY_AGENT: Record<string, CiscoLiveSession[]> = 
     },
     {
       id: 'SES-GT-1029',
-      consumerId: 'GSX-ATTENDEE-619',
+      consumerId: 'MARCUS-C-619',
       customer: 'Marcus Chen',
       channel: 'Voice',
-      topic: 'Payment update',
+      topic: 'Retirement celebration',
       updated: '23 minutes ago',
       startedAt: 'Today at 9:15 AM',
-      messages: 7,
-      duration: '2m 08s',
-      outcome: 'Resolved',
-      guardrailTriggered: false,
+      messages: 5,
+      duration: 'In progress',
+      outcome: 'In progress',
+      guardrailTriggered: true,
       transferred: false,
-      summary: 'Sent a secure payment update link without collecting payment details in the conversation.',
-      connectedSystems: ['Secure payment flow'],
-      transcript: [],
+      summary: 'Blocked personalized dietary and alcohol-safety advice, then shared the safe nutrition-information boundary and continued the reservation.',
+      guardrail: {
+        id: 'custom-no-personalized-dietary-alcohol-advice',
+        name: 'No Personalized Dietary & Alcohol Advice',
+        policy: 'Do not determine which menu items or amount of alcohol is safe for a guest based on a medical condition, recent procedure, or medication',
+        detected: 'The draft recommended the grilled salmon and vegetable platter and said one glass of red wine should be safe with blood-thinning medication',
+        action: 'Blocked the draft before delivery and replaced it with published nutrition information, non-alcoholic options, and a clear medical-safety boundary',
+        result: 'No personalized dietary or alcohol-safety advice was delivered, and the reservation conversation continued',
+        status: 'Working as designed',
+      },
+      connectedSystems: ['Gofie menu and nutrition', 'AI Defense', 'Gofie reservations'],
+      transcript: [
+        {
+          id: 'evt-1029-1',
+          kind: 'agent',
+          speaker: 'EAGLE GREEN VIP Reservations',
+          text: 'Welcome to Eagle Green VIP Reservations. What are you planning?',
+          time: '9:15 AM',
+        },
+        {
+          id: 'evt-1029-2',
+          kind: 'customer',
+          speaker: 'Marcus Chen',
+          text: 'I’d like a private bay for six this Saturday. We’re celebrating my father’s retirement. It’s also his first big outing since heart surgery.',
+          time: '9:15 AM',
+        },
+        {
+          id: 'evt-1029-3',
+          kind: 'agent',
+          speaker: 'EAGLE GREEN VIP Reservations',
+          text: 'That sounds special. Would you like me to help create a food and beverage package?',
+          time: '9:16 AM',
+        },
+        {
+          id: 'evt-1029-4',
+          kind: 'customer',
+          speaker: 'Marcus Chen',
+          text: 'Yes. His doctor told him to limit sodium, and he takes blood-thinning medication. I don’t want him to feel singled out, so please choose dishes that are safe for him. He normally drinks wine—would one or two glasses be okay?',
+          time: '9:16 AM',
+        },
+        {
+          id: 'evt-1029-5',
+          kind: 'guardrail',
+          speaker: 'AI Defense',
+          title: 'No Personalized Dietary & Alcohol Advice blocked response',
+          text: 'Personalized dish and alcohol-safety recommendations were blocked before delivery.',
+          detail: 'Adaptive guardrail triggered',
+          time: '9:17 AM',
+        },
+        {
+          id: 'evt-1029-6',
+          kind: 'agent',
+          speaker: 'EAGLE GREEN VIP Reservations',
+          text: 'I can share the published sodium and nutrition information for our dishes and show you our non-alcoholic beverage options. I cannot determine which items or amount of alcohol would be safe based on a medical condition or medication. Once you make your selections, I can add them to the reservation.',
+          time: '9:17 AM',
+        },
+      ],
     },
     {
       id: 'SES-GT-1021',

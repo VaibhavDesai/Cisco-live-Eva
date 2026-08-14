@@ -38,6 +38,7 @@ import { useApp, type Agent } from '../../contexts/AppContext';
 import { useDesignVariation } from '../../contexts/DesignVariationContext';
 import { getElevenLabsConversationSignedUrl, getVoicePreviewErrorMessage } from '../../api/ciscoAi';
 import {
+  CISCO_LIVE_AGENTS,
   CISCO_LIVE_ACTION_CONTROL_SUMMARY_24H,
   CISCO_LIVE_ACTION_CONTROL_SUMMARY_6H,
   CISCO_LIVE_OPERATIONAL_HEALTH_METRICS,
@@ -329,6 +330,22 @@ const configuredCapabilityLabels = (
   if (selections.length > 0) return selections;
   if (fallbackLabels.length > 0) return fallbackLabels;
   return [capability.label];
+};
+
+const enabledCustomGuardrailLabels = (
+  draft: AgentDraft | undefined,
+  fallbackLabels: string[],
+): string[] => {
+  const storedCustomGuardrails = draft?.familyConfiguration.security?.values?.customGuardrails;
+  if (!Array.isArray(storedCustomGuardrails)) return fallbackLabels;
+
+  return storedCustomGuardrails.flatMap((item) => {
+    if (!item || typeof item !== 'object' || Array.isArray(item)) return [];
+    const candidate = item as { name?: unknown; enabled?: unknown };
+    return typeof candidate.name === 'string' && candidate.enabled !== false
+      ? [candidate.name]
+      : [];
+  });
 };
 
 function getConfiguredSummary(agent: Agent, draft?: AgentDraft) {
@@ -1180,6 +1197,18 @@ export default function AgentStudioLanding() {
     .map((item, index) => ({ item, index, count: getCiscoLiveGuardrailTriggerCount(item, agent.id) }))
     .sort((a, b) => b.count - a.count || a.index - b.index)
     .map(entry => entry.item);
+  const ciscoLiveAgentDefinition = CISCO_LIVE_AGENTS.find(definition => definition.id === agent.id);
+  const configuredAdaptiveGuardrailNames = new Set(enabledCustomGuardrailLabels(
+    agentDraft,
+    ciscoLiveAgentDefinition?.customGuardrails.map(guardrail => guardrail.name) ?? [],
+  ));
+  const configuredAdaptiveGuardrailCount = configuredSecurity.filter(
+    guardrail => configuredAdaptiveGuardrailNames.has(guardrail),
+  ).length;
+  const configuredPrebuiltGuardrailCount = Math.max(
+    0,
+    configuredSecurity.length - configuredAdaptiveGuardrailCount,
+  );
   const configuredOrchestration = [...configuredActions, ...configuredHandoff];
   const connectedCapabilityCount = configuredKnowledge.length
     + configuredMemory.length
@@ -1212,7 +1241,7 @@ export default function AgentStudioLanding() {
     memory: configuredMemory.length,
     actions: usesEagleGreenShowcaseMetrics ? 4 : configuredOrchestration.length,
     actionControls: usesEagleGreenShowcaseMetrics ? 2 : 0,
-    guardrails: usesEagleGreenShowcaseMetrics ? 6 : configuredSecurity.length,
+    guardrails: configuredSecurity.length,
   } as const;
   const connectedGuardrailActivity = configuredSecurity.map(item => ({
     item,
@@ -1310,6 +1339,10 @@ export default function AgentStudioLanding() {
     ? `${sessionsPath}?sessionId=${encodeURIComponent(actionControlSpotlightDecision.sessionId)}&source=overview`
     : sessionsPath;
   const eagleGuardrailSession = allAgentSessions.find(session => (
+    session.guardrailTriggered
+    && session.transcript.length > 0
+    && session.guardrail?.name === selectedGuardrailName
+  )) ?? allAgentSessions.find(session => (
     session.guardrailTriggered && session.transcript.length > 0
   ));
   const eagleGuardrailEvent = eagleGuardrailSession?.transcript.find(event => event.kind === 'guardrail');
@@ -1519,7 +1552,7 @@ export default function AgentStudioLanding() {
                           label: 'Guardrails',
                           value: connectedCapabilityTotals.guardrails,
                           status: usesEagleGreenShowcaseMetrics
-                            ? '4 prebuilt · 2 adaptive'
+                            ? `${configuredPrebuiltGuardrailCount} prebuilt · ${configuredAdaptiveGuardrailCount} adaptive`
                             : configuredSecurity.length > 0
                               ? `${configuredSecurity.length} configured`
                               : null,
@@ -1883,7 +1916,7 @@ export default function AgentStudioLanding() {
                             ) : (
                               <>
                                 <span className="agent-studio-operational-event-meta">
-                                  {eagleGuardrailSession?.id ?? 'Session'} · {eagleGuardrailEvent?.time ?? 'Just now'} · Adaptive guardrail blocked sensitive input
+                                  {eagleGuardrailSession?.id ?? 'Session'} · {eagleGuardrailEvent?.time ?? 'Just now'} · {eagleGuardrailEvent?.detail ?? 'Adaptive guardrail triggered'}
                                 </span>
                                 <span>{eagleGuardrailEvent?.text ?? 'Sensitive payment data was blocked and removed from the transcript.'}</span>
                               </>

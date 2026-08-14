@@ -12732,23 +12732,10 @@ img.app-header__wordmark-logo {
   align-items: center;
 }
 
-.security-control-help {
-  grid-column: 2;
-  margin: calc(-1 * var(--spacing-small)) 0 0;
-  color: var(--text-secondary);
-  font-size: var(--font-size-body-small);
-  line-height: var(--font-lineheight-body-small);
-}
-
 @media (max-width: 760px) {
   .security-control-row {
     grid-template-columns: minmax(0, 1fr);
     gap: var(--spacing-x-small);
-  }
-
-  .security-control-help {
-    grid-column: 1;
-    margin-top: 0;
   }
 
   .security-guardrail-controls {
@@ -12765,6 +12752,36 @@ img.app-header__wordmark-logo {
   font-size: var(--font-size-body-midsize);
   font-weight: var(--font-weight-medium);
   color: var(--text-secondary);
+}
+
+.security-control-label-with-info {
+  display: inline-flex;
+  align-items: center;
+  width: max-content;
+  gap: var(--spacing-xxx-small);
+}
+
+.security-control-info-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: transparent;
+  color: var(--text-secondary);
+  cursor: help;
+}
+
+.security-control-info-button:hover {
+  color: var(--text-primary);
+}
+
+.security-control-info-button:focus-visible {
+  outline: 2px solid var(--accent-color);
+  outline-offset: 2px;
 }
 
 .security-slider-wrap {

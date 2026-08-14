@@ -80,6 +80,28 @@ const VOICE_PHONE_NUMBER_OPTIONS = [
   { value: '+44-20-7946-0958', label: '+44 20 7946 0958' },
 ];
 
+const CUSTOM_GUARDRAIL_DIRECTION_HELP =
+  'Prompt checks customer requests. Response checks agent output. Both checks customer prompts and agent responses.';
+const CUSTOM_GUARDRAIL_ACTION_HELP =
+  'Monitor records a match. Steer guides the agent to a safer path. Block stops the prompt or response.';
+
+function GuardrailControlLabel({ label, help }: { label: string; help: string }) {
+  return (
+    <span className="security-control-label-with-info">
+      <span className="security-control-label">{label}</span>
+      <Tooltip content={help} placement="top">
+        <button
+          type="button"
+          className="security-control-info-button"
+          aria-label={`${label} information: ${help}`}
+        >
+          <Icon name="info-circle" weight="bold" size={16} />
+        </button>
+      </Tooltip>
+    </span>
+  );
+}
+
 function ProfileLogicSummary({ overview }: { overview: import('./PolicyStudio').PolicyOverview }) {
   const hasOverview = overview.blocked.length > 0 || overview.allowed.length > 0 || overview.edgeCases.length > 0;
 
@@ -1559,7 +1581,7 @@ export default function ActionConfigureV2() {
 
   const renderCustomGuardrailDirection = (item: CustomGuardrailItem, disabled = false) => (
     <div className="security-control-row custom-guardrail-direction-row">
-      <label className="security-control-label">Direction</label>
+      <GuardrailControlLabel label="Direction" help={CUSTOM_GUARDRAIL_DIRECTION_HELP} />
       <RadioGroup
         name={`custom-direction-${item.id}`}
         value={item.direction}
@@ -1572,15 +1594,12 @@ export default function ActionConfigureV2() {
         <Radio value="response" label="Response" disabled={disabled || !item.enabled || !isPaidUser} />
         <Radio value="both" label="Both prompts and responses" disabled={disabled || !item.enabled || !isPaidUser} />
       </RadioGroup>
-      <p className="security-control-help">
-        Prompt checks customer requests. Response checks agent output. Both checks customer prompts and agent responses.
-      </p>
     </div>
   );
 
   const renderCustomGuardrailAction = (item: CustomGuardrailItem) => (
     <div className="security-control-row">
-      <label className="security-control-label">Action</label>
+      <GuardrailControlLabel label="Action" help={CUSTOM_GUARDRAIL_ACTION_HELP} />
       <RadioGroup
         name={`custom-action-${item.id}`}
         value={item.action}
@@ -1593,9 +1612,6 @@ export default function ActionConfigureV2() {
         <Radio value="steer" label="Steer" disabled={!item.enabled || !isPaidUser} />
         <Radio value="block" label="Block" disabled={!item.enabled || !isPaidUser} />
       </RadioGroup>
-      <p className="security-control-help">
-        Monitor records a match. Steer guides the agent to a safer path. Block stops the prompt or response.
-      </p>
     </div>
   );
 
