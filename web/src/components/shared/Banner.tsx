@@ -16,11 +16,19 @@ export interface BannerAction {
   onClick: () => void;
   /** Button visual style in the banner action area */
   variant?: 'ghost' | 'outline';
+  /** ID of the region this action reveals */
+  ariaControls?: string;
+  /** Whether the controlled region is currently expanded */
+  ariaExpanded?: boolean;
 }
 
 export interface BannerProps {
   /** Banner tone (icon and color treatment) */
   type?: BannerType;
+  /** Semantic role; alerts remain the default for existing call sites */
+  role?: 'alert' | 'region' | 'status';
+  /** Accessible name when the banner is used as a labelled region */
+  ariaLabel?: string;
   /** Optional icon override */
   icon?: IconName;
   /** Primary heading text */
@@ -51,6 +59,8 @@ const TYPE_CONFIG: Record<BannerType, { icon: IconName; className: string }> = {
  */
 export function Banner({
   type = 'info',
+  role = 'alert',
+  ariaLabel,
   icon,
   title,
   subtitle,
@@ -64,7 +74,8 @@ export function Banner({
   return (
     <div
       className={`banner ${config.className}${className ? ` ${className}` : ''}`}
-      role="alert"
+      role={role}
+      aria-label={ariaLabel}
     >
       <div className="banner-content">
         <span className="banner-icon">
@@ -88,6 +99,8 @@ export function Banner({
                   : 'banner-action-ghost'
               }
               onClick={action.onClick}
+              aria-controls={action.ariaControls}
+              aria-expanded={action.ariaExpanded}
             >
               {action.label}
             </button>

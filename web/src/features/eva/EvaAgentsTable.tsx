@@ -5,7 +5,6 @@ import { useApp, type Agent } from '../../contexts/AppContext';
 import { useDesignVariation } from '../../contexts/DesignVariationContext';
 import Button from '../../components/shared/Button';
 import {
-  Badge,
   Card as SharedCard,
   Dropdown,
   Input,
@@ -50,24 +49,18 @@ type AgentTile = {
 const FAMILY_PRESENTATION = {
   calling: {
     label: FAMILY_METADATA.calling.label,
-    badgeLabel: FAMILY_METADATA.calling.label,
     icon: 'phone',
     avatarClass: 'receptionist',
-    badgeVariant: 'warning',
   },
   contact_center: {
     label: FAMILY_METADATA.contact_center.label,
-    badgeLabel: 'CX Concierge',
     icon: 'headset',
     avatarClass: 'scripted',
-    badgeVariant: 'success',
   },
   internal_assistant: {
     label: FAMILY_METADATA.internal_assistant.label,
-    badgeLabel: FAMILY_METADATA.internal_assistant.label,
     icon: 'people',
     avatarClass: 'autonomous',
-    badgeVariant: 'info',
   },
 } as const;
 
@@ -454,9 +447,6 @@ export default function EvaAgentsTable() {
                         <AgentCardActions agent={tile.agent} onNotify={showToast} />
                       </div>
                       <div className="ai-agents-agent-labels">
-                        <Badge variant={family.badgeVariant}>
-                          {family.badgeLabel}
-                        </Badge>
                         <span className={`ai-agents-agent-lifecycle ai-agents-agent-lifecycle--${tile.lifecycle}`}>
                           <span className="ai-agents-agent-lifecycle-dot" aria-hidden="true" />
                           {LIFECYCLE_STATUS_LABELS[tile.lifecycle]}

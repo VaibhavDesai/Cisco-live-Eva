@@ -28,20 +28,37 @@ type SparklineProps = {
   data: number[];
   color: string;
   type: 'line' | 'area' | 'bar';
+  scale?: 'local' | 'relative-change';
   width?: number;
   height?: number;
 };
 
 /** Mini trend chart — sized for compact KPI card (sparkline strip). */
-function Sparkline({ data, color, type, width = 64, height = 24 }: SparklineProps) {
+function Sparkline({ data, color, type, scale = 'local', width = 64, height = 24 }: SparklineProps) {
   const barGradientId = useId().replace(/:/g, '');
   if (!data || data.length === 0) return null;
 
   const padding = 3;
 
-  const min = Math.min(...data);
   const max = Math.max(...data);
-  const range = max - min || 1;
+  const baseline = Math.min(...data);
+  const range = max - baseline || 1;
+
+  const yForValue = (value: number) => {
+    if (scale === 'relative-change') {
+      const priorPeriodValue = data[0];
+      const relativeChange = priorPeriodValue === 0
+        ? 0
+        : (value - priorPeriodValue) / Math.abs(priorPeriodValue);
+      // A shared +/-10% card scale makes the reported deltas comparable while
+      // keeping the prior-period point on the same centre line.
+      const normalizedChange = Math.max(-1, Math.min(1, relativeChange / 0.1));
+      const halfPlotHeight = (height - padding * 2) / 2;
+      return height / 2 - normalizedChange * halfPlotHeight;
+    }
+
+    return height - padding - ((value - baseline) / range) * (height - padding * 2);
+  };
 
   if (type === 'bar') {
     const barWidth = (width - padding * 2) / data.length;
@@ -64,7 +81,7 @@ function Sparkline({ data, color, type, width = 64, height = 24 }: SparklineProp
           </linearGradient>
         </defs>
         {data.map((value, index) => {
-          const barHeight = ((value - min) / range) * (height - padding * 2);
+          const barHeight = ((value - baseline) / range) * (height - padding * 2);
           const x = padding + index * barWidth;
           const y = height - padding - barHeight;
 
@@ -87,7 +104,7 @@ function Sparkline({ data, color, type, width = 64, height = 24 }: SparklineProp
   const points = data
     .map((value, index) => {
       const x = padding + (index / (data.length - 1)) * (width - padding * 2);
-      const y = height - padding - ((value - min) / range) * (height - padding * 2);
+      const y = yForValue(value);
       return `${x},${y}`;
     })
     .join(' ');
@@ -105,7 +122,9 @@ function Sparkline({ data, color, type, width = 64, height = 24 }: SparklineProp
       className="shrink-0"
       aria-hidden
     >
-      <polygon points={areaPoints} fill={color} fillOpacity={0.28} />
+      {type === 'area' ? (
+        <polygon points={areaPoints} fill={color} fillOpacity={0.28} />
+      ) : null}
       <polyline
         points={points}
         fill="none"
@@ -197,6 +216,7 @@ function KPICardInner({
                   data={data.sparklineData}
                   color={momentumColorVars.accent}
                   type={data.sparklineType}
+                  scale={data.sparklineScale}
                   width={64}
                   height={24}
                 />

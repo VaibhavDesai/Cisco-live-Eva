@@ -235,20 +235,24 @@ const convertSparklineToChartData = (sparklineData: number[], dateRange: '24h' |
       break;
   }
   
-  // Safety check for sparkline data
-  const safeSparklineData = (sparklineData && sparklineData.length > 0) 
-    ? sparklineData 
-    : Array(dates.length).fill(0).map(() => 3.5 + Math.random());
+  const safeSparklineData = sparklineData.filter(value => Number.isFinite(value));
+  const maxMagnitude = Math.max(0, ...safeSparklineData.map(value => Math.abs(value)));
+  const precision = maxMagnitude < 1 ? 3 : maxMagnitude < 10 ? 2 : 1;
+  const roundValue = (value: number) => Number(value.toFixed(precision));
 
-  // Map dates to data points cyclically to ensure we always have a value
+  // Resample across the requested date range. Cycling a short series creates
+  // an artificial A/B zigzag and misrepresents the source trend.
   dates.forEach((date, idx) => {
-    const dataIndex = idx % safeSparklineData.length;
-    let val = safeSparklineData[dataIndex];
-    
-    // Strict validation
-    if (typeof val !== 'number' || isNaN(val)) {
-      val = 4.0; // Default fallback
-    }
+    const targetLength = dates.length;
+    const sourcePosition = targetLength <= 1 || safeSparklineData.length <= 1
+      ? 0
+      : (idx / (targetLength - 1)) * (safeSparklineData.length - 1);
+    const lowerIndex = Math.floor(sourcePosition);
+    const upperIndex = Math.min(safeSparklineData.length - 1, Math.ceil(sourcePosition));
+    const interpolation = sourcePosition - lowerIndex;
+    const lowerValue = safeSparklineData[lowerIndex] ?? 0;
+    const upperValue = safeSparklineData[upperIndex] ?? lowerValue;
+    const val = lowerValue + (upperValue - lowerValue) * interpolation;
     
     // Generate second value for stacked charts
     const value2 = val * 0.7; 
@@ -256,8 +260,8 @@ const convertSparklineToChartData = (sparklineData: number[], dateRange: '24h' |
     data.push({
       date: format(date, dateFormat),
       fullDate: date,
-      value1: Math.round(val * 10) / 10,
-      value2: Math.round(value2 * 10) / 10,
+      value1: roundValue(val),
+      value2: roundValue(value2),
     });
   });
   
@@ -319,9 +323,9 @@ export function KPIChart({
   const chartColors = useMdsChartThemeColors();
 
   // Data Preparation
-  const isCSAT = heading?.toUpperCase().includes('CSAT') || 
-                 heading?.toLowerCase().includes('satisfaction') || 
-                 unit === '/5';
+  // The metric name alone is not a reliable scale signal: AutoCSAT
+  // improvement is a percentage, while CSAT predictor is a 0–5 rating.
+  const isCSAT = unit === '/5';
                  
   const isValidCSATData = (data?: number[]) => {
     if (!data || data.length === 0) return false;

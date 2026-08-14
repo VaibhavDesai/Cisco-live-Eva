@@ -235,7 +235,7 @@ test('EAGLE GREEN combines adaptive guardrails and Galileo routing in its sessio
   );
   assert.match(
     sessionsSource,
-    /\{actionControl && \([\s\S]*?agent-session-policy-card--action-control[\s\S]*?<ConfigurationCategoryIcon type="action-control" size=\{20\}[\s\S]*?\{session\.guardrail && \([\s\S]*?<ConfigurationCategoryIcon type="guardrail" size=\{20\}[\s\S]*?Review guardrail/,
+    /\{actionControl && actionControlExpanded && \([\s\S]*?agent-session-policy-card--action-control[\s\S]*?<ConfigurationCategoryIcon type="action-control" size=\{20\}[\s\S]*?\{session\.guardrail && guardrailExpanded && \([\s\S]*?<ConfigurationCategoryIcon type="guardrail" size=\{20\}[\s\S]*?Edit guardrail/,
     'the combined session should show both agent control and guardrail evidence cards',
   );
   assert.match(
@@ -245,9 +245,33 @@ test('EAGLE GREEN combines adaptive guardrails and Galileo routing in its sessio
   );
   assert.match(
     sessionsSource,
-    /<h2>\{actionControl\.unlockedActionNames\[0\] \?\? actionControl\.controlTitle\}<\/h2>/,
+    /<h2 id=\{`\$\{ACTION_CONTROL_PANEL_ID\}-heading`\}>[\s\S]*?\{actionControl\.unlockedActionNames\[0\] \?\? actionControl\.controlTitle\}[\s\S]*?<\/h2>/,
     'the session policy card should identify the unlocked action as Transfer to VIP team',
   );
+  assert.match(
+    sessionsSource,
+    /label:\s*['"]View control['"][\s\S]{0,260}onClick:\s*\(\) => showPolicyPanel\(['"]action-control['"]\)[\s\S]{0,180}ariaControls:\s*ACTION_CONTROL_PANEL_ID/,
+    'the action-control transcript banner should reveal its matching sidebar evidence',
+  );
+  assert.match(
+    sessionsSource,
+    /label:\s*['"]View guardrail['"][\s\S]{0,260}onClick:\s*\(\) => showPolicyPanel\(['"]guardrail['"]\)[\s\S]{0,180}ariaControls:\s*GUARDRAIL_PANEL_ID/,
+    'the guardrail transcript banner should reveal its matching sidebar evidence',
+  );
+  assert.match(
+    sessionsSource,
+    /target\.focus\(\{ preventScroll: true \}\);[\s\S]*?target\.scrollIntoView\(\{ behavior: ['"]smooth['"], block: ['"]nearest['"] \}\)/,
+    'revealed sidebar evidence should receive focus and scroll into view',
+  );
+  assert.match(sessionsSource, /\{actionControl && actionControlExpanded && \(/);
+  assert.match(sessionsSource, /\{session\.guardrail && guardrailExpanded && \(/);
+  assert.doesNotMatch(
+    sessionsSource,
+    /agent-session-policy-card__toggle|Collapse control evidence|Collapse guardrail evidence/,
+    'policy evidence should appear as a complete card instead of a collapsed disclosure',
+  );
+  assert.match(sessionsSource, />\s*Edit control\s*<\/Button>/);
+  assert.match(sessionsSource, />\s*Edit guardrail\s*<\/Button>/);
   assert.match(
     sessionsSource,
     /<dt>Event time<\/dt>[\s\S]*?actionControlTimeWindowLabel\(actionControl\)/,
@@ -1145,18 +1169,23 @@ test('agent control activity matches the Figma card and discloses its selected s
   );
   assert.match(
     source,
-    /className=\{`agent-studio-action-control-flow__row agent-studio-action-control-flow__matched-trigger[\s\S]*?aria-expanded=\{showSelectedActionControlDecision\}[\s\S]*?aria-controls="agent-studio-action-control-decision-banner"[\s\S]*?setSelectedOverviewIntervention\(current =>/,
-    'the complete matched path should be a native disclosure button linked to the concrete decision banner',
+    /className="agent-studio-connected-chart__disclosure"[\s\S]*?Agent control activity, latest matched decision[\s\S]*?Guardrail activity, latest trigger[\s\S]*?aria-expanded=\{isDetailSelected\}[\s\S]*?aria-controls=\{detailId\}/,
+    'both activity cards should expose one full-card disclosure control linked to their detail banner',
   );
   assert.match(
     source,
-    /\(showSelectedGuardrailDecision \|\| showSelectedActionControlDecision\)[\s\S]*?id=\{showSelectedActionControlDecision[\s\S]*?'agent-studio-action-control-decision-banner'[\s\S]*?title=\{showSelectedGuardrailDecision[\s\S]*?selectedGuardrail\?\.item[\s\S]*?['"]Guardrail['"][\s\S]*?triggered[\s\S]*?actionControlSpotlightUnlocked[\s\S]*?['"]Large event transfer unlocked['"][\s\S]*?['"]Standard path redirected['"]/,
-    'the latest matching decision should render only while its matched path is expanded',
+    /id=\{detailId\}[\s\S]*?hidden=\{!isDetailSelected\}[\s\S]*?<Banner[\s\S]*?className="agent-studio-operational-event-banner agent-studio-connected-event-banner"[\s\S]*?title=\{tileId === ['"]guardrails['"][\s\S]*?['"]Large event transfer unlocked['"][\s\S]*?['"]Standard path redirected['"]/,
+    'the selected card should reveal the original event banner while the stable controlled region remains mounted',
   );
   assert.doesNotMatch(
     source,
-    /Latest matching decision|Selected guardrail decision/,
-    'expanded decision banners should begin with the concrete event instead of a redundant generic title',
+    /OverviewContextualDetail|agent-studio-contextual-detail|Latest matched decision|Hide latest decision|View latest decision/,
+    'the banner relationship should not add a source pill or visible accordion copy',
+  );
+  assert.match(
+    source,
+    /const nextGuardrail = showSelectedGuardrailDecision[\s\S]*?defaultTriggeredGuardrailName;[\s\S]*?setSelectedGuardrailActivity\(nextGuardrail\);[\s\S]*?setSelectedOverviewIntervention\(nextGuardrail \? ['"]guardrail['"] : null\)/,
+    'the whole Guardrail activity card should open its first concrete trigger and close as one unit',
   );
   assert.match(
     styles,
@@ -1178,10 +1207,10 @@ test('agent control activity matches the Figma card and discloses its selected s
     /\.agent-studio-action-control-flow__matched-heading\s*\{[^}]*display:\s*flex;[^}]*justify-content:\s*space-between;[\s\S]*?\.agent-studio-action-control-flow__action-item\s*\{[^}]*min-height:\s*40px;[^}]*justify-content:\s*space-between;[^}]*padding:\s*var\(--spacing-xx-small\)\s*var\(--spacing-medium\)\s*var\(--spacing-xx-small\)\s*var\(--spacing-x-small\);[^}]*background:\s*var\(--mds-color-theme-background-glass-normal, var\(--bg-glass\)\);/,
     'Matched and each action row should use the full-width Figma layout with clear trailing chip space',
   );
-  assert.match(
+  assert.doesNotMatch(
     styles,
-    /\.agent-studio-action-control-flow__matched-trigger\.is-selected\s*\{[^}]*padding:\s*0;[^}]*background:\s*var\(--mds-color-theme-background-glass-normal, var\(--bg-glass\)\);[^}]*box-shadow:\s*none;/,
-    'the selected state should add only the darker neutral fill without shifting its content',
+    /\.agent-studio-action-control-flow__matched-trigger\.is-selected|\.agent-studio-guardrail-chart__item\.is-selected/,
+    'selected activity should not add an inner row fill or accent',
   );
   assert.doesNotMatch(
     styles,
@@ -1197,6 +1226,44 @@ test('agent control activity matches the Figma card and discloses its selected s
     styles,
     /\.agent-studio-action-control-flow__chip\s*\{[^}]*padding-inline:\s*var\(--spacing-xx-small\);/,
     'both Momentum chips should use the requested 8px side padding',
+  );
+  assert.match(
+    source,
+    /isDetailInteractive && detailSelectionType[\s\S]*?`is-detail-interactive--\$\{detailSelectionType\}`/,
+    'each full-card disclosure should carry its action-control or guardrail accent identity',
+  );
+  assert.match(
+    styles,
+    /\.agent-studio-connected-chart\.is-detail-selected\s*\{[^}]*border-color:\s*color-mix\(in srgb, var\(--agent-studio-detail-accent\) 72%, var\(--border-color\)\);[^}]*\}/,
+    'the selected activity card should keep only a restrained semantic border',
+  );
+  const selectedActivityCardRule = styles.match(
+    /\.agent-studio-connected-chart\.is-detail-selected\s*\{[^}]*\}/,
+  )?.[0] ?? '';
+  assert.doesNotMatch(
+    selectedActivityCardRule,
+    /background:|box-shadow:/,
+    'the selected activity card should not add a fill or shadow',
+  );
+  assert.match(
+    styles,
+    /\.agent-studio-connected-chart\.is-detail-interactive--action-control,[\s\S]*?--agent-studio-detail-accent:\s*var\(--accent-color\);[\s\S]*?\.agent-studio-connected-chart\.is-detail-interactive--guardrail,[\s\S]*?--agent-studio-detail-accent:\s*var\(--warning-color\);/,
+    'Agent control and Guardrail activity cards should use their corresponding accent colors',
+  );
+  assert.match(
+    styles,
+    /\.agent-studio-connected-chart\.is-detail-interactive:hover:not\(\.is-detail-selected\)\s*\{[^}]*border-color:[^}]*var\(--agent-studio-detail-accent\)[^}]*background:[^}]*var\(--agent-studio-detail-accent\)/,
+    'both full-card disclosure targets should provide a subtle semantic hover state',
+  );
+  assert.match(
+    styles,
+    /\.agent-studio-connected-chart\.is-detail-interactive\.is-detail-selected:hover\s*\{[^}]*border-color:[^}]*var\(--agent-studio-detail-accent\)/,
+    'hovering an active card should keep its semantic border responsive',
+  );
+  assert.match(
+    styles,
+    /\.agent-studio-connected-chart__disclosure\s*\{[^}]*position:\s*absolute;[^}]*inset:\s*0;[^}]*cursor:\s*pointer;/,
+    'the native disclosure target should cover the complete activity card',
   );
   assert.doesNotMatch(
     source,
@@ -1517,7 +1584,7 @@ test('EAGLE GREEN pinned metrics share the exact Overview values', () => {
   );
   assert.match(
     dashboardSource,
-    /function alignKpiWithCiscoLiveOverview[\s\S]*?CISCO_LIVE_OPERATIONAL_HEALTH_METRICS\.find[\s\S]*?thresholdStatus: 'good'[\s\S]*?overviewAlignedKpis[\s\S]*?actionControlKpis[\s\S]*?map\(alignKpiWithCiscoLiveOverview\)/,
+    /function alignKpiWithCiscoLiveOverview[\s\S]*?CISCO_LIVE_OPERATIONAL_HEALTH_METRICS\.find[\s\S]*?thresholdStatus: 'good'[\s\S]*?overviewAlignedKpis[\s\S]*?actionControlKpis[\s\S]*?alignKpiWithCiscoLiveOverview\(kpi, dateRange\)/,
     'Observability should align both regular and trace-derived pinned metrics with Overview and keep their healthy status',
   );
 });
@@ -1556,25 +1623,119 @@ test('EAGLE GREEN Business Impact isolates the voice productivity alert', () => 
   );
   assert.match(
     dashboardSource,
-    /function alignKpiWithCiscoLiveBusinessImpact[\s\S]*?CISCO_LIVE_BUSINESS_IMPACT_METRICS\.find[\s\S]*?map\(alignKpiWithCiscoLiveBusinessImpact\)/,
+    /function alignKpiWithCiscoLiveBusinessImpact[\s\S]*?CISCO_LIVE_BUSINESS_IMPACT_METRICS\.find[\s\S]*?alignKpiWithCiscoLiveBusinessImpact\(kpi, dateRange\)/,
     'the Eagle Green dashboard should apply the curated Business Impact story after agent scoping',
   );
 });
 
-test('selected guardrail banner opens a concrete session detail', () => {
+test('EAGLE GREEN card and expanded trends share one constrained series', () => {
+  const dashboardSource = readSource('../../features/clus-kpi-dashboard/ClusKpiDashboardRoot.tsx');
+  const cardSource = readSource('../../features/clus-kpi-dashboard/components/KPICard.tsx');
+  const chartSource = readSource('../../features/clus-kpi-dashboard/components/KPIChart.tsx');
+  const chartAxisSource = readSource('../../features/clus-kpi-dashboard/kpiChartAxis.ts');
+
+  assert.match(
+    dashboardSource,
+    /function buildReportedTrendSeries[\s\S]*?currentValue \/ priorPeriodFactor[\s\S]*?noiseState \* 0\.62 \+ innovation \* 0\.58[\s\S]*?bridgeNoise[\s\S]*?series\[0\][\s\S]*?series\[series\.length - 1\]/,
+    'curated cards should keep exact reported endpoints around non-periodic correlated variation',
+  );
+  assert.match(
+    dashboardSource,
+    /function alignKpiWithCiscoLiveOverview[\s\S]*?sparklineData: buildReportedTrendSeries[\s\S]*?function alignKpiWithCiscoLiveBusinessImpact[\s\S]*?sparklineData: buildReportedTrendSeries/,
+    'the pinned Overview and Business Impact cards should share the reported trend series with their expanded charts',
+  );
+  assert.match(
+    dashboardSource,
+    /function alignKpiWithCiscoLiveActionControl24h[\s\S]*?sparklineData: undefined[\s\S]*?sparklineType: undefined/,
+    'curated 24-hour action-control totals should not display incomplete drill-down samples as their trend',
+  );
+  assert.match(
+    dashboardSource,
+    /function scopeKpiToAgent[\s\S]*?scopedChangeFactor = 0\.78[\s\S]*?Math\.min\(14\.8, Math\.max\(1\.2[\s\S]*?buildReportedTrendSeries\(scopedKpi, value, unit, change, dateRange\)/,
+    'agent-scoped metrics should keep varied, plausible changes and align their card trend to the displayed delta',
+  );
+  assert.doesNotMatch(
+    dashboardSource,
+    /aggregateToAgentScale - 1/,
+    'agent population scaling must not masquerade as a time-over-time trend',
+  );
+  assert.match(
+    cardSource,
+    /scale === 'relative-change'[\s\S]*?\(value - priorPeriodValue\) \/ Math\.abs\(priorPeriodValue\)[\s\S]*?relativeChange \/ 0\.1/,
+    'reported trends should share one relative-change scale',
+  );
+  assert.doesNotMatch(chartSource, /idx % safeSparklineData\.length/);
+  assert.match(
+    chartSource,
+    /AutoCSAT[\s\S]*?const isCSAT = unit === '\/5'/,
+    'expanded charts should derive the rating scale from the unit instead of misclassifying AutoCSAT percentages',
+  );
+  assert.match(
+    chartSource,
+    /sourcePosition[\s\S]*?lowerValue \+ \(upperValue - lowerValue\) \* interpolation/,
+    'expanded charts should resample source data instead of repeating a short pattern',
+  );
+  assert.match(
+    chartAxisSource,
+    /sparklineScale === 'relative-change'[\s\S]*?dataSpan \* 1\.5[\s\S]*?minimumWindow[\s\S]*?domainMin[\s\S]*?domainMax/,
+    'reported trends should use a bounded data-focused axis instead of flattening percentages onto 0–100',
+  );
+  assert.match(
+    cardSource,
+    /type === 'area' \? \([\s\S]*?<polygon points=\{areaPoints\}/,
+    'line sparklines should avoid implying cumulative area beneath a point-in-time trend',
+  );
+});
+
+test('selected guardrail activity opens its original event banner', () => {
   const studioSource = readSource('../../pages/agent/AgentStudioLanding.tsx');
   const sessionsSource = readSource('../../pages/agent/AgentSessions.tsx');
+  const styles = readSource('../../products/ai-agent-studio/components.css');
 
   assert.match(
     studioSource,
-    /selectedGuardrail && selectedGuardrail\.count > 0[\s\S]*?<Banner[\s\S]*?className="agent-studio-operational-event-banner agent-studio-connected-event-banner"[\s\S]*?label: 'View session →'[\s\S]*?navigate\(operationalSessionPath\)/,
-    'the selected guardrail event should appear below the capability charts and link to its session',
+    /id=\{detailId\}[\s\S]*?hidden=\{!isDetailSelected\}[\s\S]*?<Banner[\s\S]*?type=\{tileId === ['"]guardrails['"] \? ['"]warning['"] : ['"]info['"]\}[\s\S]*?eagleGuardrailSessionPath/,
+    'the selected guardrail event should use the original warning banner and link to its session',
   );
-  assert.match(studioSource, /aria-pressed=\{selectedGuardrailName === guardrail\.item\}/);
   assert.match(
     studioSource,
-    /const nextGuardrail = selectedGuardrailName === guardrail\.item[\s\S]*?\? null[\s\S]*?: guardrail\.item;[\s\S]*?setSelectedGuardrailActivity\(nextGuardrail\)/,
-    'clicking the selected guardrail should clear the selection and hide its event banner',
+    /Guardrail activity, latest trigger[\s\S]*?aria-expanded=\{isDetailSelected\}[\s\S]*?aria-controls=\{detailId\}/,
+    'the whole guardrail card should disclose the shared guardrail banner',
+  );
+  assert.match(
+    studioSource,
+    /guardrail\.count > 0 \? \([\s\S]*?<button[\s\S]*?guardrailExpanded \? ['"]is-selected['"] : ['"]["'][\s\S]*?aria-expanded=\{guardrailExpanded\}[\s\S]*?aria-controls=\{GUARDRAIL_DETAIL_ID\}[\s\S]*?setSelectedGuardrailActivity\(guardrail\.item\);[\s\S]*?setSelectedOverviewIntervention\(['"]guardrail['"]\)[\s\S]*?: \([\s\S]*?<div className="agent-studio-guardrail-chart__plot">/,
+    'each triggered guardrail bar should switch to its own banner while zero-count rows remain noninteractive',
+  );
+  assert.match(
+    styles,
+    /button\.agent-studio-guardrail-chart__plot\s*\{[^}]*position:\s*relative;[^}]*z-index:\s*2;[^}]*cursor:\s*pointer;[\s\S]*?button\.agent-studio-guardrail-chart__plot:hover\s*\{[^}]*background:/,
+    'triggered guardrail bars should remain clickable above the full-card target and expose a hover state',
+  );
+  assert.match(
+    styles,
+    /button\.agent-studio-guardrail-chart__plot\.is-selected \.agent-studio-guardrail-chart__track i\s*\{[^}]*background:\s*var\(--warning-color\);/,
+    'the selected guardrail should highlight only its filled bar in the warning color',
+  );
+  assert.doesNotMatch(
+    styles,
+    /button\.agent-studio-guardrail-chart__plot\.is-selected(?:\s*|:hover)\s*\{[^}]*(?:background|box-shadow|border):/,
+    'the selected guardrail row should not add a background, border, or inset outline',
+  );
+  assert.doesNotMatch(
+    styles,
+    /button\.agent-studio-guardrail-chart__plot\.is-selected \.agent-studio-guardrail-chart__track\s*\{/,
+    'the selected guardrail should not recolor the empty track',
+  );
+  assert.match(
+    styles,
+    /button\.agent-studio-guardrail-chart__plot:focus-visible\s*\{[^}]*outline:\s*none;[\s\S]*?button\.agent-studio-guardrail-chart__plot:focus-visible \.agent-studio-guardrail-chart__track i\s*\{[^}]*filter:\s*brightness/,
+    'normal focus feedback should stay on the bar instead of drawing a row border',
+  );
+  assert.match(
+    studioSource,
+    /const nextGuardrail = showSelectedGuardrailDecision[\s\S]*?\? null[\s\S]*?: defaultTriggeredGuardrailName;[\s\S]*?setSelectedGuardrailActivity\(nextGuardrail\)/,
+    'clicking the selected guardrail card should clear the selection and hide its event detail',
   );
   assert.match(
     studioSource,
@@ -2365,6 +2526,16 @@ test('AI agent list cards use the native Uplift card with a visible 16px grid ga
     /className="ai-agents-agent-meta"[^]*?\{tile\.description\}/,
     'agent cards should not repeat the description in their metadata',
   );
+  assert.doesNotMatch(
+    tableSource,
+    /family\.badgeLabel|family\.badgeVariant/,
+    'agent cards should not repeat the agent family as a tag',
+  );
+  assert.match(
+    tableSource,
+    /className=\{`ai-agents-agent-lifecycle ai-agents-agent-lifecycle--\$\{tile\.lifecycle\}`\}/,
+    'agent cards should keep their lifecycle status visible after family tags are removed',
+  );
   assert.match(
     tableSource,
     /className="ai-agents-agent-footer"[\s\S]*?aria-label=\{`Preview \$\{tile\.name\}`\}[\s\S]*?onClick=\{\(event\) => \{[\s\S]*?handleAgentClick\(tile\);[\s\S]*?>\s*Preview\s*<\/Button>/,
@@ -2374,6 +2545,16 @@ test('AI agent list cards use the native Uplift card with a visible 16px grid ga
     styles,
     /\.ai-agents-agent-name-button:hover\s*\{[^}]*text-decoration:\s*underline;/,
     'agent card titles should not underline independently on hover',
+  );
+});
+
+test('agent overview header omits the family tag and keeps lifecycle status', () => {
+  const overviewSource = readSource('../../pages/agent/AgentStudioLanding.tsx');
+
+  assert.doesNotMatch(overviewSource, /familyBadgeLabel|familyBadgeVariant/);
+  assert.match(
+    overviewSource,
+    /className="agent-studio-agent-metadata" aria-label=\{lifecycleStatusLabel\(lifecycle\)\}[\s\S]*?agent-studio-lifecycle-status--\$\{lifecycle\}/,
   );
 });
 

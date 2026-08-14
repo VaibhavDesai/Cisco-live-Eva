@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Navigate, useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { useApp } from '../../contexts/AppContext';
 import { AgentHeader, AgentWorkspacePageHeading } from '../../components/agents';
@@ -109,6 +109,11 @@ function actionControlTimeWindowLabel(decision: CiscoLiveActionControlDecision) 
   );
 }
 
+type SessionPolicyPanel = 'action-control' | 'guardrail';
+
+const ACTION_CONTROL_PANEL_ID = 'session-action-control-evidence';
+const GUARDRAIL_PANEL_ID = 'session-guardrail-evidence';
+
 function SessionDetail({
   session,
   backLabel,
@@ -123,6 +128,9 @@ function SessionDetail({
   onReviewActionControl: () => void;
 }) {
   const actionControl = getSessionActionControlDecision(session);
+  const [expandedPolicyPanel, setExpandedPolicyPanel] = useState<SessionPolicyPanel | null>(null);
+  const actionControlCardRef = useRef<HTMLDivElement>(null);
+  const guardrailCardRef = useRef<HTMLDivElement>(null);
   const actionControlResultLabel = !actionControl?.matched
     ? 'Conditions not matched'
     : actionControl.result === 'steered'
@@ -130,6 +138,23 @@ function SessionDetail({
       : actionControl.result === 'denied'
         ? 'Action denied'
         : 'Observed';
+
+  const showPolicyPanel = (panel: SessionPolicyPanel) => {
+    setExpandedPolicyPanel(panel);
+  };
+
+  useEffect(() => {
+    if (!expandedPolicyPanel) return;
+    const target = expandedPolicyPanel === 'action-control'
+      ? actionControlCardRef.current
+      : guardrailCardRef.current;
+    if (!target) return;
+    target.focus({ preventScroll: true });
+    target.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+  }, [expandedPolicyPanel]);
+
+  const actionControlExpanded = expandedPolicyPanel === 'action-control';
+  const guardrailExpanded = expandedPolicyPanel === 'guardrail';
 
   return (
     <div className="agent-session-detail-page">
@@ -183,6 +208,13 @@ function SessionDetail({
                         )}
                       </span>
                     )}
+                    actions={actionControl ? [{
+                      label: 'View control',
+                      variant: 'outline',
+                      onClick: () => showPolicyPanel('action-control'),
+                      ariaControls: ACTION_CONTROL_PANEL_ID,
+                      ariaExpanded: actionControlExpanded,
+                    }] : undefined}
                     dismissable={false}
                     className="agent-session-action-control-banner"
                   />
@@ -204,6 +236,13 @@ function SessionDetail({
                         )}
                       </span>
                     )}
+                    actions={session.guardrail ? [{
+                      label: 'View guardrail',
+                      variant: 'outline',
+                      onClick: () => showPolicyPanel('guardrail'),
+                      ariaControls: GUARDRAIL_PANEL_ID,
+                      ariaExpanded: guardrailExpanded,
+                    }] : undefined}
                     dismissable={false}
                     className="agent-session-guardrail-banner"
                   />
@@ -283,12 +322,20 @@ function SessionDetail({
             </dl>
           </Card>
 
-          {actionControl && (
-            <Card className="agent-session-policy-card agent-session-policy-card--action-control">
+          {actionControl && actionControlExpanded && (
+            <Card
+              ref={actionControlCardRef}
+              id={ACTION_CONTROL_PANEL_ID}
+              tabIndex={-1}
+              aria-labelledby={`${ACTION_CONTROL_PANEL_ID}-heading`}
+              className="agent-session-policy-card agent-session-policy-card--action-control"
+            >
               <div className="agent-session-policy-card__header">
                 <ConfigurationCategoryIcon type="action-control" size={20} />
                 <div>
-                  <h2>{actionControl.unlockedActionNames[0] ?? actionControl.controlTitle}</h2>
+                  <h2 id={`${ACTION_CONTROL_PANEL_ID}-heading`}>
+                    {actionControl.unlockedActionNames[0] ?? actionControl.controlTitle}
+                  </h2>
                 </div>
                 <Button
                   variant="secondary"
@@ -296,7 +343,7 @@ function SessionDetail({
                   className="agent-session-policy-card__review"
                   onClick={onReviewActionControl}
                 >
-                  Review control
+                  Edit control
                 </Button>
               </div>
               <dl className="agent-session-policy-list">
@@ -314,12 +361,18 @@ function SessionDetail({
             </Card>
           )}
 
-          {session.guardrail && (
-            <Card className="agent-session-policy-card">
+          {session.guardrail && guardrailExpanded && (
+            <Card
+              ref={guardrailCardRef}
+              id={GUARDRAIL_PANEL_ID}
+              tabIndex={-1}
+              aria-labelledby={`${GUARDRAIL_PANEL_ID}-heading`}
+              className="agent-session-policy-card"
+            >
               <div className="agent-session-policy-card__header">
                 <ConfigurationCategoryIcon type="guardrail" size={20} />
                 <div>
-                  <h2>{session.guardrail.name}</h2>
+                  <h2 id={`${GUARDRAIL_PANEL_ID}-heading`}>{session.guardrail.name}</h2>
                 </div>
                 <Button
                   variant="secondary"
@@ -327,7 +380,7 @@ function SessionDetail({
                   className="agent-session-policy-card__review"
                   onClick={() => onReviewGuardrail(session.guardrail!.id)}
                 >
-                  Review guardrail
+                  Edit guardrail
                 </Button>
               </div>
               <dl className="agent-session-policy-list">

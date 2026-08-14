@@ -29,6 +29,8 @@ export interface KPIData {
   chartType: KpiChartType;
   sparklineData?: number[];
   sparklineType?: 'line' | 'area' | 'bar';
+  /** Keeps exact previous/current comparisons on one shared percentage-change scale. */
+  sparklineScale?: 'local' | 'relative-change';
   curveType?: 'monotone' | 'linear' | 'step';
   /** Drives expanded chart axis + sparkline generator in `dashboardKpiSparklines.ts`. */
   sparklineKind?: SparklineKind;

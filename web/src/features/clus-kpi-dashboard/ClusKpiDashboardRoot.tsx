@@ -118,7 +118,11 @@ function formatScopedValue(kpi: KPIData, nextNumeric: number): Pick<KPIData, 'va
   return { value: Math.max(0, Math.round(nextNumeric)).toLocaleString('en-US'), unit: kpi.unit };
 }
 
-function scopeKpiToAgent(kpi: KPIData, agentName: string): KPIData {
+function scopeKpiToAgent(
+  kpi: KPIData,
+  agentName: string,
+  dateRange: '24h' | 'week' | 'month' | '90d' | 'custom',
+): KPIData {
   const seed = stableSeed(`${agentName}:${kpi.id}`);
   const baseNumeric = parseKpiNumericValue(kpi.value, kpi.unit, kpi.sparklineKind);
   if (baseNumeric === null) return kpi;
@@ -137,36 +141,117 @@ function scopeKpiToAgent(kpi: KPIData, agentName: string): KPIData {
     : baseNumeric * aggregateToAgentScale * (1 + variance * 0.35);
   const { value, unit } = formatScopedValue(kpi, nextNumeric);
 
-  const sparklineData = kpi.sparklineData?.map((point, idx) => {
-    const pointSeed = seed + (idx + 1) * 97;
-    const pointVariance = (seededUnitFloat(pointSeed) - 0.5) * 0.08;
-    const shifted = ratioLike
-      ? point * (1 + variance * 0.7 + pointVariance)
-      : point * aggregateToAgentScale * (1 + variance * 0.25 + pointVariance);
-
-    if (kpi.sparklineKind === 'rating-5' || kpi.unit === '/5') return Math.min(5, Math.max(0, shifted));
-    if (kpi.sparklineKind === 'percent-100' || kpi.sparklineKind === 'containment' || kpi.unit === '%') {
-      return Math.min(100, Math.max(0, shifted));
-    }
-    return Math.max(0, shifted);
-  });
-
-  const effectiveDelta = ratioLike ? variance : aggregateToAgentScale - 1;
-  const changeMagnitude = Math.abs(effectiveDelta) * 100;
-  const isPositive = effectiveDelta >= 0;
-  const change = `${isPositive ? '+' : '-'}${changeMagnitude.toFixed(1)}%`;
+  // Agent scoping changes the absolute value, not its time-over-time trend.
+  // Keep the catalog's business direction, add stable per-agent variation,
+  // and cap the result so scoped cards do not all report an artificial -95%.
+  const reportedChangeMatch = kpi.change.trim().match(/^([+-]?\d+(?:\.\d+)?)%$/);
+  const scopedChangeFactor = 0.78 + seededUnitFloat(seed + 47) * 0.44;
+  const fallbackDirection = seededUnitFloat(seed + 61) >= 0.5 ? 1 : -1;
+  const fallbackMagnitude = 1.2 + seededUnitFloat(seed + 79) * 8.6;
+  const reportedChange = reportedChangeMatch ? Number(reportedChangeMatch[1]) : null;
+  const changeDirection = reportedChange === null || reportedChange === 0
+    ? fallbackDirection
+    : Math.sign(reportedChange);
+  const changeMagnitude = reportedChange === null
+    ? fallbackMagnitude
+    : Math.min(14.8, Math.max(1.2, Math.abs(reportedChange) * scopedChangeFactor));
+  const change = `${changeDirection >= 0 ? '+' : '-'}${changeMagnitude.toFixed(1)}%`;
+  const isPositive = reportedChangeMatch ? kpi.isPositive : changeDirection >= 0;
+  const scopedKpi = { ...kpi, value, unit };
 
   return {
-    ...kpi,
-    value,
-    unit,
-    sparklineData,
+    ...scopedKpi,
+    sparklineData: buildReportedTrendSeries(scopedKpi, value, unit, change, dateRange),
+    sparklineScale: 'relative-change',
     change,
     isPositive,
   };
 }
 
-function alignKpiWithCiscoLiveOverview(kpi: KPIData): KPIData {
+function reportedTrendPointCount(
+  dateRange: '24h' | 'week' | 'month' | '90d' | 'custom',
+): number {
+  switch (dateRange) {
+    case '24h': return 24;
+    case 'week': return 7;
+    case 'month': return 30;
+    case '90d': return 90;
+    case 'custom': return 24;
+  }
+}
+
+function clampReportedTrendValue(kpi: KPIData, value: number): number {
+  if (kpi.sparklineKind === 'rating-5' || kpi.unit === '/5') {
+    return Math.min(5, Math.max(0, value));
+  }
+  if (
+    kpi.sparklineKind === 'percent-100'
+    || kpi.sparklineKind === 'containment'
+    || kpi.unit === '%'
+    || kpi.value.includes('%')
+  ) {
+    return Math.min(100, Math.max(0, value));
+  }
+  return Math.max(0, value);
+}
+
+/**
+ * Builds one deterministic demo series shared by the card and expanded chart.
+ * The reported previous/current values remain exact; a seeded, correlated
+ * bridge supplies non-periodic in-window variation without changing the delta.
+ */
+function buildReportedTrendSeries(
+  kpi: KPIData,
+  value: string,
+  unit: string,
+  change: string,
+  dateRange: '24h' | 'week' | 'month' | '90d' | 'custom',
+): number[] | undefined {
+  const currentValue = parseKpiNumericValue(value, unit, kpi.sparklineKind);
+  const changeMatch = change.trim().match(/^([+-]?\d+(?:\.\d+)?)%$/);
+  if (currentValue === null || !changeMatch) return undefined;
+
+  const changeRatio = Number(changeMatch[1]) / 100;
+  const priorPeriodFactor = 1 + changeRatio;
+  if (!Number.isFinite(changeRatio) || priorPeriodFactor <= 0) return undefined;
+
+  const priorPeriodValue = currentValue / priorPeriodFactor;
+  const pointCount = reportedTrendPointCount(dateRange);
+  const seed = stableSeed(`reported-trend:${kpi.id}:${dateRange}`);
+  const correlatedNoise: number[] = [];
+  let noiseState = 0;
+
+  for (let index = 0; index < pointCount; index += 1) {
+    const innovation = (seededUnitFloat(seed + (index + 1) * 193) - 0.5) * 2;
+    noiseState = noiseState * 0.62 + innovation * 0.58;
+    correlatedNoise.push(noiseState);
+  }
+
+  const firstNoise = correlatedNoise[0] ?? 0;
+  const lastNoise = correlatedNoise[pointCount - 1] ?? 0;
+  const reportedMovement = Math.abs(currentValue - priorPeriodValue);
+  const metricScale = Math.max(Math.abs(priorPeriodValue), Math.abs(currentValue), 0.01);
+  const volatilityFloor = metricScale * (kpi.sparklineKind === 'rating-5' ? 0.018 : 0.012);
+  const volatility = Math.max(reportedMovement * 0.38, volatilityFloor);
+
+  const series = correlatedNoise.map((noise, index) => {
+    const progress = pointCount <= 1 ? 1 : index / (pointCount - 1);
+    const easedProgress = progress * progress * (3 - 2 * progress);
+    const reportedTrend = priorPeriodValue
+      + (currentValue - priorPeriodValue) * easedProgress;
+    const bridgeNoise = noise - (firstNoise * (1 - progress) + lastNoise * progress);
+    return clampReportedTrendValue(kpi, reportedTrend + bridgeNoise * volatility);
+  });
+
+  series[0] = clampReportedTrendValue(kpi, priorPeriodValue);
+  series[series.length - 1] = clampReportedTrendValue(kpi, currentValue);
+  return series;
+}
+
+function alignKpiWithCiscoLiveOverview(
+  kpi: KPIData,
+  dateRange: '24h' | 'week' | 'month' | '90d' | 'custom',
+): KPIData {
   const overviewMetric = CISCO_LIVE_OPERATIONAL_HEALTH_METRICS.find(
     metric => metric.observabilityKpiId === kpi.id,
   );
@@ -183,11 +268,23 @@ function alignKpiWithCiscoLiveOverview(kpi: KPIData): KPIData {
     unit,
     change: overviewMetric.change,
     isPositive: overviewMetric.isPositive,
+    sparklineData: buildReportedTrendSeries(
+      kpi,
+      value,
+      unit,
+      overviewMetric.change,
+      dateRange,
+    ),
+    sparklineType: 'line',
+    sparklineScale: 'relative-change',
     thresholdStatus: 'good',
   };
 }
 
-function alignKpiWithCiscoLiveBusinessImpact(kpi: KPIData): KPIData {
+function alignKpiWithCiscoLiveBusinessImpact(
+  kpi: KPIData,
+  dateRange: '24h' | 'week' | 'month' | '90d' | 'custom',
+): KPIData {
   const storyMetric = CISCO_LIVE_BUSINESS_IMPACT_METRICS.find(
     metric => metric.observabilityKpiId === kpi.id,
   );
@@ -203,6 +300,15 @@ function alignKpiWithCiscoLiveBusinessImpact(kpi: KPIData): KPIData {
     unit,
     change: storyMetric.change,
     isPositive: storyMetric.isPositive,
+    sparklineData: buildReportedTrendSeries(
+      kpi,
+      value,
+      unit,
+      storyMetric.change,
+      dateRange,
+    ),
+    sparklineType: 'line',
+    sparklineScale: 'relative-change',
     thresholdStatus: storyMetric.thresholdStatus,
   };
 }
@@ -225,6 +331,11 @@ function alignKpiWithCiscoLiveActionControl24h(kpi: KPIData): KPIData {
     unit: aligned.unit ?? kpi.unit,
     change: '24h aggregate',
     changeTone: 'neutral',
+    // The 24-hour totals are curated aggregates; the seeded Session records are
+    // drill-down samples, not a complete time series for those totals.
+    sparklineData: undefined,
+    sparklineType: undefined,
+    sparklineScale: undefined,
     thresholdStatus: 'good',
   };
 }
@@ -362,14 +473,18 @@ export function ClusKpiDashboardRoot() {
 
   const dashboardKpiData = useMemo(() => {
     const scopedKpis = dashboardAgentFilter
-      ? filteredKpiData.map((kpi) => scopeKpiToAgent(kpi, dashboardAgentFilter))
+      ? filteredKpiData.map((kpi) => scopeKpiToAgent(
+          kpi,
+          dashboardAgentFilter,
+          dateRange,
+        ))
       : filteredKpiData;
 
     if (!isEagleGreenObservabilityAgent(dashboardAgentFilter)) return scopedKpis;
 
     const overviewAlignedKpis = scopedKpis
-      .map(alignKpiWithCiscoLiveOverview)
-      .map(alignKpiWithCiscoLiveBusinessImpact);
+      .map(kpi => alignKpiWithCiscoLiveOverview(kpi, dateRange))
+      .map(kpi => alignKpiWithCiscoLiveBusinessImpact(kpi, dateRange));
 
     const query = searchQuery.trim().toLowerCase();
     const actionControlKpis = buildEagleActionControlKpis({
@@ -382,7 +497,7 @@ export function ClusKpiDashboardRoot() {
       || kpi.description.toLowerCase().includes(query)
     ));
     const alignedActionControlKpis = actionControlKpis
-      .map(alignKpiWithCiscoLiveOverview)
+      .map(kpi => alignKpiWithCiscoLiveOverview(kpi, dateRange))
       .map(kpi => dateRange === '24h' ? alignKpiWithCiscoLiveActionControl24h(kpi) : kpi);
     return [...overviewAlignedKpis, ...alignedActionControlKpis];
   }, [
