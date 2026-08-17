@@ -1163,7 +1163,7 @@ test('agent control activity matches the Figma card and discloses its selected s
   assert.match(
     source,
     /actionControlSpotlightActionName[\s\S]*?<StaticChip[\s\S]*?color="lime"[\s\S]*?iconName="automation-bold"[\s\S]*?label="Steered"[\s\S]*?<img src=\{actionControlArrow\} alt="" \/>[\s\S]*?actionControlSpotlightUnlockedName[\s\S]*?<StaticChip[\s\S]*?color="cobalt"[\s\S]*?label="Unlocked"/,
-    'the matched path should use Momentum Lime and Cobalt chips with the two concrete action names',
+    'the matched path should use an icon-labelled Momentum Lime chip and a text-only Cobalt chip with the two concrete action names',
   );
   assert.match(
     source,
@@ -1378,6 +1378,16 @@ test('agent navigation groups deployment destinations under Deploy and renders F
     sidebarSource,
     /const DEPLOY_ITEMS[\s\S]*?section:\s*['"]Channels['"][\s\S]*?section:\s*['"]Flow['"][\s\S]*?<SideNav\.Section header="Deploy">[\s\S]*?deployItems\.map/,
     'Deploy should contain Channels followed by Flow',
+  );
+  assert.match(
+    sidebarSource,
+    /const TESTING_ITEM:[\s\S]*?path:\s*['"]analytics['"][\s\S]*?<SideNav\.Section header="Configure">[\s\S]*?configureItems\.map[\s\S]*?label=\{TESTING_ITEM\.label\}[\s\S]*?<\/SideNav\.Section>[\s\S]*?<SideNav\.Section header="Deploy">/,
+    'Testing should be the final destination in Configure while preserving its analytics route',
+  );
+  assert.doesNotMatch(
+    sidebarSource,
+    /<SideNav\.Section header="Monitor">[\s\S]*?label=\{TESTING_ITEM\.label\}/,
+    'Monitor should no longer render Testing',
   );
   assert.match(
     sidebarSource,

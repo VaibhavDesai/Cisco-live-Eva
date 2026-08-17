@@ -52,8 +52,9 @@ interface MonitorItem {
   icon: string;
 }
 
+const TESTING_ITEM: MonitorItem = { path: 'analytics', label: 'Testing', icon: 'test-tube-bold' };
+
 const MONITOR_ITEMS: MonitorItem[] = [
-  { path: 'analytics', label: 'Testing', icon: 'test-tube-bold' },
   { path: 'sessions', label: 'Sessions', icon: 'chat-bold' },
   { path: 'history', label: 'History', icon: 'recents-bold' },
 ];
@@ -125,7 +126,7 @@ export default function Sidebar({
     const isOverviewRoute = location.pathname === `/agents/${agentId}`;
     const onConfigureRoute = location.pathname === `/agents/${agentId}/configure`;
     const activeSection = searchParams.get('section') || 'Profile';
-    const activeMonitorPath = MONITOR_ITEMS.find(
+    const activeRoutePath = [TESTING_ITEM, ...MONITOR_ITEMS].find(
       item => location.pathname === `/agents/${agentId}/${item.path}`,
     )?.path;
 
@@ -201,6 +202,15 @@ export default function Sidebar({
                     }}
                   />
                 ))}
+                <SideNav.Item
+                  icon={TESTING_ITEM.icon}
+                  label={TESTING_ITEM.label}
+                  active={activeRoutePath === TESTING_ITEM.path}
+                  onClick={() => {
+                    selectAgent(agentId);
+                    navigate(`/agents/${agentId}/${TESTING_ITEM.path}`);
+                  }}
+                />
               </SideNav.Section>
 
               <SideNav.Section header="Deploy">
@@ -224,7 +234,7 @@ export default function Sidebar({
                     key={item.path}
                     icon={item.icon}
                     label={item.label}
-                    active={activeMonitorPath === item.path}
+                    active={activeRoutePath === item.path}
                     onClick={() => {
                       selectAgent(agentId);
                       navigate(`/agents/${agentId}/${item.path}`);
