@@ -48,7 +48,7 @@ export default function AgentAnalytics() {
   if (!agent) return <Navigate to="/agents" replace />;
 
   return (
-    <div className="primary-content agent-workspace-page">
+    <div className="primary-content agent-workspace-page agent-testing-workspace-page">
       <AgentHeader agent={agent} activeTab="analytics" showPublishButton={false} showTabs={false} />
       <AgentWorkspacePageHeading title="Testing" />
 

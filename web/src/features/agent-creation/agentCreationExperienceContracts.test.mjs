@@ -29,7 +29,7 @@ test('Observability and AI Agents share the borderless transparent shell and pri
 
   assert.match(
     layoutSource,
-    /const isObservability\s*=\s*\/\^\\\/observability[\s\S]*?usesStudioAurora\s*=\s*isAgentsList \|\| isAgentOverview \|\| isAgentConfigure \|\| isObservability/,
+    /const isAgentTesting[\s\S]*?const isObservability\s*=\s*\/\^\\\/observability[\s\S]*?usesStudioAurora\s*=[\s\S]*?isAgentsList \|\| isAgentOverview \|\| isAgentConfigure \|\| isAgentTesting \|\| isObservability/,
   );
   assert.match(
     studioStyles,
@@ -1401,17 +1401,24 @@ test('agent navigation groups deployment destinations under Deploy and renders F
   );
 });
 
-test('agent list, Overview, configuration, and Observability share the responsive high-visibility aurora', () => {
+test('agent list, Overview, configuration, Testing, and Observability share the responsive high-visibility aurora', () => {
   const layoutSource = readSource('../../components/layout/MainLayout.tsx');
+  const testingSource = readSource('../../pages/agent/AgentAnalytics.tsx');
   const styles = readSource('../../products/ai-agent-studio/components.css');
 
   assert.ok(
     layoutSource.includes("const isAgentsList = /^\\/agents\\/?$/.test(location.pathname);") &&
       layoutSource.includes("isAgentContext && /^\\/agents\\/[^/]+\\/configure\\/?$/.test(location.pathname);") &&
-      layoutSource.includes('isAgentsList || isAgentOverview || isAgentConfigure || isObservability') &&
+      layoutSource.includes("isAgentContext && /^\\/agents\\/[^/]+\\/analytics\\/?$/.test(location.pathname);") &&
+      layoutSource.includes('isAgentsList || isAgentOverview || isAgentConfigure || isAgentTesting || isObservability') &&
       layoutSource.includes('app--ai__bg--studio-aurora') &&
       layoutSource.includes('app--ai--studio-aurora'),
-    'the agent list, exact Overview, all configuration sections, and Observability should receive the shared aurora modifiers',
+    'the agent list, exact Overview, all configuration sections, Testing, and Observability should receive the shared aurora modifiers',
+  );
+  assert.match(
+    testingSource,
+    /className="primary-content agent-workspace-page agent-testing-workspace-page"/,
+    'Testing should expose a dedicated workspace class for the shared aurora glass treatment',
   );
   assert.match(
     styles,
@@ -1440,13 +1447,13 @@ test('agent list, Overview, configuration, and Observability share the responsiv
   );
   assert.match(
     styles,
-    /\.app--ai--studio-aurora \.primary-content\.ai-agents-page,[\s\S]*?\.primary-content\.agent-studio-landing,[\s\S]*?\.primary-content\.action-config-v2-page,[\s\S]*?\.clus-kpi-dashboard-root\s*\{[^}]*backdrop-filter:\s*blur\(28px\)/,
-    'the list, Overview, configuration, and Observability surfaces should share the same responsive glass blur',
+    /\.app--ai--studio-aurora \.primary-content\.ai-agents-page,[\s\S]*?\.primary-content\.agent-studio-landing,[\s\S]*?\.primary-content\.action-config-v2-page,[\s\S]*?\.primary-content\.agent-testing-workspace-page,[\s\S]*?\.clus-kpi-dashboard-root\s*\{[^}]*backdrop-filter:\s*blur\(28px\)/,
+    'the list, Overview, configuration, Testing, and Observability surfaces should share the same responsive glass blur',
   );
   assert.match(
     styles,
-    /\.app--ai--studio-aurora \.primary-content\.agent-studio-landing,\s*\.app--ai--studio-aurora \.primary-content\.action-config-v2-page\s*\{[^}]*36%/,
-    'Overview and configuration should retain their lighter theme-colored glass surface',
+    /\.app--ai--studio-aurora \.primary-content\.agent-studio-landing,\s*\.app--ai--studio-aurora \.primary-content\.action-config-v2-page,\s*\.app--ai--studio-aurora \.primary-content\.agent-testing-workspace-page\s*\{[^}]*36%/,
+    'Overview, configuration, and Testing should retain the same lighter theme-colored glass surface',
   );
   assert.match(
     styles,
@@ -1455,8 +1462,8 @@ test('agent list, Overview, configuration, and Observability share the responsiv
   );
   assert.match(
     styles,
-    /@media \(max-width:\s*767px\)[\s\S]*?\.app--ai--studio-aurora \.primary-content\.agent-studio-landing,\s*\.app--ai--studio-aurora \.primary-content\.action-config-v2-page\s*\{[^}]*42%/,
-    'compact Overview and configuration screens should keep a slightly stronger readable glass layer',
+    /@media \(max-width:\s*767px\)[\s\S]*?\.app--ai--studio-aurora \.primary-content\.agent-studio-landing,\s*\.app--ai--studio-aurora \.primary-content\.action-config-v2-page,\s*\.app--ai--studio-aurora \.primary-content\.agent-testing-workspace-page\s*\{[^}]*42%/,
+    'compact Overview, configuration, and Testing screens should keep a slightly stronger readable glass layer',
   );
   assert.match(
     styles,
@@ -1494,7 +1501,7 @@ test('configuration and monitor destinations reuse the Overview page-heading con
     /CONFIGURATION_PAGE_TITLES[\s\S]*?Knowledge:\s*['"]Knowledge & Memory['"][\s\S]*?Action:\s*['"]Actions['"][\s\S]*?className="primary-content action-config-v2-page agent-workspace-page"[\s\S]*?<AgentWorkspacePageHeading title=\{pageTitle\} actions=\{pageActions\}/,
     'all configuration destinations should use the shared title contract',
   );
-  assert.match(testingSource, /className="primary-content agent-workspace-page"[\s\S]*?<AgentWorkspacePageHeading title="Testing"/);
+  assert.match(testingSource, /className="primary-content agent-workspace-page agent-testing-workspace-page"[\s\S]*?<AgentWorkspacePageHeading title="Testing"/);
   assert.match(sessionsSource, /className="primary-content agent-workspace-page"[\s\S]*?<AgentWorkspacePageHeading[\s\S]*?title="Sessions"/);
   assert.match(historySource, /className="primary-content agent-workspace-page"[\s\S]*?<AgentWorkspacePageHeading title="History"/);
   assert.match(configureSource, /className="action-config-v2-shell agent-workspace-section-canvas"/);

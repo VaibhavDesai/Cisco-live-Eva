@@ -275,13 +275,15 @@ html[data-product='ai-agent-studio'] .app-header__menu-row-hint {
 .app--ai--studio-aurora .primary-content.ai-agents-page,
 .app--ai--studio-aurora .primary-content.agent-studio-landing,
 .app--ai--studio-aurora .primary-content.action-config-v2-page,
+.app--ai--studio-aurora .primary-content.agent-testing-workspace-page,
 .app--ai--studio-aurora .clus-kpi-dashboard-root {
   backdrop-filter: blur(28px);
   -webkit-backdrop-filter: blur(28px);
 }
 
 .app--ai--studio-aurora .primary-content.agent-studio-landing,
-.app--ai--studio-aurora .primary-content.action-config-v2-page {
+.app--ai--studio-aurora .primary-content.action-config-v2-page,
+.app--ai--studio-aurora .primary-content.agent-testing-workspace-page {
   background: color-mix(in srgb, var(--mds-color-theme-background-solid-primary-normal) 36%, transparent);
 }
 
@@ -307,7 +309,8 @@ html[data-product='ai-agent-studio'] .app-header__menu-row-hint {
   }
 
   .app--ai--studio-aurora .primary-content.agent-studio-landing,
-  .app--ai--studio-aurora .primary-content.action-config-v2-page {
+  .app--ai--studio-aurora .primary-content.action-config-v2-page,
+  .app--ai--studio-aurora .primary-content.agent-testing-workspace-page {
     background: color-mix(in srgb, var(--mds-color-theme-background-solid-primary-normal) 42%, transparent);
   }
 }

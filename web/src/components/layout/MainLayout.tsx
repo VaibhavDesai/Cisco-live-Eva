@@ -42,8 +42,11 @@ export default function MainLayout() {
   const isAgentsList = /^\/agents\/?$/.test(location.pathname);
   const isAgentConfigure =
     isAgentContext && /^\/agents\/[^/]+\/configure\/?$/.test(location.pathname);
+  const isAgentTesting =
+    isAgentContext && /^\/agents\/[^/]+\/analytics\/?$/.test(location.pathname);
   const isObservability = /^\/observability\/?$/.test(location.pathname);
-  const usesStudioAurora = isAgentsList || isAgentOverview || isAgentConfigure || isObservability;
+  const usesStudioAurora =
+    isAgentsList || isAgentOverview || isAgentConfigure || isAgentTesting || isObservability;
 
   useEffect(() => {
     if (isAgentContext) {
