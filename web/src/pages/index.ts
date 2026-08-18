@@ -7,3 +7,4 @@ export { default as Connections } from './Connections';
 export { default as Observability } from './Observability';
 export { default as Settings } from './Settings';
 export { default as OrganizationSettings } from './OrganizationSettings';
+export { default as ControlHubLanding } from './ControlHubLanding';

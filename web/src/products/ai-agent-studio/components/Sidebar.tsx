@@ -14,7 +14,7 @@ interface NavItem {
 }
 
 const navItems: NavItem[] = [
-  { path: '/', label: 'New agent', icon: 'home-bold' },
+  { path: '/new-agent', label: 'New agent', icon: 'home-bold' },
   { path: '/agents', label: 'AI Agents', icon: 'bot-bold' },
   { path: '/observability', label: 'Observability', icon: 'multiline-chart-regular' },
   { path: '/knowledge', label: 'Knowledge', icon: 'apps-bold' },
@@ -268,8 +268,8 @@ export default function Sidebar({
       (variation !== 'dashboard' || !hasFamilyAgents)
     );
   const isNewAgentActive =
-    location.pathname === '/' ||
-    location.pathname === '/eva-canvas' ||
+    location.pathname === '/new-agent' ||
+    location.pathname === '/new-agent/eva-canvas' ||
     agentsRouteShowsBuildingExperience;
 
   return (
@@ -286,7 +286,7 @@ export default function Sidebar({
                       ? location.pathname === '/observability' ||
                         location.pathname === '/kpi-dashboard' ||
                         location.pathname.endsWith('/kpi-dashboard')
-                    : item.path === '/'
+                    : item.path === '/new-agent'
                       ? isNewAgentActive
                     : item.path === '/agents'
                       ? !agentsRouteShowsBuildingExperience && isActive(item.path)
@@ -299,7 +299,7 @@ export default function Sidebar({
                     label={item.label}
                     active={itemActive}
                     onClick={() => {
-                      if (item.path === '/') {
+                      if (item.path === '/new-agent') {
                         setVariation('dashboard');
                       }
                       navigate(item.path);

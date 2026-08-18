@@ -8,14 +8,14 @@ import EvaCanvasSurface from './canvas/EvaCanvasSurface';
      - `/agents/eva-canvas` — opens over the AI Agents page (variations
        'landing' and 'form-bases', and 'dashboard' when the user is on
        /agents directly).
-     - `/eva-canvas` — opens over the Dashboard page (variation
-       'dashboard' when the user is on / and EvaChatExperience is
+     - `/new-agent/eva-canvas` — opens over the Dashboard page (variation
+       'dashboard' when the user is on /new-agent and EvaChatExperience is
        rendered through Dashboard.tsx). Keeping the canvas under the
        Dashboard root means the "Dashboard" sidebar item stays
        highlighted while the canvas is open, instead of jumping to
        "AI Agents" mid-flow. */
 export const EVA_CANVAS_AGENTS_PATH = '/agents/eva-canvas';
-export const EVA_CANVAS_DASHBOARD_PATH = '/eva-canvas';
+export const EVA_CANVAS_DASHBOARD_PATH = '/new-agent/eva-canvas';
 export const EVA_CANVAS_PATHS: readonly string[] = [
   EVA_CANVAS_AGENTS_PATH,
   EVA_CANVAS_DASHBOARD_PATH,
@@ -48,7 +48,7 @@ export const EVA_CANVAS_ORIGIN_PATH_KEY = 'eva-canvas-origin-path';
    mid-canvas) so the user still lands somewhere coherent — under the
    same sidebar tab the canvas was sitting beside. */
 const fallbackOriginFor = (canvasPath: string): string => {
-  if (canvasPath === EVA_CANVAS_DASHBOARD_PATH) return '/';
+  if (canvasPath === EVA_CANVAS_DASHBOARD_PATH) return '/new-agent';
   return '/agents';
 };
 
@@ -91,7 +91,7 @@ const consumeCanvasOriginPath = (currentCanvasPath: string): string => {
  * right.
  *
  * Open/close is driven entirely by `location.pathname`:
- *   - `/agents/eva-canvas` or `/eva-canvas` (see EVA_CANVAS_PATHS) →
+ *   - `/agents/eva-canvas` or `/new-agent/eva-canvas` (see EVA_CANVAS_PATHS) →
  *       clip-path inset(0), pointer-events on, focus inside
  *   - any other →
  *       clip-path inset(0 0 0 100%) (fully collapsed at the right edge),

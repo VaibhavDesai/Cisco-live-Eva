@@ -15,6 +15,7 @@ import {
   Observability,
   Settings,
   OrganizationSettings,
+  ControlHubLanding,
 } from './pages';
 import { ActionConfigureV2, AgentStudioLanding, AgentSessions, AgentHistory, AgentAnalytics } from './pages/agent';
 import PolicyStudioV2 from './pages/agent/PolicyStudioV2';
@@ -42,16 +43,18 @@ function App() {
                 <ReviewProvider>
                   <Routes>
                     <Route path="/policy-studio-v2" element={<PolicyStudioV2 />} />
-                    <Route path="/" element={<MainLayout />}>
-                      <Route index element={<Dashboard />} />
+                    <Route index element={<ControlHubLanding />} />
+                    <Route element={<MainLayout />}>
+                      <Route path="new-agent" element={<Dashboard />} />
                       {/* Sibling canvas route under the Dashboard root.
-                          When the user is on / under the "Chat-based in
+                          When the user is on /new-agent under the "Chat-based in
                           Dashboard" variation, opening the canvas
-                          navigates to /eva-canvas instead of /agents/eva-canvas
+                          navigates to /new-agent/eva-canvas instead of /agents/eva-canvas
                           so the Dashboard sidebar item stays highlighted
                           and Dashboard.tsx (which also renders the canvas
                           overlay for that variation) stays mounted. */}
-                      <Route path="eva-canvas" element={<Dashboard />} />
+                      <Route path="new-agent/eva-canvas" element={<Dashboard />} />
+                      <Route path="eva-canvas" element={<Navigate to="/new-agent/eva-canvas" replace />} />
                       <Route path="agents" element={<Agents />} />
                       {/* The canvas slides in as an overlay over the chat/form
                           view at /agents (see EvaCanvasOverlay). Pointing

@@ -2652,14 +2652,19 @@ test('session action-control evidence formats evaluated inputs as template varia
   );
 });
 
-test('Dashboard home starts the first conversational creation landing', () => {
+test('Control Hub landing routes AI Agent Studio into the conversational New agent landing', () => {
   const dashboardSource = readSource('../../pages/Dashboard.tsx');
   const sidebarSource = readSource('../../products/ai-agent-studio/components/Sidebar.tsx');
+  const appSource = readSource('../../App.tsx');
+  const controlHubSource = readSource('../../pages/ControlHubLanding.tsx');
 
   assert.match(dashboardSource, /<EvaChatExperience resetSessionOnInitialMount \/>/);
-  assert.match(sidebarSource, /\{\s*path:\s*['"]\/['"],\s*label:\s*['"]New agent['"]/);
-  assert.doesNotMatch(sidebarSource, /\{\s*path:\s*['"]\/['"],\s*label:\s*['"]Dashboard['"]/);
-  assert.match(sidebarSource, /item\.path === ['"]\/['"][\s\S]*?setVariation\(['"]dashboard['"]\)/);
+  assert.match(appSource, /<Route index element=\{<ControlHubLanding \/>\} \/>/);
+  assert.match(appSource, /<Route path="new-agent" element=\{<Dashboard \/>\} \/>/);
+  assert.match(controlHubSource, /label="AI Agent Studio"[\s\S]*?navigate\('\/new-agent'\)/);
+  assert.match(sidebarSource, /\{\s*path:\s*['"]\/new-agent['"],\s*label:\s*['"]New agent['"]/);
+  assert.doesNotMatch(sidebarSource, /\{\s*path:\s*['"]\/['"],\s*label:\s*['"](?:Dashboard|New agent)['"]/);
+  assert.match(sidebarSource, /item\.path === ['"]\/new-agent['"][\s\S]*?setVariation\(['"]dashboard['"]\)/);
   assert.match(sidebarSource, /navigate\(item\.path\)/);
   assert.match(
     sidebarSource,
@@ -2668,7 +2673,7 @@ test('Dashboard home starts the first conversational creation landing', () => {
   );
   assert.match(
     sidebarSource,
-    /item\.path === '\/'[\s\S]*?isNewAgentActive[\s\S]*?item\.path === '\/agents'[\s\S]*?!agentsRouteShowsBuildingExperience && isActive\(item\.path\)/,
+    /item\.path === '\/new-agent'[\s\S]*?isNewAgentActive[\s\S]*?item\.path === '\/agents'[\s\S]*?!agentsRouteShowsBuildingExperience && isActive\(item\.path\)/,
     'New agent and AI Agents should never both be selected while the builder is active',
   );
 });

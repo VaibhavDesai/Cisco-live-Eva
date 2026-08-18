@@ -1230,7 +1230,7 @@ export default function EvaChatExperience({
   const { setVariation } = useDesignVariation();
   const restoredEvaSessionRef = useRef<EvaSessionState | null | undefined>(undefined);
   if (restoredEvaSessionRef.current === undefined) {
-    if (resetSessionOnInitialMount && location.pathname === '/') {
+    if (resetSessionOnInitialMount && location.pathname === '/new-agent') {
       try {
         window.sessionStorage.removeItem(EVA_SESSION_STORAGE_KEY);
         window.sessionStorage.removeItem(EVA_AUTO_START_VOICE_PREVIEW_KEY);
@@ -1632,11 +1632,11 @@ export default function EvaChatExperience({
       /* sessionStorage unavailable — falls back to /agents on close. */
     }
     /* Pick the canvas route that lives under the same parent as the
-       user's current page. From / (Dashboard) we navigate to
-       /eva-canvas so the Dashboard sidebar item stays highlighted; from
+       user's current page. From /new-agent (Dashboard) we navigate to
+       /new-agent/eva-canvas so the Dashboard sidebar item stays highlighted; from
        anywhere else (notably /agents) we use /agents/eva-canvas. The
        overlay component recognises both as "open" via EVA_CANVAS_PATHS. */
-    const canvasPath = location.pathname === '/'
+    const canvasPath = location.pathname === '/new-agent'
       ? EVA_CANVAS_DASHBOARD_PATH
       : EVA_CANVAS_AGENTS_PATH;
     navigate(canvasPath);

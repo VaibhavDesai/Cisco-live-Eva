@@ -935,7 +935,7 @@ export default function EvaFormBuilder() {
     /* Pick the canvas path that sits under the same parent as the
        user's current page so the sidebar selection doesn't jump while
        the canvas is open. */
-    const canvasPath = location.pathname === '/'
+    const canvasPath = location.pathname === '/new-agent'
       ? EVA_CANVAS_DASHBOARD_PATH
       : EVA_CANVAS_AGENTS_PATH;
     navigate(canvasPath);
