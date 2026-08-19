@@ -97,8 +97,8 @@ const DEFAULT_OVERVIEW_CARD_ORDER: OverviewCardId[] = [
 ];
 const DEFAULT_OVERVIEW_CHART_ORDER: OverviewChartTileId[] = [
   'signals',
-  'actions',
   'guardrails',
+  'actions',
 ];
 const ACTION_CONTROL_DETAIL_ID = 'agent-studio-action-control-decision-banner';
 const GUARDRAIL_DETAIL_ID = 'agent-studio-guardrail-decision-banner';
@@ -167,6 +167,13 @@ function readOverviewTileOrder<T extends string>(
       && stored.length === fallback.length
       && fallback.every(tileId => stored.includes(tileId))
     ) {
+      if (
+        group === 'charts'
+        && stored.join('|') === 'signals|actions|guardrails'
+        && fallback.join('|') === 'signals|guardrails|actions'
+      ) {
+        return [...fallback];
+      }
       return stored as T[];
     }
   } catch {

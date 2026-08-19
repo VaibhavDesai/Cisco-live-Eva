@@ -1151,6 +1151,12 @@ test('agent control activity matches the Figma card and discloses its selected s
 
   assert.match(
     source,
+    /const DEFAULT_OVERVIEW_CHART_ORDER:[^=]*=\s*\[\s*'signals',\s*'guardrails',\s*'actions',\s*\]/,
+    'the overview should place Guardrail activity before Agent control activity without changing either card',
+  );
+
+  assert.match(
+    source,
     /<figure[\s\S]*?className="agent-studio-action-control-flow"[\s\S]*?aria-labelledby="agent-studio-action-control-flow-caption"[\s\S]*?<figcaption[\s\S]*?\{actionControlFlowLabel\}/,
     'the aggregate should retain a screen-reader summary without hiding its interactive branch',
   );
