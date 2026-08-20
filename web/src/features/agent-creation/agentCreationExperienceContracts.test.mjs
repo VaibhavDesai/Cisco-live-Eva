@@ -1897,8 +1897,13 @@ test('Agent Home and start-from-scratch remove free composers without dead-endin
   );
   assert.match(
     homeStyles,
-    /\.new-mvo-home__hero--recurring\.eva-first-interface__hero\s*\{[^}]*max-width:\s*none;[^}]*padding-inline:[^}]*text-align:\s*left/,
-    'the recurring greeting should align to the dashboard content edge',
+    /\.new-mvo-home__hero--recurring\.eva-first-interface__hero\s*\{[^}]*padding-inline-start:\s*clamp\(20px, 4cqi, 56px\)[^}]*padding-inline-end:\s*calc\(clamp\(20px, 4cqi, 56px\) \+ 4px\)[^}]*text-align:\s*left/,
+    'the recurring greeting should reuse the dashboard content insets',
+  );
+  assert.match(
+    homeStyles,
+    /\.new-mvo-home__hero--recurring\.eva-first-interface__hero \.eva-landing-hero-brand\s*\{[^}]*width:\s*min\(100%, 1200px\);[^}]*margin-inline:\s*auto/,
+    'the recurring greeting should share the dashboard max width and centered container',
   );
   assert.match(
     homeStyles,

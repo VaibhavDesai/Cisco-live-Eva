@@ -45,8 +45,16 @@
   width: 100%;
   max-width: none;
   margin-inline: 0;
-  padding-inline: clamp(20px, 4cqi, 56px) !important;
+  padding-inline-start: clamp(20px, 4cqi, 56px) !important;
+  padding-inline-end: calc(clamp(20px, 4cqi, 56px) + 4px) !important;
   text-align: left;
+}
+
+.new-mvo-home__hero--recurring.eva-first-interface__hero .eva-landing-hero-brand {
+  display: flex;
+  justify-content: flex-start;
+  width: min(100%, 1200px);
+  margin-inline: auto;
 }
 
 /* Keep the Home-only hero out of every template and demo subflow even during
