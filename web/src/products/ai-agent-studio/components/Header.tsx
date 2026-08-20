@@ -6,8 +6,6 @@ import Toggle from '../../../components/shared/Toggle';
 import Icon from '../../../components/shared/Icon';
 import webexAiAgentStudioWordmark from '../../../assets/webex-ai-agent-studio-wordmark.svg';
 import { useReview } from '../../../features/review/ReviewProvider';
-import { useDesignVariation } from '../../../contexts/DesignVariationContext';
-import type { DesignVariation } from '../../../contexts/designVariationStore';
 import { useAgentHomeScenario } from '../../../features/agent-home/AgentHomeScenarioContext';
 import type { DemoHomeMode } from '../../../features/agent-home/agentHomeModel';
 
@@ -16,12 +14,6 @@ export interface StudioHeaderProps {
   onMenuClick?: () => void;
   centerContent?: ReactNode;
 }
-
-const DESIGN_VARIATION_OPTIONS: Array<{ value: DesignVariation; label: string }> = [
-  { value: 'landing', label: 'Chat-based in Ai Agent' },
-  { value: 'dashboard', label: 'Chat-based in Dashboard' },
-  { value: 'form-bases', label: 'Form-based in Ai Agent' },
-];
 
 const HOME_SCENARIO_OPTIONS: Array<{ value: DemoHomeMode; label: string }> = [
   { value: 'first-time', label: 'First time' },
@@ -36,7 +28,6 @@ export default function Header({ onAiClick, onMenuClick, centerContent }: Studio
     toggleActive: toggleReview,
     openCommentsModal,
   } = useReview();
-  const { variation, setVariation } = useDesignVariation();
   const { mode: homeScenario, setMode: setHomeScenario } = useAgentHomeScenario();
 
   return (
@@ -112,23 +103,6 @@ export default function Header({ onAiClick, onMenuClick, centerContent }: Studio
               <Icon name="list-menu-bold" size={16} />
               <span>View all comments</span>
             </button>
-          </section>
-
-          <section className="app-header__menu-section" aria-label="Design variations">
-            <div className="app-header__menu-section-title">Design variations</div>
-            {DESIGN_VARIATION_OPTIONS.map(option => (
-              <button
-                key={option.value}
-                type="button"
-                className={`app-header__menu-item${variation === option.value ? ' app-header__menu-item--selected' : ''}`}
-                onClick={() => setVariation(option.value)}
-                role="menuitemradio"
-                aria-checked={variation === option.value}
-              >
-                <span>{option.label}</span>
-                {variation === option.value && <Icon name="check-bold" size={16} />}
-              </button>
-            ))}
           </section>
         </>
       )}
