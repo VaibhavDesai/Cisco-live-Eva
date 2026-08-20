@@ -230,7 +230,15 @@ export default function AppHeader({
                 <Icon name="waffle-menu-bold" size={24} />
               </button>
               {appLauncherContent && appLauncherOpen && (
-                <div className="app-header__app-launcher-menu" role="menu" data-review-ui>
+                <div
+                  className="app-header__app-launcher-menu"
+                  role="menu"
+                  data-review-ui
+                  onClick={(event) => {
+                    const menuItem = event.target.closest?.('[role^="menuitem"]')
+                    if (menuItem && !menuItem.disabled) setAppLauncherOpen(false)
+                  }}
+                >
                   {appLauncherContent}
                 </div>
               )}

@@ -5,9 +5,13 @@ import {
   ALL_LICENSED_ENTITLEMENTS,
   FAMILY_CAPABILITIES,
   FAMILY_METADATA,
+  SKIPPED_INTAKE_ANSWER,
+  applyPresetAnswersToDraft,
   buildStarterProposal,
   createDraftFromProposal,
+  decodeVoiceDestinationAnswer,
   duplicateDraftAs,
+  encodeVoiceDestinationAnswer,
   getAdaptiveIntakeQuestions,
   getActionableStoredRecommendations,
   getCapabilityTrackerStatus,
@@ -53,70 +57,83 @@ test('exposes all three licensed agent families and their capability matrices', 
   assert.ok(FAMILY_CAPABILITIES.internal_assistant.some(item => item.id === 'placement'));
 });
 
-test('reveals adaptive intake questions as required answers arrive', () => {
-  const initial = getAdaptiveIntakeQuestions('calling');
-  assert.deepEqual(initial.map(question => question.answerKey), ['outcome']);
+test('reveals each family preset in its exact order as answers arrive', () => {
+  const scenarios = [
+    {
+      family: 'calling',
+      keys: ['voice_destination', 'outcome', 'name', 'greeting', 'knowledge'],
+      answers: {
+        voice_destination: encodeVoiceDestinationAnswer({
+          location: 'San Francisco headquarters',
+          phoneNumber: '+1 (415) 555-0142',
+        }),
+        outcome: 'Answer common questions and schedule appointments',
+        name: 'Front Desk Receptionist',
+        greeting: 'Thanks for calling. How can I help?',
+        knowledge: 'Visitor information',
+      },
+    },
+    {
+      family: 'contact_center',
+      keys: ['channel', 'outcome', 'name', 'greeting', 'knowledge', 'actions'],
+      answers: {
+        channel: 'Voice, Digital',
+        outcome: 'Resolve customer questions and route complex requests',
+        name: 'Customer Service Agent',
+        greeting: 'Hi. How can I help today?',
+        knowledge: SKIPPED_INTAKE_ANSWER,
+        actions: SKIPPED_INTAKE_ANSWER,
+      },
+    },
+    {
+      family: 'internal_assistant',
+      keys: ['outcome', 'name', 'knowledge'],
+      answers: {
+        outcome: 'Help employees find approved policies',
+        name: 'Employee Assistant',
+        knowledge: 'Employee handbook',
+      },
+    },
+  ];
 
-  const afterOutcome = getAdaptiveIntakeQuestions('calling', { outcome: 'Schedule appointments' });
-  assert.deepEqual(afterOutcome.map(question => question.answerKey), ['outcome', 'tasks']);
+  for (const { family, keys, answers } of scenarios) {
+    for (let completedCount = 0; completedCount <= keys.length; completedCount += 1) {
+      const completedAnswers = Object.fromEntries(
+        keys.slice(0, completedCount).map(key => [key, answers[key]]),
+      );
+      const expectedVisibleCount = Math.min(completedCount + 1, keys.length);
+      assert.deepEqual(
+        getAdaptiveIntakeQuestions(family, completedAnswers).map(question => question.answerKey),
+        keys.slice(0, expectedVisibleCount),
+        `${family} should reveal only the next unanswered preset question`,
+      );
+    }
+  }
 
-  const afterMinimum = getAdaptiveIntakeQuestions('calling', {
-    outcome: 'Schedule appointments',
-    tasks: 'Book, reschedule, and cancel appointments',
-  });
-  assert.deepEqual(afterMinimum.map(question => question.answerKey), ['outcome', 'tasks']);
+  const calling = getAdaptiveIntakeQuestions('calling', scenarios[0].answers);
+  assert.equal(calling[0].prompt, 'Select a location and phone number');
+  assert.equal(calling[1].prompt, "What's your agent goal?");
+  assert.equal(calling.every(question => question.required), true);
 
-  assert.deepEqual(
-    getAdaptiveIntakeQuestions('internal_assistant', {
-      mode: 'Employee Help',
-      audience: 'All employees',
-    }).map(question => question.answerKey),
-    ['mode', 'audience', 'outcome'],
-  );
+  const contactCenter = getAdaptiveIntakeQuestions('contact_center', scenarios[1].answers);
+  assert.deepEqual(contactCenter[0].options, ['Voice', 'Digital', 'Video']);
+  assert.equal(contactCenter.find(question => question.answerKey === 'knowledge').required, false);
+  assert.equal(contactCenter.find(question => question.answerKey === 'actions').required, false);
+
+  const employee = getAdaptiveIntakeQuestions('internal_assistant', scenarios[2].answers);
+  assert.equal(employee.every(question => question.required), true);
 });
 
-test('guides Contact Center intake through channel, use case, name, and greeting', () => {
-  const initial = getAdaptiveIntakeQuestions('contact_center');
-  assert.deepEqual(initial.map(question => question.answerKey), ['channel']);
-  assert.deepEqual(initial[0].options, ['Voice', 'Digital', 'Video']);
+test('round trips structured voice destinations and rejects incomplete values', () => {
+  const destination = {
+    location: 'San Francisco headquarters',
+    phoneNumber: '+1 (415) 555-0142',
+  };
 
-  const afterChannel = getAdaptiveIntakeQuestions('contact_center', { channel: 'Both' });
-  assert.deepEqual(afterChannel.map(question => question.answerKey), ['channel', 'use_case']);
-
-  const afterUseCase = getAdaptiveIntakeQuestions('contact_center', {
-    channel: 'Both',
-    use_case: 'Help customers place and track pizza orders',
-  });
-  assert.deepEqual(afterUseCase.map(question => question.answerKey), [
-    'channel',
-    'use_case',
-    'name',
-  ]);
-
-  const afterName = getAdaptiveIntakeQuestions('contact_center', {
-    channel: 'Both',
-    use_case: 'Help customers place and track pizza orders',
-    name: 'Pizza Concierge',
-  });
-  assert.deepEqual(afterName.map(question => question.answerKey), [
-    'channel',
-    'use_case',
-    'name',
-    'greeting',
-  ]);
-
-  const complete = getAdaptiveIntakeQuestions('contact_center', {
-    channel: 'Both',
-    use_case: 'Help customers place and track pizza orders',
-    name: 'Pizza Concierge',
-    greeting: 'Welcome to Acme Pizza. How can I help with your order?',
-  });
-  assert.deepEqual(complete.map(question => question.answerKey), [
-    'channel',
-    'use_case',
-    'name',
-    'greeting',
-  ]);
+  assert.deepEqual(decodeVoiceDestinationAnswer(encodeVoiceDestinationAnswer(destination)), destination);
+  assert.equal(decodeVoiceDestinationAnswer('{not-json'), null);
+  assert.equal(decodeVoiceDestinationAnswer(JSON.stringify({ location: 'San Francisco' })), null);
+  assert.equal(decodeVoiceDestinationAnswer(JSON.stringify({ location: ' ', phoneNumber: '+1' })), null);
 });
 
 test('builds deterministic, use-case-aware starter proposals', () => {
@@ -163,6 +180,112 @@ test('builds the Contact Center draft proposal from the verified channel, name, 
   assert.match(proposal.instructions, /Pizza Concierge/);
   assert.match(proposal.instructions, /place and track pizza orders/i);
   assert.match(proposal.instructions, /Contact Center AI agent/i);
+
+  const voiceAndVideo = buildStarterProposal('contact_center', {
+    channel: 'Voice, Video',
+    use_case: 'Provide visual troubleshooting and voice support',
+    name: 'Visual Support Concierge',
+  });
+  assert.equal(voiceAndVideo.channel, 'Voice, Video');
+  assert.deepEqual(voiceAndVideo.selectedChannels, ['voice', 'video']);
+  assert.match(voiceAndVideo.instructions, /voice and video channels/i);
+  assert.equal(voiceAndVideo.greetings.video, voiceAndVideo.greeting);
+});
+
+test('applies Phone Receptionist preset answers to a new draft without mutating the source', () => {
+  const answers = {
+    voice_destination: encodeVoiceDestinationAnswer({
+      location: 'headquarters',
+      phoneNumber: '+1-415-555-0142',
+    }),
+    outcome: 'Answer common questions and schedule appointments',
+    name: 'Front Desk Receptionist',
+    greeting: 'Thanks for calling. You are speaking with Front Desk Receptionist. How can I help?',
+    knowledge: 'Visitor information',
+  };
+  const proposal = buildStarterProposal('calling', answers);
+  const source = createDraftFromProposal('calling', proposal);
+  const applied = applyPresetAnswersToDraft(source, proposal, answers);
+
+  assert.notStrictEqual(applied, source);
+  assert.notStrictEqual(applied.familyConfiguration, source.familyConfiguration);
+  assert.equal(source.familyConfiguration.voice.progress, 'not_started');
+  assert.deepEqual(source.familyConfiguration.voice.values, {});
+  assert.equal(source.familyConfiguration.knowledge.progress, 'not_started');
+  assert.deepEqual(source.deploymentReferences, []);
+
+  assert.equal(applied.familyConfiguration.voice.progress, 'configured');
+  assert.deepEqual(applied.familyConfiguration.voice.values, {
+    selectedChannels: ['voice'],
+    greetings: { voice: answers.greeting },
+    voiceLocation: 'headquarters',
+    voicePhoneNumber: '+1-415-555-0142',
+  });
+  assert.equal(applied.familyConfiguration.knowledge.progress, 'configured');
+  assert.deepEqual(applied.familyConfiguration.knowledge.values, {
+    selections: ['Visitor information'],
+  });
+  assert.equal(applied.familyConfiguration.deployment.progress, 'configured');
+  assert.deepEqual(applied.familyConfiguration.deployment.values, {
+    voiceLocation: 'headquarters',
+    voicePhoneNumber: '+1-415-555-0142',
+  });
+  assert.deepEqual(applied.deploymentReferences, [{
+    id: 'calling-phone-number',
+    kind: 'phone_number',
+    label: '+1-415-555-0142',
+    status: 'connected',
+  }]);
+});
+
+test('persists Customer Service optional skips and actions, and Employee Assistant knowledge', () => {
+  const customerAnswers = {
+    channel: 'Digital',
+    outcome: 'Resolve order questions and route complex requests',
+    name: 'Customer Service Agent',
+    greeting: 'Hi. How can I help today?',
+    knowledge: SKIPPED_INTAKE_ANSWER,
+    actions: 'Create ticket',
+  };
+  const customerProposal = buildStarterProposal('contact_center', customerAnswers);
+  const customerSource = createDraftFromProposal('contact_center', customerProposal);
+  const customerDraft = applyPresetAnswersToDraft(
+    customerSource,
+    customerProposal,
+    customerAnswers,
+  );
+
+  assert.equal(customerSource.familyConfiguration.knowledge.progress, 'not_started');
+  assert.equal(customerSource.familyConfiguration.actions.progress, 'not_started');
+  assert.equal(customerDraft.familyConfiguration.knowledge.progress, 'skipped');
+  assert.deepEqual(customerDraft.familyConfiguration.knowledge.values, { selections: [] });
+  assert.equal(customerDraft.familyConfiguration.actions.progress, 'configured');
+  assert.deepEqual(customerDraft.familyConfiguration.actions.values, {
+    selections: ['Create ticket'],
+  });
+  assert.deepEqual(customerDraft.familyConfiguration.channels.values, {
+    selectedChannels: ['digital'],
+    greetings: { digital: customerAnswers.greeting },
+  });
+
+  const employeeAnswers = {
+    outcome: 'Help employees find approved policies and process guidance',
+    name: 'Employee Assistant',
+    knowledge: 'Employee handbook',
+  };
+  const employeeProposal = buildStarterProposal('internal_assistant', employeeAnswers);
+  const employeeSource = createDraftFromProposal('internal_assistant', employeeProposal);
+  const employeeDraft = applyPresetAnswersToDraft(
+    employeeSource,
+    employeeProposal,
+    employeeAnswers,
+  );
+
+  assert.equal(employeeSource.familyConfiguration.knowledge.progress, 'not_started');
+  assert.equal(employeeDraft.familyConfiguration.knowledge.progress, 'configured');
+  assert.deepEqual(employeeDraft.familyConfiguration.knowledge.values, {
+    selections: ['Employee handbook'],
+  });
 });
 
 test('keeps Knowledge setup actionable from the Contact Center ranked next steps', () => {

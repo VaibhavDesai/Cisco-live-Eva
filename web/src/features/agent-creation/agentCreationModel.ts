@@ -20,7 +20,7 @@ export type ContactCenterChannelChoice = string;
 
 export interface ContactCenterChannelValues {
   selectedChannels: CustomerChannel[];
-  greetings: Partial<Record<'voice' | 'digital', string>>;
+  greetings: Partial<Record<CustomerChannel, string>>;
   digitalChannels?: string[];
   voiceLocation?: string;
   voicePhoneNumber?: string;
@@ -156,7 +156,7 @@ export interface StarterProposal {
   channel?: ContactCenterChannelChoice;
   greeting?: string;
   selectedChannels?: CustomerChannel[];
-  greetings?: Partial<Record<'voice' | 'digital', string>>;
+  greetings?: Partial<Record<CustomerChannel, string>>;
 }
 
 export interface AdaptiveIntakeQuestion {
@@ -168,6 +168,29 @@ export interface AdaptiveIntakeQuestion {
   inputKind: 'text' | 'textarea' | 'select';
   options?: string[];
 }
+
+/** Stored when an optional preset question is intentionally skipped. */
+export const SKIPPED_INTAKE_ANSWER = '__skipped__';
+
+export interface VoiceDestinationAnswer {
+  location: string;
+  phoneNumber: string;
+}
+
+export const encodeVoiceDestinationAnswer = (answer: VoiceDestinationAnswer) =>
+  JSON.stringify(answer);
+
+export const decodeVoiceDestinationAnswer = (answer: string | undefined): VoiceDestinationAnswer | null => {
+  if (!answer) return null;
+  try {
+    const parsed = JSON.parse(answer) as Partial<VoiceDestinationAnswer>;
+    if (typeof parsed.location !== 'string' || typeof parsed.phoneNumber !== 'string') return null;
+    if (!parsed.location.trim() || !parsed.phoneNumber.trim()) return null;
+    return { location: parsed.location, phoneNumber: parsed.phoneNumber };
+  } catch {
+    return null;
+  }
+};
 
 export const FAMILY_METADATA: Record<AgentFamily, FamilyMetadata> = {
   calling: {
@@ -290,20 +313,44 @@ export const FAMILY_CAPABILITIES: Record<AgentFamily, CapabilityDefinition[]> = 
 const FAMILY_INTAKE: Record<AgentFamily, AdaptiveIntakeQuestion[]> = {
   calling: [
     {
+      id: 'calling-location-phone',
+      answerKey: 'voice_destination',
+      prompt: 'Select a location and phone number',
+      helperText: 'Select where this agent receives calls and the connected number callers use.',
+      required: true,
+      inputKind: 'select',
+    },
+    {
       id: 'calling-outcome',
       answerKey: 'outcome',
-      prompt: 'What do you want this agent to help with?',
+      prompt: "What's your agent goal?",
       helperText: 'Describe why people call and what the agent should help them do.',
       required: true,
       inputKind: 'textarea',
     },
     {
-      id: 'calling-tasks',
-      answerKey: 'tasks',
-      prompt: 'What are the top call tasks?',
-      helperText: 'List the two or three requests the agent should handle first.',
+      id: 'calling-name',
+      answerKey: 'name',
+      prompt: 'What should this agent be called?',
+      helperText: 'Use the suggested name or enter a different one.',
+      required: true,
+      inputKind: 'text',
+    },
+    {
+      id: 'calling-greeting',
+      answerKey: 'greeting',
+      prompt: 'Review the welcome message',
+      helperText: 'Use the suggested message or edit it.',
       required: true,
       inputKind: 'textarea',
+    },
+    {
+      id: 'calling-knowledge',
+      answerKey: 'knowledge',
+      prompt: 'Select a knowledge base',
+      helperText: 'Choose the approved information this agent can use to answer callers.',
+      required: true,
+      inputKind: 'select',
     },
   ],
   contact_center: [
@@ -311,16 +358,16 @@ const FAMILY_INTAKE: Record<AgentFamily, AdaptiveIntakeQuestion[]> = {
       id: 'contact-center-channel',
       answerKey: 'channel',
       prompt: 'Which channels should this agent support?',
-      helperText: 'Choose voice, digital, or both. You can add specific entry points later.',
+      helperText: 'Choose one or more channels. You can add specific entry points later.',
       required: true,
       inputKind: 'select',
       options: ['Voice', 'Digital', 'Video'],
     },
     {
-      id: 'contact-center-use-case',
-      answerKey: 'use_case',
-      prompt: 'What customer experience should this agent improve?',
-      helperText: 'Describe the use case and the outcome you want.',
+      id: 'contact-center-outcome',
+      answerKey: 'outcome',
+      prompt: "What's your agent goal?",
+      helperText: 'Describe what customers need and what the agent should help them do.',
       required: true,
       inputKind: 'textarea',
     },
@@ -335,37 +382,52 @@ const FAMILY_INTAKE: Record<AgentFamily, AdaptiveIntakeQuestion[]> = {
     {
       id: 'contact-center-greeting',
       answerKey: 'greeting',
-      prompt: 'Review the opening greeting',
-      helperText: 'Use the suggested greeting or enter your own.',
+      prompt: 'Review the welcome message',
+      helperText: 'Use the suggested message or edit it.',
       required: true,
       inputKind: 'textarea',
+    },
+    {
+      id: 'contact-center-knowledge',
+      answerKey: 'knowledge',
+      prompt: 'Select a knowledge base',
+      helperText: 'Choose approved information for customer answers, or skip this step.',
+      required: false,
+      inputKind: 'select',
+    },
+    {
+      id: 'contact-center-actions',
+      answerKey: 'actions',
+      prompt: 'Select an action',
+      helperText: 'Choose what the agent can do for customers, or skip this step.',
+      required: false,
+      inputKind: 'select',
     },
   ],
   internal_assistant: [
     {
-      id: 'internal-mode',
-      answerKey: 'mode',
-      prompt: 'Choose a starting mode',
-      helperText: 'The mode seeds instructions and recommendations without limiting future Webex placements.',
+      id: 'internal-outcome',
+      answerKey: 'outcome',
+      prompt: "What's your agent goal?",
+      helperText: 'Describe what employees need and what this assistant should help them do.',
       required: true,
-      inputKind: 'select',
-      options: ['Employee Help', 'Contact Center Agent Assist', 'Meeting and Calling Companion'],
+      inputKind: 'textarea',
     },
     {
-      id: 'internal-audience',
-      answerKey: 'audience',
-      prompt: 'Which employees should it help?',
-      helperText: 'Name a team, role, or broad employee group.',
+      id: 'internal-name',
+      answerKey: 'name',
+      prompt: 'What should this agent be called?',
+      helperText: 'Use the suggested name or enter a different one.',
       required: true,
       inputKind: 'text',
     },
     {
-      id: 'internal-outcome',
-      answerKey: 'outcome',
-      prompt: 'What should it help them accomplish?',
-      helperText: 'Describe the most important employee outcome.',
+      id: 'internal-knowledge',
+      answerKey: 'knowledge',
+      prompt: 'Select a knowledge base',
+      helperText: 'Choose the approved information this assistant can use to help employees.',
       required: true,
-      inputKind: 'textarea',
+      inputKind: 'select',
     },
   ],
 };
@@ -471,6 +533,17 @@ export const STARTER_TEMPLATES: Record<AgentFamily, StarterTemplate[]> = {
       },
     },
     {
+      id: 'candidate-feedback',
+      keywords: ['candidate', 'interview', 'feedback', 'hiring', 'recruiting'],
+      proposal: {
+        name: 'Candidate Feedback Assistant',
+        purpose: 'Summarize approved interview feedback and prepare the next recruiting step.',
+        description: 'An internal recruiting assistant for panel feedback, open questions, and approved follow-up work.',
+        language: 'English (US)',
+        instructions: '#### Role & Identity\nYou are a recruiting feedback assistant.\n\n#### Primary Goals\nSummarize approved panel feedback, surface open questions, and prepare the next recruiting step.\n\n#### Guardrails\nRespect hiring-data permissions and require human confirmation before final decisions.\n\n#### Output Rules\nBe concise, neutral, and explicit about evidence and next steps.',
+      },
+    },
+    {
       id: 'incident-command',
       keywords: ['incident', 'outage', 'runbook', 'sre', 'deployment', 'post-mortem'],
       proposal: {
@@ -499,11 +572,17 @@ const chooseTemplate = (family: AgentFamily, answers: Record<string, string>) =>
   return ranked[0].score > 0 ? ranked[0].template : STARTER_TEMPLATES[family][0];
 };
 
+const templatesById = (family: AgentFamily, ids: string[]) => ids.map(id => {
+  const template = STARTER_TEMPLATES[family].find(candidate => candidate.id === id);
+  if (!template) throw new Error(`Missing ${family} starter template: ${id}`);
+  return template;
+});
+
 /* Put the broad default last while scoring so a more specific use case wins. */
 const FAMILY_TEMPLATE_PRIORITY: Record<AgentFamily, StarterTemplate[]> = {
-  calling: [STARTER_TEMPLATES.calling[1], STARTER_TEMPLATES.calling[2], STARTER_TEMPLATES.calling[0]],
-  contact_center: [STARTER_TEMPLATES.contact_center[1], STARTER_TEMPLATES.contact_center[2], STARTER_TEMPLATES.contact_center[0]],
-  internal_assistant: [STARTER_TEMPLATES.internal_assistant[1], STARTER_TEMPLATES.internal_assistant[2], STARTER_TEMPLATES.internal_assistant[0]],
+  calling: templatesById('calling', ['appointment-scheduler', 'retail-store-assistant', 'voice-receptionist']),
+  contact_center: templatesById('contact_center', ['order-management', 'property-service', 'cx-concierge']),
+  internal_assistant: templatesById('internal_assistant', ['employee-policy', 'candidate-feedback', 'incident-command', 'it-help-desk']),
 };
 
 export const getAdaptiveIntakeQuestions = (
@@ -541,22 +620,28 @@ export const buildStarterProposal = (
   const rawChannel = normalize(answers.channel).toLowerCase();
   const selectedChannels: CustomerChannel[] | undefined = family !== 'contact_center'
     ? undefined
-    : (['voice', 'digital', 'video'] as CustomerChannel[]).filter(channel => rawChannel.includes(channel) || (rawChannel === 'both' && channel !== 'video'));
-  const channel: ContactCenterChannelChoice | undefined = selectedChannels?.includes('voice') && selectedChannels.includes('digital') && !selectedChannels.includes('video')
+    : (['voice', 'digital', 'video'] as CustomerChannel[]).filter(
+        candidate => rawChannel.includes(candidate) || (rawChannel === 'both' && candidate !== 'video'),
+      );
+  const channel: ContactCenterChannelChoice | undefined = selectedChannels?.includes('voice')
+    && selectedChannels.includes('digital')
+    && !selectedChannels.includes('video')
     ? 'Both'
     : selectedChannels?.length
       ? selectedChannels.map(item => `${item.charAt(0).toUpperCase()}${item.slice(1)}`).join(', ')
       : undefined;
-  const suggestedGreeting = selectedChannels?.length === 1 && selectedChannels[0] === 'voice'
+  const suggestedGreeting = family === 'calling'
     ? `Thanks for calling. You are speaking with ${name}. How can I help?`
-    : channel
-      ? `Hi, I am ${name}. How can I help today?`
-      : '';
-  const greeting = family === 'contact_center'
+    : selectedChannels?.length === 1 && selectedChannels[0] === 'voice'
+      ? `Thanks for calling. You are speaking with ${name}. How can I help?`
+      : channel
+        ? `Hi, I am ${name}. How can I help today?`
+        : '';
+  const greeting = family === 'contact_center' || family === 'calling'
     ? normalize(answers.greeting) || suggestedGreeting
     : undefined;
   const greetings = selectedChannels && greeting
-    ? Object.fromEntries(selectedChannels.map(selectedChannel => [selectedChannel, greeting])) as Partial<Record<'voice' | 'digital', string>>
+    ? Object.fromEntries(selectedChannels.map(selectedChannel => [selectedChannel, greeting])) as Partial<Record<CustomerChannel, string>>
     : undefined;
 
   let instructions = chosen.instructions;
@@ -564,25 +649,33 @@ export const buildStarterProposal = (
     instructions = `You are ${name}, a calling assistant for the organization.
 
 - Greet callers and identify what they need.
-- Help with ${tasks}.
+- Help with ${tasks.replace(/[.?!]+$/, '')}.
 - Ask one clear question at a time.
 - Use only information provided in these instructions or connected knowledge.
 - Never claim that you checked a system unless a verified capability is connected.
 - When you cannot complete a request, explain the limitation and offer a human handoff.
+- Open the conversation with: "${greeting}"
 - Communicate in ${language} using a warm, concise, professional style.`;
   } else if (family === 'contact_center') {
-    const channelInstruction = selectedChannels?.includes('voice') && selectedChannels.includes('digital')
-      ? 'Support customers consistently across voice and digital channels.'
-      : selectedChannels?.includes('voice')
-        ? 'Support customers through natural, concise voice conversations.'
-        : selectedChannels?.includes('digital')
-          ? 'Support customers through clear, scannable digital conversations.'
-          : selectedChannels?.includes('video')
-            ? 'Support customers through clear video conversations.'
-          : 'Maintain the configured tone and language across supported channels.';
+    const selectedChannelNames = selectedChannels?.map(selectedChannel => (
+      selectedChannel.charAt(0).toUpperCase() + selectedChannel.slice(1)
+    )) ?? [];
+    const channelList = selectedChannelNames.length > 2
+      ? `${selectedChannelNames.slice(0, -1).join(', ')}, and ${selectedChannelNames.at(-1)}`
+      : selectedChannelNames.join(' and ');
+    let channelInstruction = 'Maintain the configured tone and language across supported channels.';
+    if (selectedChannels && selectedChannels.length > 1) {
+      channelInstruction = `Support customers consistently across ${channelList.toLowerCase()} channels.`;
+    } else if (selectedChannels?.includes('voice')) {
+      channelInstruction = 'Support customers through natural, concise voice conversations.';
+    } else if (selectedChannels?.includes('digital')) {
+      channelInstruction = 'Support customers through clear, scannable digital conversations.';
+    } else if (selectedChannels?.includes('video')) {
+      channelInstruction = 'Support customers through clear video conversations.';
+    }
     instructions = `You are ${name}, a Contact Center AI agent for the organization.
 
-- Help customers with ${purpose}.
+- Help customers with ${purpose.replace(/[.?!]+$/, '')}.
 - ${channelInstruction}
 - Follow approved knowledge and identity-verification requirements.
 - Use connected actions only for their documented purpose.
@@ -1039,6 +1132,93 @@ export const createDraftFromProposal = (
   draft.recommendationSourceRevision = getRecommendationSourceRevision(draft);
   draft.recommendations = getRankedRecommendations(draft);
   return draft;
+};
+
+/**
+ * Applies the structured preset-intake answers before the draft is persisted.
+ * Keeping this pure makes the first saved Draft independent of asynchronous
+ * React state updates in the conversational experience.
+ */
+export const applyPresetAnswersToDraft = (
+  draft: AgentDraft,
+  proposal: StarterProposal,
+  answers: Record<string, string>,
+): AgentDraft => {
+  const now = new Date().toISOString();
+  const familyConfiguration = Object.fromEntries(
+    Object.entries(draft.familyConfiguration).map(([id, capabilityState]) => [
+      id,
+      {
+        ...capabilityState,
+        values: { ...(capabilityState.values ?? {}) },
+      },
+    ]),
+  );
+
+  const applySelection = (capabilityId: 'knowledge' | 'actions', answer: string | undefined) => {
+    const capabilityState = familyConfiguration[capabilityId];
+    if (!capabilityState || capabilityState.progress === 'blocked') return;
+    const skipped = answer === SKIPPED_INTAKE_ANSWER;
+    const selection = skipped ? '' : normalize(answer);
+    familyConfiguration[capabilityId] = {
+      ...capabilityState,
+      progress: skipped ? 'skipped' : selection ? 'configured' : 'not_started',
+      values: { selections: selection ? [selection] : [] },
+      updatedAt: now,
+    };
+  };
+
+  applySelection('knowledge', answers.knowledge);
+  applySelection('actions', answers.actions);
+
+  let deploymentReferences = draft.deploymentReferences.map(reference => ({ ...reference }));
+  if (draft.family === 'calling') {
+    const destination = decodeVoiceDestinationAnswer(answers.voice_destination);
+    const voiceCapability = familyConfiguration.voice;
+    if (voiceCapability && destination) {
+      familyConfiguration.voice = {
+        ...voiceCapability,
+        progress: 'configured',
+        values: {
+          ...(voiceCapability.values ?? {}),
+          selectedChannels: ['voice'],
+          greetings: proposal.greeting ? { voice: proposal.greeting } : {},
+          voiceLocation: destination.location,
+          voicePhoneNumber: destination.phoneNumber,
+        } satisfies ContactCenterChannelValues,
+        updatedAt: now,
+      };
+      deploymentReferences = [
+        ...deploymentReferences.filter(reference => reference.kind !== 'phone_number'),
+        {
+          id: 'calling-phone-number',
+          kind: 'phone_number',
+          label: destination.phoneNumber,
+          status: 'connected',
+        },
+      ];
+      const deploymentCapability = familyConfiguration.deployment;
+      if (deploymentCapability) {
+        familyConfiguration.deployment = {
+          ...deploymentCapability,
+          progress: 'configured',
+          values: {
+            ...(deploymentCapability.values ?? {}),
+            voiceLocation: destination.location,
+            voicePhoneNumber: destination.phoneNumber,
+          },
+          updatedAt: now,
+        };
+      }
+    }
+  }
+
+  return {
+    ...draft,
+    familyConfiguration,
+    deploymentReferences,
+    updatedAt: now,
+  };
 };
 
 export const getMinimumPublishIssues = (draft: AgentDraft): string[] => {

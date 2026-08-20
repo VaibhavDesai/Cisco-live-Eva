@@ -7214,10 +7214,28 @@ button.agent-studio-guardrail-chart__plot.is-selected .agent-studio-guardrail-ch
   gap: 14px;
 }
 
-.eva-family-proposal__notice {
+.eva-family-proposal__next {
+  display: grid;
+  gap: 4px;
+  margin-top: 4px;
+  padding-top: 14px;
+  border-top: 1px solid var(--border-color);
+}
+
+.eva-family-proposal__next h4,
+.eva-family-proposal__next p {
   margin: 0;
+}
+
+.eva-family-proposal__next h4 {
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.eva-family-proposal__next p {
   color: var(--text-secondary);
   font-size: 13px;
+  line-height: 1.45;
 }
 
 .eva-family-proposal__actions,

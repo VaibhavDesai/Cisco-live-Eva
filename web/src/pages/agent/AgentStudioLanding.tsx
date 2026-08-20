@@ -645,7 +645,8 @@ export default function AgentStudioLanding() {
     };
     const existing = readEvaSessionState();
     const sessionMatchesAgent = existing?.agentName === agent.name;
-    const channelValues = agentDraft?.familyConfiguration.channels?.values;
+    const channelValues = agentDraft?.familyConfiguration.channels?.values
+      ?? (family === 'calling' ? agentDraft?.familyConfiguration.voice?.values : undefined);
     const storedChannels = Array.isArray(channelValues?.selectedChannels)
       ? channelValues.selectedChannels.filter(
           (channel): channel is 'voice' | 'digital' | 'video' =>
@@ -699,8 +700,12 @@ export default function AgentStudioLanding() {
         aiEngine: existing?.aiEngine ?? 'Webex AI Pro 1.0',
         welcomeMessage: restoredWelcomeMessage,
         instructionPrompt: restoredInstructions,
-        selectedKnowledgeBases: agent.knowledgeBases ?? existing?.selectedKnowledgeBases ?? nextDraft.knowledgeBases.slice(0, 2).map(kb => kb.name),
-        selectedActions: existing?.selectedActions ?? getConfiguredSummary(agent, agentDraft).actions,
+        selectedKnowledgeBases: sessionMatchesAgent
+          ? existing?.selectedKnowledgeBases ?? agent.knowledgeBases ?? []
+          : agent.knowledgeBases ?? [],
+        selectedActions: sessionMatchesAgent
+          ? existing?.selectedActions ?? getConfiguredSummary(agent, agentDraft).actions
+          : getConfiguredSummary(agent, agentDraft).actions,
         optimizeAccepted: existing?.optimizeAccepted ?? false,
         preOptimizeText: existing?.preOptimizeText ?? '',
         optimizeSummary: existing?.optimizeSummary ?? { changes: [], reasoning: [] },
@@ -714,7 +719,9 @@ export default function AgentStudioLanding() {
           ? existing?.selectedDigitalChannels ?? restoredDigitalChannels
           : restoredDigitalChannels,
         digitalChannelAddress: existing?.digitalChannelAddress ?? '',
-        channelPhoneNumber: existing?.channelPhoneNumber ?? getConfiguredSummary(agent, agentDraft).endpoint ?? '',
+        channelPhoneNumber: sessionMatchesAgent
+          ? existing?.channelPhoneNumber ?? getConfiguredSummary(agent, agentDraft).endpoint ?? ''
+          : getConfiguredSummary(agent, agentDraft).endpoint ?? '',
         phoneNumberDeferred,
         standardGuardrails: existing?.standardGuardrails ?? EVA_STANDARD_GUARDRAILS,
         advancedGuardrailGroups: existing?.advancedGuardrailGroups ?? EVA_ADVANCED_GUARDRAIL_GROUPS,

@@ -207,6 +207,19 @@ export const CHANNEL_PHONE_NUMBER_OPTIONS = [
   { value: '+44 20 7946 0958', label: '+44 20 7946 0958' },
 ];
 
+/** Calling endpoints shared by preset creation and the agent configuration page. */
+export const VOICE_LOCATION_OPTIONS = [
+  { value: 'headquarters', label: '🇺🇸 San Francisco headquarters' },
+  { value: 'customer-support', label: '🇺🇸 New York customer support' },
+  { value: 'reservations-desk', label: '🇬🇧 London reservations desk' },
+];
+
+export const VOICE_PHONE_NUMBER_OPTIONS = [
+  { value: '+1-415-555-0142', label: '+1 (415) 555-0142' },
+  { value: '+1-212-555-0186', label: '+1 (212) 555-0186' },
+  { value: '+44-20-7946-0958', label: '+44 20 7946 0958' },
+];
+
 export const DEFAULT_EVA_CHANNEL_SELECTIONS: EvaChannelSelection[] = ['voice'];
 export const DEFAULT_EVA_DIGITAL_CHANNEL_SELECTIONS: EvaDigitalChannel[] = ['chat'];
 

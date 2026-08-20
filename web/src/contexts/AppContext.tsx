@@ -507,7 +507,7 @@ const initialsFor = (name: string) =>
     .slice(0, 2) || 'AI';
 
 const statusForLifecycle = (lifecycle: AgentLifecycle) => {
-  if (lifecycle === 'draft') return 'Ready to Publish';
+  if (lifecycle === 'draft') return 'Draft';
   if (lifecycle === 'live') return 'Live';
   if (lifecycle === 'deployed') return 'Deployed';
   return 'Published';

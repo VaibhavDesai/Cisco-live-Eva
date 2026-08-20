@@ -34,7 +34,11 @@ import {
   type CapabilityState,
   type CustomerChannel,
 } from '../../features/agent-creation/agentCreationModel';
-import { EVA_CHANNEL_SELECTION_OPTIONS } from '../../features/eva/evaFormConfig';
+import {
+  EVA_CHANNEL_SELECTION_OPTIONS,
+  VOICE_LOCATION_OPTIONS,
+  VOICE_PHONE_NUMBER_OPTIONS,
+} from '../../features/eva/evaFormConfig';
 import {
   CISCO_LIVE_AGENTS,
   CISCO_LIVE_ACTION_CATALOG,
@@ -67,18 +71,6 @@ import {
   readGalileoActionControlState,
   type GalileoActionControlState,
 } from './ActionControls';
-
-const VOICE_LOCATION_OPTIONS = [
-  { value: 'headquarters', label: '🇺🇸 San Francisco headquarters' },
-  { value: 'customer-support', label: '🇺🇸 New York customer support' },
-  { value: 'reservations-desk', label: '🇬🇧 London reservations desk' },
-];
-
-const VOICE_PHONE_NUMBER_OPTIONS = [
-  { value: '+1-415-555-0142', label: '+1 (415) 555-0142' },
-  { value: '+1-212-555-0186', label: '+1 (212) 555-0186' },
-  { value: '+44-20-7946-0958', label: '+44 20 7946 0958' },
-];
 
 const CUSTOM_GUARDRAIL_DIRECTION_HELP =
   'Prompt checks customer requests. Response checks agent output. Both checks customer prompts and agent responses.';
@@ -1354,7 +1346,16 @@ export default function ActionConfigureV2() {
   const largeEventControl = galileoActionControls.controlsByActionId[GALILEO_ACTION_IDS.checkAvailability]
     ?.find(control => control.id === LARGE_EVENT_CONTROL_ID);
 
-  const channelConfigurationValues = agentDraft?.familyConfiguration.channels?.values;
+  const channelConfigurationValues = agentDraft?.familyConfiguration.channels?.values
+    ?? (agentDraft?.family === 'calling'
+      ? {
+          ...(agentDraft.familyConfiguration.deployment?.values ?? {}),
+          ...(agentDraft.familyConfiguration.voice?.values ?? {}),
+          selectedChannels: (
+            agentDraft.familyConfiguration.voice?.values?.selectedChannels as CustomerChannel[] | undefined
+          ) ?? ['voice'],
+        }
+      : undefined);
   const selectedChannels =
     (channelConfigurationValues?.selectedChannels as CustomerChannel[] | undefined) ?? [];
   const voiceLocation = typeof channelConfigurationValues?.voiceLocation === 'string'
@@ -1454,7 +1455,8 @@ export default function ActionConfigureV2() {
   const toggleChannel = (value: CustomerChannel) => {
     if (!agentId) return;
     updateAgentDraft(agentId, (draft) => {
-      const channelsCap = draft.familyConfiguration.channels;
+      const capabilityId = draft.family === 'calling' ? 'voice' : 'channels';
+      const channelsCap = draft.familyConfiguration[capabilityId];
       const current = (channelsCap?.values?.selectedChannels as CustomerChannel[] | undefined) ?? [];
       const next = current.includes(value)
         ? current.filter((channel) => channel !== value)
@@ -1463,7 +1465,7 @@ export default function ActionConfigureV2() {
         ...draft,
         familyConfiguration: {
           ...draft.familyConfiguration,
-          channels: {
+          [capabilityId]: {
             ...(channelsCap as CapabilityState | undefined),
             progress: next.length > 0 ? 'configured' : 'not_started',
             values: { ...(channelsCap?.values ?? {}), selectedChannels: next },
@@ -1480,12 +1482,13 @@ export default function ActionConfigureV2() {
   ) => {
     if (!agentId) return;
     updateAgentDraft(agentId, (draft) => {
-      const channelsCap = draft.familyConfiguration.channels;
+      const capabilityId = draft.family === 'calling' ? 'voice' : 'channels';
+      const channelsCap = draft.familyConfiguration[capabilityId];
       return {
         ...draft,
         familyConfiguration: {
           ...draft.familyConfiguration,
-          channels: {
+          [capabilityId]: {
             ...(channelsCap as CapabilityState | undefined),
             values: {
               ...(channelsCap?.values ?? {}),

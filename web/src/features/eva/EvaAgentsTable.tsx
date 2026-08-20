@@ -116,7 +116,8 @@ function buildPreviewDraft(agent: Agent, agentDraft?: AgentDraft): EvaAgentDraft
 function buildPreviewSession(agent: Agent, agentDraft?: AgentDraft): EvaSessionState {
   const draft = buildPreviewDraft(agent, agentDraft);
   const family = agentDraft?.family ?? agent.family;
-  const savedChannelValues = agentDraft?.familyConfiguration.channels?.values;
+  const savedChannelValues = agentDraft?.familyConfiguration.channels?.values
+    ?? (family === 'calling' ? agentDraft?.familyConfiguration.voice?.values : undefined);
   const savedChannels = Array.isArray(savedChannelValues?.selectedChannels)
     ? savedChannelValues.selectedChannels.filter(
         (channel): channel is 'voice' | 'digital' | 'video' => (
@@ -133,6 +134,12 @@ function buildPreviewSession(agent: Agent, agentDraft?: AgentDraft): EvaSessionS
     : {};
   const isVoicePreview = primaryChannel === 'voice';
   const welcomeMessage = savedGreetings[primaryChannel] || buildWelcomeMessage(draft);
+  const connectedPhone = agentDraft?.deploymentReferences.find(
+    reference => reference.kind === 'phone_number' && reference.status === 'connected',
+  );
+  const savedPhoneNumber = typeof savedChannelValues?.voicePhoneNumber === 'string'
+    ? savedChannelValues.voicePhoneNumber
+    : connectedPhone?.label ?? '';
   const languageValue = PROFILE_LANGUAGE_OPTIONS.find(option =>
     option.value === draft.language || option.label === draft.language,
   )?.value ?? 'en-US';
@@ -177,8 +184,8 @@ function buildPreviewSession(agent: Agent, agentDraft?: AgentDraft): EvaSessionS
     digitalChannel: 'chat',
     selectedDigitalChannels: ['chat'],
     digitalChannelAddress: '',
-    channelPhoneNumber: '',
-    phoneNumberDeferred: true,
+    channelPhoneNumber: savedPhoneNumber,
+    phoneNumberDeferred: !savedPhoneNumber,
     standardGuardrails: EVA_STANDARD_GUARDRAILS,
     advancedGuardrailGroups: EVA_ADVANCED_GUARDRAIL_GROUPS,
     expandedAdvancedGroups: [],

@@ -14,7 +14,7 @@ interface NavItem {
 }
 
 const navItems: NavItem[] = [
-  { path: '/new-agent', label: 'New agent', icon: 'home-bold' },
+  { path: '/new-agent', label: 'Home', icon: 'home-bold' },
   { path: '/agents', label: 'AI Agents', icon: 'bot-bold' },
   { path: '/observability', label: 'Observability', icon: 'multiline-chart-regular' },
   { path: '/knowledge', label: 'Knowledge', icon: 'apps-bold' },
@@ -257,7 +257,7 @@ export default function Sidebar({
 
   /* Highlight the experience the route is actually rendering. The agent
      builder can appear at the root, on either canvas route, or at /agents
-     before a family agent exists. Those states all remain under New agent;
+     before a family agent exists. Those states all remain under Home;
      AI Agents becomes active only when /agents is showing the agent list. */
   const hasFamilyAgents = Object.keys(agentDrafts).length > 0 ||
     Object.values(agents).some(candidate => Boolean(candidate.family));

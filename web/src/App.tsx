@@ -19,6 +19,7 @@ import {
 } from './pages';
 import { ActionConfigureV2, AgentStudioLanding, AgentSessions, AgentHistory, AgentAnalytics } from './pages/agent';
 import PolicyStudioV2 from './pages/agent/PolicyStudioV2';
+import { AgentHomeScenarioProvider } from './features/agent-home/AgentHomeScenarioContext';
 
 /* The agent Overview lives at the canonical bare /agents/:agentId URL. Any
    lingering /studio links funnel back to it so there is a single Overview
@@ -38,9 +39,10 @@ function App() {
       <AppProvider>
         <ProjectProvider>
           <DesignVariationProvider>
-            <BrowserRouter basename={import.meta.env.BASE_URL}>
-              <ToastProvider>
-                <ReviewProvider>
+            <AgentHomeScenarioProvider>
+              <BrowserRouter basename={import.meta.env.BASE_URL}>
+                <ToastProvider>
+                  <ReviewProvider>
                   <Routes>
                     <Route path="/policy-studio-v2" element={<PolicyStudioV2 />} />
                     <Route index element={<ControlHubLanding />} />
@@ -80,9 +82,10 @@ function App() {
                       <Route path="settings/organization" element={<OrganizationSettings />} />
                     </Route>
                   </Routes>
-                </ReviewProvider>
-              </ToastProvider>
-            </BrowserRouter>
+                  </ReviewProvider>
+                </ToastProvider>
+              </BrowserRouter>
+            </AgentHomeScenarioProvider>
           </DesignVariationProvider>
         </ProjectProvider>
       </AppProvider>

@@ -1,4 +1,5 @@
 import type { ReactNode } from 'react';
+import { useNavigate } from 'react-router-dom';
 import ThemeToggle from '../../../components/shared/ThemeToggle';
 import AppHeader from '../../../components/shared/AppHeader';
 import Toggle from '../../../components/shared/Toggle';
@@ -7,6 +8,8 @@ import webexAiAgentStudioWordmark from '../../../assets/webex-ai-agent-studio-wo
 import { useReview } from '../../../features/review/ReviewProvider';
 import { useDesignVariation } from '../../../contexts/DesignVariationContext';
 import type { DesignVariation } from '../../../contexts/designVariationStore';
+import { useAgentHomeScenario } from '../../../features/agent-home/AgentHomeScenarioContext';
+import type { DemoHomeMode } from '../../../features/agent-home/agentHomeModel';
 
 export interface StudioHeaderProps {
   onAiClick?: () => void;
@@ -20,7 +23,13 @@ const DESIGN_VARIATION_OPTIONS: Array<{ value: DesignVariation; label: string }>
   { value: 'form-bases', label: 'Form-based in Ai Agent' },
 ];
 
+const HOME_SCENARIO_OPTIONS: Array<{ value: DemoHomeMode; label: string }> = [
+  { value: 'first-time', label: 'First time' },
+  { value: 'recurring', label: 'Recurring' },
+];
+
 export default function Header({ onAiClick, onMenuClick, centerContent }: StudioHeaderProps) {
+  const navigate = useNavigate();
   const {
     configured: reviewConfigured,
     active: reviewActive,
@@ -28,6 +37,7 @@ export default function Header({ onAiClick, onMenuClick, centerContent }: Studio
     openCommentsModal,
   } = useReview();
   const { variation, setVariation } = useDesignVariation();
+  const { mode: homeScenario, setMode: setHomeScenario } = useAgentHomeScenario();
 
   return (
     <AppHeader
@@ -44,6 +54,26 @@ export default function Header({ onAiClick, onMenuClick, centerContent }: Studio
       onMenuClick={onMenuClick}
       appLauncherContent={(
         <>
+          <section className="app-header__menu-section" aria-label="Home scenario">
+            <div className="app-header__menu-section-title">Home scenario</div>
+            {HOME_SCENARIO_OPTIONS.map(option => (
+              <button
+                key={option.value}
+                type="button"
+                className={`app-header__menu-item${homeScenario === option.value ? ' app-header__menu-item--selected' : ''}`}
+                onClick={() => {
+                  setHomeScenario(option.value);
+                  navigate('/new-agent');
+                }}
+                role="menuitemradio"
+                aria-checked={homeScenario === option.value}
+              >
+                <span>{option.label}</span>
+                {homeScenario === option.value && <Icon name="check-bold" size={16} />}
+              </button>
+            ))}
+          </section>
+
           <section className="app-header__menu-section" aria-label="Review tools">
             <div className="app-header__menu-section-title">Review tools</div>
             <div
