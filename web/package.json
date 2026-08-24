@@ -9,8 +9,10 @@
     "test": "node --test src/features/agent-creation/*.test.mjs src/features/agent-home/*.test.mjs",
     "lint": "eslint .",
     "preview": "vite preview",
-    "predeploy:ghpages": "VITE_BASE_PATH=/pages/CBABU/Cisco-live-Eva/ VITE_CHAT_API_URL=https://ai-agent-studio-proxy.sisun-ai.workers.dev vite build && cp dist/index.html dist/404.html && touch dist/.nojekyll",
-    "deploy": "npm run predeploy:ghpages && gh-pages -d dist --repo git@sqbu-github-cisco:CBABU/Cisco-live-Eva.git -b gh-pages --dotfiles --no-history"
+    "deploy": "bash scripts/deploy-pages.sh",
+    "deploy:main": "bash scripts/deploy-pages.sh main",
+    "deploy:new-mvo": "bash scripts/deploy-pages.sh New-MVO",
+    "deploy:northstar": "bash scripts/deploy-pages.sh Northstar"
   },
   "dependencies": {
     "@momentum-design/components": "^0.129.51",

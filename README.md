@@ -59,7 +59,10 @@ npm run preview
 | `npm test` | Run AI agent creation model and journey tests |
 | `npm run preview` | Preview the production build locally    |
 | `npm run lint` | Run ESLint                                 |
-| `npm run deploy` | Build and deploy to GitHub Pages         |
+| `npm run deploy -- <target>` | Safely deploy `main`, `New-MVO`, or `Northstar` to its own SQBU Pages area |
+| `npm run deploy:main` | Deploy the Pages root while preserving demo directories |
+| `npm run deploy:new-mvo` | Deploy only `/New-MVO/` |
+| `npm run deploy:northstar` | Deploy only `/Northstar/` |
 
 ## Project Structure
 
@@ -172,7 +175,27 @@ whole `.env` line (`DEEPGRAM_API_KEY=...`), quotes, or extra whitespace.
 
 ## Deployment
 
-The app is configured for deployment on **Vercel** (see `web/vercel.json`). An alternative GitHub Pages deploy is also available via `npm run deploy`.
+The app is configured for deployment on **Vercel** (see `web/vercel.json`). SQBU
+GitHub Pages uses a shared `gh-pages` branch with isolated deployment areas:
+
+| Target | Command | Published path |
+| ------ | ------- | -------------- |
+| Main | `npm run deploy:main` | `/pages/CBABU/Cisco-live-Eva/` |
+| New MVO | `npm run deploy:new-mvo` | `/pages/CBABU/Cisco-live-Eva/New-MVO/` |
+| Northstar | `npm run deploy:northstar` | `/pages/CBABU/Cisco-live-Eva/Northstar/` |
+
+Run these commands inside `web/`. `npm run deploy` also accepts an explicit
+target, for example `npm run deploy -- New-MVO`. When no target is supplied,
+the current branch name is used if it is one of the three supported targets.
+
+The unified deploy script builds with the target-specific Vite base path, pulls
+the latest `gh-pages`, and synchronizes only the selected area. Main deployment
+explicitly preserves `New-MVO/` and `Northstar/`; demo deployments do not touch
+the root or sibling demo. If two publishes overlap, the losing push reclones
+the latest Pages branch and retries instead of overwriting the other publish.
+
+Do not use `gh-pages -d dist --no-history` directly because it replaces the
+entire Pages branch and removes independently deployed demos.
 
 ## Tech Stack
 
