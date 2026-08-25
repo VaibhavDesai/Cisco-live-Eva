@@ -1989,6 +1989,26 @@ test('Agent Home and start-from-scratch remove free composers without dead-endin
   );
   assert.match(
     evaSource,
+    /isFamilyChoicePrompt[\s\S]*?followups=\{[^}]*isFamilyChoicePrompt[^}]*\? \[\] : followups\}[\s\S]*?className="eva-family-choice-grid"[\s\S]*?AGENT_FAMILIES\.map\(family => \{[\s\S]*?getFamilyIntakeSequence\(family\)\.length \+ 1[\s\S]*?<Card[\s\S]*?clickable[\s\S]*?onClick=\{\(\) => handleAgentFamilySelect\(family, label\)\}/,
+    'the guided family prompt should replace generic chips with large clickable cards whose step counts include Review',
+  );
+  assert.match(
+    evaSource,
+    /const FAMILY_CHOICE_DETAILS[\s\S]*?Serves customers across channels[\s\S]*?Handles customer service across voice, digital, and video[\s\S]*?Answers and routes calls[\s\S]*?Greets callers, answers common questions[\s\S]*?Helps employees get work done[\s\S]*?Uses company knowledge and tools/,
+    'each agent-family card should explain the experience before selection',
+  );
+  assert.match(
+    studioStyles,
+    /\.eva-family-choice-grid\s*\{[^}]*display:\s*grid;[^}]*grid-template-columns:\s*repeat\(3, minmax\(0, 1fr\)\);[^}]*gap:[^;}]+;[\s\S]*?\.eva-family-choice-card\.card\s*\{[^}]*min-height:\s*188px;[^}]*border-radius:\s*12px;[^}]*var\(--bg-glass-overlay\)[^}]*backdrop-filter:\s*blur\(20px\) saturate\(125%\);/,
+    'agent-family choices should use the larger three-column glass-card treatment',
+  );
+  assert.match(
+    studioStyles,
+    /@media \(max-width:\s*860px\)[\s\S]*?\.eva-family-choice-grid,[\s\S]*?grid-template-columns:\s*1fr;[\s\S]*?\.eva-family-choice-card\.card\s*\{[^}]*min-height:\s*0;/,
+    'agent-family cards should stack without fixed height on narrow screens',
+  );
+  assert.match(
+    evaSource,
     /getFamilyIntakeSequence\(selectedAgentFamily\)[\s\S]*?eva-first-interface--guided-intake[\s\S]*?<aside[\s\S]*?eva-family-intake-stepper--collapsed[\s\S]*?id="eva-family-intake-stepper-body"[\s\S]*?hidden=\{!familyIntakeStepperExpanded\}[\s\S]*?<MomentumStepper[\s\S]*?orientation="vertical"[\s\S]*?variant="inline"/,
     'choice-only intake should show the complete family-specific sequence in a vertical Momentum stepper',
   );

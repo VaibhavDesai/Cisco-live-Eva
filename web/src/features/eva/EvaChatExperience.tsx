@@ -409,6 +409,21 @@ const FAMILY_CHOICE_LABELS: Record<AgentFamily, string> = {
   internal_assistant: 'Employee assistant',
 };
 
+const FAMILY_CHOICE_DETAILS: Record<AgentFamily, { tagline: string; description: string }> = {
+  contact_center: {
+    tagline: 'Serves customers across channels',
+    description: 'Handles customer service across voice, digital, and video, with built-in AI Defense, testing, and insights.',
+  },
+  calling: {
+    tagline: 'Answers and routes calls',
+    description: 'Greets callers, answers common questions, schedules appointments, and routes calls to the right team.',
+  },
+  internal_assistant: {
+    tagline: 'Helps employees get work done',
+    description: 'Uses company knowledge and tools while respecting each employee’s permissions and security policies.',
+  },
+};
+
 const AGENT_FAMILIES: AgentFamily[] = ['contact_center', 'calling', 'internal_assistant'];
 
 const CHOICE_ONLY_GUIDED_START: EvaMessage = {
@@ -6895,9 +6910,49 @@ ${previewTranscript}`,
                       </div>
                     </div>
                   ) : message.text}
-                  followups={isRetailChannelChoice || isRetailPhonePrompt || isRetailAgentNamePrompt || isRetailWelcomePrompt || isRetailKnowledgePrompt || isRetailActionsPrompt || isRetailFinalActions || isRetailCompleteActions || isRetailInlinePreview || isFamilyProposalPrompt || isContactCenterChannelPrompt || isFamilyNamePrompt || isFamilyGreetingPrompt || isCallingDestinationPrompt || isFamilyKnowledgePrompt || isFamilyActionPrompt || (isFamilyIntakePrompt && (!isLatestFamilyIntakePrompt || evaThinking)) ? [] : followups}
+                  followups={isRetailChannelChoice || isRetailPhonePrompt || isRetailAgentNamePrompt || isRetailWelcomePrompt || isRetailKnowledgePrompt || isRetailActionsPrompt || isRetailFinalActions || isRetailCompleteActions || isRetailInlinePreview || isFamilyChoicePrompt || isFamilyProposalPrompt || isContactCenterChannelPrompt || isFamilyNamePrompt || isFamilyGreetingPrompt || isCallingDestinationPrompt || isFamilyKnowledgePrompt || isFamilyActionPrompt || (isFamilyIntakePrompt && (!isLatestFamilyIntakePrompt || evaThinking)) ? [] : followups}
                   onFollowup={handleLlmFollowupClick}
                 >
+                  {isFamilyChoicePrompt && !evaThinking && (
+                    <div className="eva-family-choice-grid" role="group" aria-label="Choose an agent type">
+                      {AGENT_FAMILIES.map(family => {
+                        const label = FAMILY_CHOICE_LABELS[family];
+                        const details = FAMILY_CHOICE_DETAILS[family];
+                        const configurationStepCount = getFamilyIntakeSequence(family).length + 1;
+                        const isAvailable = entitlements[family] === 'licensed';
+
+                        return (
+                          <Card
+                            key={family}
+                            clickable
+                            disabled={!isAvailable}
+                            aria-disabled={!isAvailable || undefined}
+                            aria-label={`${label}. ${details.tagline}. ${details.description} ${configurationStepCount} configuration steps.`}
+                            className={`eva-family-choice-card eva-family-choice-card--${family}`}
+                            onClick={() => handleAgentFamilySelect(family, label)}
+                          >
+                            <div className="eva-family-choice-card__header">
+                              <span className="eva-family-choice-card__icon" aria-hidden="true">
+                                <Icon name={FAMILY_ICONS[family]} weight="regular" size={20} />
+                              </span>
+                              <span className="eva-family-choice-card__step-count">
+                                {configurationStepCount} steps
+                              </span>
+                            </div>
+                            <div className="eva-family-choice-card__copy">
+                              <strong>{label}</strong>
+                              <span>{details.tagline}</span>
+                              <p>{details.description}</p>
+                            </div>
+                            <div className="eva-family-choice-card__footer" aria-hidden="true">
+                              <span>{isAvailable ? 'Choose this type' : 'Not available'}</span>
+                              {isAvailable && <Icon name="arrow-right" weight="bold" size="sm" />}
+                            </div>
+                          </Card>
+                        );
+                      })}
+                    </div>
+                  )}
                   {isLatestFamilyIntakePrompt && familyIntakeEditingQuestion && !evaThinking && (
                     <div className="eva-family-intake-edit-actions">
                       <Button size="sm" variant="secondary" onClick={handleCancelFamilyIntakeEdit}>
