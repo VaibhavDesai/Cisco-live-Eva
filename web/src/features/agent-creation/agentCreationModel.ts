@@ -594,6 +594,17 @@ export const getAdaptiveIntakeQuestions = (
   return firstMissingIndex === -1 ? questions : questions.slice(0, firstMissingIndex + 1);
 };
 
+/**
+ * Returns the complete, ordered intake sequence for a family.
+ *
+ * `getAdaptiveIntakeQuestions` intentionally reveals only the questions up to
+ * the next unanswered item. Progress UI needs the full sequence so upcoming
+ * steps stay visible without duplicating the family-specific order in a view.
+ */
+export const getFamilyIntakeSequence = (family: AgentFamily): readonly AdaptiveIntakeQuestion[] => (
+  [...FAMILY_INTAKE[family]]
+);
+
 export const buildStarterProposal = (
   family: AgentFamily,
   answers: Record<string, string>,
@@ -697,6 +708,8 @@ and direct sensitive or unsupported requests to the configured owner or process.
   } else if (family === 'internal_assistant' && purpose !== chosen.purpose) {
     instructions = chosen.instructions.replace('#### Primary Goals\n', `#### Primary Goals\n${purpose}\n\n`);
   }
+  const requestedInstructions = normalize(answers.instructions);
+  if (requestedInstructions) instructions = requestedInstructions;
 
   return {
     name,

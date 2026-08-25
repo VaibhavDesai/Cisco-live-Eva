@@ -1268,6 +1268,7 @@ export default function AgentHomeDashboard({
     }
     onAction(action);
   };
+  const createFromScratchAction = snapshot.actions.find(action => action.intent === 'start-intake');
 
   return (
     <section
@@ -1282,6 +1283,9 @@ export default function AgentHomeDashboard({
           <AgentHomeFirstTimeFlows
             flow={firstTimeFlow}
             onFlowChange={changeFirstTimeFlow}
+            onCreateFromScratch={createFromScratchAction
+              ? () => onAction(createFromScratchAction)
+              : undefined}
             onUseTemplate={onUseTemplate}
             onSendDemoMessage={onSendDemoMessage}
           />

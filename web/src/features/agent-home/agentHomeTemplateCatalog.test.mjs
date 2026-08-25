@@ -6,6 +6,7 @@ import {
   AGENT_HOME_TEMPLATE_OPTIONS,
   createDraftFromHomeTemplate,
   getAgentHomePreviewChannelLabel,
+  getAgentHomeTemplate,
   getAgentHomeTemplatesForFamily,
 } from './agentHomeTemplateCatalog.ts';
 
@@ -23,6 +24,34 @@ test('template catalog has three ordered agent types with a useful set of choice
 
   const ids = AGENT_HOME_TEMPLATE_OPTIONS.map(template => template.id);
   assert.equal(new Set(ids).size, ids.length, 'template IDs should be unique');
+});
+
+test('every ready-made customer-service row has distinct functional detail content', () => {
+  const readyMadeIds = [
+    'contact_center:cx-concierge',
+    'contact_center:technical-support',
+    'contact_center:reservation-scheduler',
+    'contact_center:order-management',
+    'contact_center:returns-exchanges',
+    'contact_center:product-discovery',
+    'contact_center:patient-care',
+    'contact_center:clinical-intake',
+  ];
+  const templates = readyMadeIds.map(templateId => {
+    const template = getAgentHomeTemplate(templateId);
+    assert.ok(template, `${templateId} should resolve to a real template`);
+    return template;
+  });
+
+  assert.equal(new Set(templates.map(template => template.name)).size, readyMadeIds.length);
+  assert.equal(
+    new Set(templates.map(template => template.workflow.join('|'))).size,
+    readyMadeIds.length,
+  );
+  assert.equal(
+    new Set(templates.map(template => template.proposal.instructions)).size,
+    readyMadeIds.length,
+  );
 });
 
 test('every agent type offers multiple templates in each industry group', () => {

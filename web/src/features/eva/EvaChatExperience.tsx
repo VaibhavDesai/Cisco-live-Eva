@@ -1,12 +1,19 @@
 import { Fragment, useEffect, useLayoutEffect, useRef, useState, type CSSProperties, type KeyboardEvent, type PointerEvent } from 'react';
 import { createPortal } from 'react-dom';
 import { useLocation, useNavigate } from 'react-router-dom';
+import {
+  IconProvider,
+  Stepper as MomentumStepper,
+  StepperConnector as MomentumStepperConnector,
+  StepperItem as MomentumStepperItem,
+} from '@momentum-design/components/react';
 import { useApp } from '../../contexts/AppContext';
 import { useDesignVariation } from '../../contexts/DesignVariationContext';
 import Button from '../../components/shared/Button';
 import { AccordionGroup, AccordionItem, AiFooter, AiResponseMessage, AiThreadPanel, AiUserMessage, Badge, Banner, Card, Dropdown, Input, Modal, ModalBody, ModalFooter, ModalHeader, Radio, RadioGroup, Slider, Table, TableBody, TableCell, TableHead, TableHeader, TableRow, Textarea, TextLink, Toggle } from '../../components/shared';
 import { AgentCard } from '../../components/agents';
 import { Icon } from '../../icons';
+import { publicAssetUrl } from '../../app/publicAsset';
 import {
   EVA_CANVAS_AGENTS_PATH,
   EVA_CANVAS_DASHBOARD_PATH,
@@ -39,6 +46,7 @@ import {
   getAdaptiveIntakeQuestions,
   getActionableStoredRecommendations,
   getCapabilityTrackerStatus,
+  getFamilyIntakeSequence,
   getMinimumPublishIssues,
   getRankedRecommendations,
   type AgentRecommendation,
@@ -100,6 +108,37 @@ type GeneratedChatPanelMode = 'collapsed' | 'rail' | 'expanded';
 const GENERATED_CHAT_PANEL_DEFAULT_WIDTH = 304;
 const GENERATED_CHAT_PANEL_MIN_WIDTH = 248;
 const GENERATED_CHAT_PANEL_MAX_WIDTH = 480;
+const FAMILY_INTAKE_COMPACT_WIDTH = 1040;
+
+const FAMILY_INTAKE_STEPPER_LABELS: Record<string, string> = {
+  voice_destination: 'Location and phone number',
+  channel: 'Channels',
+  outcome: 'Agent goal',
+  name: 'Agent name',
+  greeting: 'Welcome message',
+  knowledge: 'Knowledge base',
+  actions: 'Action',
+};
+
+const getProposalAnswerOverrides = (proposal: StarterProposal): Record<string, string> => {
+  const selectedChannelAnswer = proposal.selectedChannels?.length
+    ? proposal.selectedChannels
+      .map(channel => `${channel.charAt(0).toUpperCase()}${channel.slice(1)}`)
+      .join(', ')
+    : proposal.channel === 'Both'
+      ? 'Voice, Digital'
+      : proposal.channel;
+
+  return {
+    name: proposal.name,
+    outcome: proposal.purpose,
+    description: proposal.description,
+    language: proposal.language,
+    instructions: proposal.instructions,
+    ...(proposal.greeting ? { greeting: proposal.greeting } : {}),
+    ...(selectedChannelAnswer ? { channel: selectedChannelAnswer } : {}),
+  };
+};
 
 const getRecommendationActionLabel = (recommendation: AgentRecommendation): string => {
   if (recommendation.actionKind === 'open_external') return 'Connect';
@@ -394,21 +433,28 @@ const FAMILY_PRESET_ANSWERS: Record<AgentFamily, Record<string, string>> = {
 function PresetIntakeAnswer({
   family,
   question,
+  initialAnswer,
   onSubmit,
 }: {
   family: AgentFamily;
   question: AdaptiveIntakeQuestion;
+  initialAnswer?: string;
   onSubmit: (answer: string) => void;
 }) {
   const suggestedAnswer = FAMILY_PRESET_ANSWERS[family][question.answerKey]
     ?? 'Use the recommended starting point for this agent.';
-  const [editing, setEditing] = useState(false);
-  const [answer, setAnswer] = useState(suggestedAnswer);
+  const savedAnswer = initialAnswer?.trim() ?? '';
+  const hasSavedAnswer = Boolean(savedAnswer && savedAnswer !== SKIPPED_INTAKE_ANSWER);
+  const startingAnswer = hasSavedAnswer
+    ? savedAnswer
+    : suggestedAnswer;
+  const [editing, setEditing] = useState(hasSavedAnswer);
+  const [answer, setAnswer] = useState(startingAnswer);
 
   useEffect(() => {
-    setEditing(false);
-    setAnswer(suggestedAnswer);
-  }, [question.id, suggestedAnswer]);
+    setEditing(hasSavedAnswer);
+    setAnswer(startingAnswer);
+  }, [hasSavedAnswer, question.id, startingAnswer]);
 
   return (
     <div className="eva-preset-intake-answer" role="group" aria-label={`Answer ${question.prompt}`}>
@@ -432,20 +478,22 @@ function PresetIntakeAnswer({
             <Button size="sm" onClick={() => onSubmit(answer)} disabled={!answer.trim()}>
               Use edited answer
             </Button>
-            <Button size="sm" variant="secondary" onClick={() => setEditing(false)}>
-              Cancel
-            </Button>
+            {!hasSavedAnswer && (
+              <Button size="sm" variant="secondary" onClick={() => setEditing(false)}>
+                Cancel
+              </Button>
+            )}
           </div>
         </>
       ) : (
         <>
           <div className="eva-preset-intake-answer__suggestion">
             <Icon name="sparkle" weight="bold" size="sm" />
-            <span>{suggestedAnswer}</span>
+            <span>{startingAnswer}</span>
           </div>
           <div className="eva-preset-intake-answer__actions">
-            <Button size="sm" onClick={() => onSubmit(suggestedAnswer)}>
-              Use suggested answer
+            <Button size="sm" onClick={() => onSubmit(startingAnswer)}>
+              {hasSavedAnswer ? 'Keep current answer' : 'Use suggested answer'}
             </Button>
             <Button size="sm" variant="secondary" onClick={() => setEditing(true)}>
               <Icon name="edit" weight="bold" size="sm" />
@@ -1382,7 +1430,16 @@ export default function EvaChatExperience({
   const [familyIntakeAnswers, setFamilyIntakeAnswers] = useState<Record<string, string>>(
     restoredEvaSession?.familyIntakeAnswers ?? {},
   );
-  const [contactCenterSelectedChannels, setContactCenterSelectedChannels] = useState<string[]>([]);
+  const [familyIntakeEditingAnswerKey, setFamilyIntakeEditingAnswerKey] = useState<string | null>(
+    restoredEvaSession?.familyIntakeEditingAnswerKey ?? null,
+  );
+  const [pendingFamilyIntakeFocusKey, setPendingFamilyIntakeFocusKey] = useState<string | null>(null);
+  const [contactCenterSelectedChannels, setContactCenterSelectedChannels] = useState<string[]>(() => (
+    restoredEvaSession?.familyIntakeAnswers?.channel
+      ?.split(',')
+      .map(channel => channel.trim())
+      .filter(Boolean) ?? []
+  ));
   const [familyProposal, setFamilyProposal] = useState<StarterProposal | null>(
     restoredEvaSession?.familyProposal ?? null,
   );
@@ -1391,10 +1448,19 @@ export default function EvaChatExperience({
   );
   const [familyProposalEditing, setFamilyProposalEditing] = useState(false);
   const [familyProposalChangeRequested, setFamilyProposalChangeRequested] = useState(false);
-  const [familyAgentNameInput, setFamilyAgentNameInput] = useState('');
-  const [familyAgentNameInputVisible, setFamilyAgentNameInputVisible] = useState(false);
-  const [familyGreetingInput, setFamilyGreetingInput] = useState('');
-  const [familyGreetingInputVisible, setFamilyGreetingInputVisible] = useState(false);
+  const [familyIntakeStepperExpanded, setFamilyIntakeStepperExpanded] = useState(true);
+  const [familyAgentNameInput, setFamilyAgentNameInput] = useState(
+    restoredEvaSession?.familyIntakeAnswers?.name ?? '',
+  );
+  const [familyAgentNameInputVisible, setFamilyAgentNameInputVisible] = useState(
+    restoredEvaSession?.familyIntakeEditingAnswerKey === 'name',
+  );
+  const [familyGreetingInput, setFamilyGreetingInput] = useState(
+    restoredEvaSession?.familyIntakeAnswers?.greeting ?? '',
+  );
+  const [familyGreetingInputVisible, setFamilyGreetingInputVisible] = useState(
+    restoredEvaSession?.familyIntakeEditingAnswerKey === 'greeting',
+  );
   const restoredVoiceDestination = decodeVoiceDestinationAnswer(
     restoredEvaSession?.familyIntakeAnswers?.voice_destination,
   );
@@ -1547,10 +1613,27 @@ export default function EvaChatExperience({
      the user-driven currentStepIndex logic below. */
   const [sidePanelStepCount, setSidePanelStepCount] = useState(0);
   const familyStepOrder = getFamilyStepOrder(selectedAgentFamily);
-  const familyIntakeQuestion = selectedAgentFamily
+  const familyIntakeSequence = selectedAgentFamily
+    ? getFamilyIntakeSequence(selectedAgentFamily)
+    : [];
+  const familyIntakeEditingQuestion = familyIntakeEditingAnswerKey
+    && familyIntakeAnswers[familyIntakeEditingAnswerKey]?.trim()
+    ? familyIntakeSequence.find(question => question.answerKey === familyIntakeEditingAnswerKey)
+    : undefined;
+  const familyIntakeQuestion = familyIntakeEditingQuestion ?? (selectedAgentFamily
     ? getAdaptiveIntakeQuestions(selectedAgentFamily, familyIntakeAnswers)
       .find(question => !familyIntakeAnswers[question.answerKey]?.trim())
-    : undefined;
+    : undefined);
+  const familyIntakeStepCount = familyIntakeSequence.length + 1;
+  const familyIntakeCurrentStepIndex = familyIntakeEditingQuestion
+    ? Math.max(0, familyIntakeSequence.findIndex(question => question.id === familyIntakeEditingQuestion.id))
+    : familyProposal
+    ? familyIntakeSequence.length
+    : Math.max(0, familyIntakeSequence.findIndex(question => question.id === familyIntakeQuestion?.id));
+  const familyIntakeReviewCurrent = Boolean(familyProposal && !familyIntakeEditingQuestion);
+  const familyIntakeCanReturnToReview = Boolean(
+    familyProposal && familyIntakeEditingQuestion && !evaThinking,
+  );
   const activeAgentDraft = activeDraftAgentId ? agentDrafts[activeDraftAgentId] : undefined;
   const actionableAgentRecommendations = activeAgentDraft
     ? getActionableStoredRecommendations(activeAgentDraft)
@@ -1568,6 +1651,8 @@ export default function EvaChatExperience({
   const pendingPreviewScrollRef = useRef(false);
   const retailDiscoveryTimerRef = useRef<number | null>(null);
   const logisticsDiscoveryTimerRef = useRef<number | null>(null);
+  const familyIntakeSurfaceRef = useRef<HTMLDivElement | null>(null);
+  const familyIntakeCompactRef = useRef<boolean | null>(null);
   const retailPhoneSelectorRef = useRef<HTMLDivElement | null>(null);
   const retailTransitionScrollTopRef = useRef<number | null>(null);
   const onboardingResponseTimerRef = useRef<number | null>(null);
@@ -1629,6 +1714,7 @@ export default function EvaChatExperience({
       customRules,
       selectedAgentFamily,
       familyIntakeAnswers,
+      familyIntakeEditingAnswerKey,
       familyProposal,
       familyProposalApplied,
       activeDraftAgentId,
@@ -1644,6 +1730,28 @@ export default function EvaChatExperience({
 
   /* Keep the original dashboard chat and its configuration zone synchronized
      through refreshes. The session remains local to this prototype. */
+  useLayoutEffect(() => {
+    const surface = familyIntakeSurfaceRef.current;
+    if (!surface) return undefined;
+
+    const syncStepperWithSurface = (width: number) => {
+      const compact = width <= FAMILY_INTAKE_COMPACT_WIDTH;
+      if (familyIntakeCompactRef.current === compact) return;
+      familyIntakeCompactRef.current = compact;
+      setFamilyIntakeStepperExpanded(!compact);
+    };
+
+    syncStepperWithSurface(surface.getBoundingClientRect().width);
+    if (typeof ResizeObserver === 'undefined') return undefined;
+
+    const resizeObserver = new ResizeObserver(entries => {
+      const entry = entries[0];
+      if (entry) syncStepperWithSurface(entry.contentRect.width);
+    });
+    resizeObserver.observe(surface);
+    return () => resizeObserver.disconnect();
+  }, []);
+
   useEffect(() => {
     if (!selectedAgentFamily && messages.length === 0 && !guidanceVisible) return;
     persistEvaSession();
@@ -1653,6 +1761,7 @@ export default function EvaChatExperience({
     selectedAgentFamily,
     configurationMode,
     familyIntakeAnswers,
+    familyIntakeEditingAnswerKey,
     familyProposal,
     familyProposalApplied,
     activeDraftAgentId,
@@ -1976,6 +2085,23 @@ export default function EvaChatExperience({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [latestUserMessageText, messages.length, waterfallThinking, evaThinking, retailDiscoveryProgress, retailPrototypeStep, retailPhoneDropdownOpen, freeChatActive, guidanceVisible, orchestrationSuggested, familyProposalEditing]);
 
+  useLayoutEffect(() => {
+    if (!pendingFamilyIntakeFocusKey) return;
+    const target = familyIntakeSurfaceRef.current?.querySelector<HTMLElement>(
+      `#eva-family-intake-editor-${pendingFamilyIntakeFocusKey}`,
+    );
+    if (!target) return;
+    target.focus({ preventScroll: true });
+    target.scrollIntoView({ block: 'nearest' });
+    setPendingFamilyIntakeFocusKey(null);
+  }, [
+    familyIntakeEditingAnswerKey,
+    familyIntakeQuestion?.answerKey,
+    familyProposal,
+    messages.length,
+    pendingFamilyIntakeFocusKey,
+  ]);
+
   const completeEvaThinking = (callback: () => void) => {
     /* Deterministic build flow — clear any prior free-chat state so the
        LLM thread isn't lingering behind the configured form sections. */
@@ -2073,6 +2199,7 @@ export default function EvaChatExperience({
     setConfigurationMode('create');
     setSelectedAgentFamily(null);
     setFamilyIntakeAnswers({});
+    setFamilyIntakeEditingAnswerKey(null);
     setFamilyProposal(null);
     setFamilyProposalApplied(false);
     setFamilyProposalEditing(false);
@@ -2220,6 +2347,7 @@ export default function EvaChatExperience({
     const firstMessage = getFamilyIntakeMessage(family, firstQuestion, {});
     setSelectedAgentFamily(family);
     setFamilyIntakeAnswers({});
+    setFamilyIntakeEditingAnswerKey(null);
     setContactCenterSelectedChannels([]);
     setFamilyProposal(null);
     setFamilyProposalApplied(false);
@@ -2311,6 +2439,7 @@ export default function EvaChatExperience({
     setSelectedTemplateId(templateId);
     setSelectedAgentFamily(target.family);
     setFamilyIntakeAnswers(target.answers);
+    setFamilyIntakeEditingAnswerKey(null);
     setFamilyProposal(proposal);
     setFamilyProposalApplied(false);
     setFamilyProposalEditing(false);
@@ -2392,8 +2521,100 @@ export default function EvaChatExperience({
       },
     ]);
     setFamilyProposal(nextProposal);
+    setFamilyIntakeAnswers(current => ({
+      ...current,
+      ...getProposalAnswerOverrides(nextProposal),
+    }));
     setFamilyProposalChangeRequested(false);
     return true;
+  };
+
+  const handleActivateFamilyIntakeQuestion = (question: AdaptiveIntakeQuestion) => {
+    if (!selectedAgentFamily || familyProposalApplied || evaThinking) return;
+    if (question.id === familyIntakeQuestion?.id) {
+      setPendingFamilyIntakeFocusKey(question.answerKey);
+      return;
+    }
+    const syncedAnswers = familyProposal
+      ? { ...familyIntakeAnswers, ...getProposalAnswerOverrides(familyProposal) }
+      : familyIntakeAnswers;
+    const savedAnswer = syncedAnswers[question.answerKey]?.trim();
+    if (!savedAnswer) return;
+
+    if (familyProposal) setFamilyIntakeAnswers(syncedAnswers);
+    setFamilyIntakeEditingAnswerKey(question.answerKey);
+    setPendingFamilyIntakeFocusKey(question.answerKey);
+    setFamilyProposalEditing(false);
+    setFamilyProposalChangeRequested(false);
+    setFamilyHelpVisible(false);
+
+    if (question.answerKey === 'channel') {
+      setContactCenterSelectedChannels(
+        savedAnswer.split(',').map(channel => channel.trim()).filter(Boolean),
+      );
+    } else if (question.answerKey === 'voice_destination') {
+      const destination = decodeVoiceDestinationAnswer(savedAnswer);
+      setFamilyVoiceLocation(destination?.location ?? '');
+      setFamilyVoicePhoneNumber(destination?.phoneNumber ?? '');
+    } else if (question.answerKey === 'name') {
+      setFamilyAgentNameInput(savedAnswer);
+      setFamilyAgentNameInputVisible(true);
+    } else if (question.answerKey === 'greeting') {
+      setFamilyGreetingInput(savedAnswer);
+      setFamilyGreetingInputVisible(true);
+    } else if (question.answerKey === 'knowledge') {
+      setFamilyKnowledgeSelection(savedAnswer === SKIPPED_INTAKE_ANSWER ? '' : savedAnswer);
+    } else if (question.answerKey === 'actions') {
+      setFamilyActionSelection(savedAnswer === SKIPPED_INTAKE_ANSWER ? '' : savedAnswer);
+    }
+
+    const editMessage = getFamilyIntakeMessage(selectedAgentFamily, question, syncedAnswers);
+    setMessages(previous => [
+      ...previous,
+      {
+        role: 'assistant',
+        text: editMessage.text,
+        followups: editMessage.followups,
+        originStep: FAMILY_INTAKE_ORIGIN,
+      },
+    ]);
+  };
+
+  const handleCancelFamilyIntakeEdit = () => {
+    if (!selectedAgentFamily || !familyIntakeEditingQuestion || evaThinking) return;
+    const resumeQuestion = getAdaptiveIntakeQuestions(selectedAgentFamily, familyIntakeAnswers)
+      .find(question => !familyIntakeAnswers[question.answerKey]?.trim());
+
+    setFamilyIntakeEditingAnswerKey(null);
+    setFamilyAgentNameInputVisible(false);
+    setFamilyGreetingInputVisible(false);
+
+    if (resumeQuestion) {
+      setPendingFamilyIntakeFocusKey(resumeQuestion.answerKey);
+      const resumeMessage = getFamilyIntakeMessage(selectedAgentFamily, resumeQuestion, familyIntakeAnswers);
+      setMessages(previous => [
+        ...previous,
+        {
+          role: 'assistant',
+          text: resumeMessage.text,
+          followups: resumeMessage.followups,
+          originStep: FAMILY_INTAKE_ORIGIN,
+        },
+      ]);
+      return;
+    }
+
+    if (familyProposal) {
+      setPendingFamilyIntakeFocusKey('review');
+      setMessages(previous => [
+        ...previous,
+        {
+          role: 'assistant',
+          text: 'Your current starter configuration is unchanged. Review it before creating the draft.',
+          originStep: FAMILY_PROPOSAL_ORIGIN,
+        },
+      ]);
+    }
   };
 
   const handleFamilyIntakeAnswer = (answer: string, displayAnswer = answer) => {
@@ -2422,6 +2643,7 @@ export default function EvaChatExperience({
     }
 
     const nextAnswers = { ...familyIntakeAnswers, [familyIntakeQuestion.answerKey]: value };
+    setFamilyIntakeEditingAnswerKey(null);
     if (familyIntakeQuestion.answerKey === 'channel') setContactCenterSelectedChannels([]);
     const nextQuestion = getAdaptiveIntakeQuestions(selectedAgentFamily, nextAnswers)
       .find(question => !nextAnswers[question.answerKey]?.trim());
@@ -3285,6 +3507,7 @@ export default function EvaChatExperience({
     setConversationalOnboardingStep('idle');
     setSelectedAgentFamily(null);
     setFamilyIntakeAnswers({});
+    setFamilyIntakeEditingAnswerKey(null);
     setFamilyProposal(null);
     setFamilyProposalApplied(false);
     setFamilyProposalEditing(false);
@@ -6390,7 +6613,8 @@ ${previewTranscript}`,
       )}
 
       <div
-        className={`eva-first-interface${showLandingOptions ? ' eva-first-interface--landing eva-landing-shell' : ''}${!freeChatActive && (guidanceVisible || evaThinking || orchestrationSuggested) ? ' eva-first-interface--generated' : ''}${freeChatActive && !guidanceVisible && !orchestrationSuggested ? ' eva-first-interface--free-chat' : ''}`}
+        ref={familyIntakeSurfaceRef}
+        className={`eva-first-interface${showLandingOptions ? ' eva-first-interface--landing eva-landing-shell' : ''}${!freeChatActive && (guidanceVisible || evaThinking || orchestrationSuggested) ? ' eva-first-interface--generated' : ''}${freeChatActive && !guidanceVisible && !orchestrationSuggested ? ' eva-first-interface--free-chat' : ''}${choiceOnlyGuidedFlow && selectedAgentFamily && freeChatActive && !guidanceVisible && !orchestrationSuggested && !familyProposalApplied ? ` eva-first-interface--guided-intake${familyIntakeStepperExpanded ? '' : ' eva-first-interface--guided-intake-collapsed'}` : ''}`}
       >
         {showLandingOptions && (
           <section className="eva-first-interface__hero" aria-labelledby="eva-landing-title">
@@ -6634,6 +6858,20 @@ ${previewTranscript}`,
                   key={`free-${index}`}
                   className="eva-ai-response"
                   data-retail-origin-step={message.originStep}
+                  id={isLatestFamilyIntakePrompt && familyIntakeQuestion
+                    ? `eva-family-intake-editor-${familyIntakeQuestion.answerKey}`
+                    : isLatestFamilyProposalPrompt && familyProposal && !familyIntakeEditingQuestion
+                      ? 'eva-family-intake-editor-review'
+                      : undefined}
+                  tabIndex={(isLatestFamilyIntakePrompt && familyIntakeQuestion)
+                    || (isLatestFamilyProposalPrompt && familyProposal && !familyIntakeEditingQuestion)
+                    ? -1
+                    : undefined}
+                  aria-label={isLatestFamilyIntakePrompt && familyIntakeQuestion
+                    ? `${FAMILY_INTAKE_STEPPER_LABELS[familyIntakeQuestion.answerKey] ?? familyIntakeQuestion.prompt} configuration step`
+                    : isLatestFamilyProposalPrompt && familyProposal && !familyIntakeEditingQuestion
+                      ? 'Review and create configuration step'
+                      : undefined}
                   showActions={false}
                   assistantName="AI Assistant"
                   content={isRetailChannelChoice ? (
@@ -6660,6 +6898,13 @@ ${previewTranscript}`,
                   followups={isRetailChannelChoice || isRetailPhonePrompt || isRetailAgentNamePrompt || isRetailWelcomePrompt || isRetailKnowledgePrompt || isRetailActionsPrompt || isRetailFinalActions || isRetailCompleteActions || isRetailInlinePreview || isFamilyProposalPrompt || isContactCenterChannelPrompt || isFamilyNamePrompt || isFamilyGreetingPrompt || isCallingDestinationPrompt || isFamilyKnowledgePrompt || isFamilyActionPrompt || (isFamilyIntakePrompt && (!isLatestFamilyIntakePrompt || evaThinking)) ? [] : followups}
                   onFollowup={handleLlmFollowupClick}
                 >
+                  {isLatestFamilyIntakePrompt && familyIntakeEditingQuestion && !evaThinking && (
+                    <div className="eva-family-intake-edit-actions">
+                      <Button size="sm" variant="secondary" onClick={handleCancelFamilyIntakeEdit}>
+                        Cancel editing
+                      </Button>
+                    </div>
+                  )}
                   {isContactCenterChannelPrompt && !evaThinking && (
                     <div className="eva-retail-channel-panel">
                       <div
@@ -6928,10 +7173,11 @@ ${previewTranscript}`,
                       key={familyIntakeQuestion.id}
                       family={selectedAgentFamily}
                       question={familyIntakeQuestion}
+                      initialAnswer={familyIntakeAnswers[familyIntakeQuestion.answerKey]}
                       onSubmit={handleFamilyIntakeAnswer}
                     />
                   )}
-                  {isLatestFamilyProposalPrompt && familyProposal && !familyProposalApplied && (
+                  {isLatestFamilyProposalPrompt && familyProposal && !familyProposalApplied && !familyIntakeEditingQuestion && !evaThinking && (
                     <section className="eva-family-proposal" aria-label="Recommended starter configuration">
                       <div className="eva-family-proposal__header">
                         <span className={`eva-family-chip eva-family-chip--${selectedAgentFamily}`}>
@@ -7071,6 +7317,10 @@ ${previewTranscript}`,
                               || (selectedAgentFamily !== 'internal_assistant' && !familyProposal.greeting?.trim())
                             }
                             onClick={() => {
+                              setFamilyIntakeAnswers(current => ({
+                                ...current,
+                                ...getProposalAnswerOverrides(familyProposal),
+                              }));
                               setFamilyProposalEditing(false);
                             }}
                           >
@@ -7504,6 +7754,141 @@ ${previewTranscript}`,
               />
             )}
           </section>
+        )}
+
+        {choiceOnlyGuidedFlow && selectedAgentFamily && freeChatActive && !guidanceVisible && !orchestrationSuggested && !familyProposalApplied && (
+          <aside
+            className={`eva-family-intake-stepper${familyIntakeStepperExpanded ? '' : ' eva-family-intake-stepper--collapsed'}`}
+            aria-labelledby={familyIntakeStepperExpanded ? 'eva-family-intake-stepper-title' : undefined}
+            aria-label={familyIntakeStepperExpanded
+              ? undefined
+              : `${FAMILY_CHOICE_LABELS[selectedAgentFamily]} progress, step ${familyIntakeCurrentStepIndex + 1} of ${familyIntakeStepCount}`}
+          >
+            <header className="eva-family-intake-stepper__header">
+              <span className={`eva-family-intake-stepper__icon eva-family-chip--${selectedAgentFamily}`} aria-hidden="true">
+                <Icon name={FAMILY_ICONS[selectedAgentFamily]} weight="bold" size="md" />
+              </span>
+              <div className="eva-family-intake-stepper__heading">
+                <span className="eva-family-intake-stepper__eyebrow">
+                  {FAMILY_CHOICE_LABELS[selectedAgentFamily]}
+                </span>
+                <h2 id="eva-family-intake-stepper-title">Progress</h2>
+                <p aria-live="polite">{`Step ${familyIntakeCurrentStepIndex + 1} of ${familyIntakeStepCount}`}</p>
+              </div>
+              <span className="eva-family-intake-stepper__collapsed-progress" aria-hidden="true">
+                {`${familyIntakeCurrentStepIndex + 1}/${familyIntakeStepCount}`}
+              </span>
+              <Button
+                type="button"
+                variant="tertiary"
+                size="sm"
+                className="eva-family-intake-stepper__toggle"
+                aria-expanded={familyIntakeStepperExpanded}
+                aria-controls="eva-family-intake-stepper-body"
+                aria-label={familyIntakeStepperExpanded ? 'Collapse progress' : 'Expand progress'}
+                title={familyIntakeStepperExpanded ? 'Collapse progress' : 'Expand progress'}
+                onClick={() => setFamilyIntakeStepperExpanded(expanded => !expanded)}
+              >
+                <Icon name={familyIntakeStepperExpanded ? 'arrow-right' : 'arrow-left'} weight="bold" size="sm" />
+              </Button>
+            </header>
+
+            <div
+              id="eva-family-intake-stepper-body"
+              className="eva-family-intake-stepper__body"
+              hidden={!familyIntakeStepperExpanded}
+            >
+              <IconProvider
+                className="eva-family-intake-stepper__icon-provider"
+                iconSet="custom-icons"
+                url={publicAssetUrl('icons').replace(/\/$/, '')}
+                fileExtension="svg"
+              >
+                <MomentumStepper
+                  className="eva-family-intake-stepper__steps"
+                  orientation="vertical"
+                  variant="inline"
+                  aria-label={`${FAMILY_CHOICE_LABELS[selectedAgentFamily]} configuration progress`}
+                >
+                  {familyIntakeSequence.map((question, index) => {
+                    const answer = familyIntakeAnswers[question.answerKey]?.trim();
+                    const isComplete = Boolean(answer);
+                    const isSkipped = answer === SKIPPED_INTAKE_ANSWER;
+                    const isCurrent = question.id === familyIntakeQuestion?.id
+                      && (!familyProposal || Boolean(familyIntakeEditingQuestion));
+                    const isAvailable = (isComplete || isCurrent) && !evaThinking && !familyProposalApplied;
+                    const status = isCurrent ? 'current' : isComplete ? 'completed' : 'not-started';
+                    const stepState = isCurrent
+                      ? 'current'
+                      : isSkipped
+                        ? 'skipped'
+                        : isComplete
+                          ? 'completed'
+                          : 'future';
+                    const baseLabel = FAMILY_INTAKE_STEPPER_LABELS[question.answerKey] ?? question.prompt;
+                    const label = question.required ? baseLabel : `${baseLabel} (optional)`;
+                    const stateLabel = isCurrent
+                      ? isComplete ? 'Editing' : 'Current · Open'
+                      : isSkipped
+                        ? 'Skipped · Edit'
+                        : isComplete
+                          ? 'Complete · Edit'
+                          : 'Not available yet';
+
+                    return (
+                      <Fragment key={question.id}>
+                        <MomentumStepperItem
+                          className={isAvailable ? 'eva-family-intake-stepper__step--actionable' : undefined}
+                          data-step-state={stepState}
+                          status={status}
+                          stepNumber={index + 1}
+                          label={label}
+                          helpText={stateLabel}
+                          aria-current={isCurrent ? 'step' : undefined}
+                          aria-disabled={!isAvailable ? true : undefined}
+                          aria-controls={isAvailable
+                            ? `eva-family-intake-editor-${question.answerKey}`
+                            : undefined}
+                          aria-label={isCurrent
+                            ? `Return to ${label}, step ${index + 1} of ${familyIntakeStepCount}, current step`
+                            : isSkipped
+                              ? `Edit ${label}, step ${index + 1} of ${familyIntakeStepCount}, skipped`
+                              : isComplete
+                                ? `Edit ${label}, step ${index + 1} of ${familyIntakeStepCount}, complete`
+                                : `${label}, step ${index + 1} of ${familyIntakeStepCount}, not available yet`}
+                          tabIndex={isAvailable ? 0 : -1}
+                          onClick={isAvailable ? () => handleActivateFamilyIntakeQuestion(question) : undefined}
+                        />
+                        <MomentumStepperConnector
+                          status={isComplete ? 'complete' : 'incomplete'}
+                        />
+                      </Fragment>
+                    );
+                  })}
+                  <MomentumStepperItem
+                    className={familyProposal && !evaThinking ? 'eva-family-intake-stepper__step--actionable' : undefined}
+                    data-step-state={familyIntakeReviewCurrent ? 'current' : familyIntakeCanReturnToReview ? 'completed' : 'future'}
+                    status={familyIntakeReviewCurrent ? 'current' : familyIntakeCanReturnToReview ? 'completed' : 'not-started'}
+                    stepNumber={familyIntakeStepCount}
+                    label="Review and create"
+                    helpText={familyIntakeReviewCurrent ? 'Current · Open' : familyIntakeCanReturnToReview ? 'Return to review' : 'Not available yet'}
+                    aria-current={familyIntakeReviewCurrent ? 'step' : undefined}
+                    aria-disabled={!familyProposal || evaThinking ? true : undefined}
+                    aria-controls={familyProposal && !evaThinking ? 'eva-family-intake-editor-review' : undefined}
+                    aria-label={familyIntakeCanReturnToReview
+                      ? `Return to Review and create, step ${familyIntakeStepCount} of ${familyIntakeStepCount}`
+                      : `Review and create, step ${familyIntakeStepCount} of ${familyIntakeStepCount}, ${familyIntakeReviewCurrent ? 'current step' : 'not available yet'}`}
+                    tabIndex={familyProposal && !evaThinking ? 0 : -1}
+                    onClick={familyProposal && !evaThinking
+                      ? familyIntakeCanReturnToReview
+                        ? handleCancelFamilyIntakeEdit
+                        : () => setPendingFamilyIntakeFocusKey('review')
+                      : undefined}
+                  />
+                </MomentumStepper>
+              </IconProvider>
+            </div>
+          </aside>
         )}
 
         {/* Inline starter cards revealed by the "View other options"

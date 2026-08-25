@@ -20,10 +20,14 @@ export type AgentHomeTemplateId =
   | 'calling:pickup-availability'
   | 'contact_center:cx-concierge'
   | 'contact_center:technical-support'
+  | 'contact_center:reservation-scheduler'
   | 'contact_center:order-management'
   | 'contact_center:returns-exchanges'
+  | 'contact_center:product-discovery'
   | 'contact_center:property-service'
   | 'contact_center:resident-support'
+  | 'contact_center:patient-care'
+  | 'contact_center:clinical-intake'
   | 'internal_assistant:it-help-desk'
   | 'internal_assistant:employee-policy'
   | 'internal_assistant:candidate-feedback'
@@ -374,6 +378,31 @@ export const AGENT_HOME_TEMPLATE_OPTIONS: readonly AgentHomeTemplateDefinition[]
     ],
   }),
   defineTemplate({
+    id: 'contact_center:reservation-scheduler',
+    family: 'contact_center',
+    starterId: 'cx-concierge',
+    name: 'Reservation book & schedule agent',
+    industry: 'Customer service',
+    useCase: 'Reservations, scheduling, and confirmation',
+    icon: 'calendar-month',
+    workflow: ['Understand the reservation request', 'Check approved availability and scheduling policies', 'Book or update the reservation and confirm details'],
+    previewChannel: 'both',
+    responseStyleLabel: 'Response style',
+    responseStyle: 'Warm and organized',
+    proposalOverrides: {
+      name: 'Reservation Book and Schedule Agent',
+      purpose: 'Help customers book, change, and confirm reservations using current availability.',
+      description: 'A customer-service agent for reservations, scheduling changes, confirmations, and exception routing.',
+      instructions: '#### Role & Identity\nYou are a reservation and scheduling concierge.\n\n#### Primary Goals\nUnderstand the request, check current availability, and confirm every reservation detail before applying a change.\n\n#### Guardrails\nNever invent availability or promise an exception. Protect customer information and route policy exceptions.\n\n#### Output Rules\nBe warm, organized, and explicit about dates, times, and next steps.',
+    },
+    presets: [
+      selectionsPreset('knowledge', 'Knowledge', ['Service provider availability', 'FAQ database', 'Process playbooks']),
+      selectionsPreset('actions', 'Actions', ['Check availability', 'Create reservation', 'Send confirmation']),
+      selectionsPreset('handoff', 'Handoff', ['Escalate scheduling exceptions']),
+      selectionsPreset('security', 'Guardrails', ['Protect customer data', 'Confirm reservation details', 'Use current availability only']),
+    ],
+  }),
+  defineTemplate({
     id: 'contact_center:order-management',
     family: 'contact_center',
     starterId: 'order-management',
@@ -415,6 +444,31 @@ export const AGENT_HOME_TEMPLATE_OPTIONS: readonly AgentHomeTemplateDefinition[]
       selectionsPreset('actions', 'Actions', ['Check return eligibility', 'Create return request', 'Prepare exchange options']),
       selectionsPreset('handoff', 'Handoff', ['Escalate policy exceptions']),
       selectionsPreset('security', 'Guardrails', ['Verify before sharing order details', 'Protect payment data', 'Confirm changes before applying them']),
+    ],
+  }),
+  defineTemplate({
+    id: 'contact_center:product-discovery',
+    family: 'contact_center',
+    starterId: 'order-management',
+    name: 'Product discovery assistant',
+    industry: 'Commerce',
+    useCase: 'Personalized recommendations, comparisons, and wish lists',
+    icon: 'automation',
+    workflow: ['Understand the customer needs and preferences', 'Compare approved products and current availability', 'Recommend options and save the next step'],
+    previewChannel: 'digital',
+    responseStyleLabel: 'Response style',
+    responseStyle: 'Curious and helpful',
+    proposalOverrides: {
+      name: 'Product Discovery Assistant',
+      purpose: 'Help customers discover and compare products that fit their needs.',
+      description: 'A commerce assistant for personalized recommendations, product comparisons, availability, and wish lists.',
+      instructions: '#### Role & Identity\nYou are a product discovery assistant.\n\n#### Primary Goals\nUnderstand customer preferences, compare approved product information, and recommend relevant options.\n\n#### Guardrails\nDo not invent product claims, pricing, or availability. Clearly distinguish known facts from suggestions.\n\n#### Output Rules\nBe curious, helpful, and concise, and explain why each recommendation fits.',
+    },
+    presets: [
+      selectionsPreset('knowledge', 'Knowledge', ['Product catalog', 'Inventory system', 'Store FAQ']),
+      selectionsPreset('actions', 'Actions', ['Search product catalog', 'Check inventory', 'Save to wish list']),
+      selectionsPreset('handoff', 'Handoff', ['Escalate product and purchase questions']),
+      selectionsPreset('security', 'Guardrails', ['Use approved product data', 'Protect customer preferences', 'Confirm actions before applying them']),
     ],
   }),
   defineTemplate({
@@ -463,6 +517,56 @@ export const AGENT_HOME_TEMPLATE_OPTIONS: readonly AgentHomeTemplateDefinition[]
       selectionsPreset('actions', 'Actions', ['Check service request status', 'Notify property team', 'Prepare resident follow-up']),
       selectionsPreset('handoff', 'Handoff', ['Escalate access and safety issues']),
       selectionsPreset('security', 'Guardrails', ['Verify resident identity', 'Protect resident information', 'Log service request summaries']),
+    ],
+  }),
+  defineTemplate({
+    id: 'contact_center:patient-care',
+    family: 'contact_center',
+    starterId: 'property-service',
+    name: 'Patient care navigator',
+    industry: 'Healthcare',
+    useCase: 'Appointment scheduling, benefits inquiry, and care coordination',
+    icon: 'headset',
+    workflow: ['Verify the patient and understand the request', 'Check approved scheduling and benefits information', 'Coordinate the next care step or handoff'],
+    previewChannel: 'both',
+    responseStyleLabel: 'Response style',
+    responseStyle: 'Compassionate and clear',
+    proposalOverrides: {
+      name: 'Patient Care Navigator',
+      purpose: 'Help patients coordinate appointments, benefits questions, and approved next steps.',
+      description: 'A healthcare service agent for appointment scheduling, benefits inquiries, and care coordination.',
+      instructions: '#### Role & Identity\nYou are a patient care navigator.\n\n#### Primary Goals\nHelp patients coordinate appointments and approved administrative next steps while preserving context.\n\n#### Guardrails\nVerify identity before sharing private information. Do not diagnose, prescribe, or provide medical advice. Escalate urgent symptoms.\n\n#### Output Rules\nBe compassionate, clear, and explicit about the next care step.',
+    },
+    presets: [
+      selectionsPreset('knowledge', 'Knowledge', ['Service provider availability', 'FAQ database', 'Process playbooks']),
+      selectionsPreset('actions', 'Actions', ['Schedule appointment', 'Check benefits status', 'Prepare care-team handoff']),
+      selectionsPreset('handoff', 'Handoff', ['Escalate urgent or clinical questions']),
+      selectionsPreset('security', 'Guardrails', ['Verify patient identity', 'Protect patient information', 'Do not provide medical advice']),
+    ],
+  }),
+  defineTemplate({
+    id: 'contact_center:clinical-intake',
+    family: 'contact_center',
+    starterId: 'property-service',
+    name: 'Clinical intake assistant',
+    industry: 'Healthcare',
+    useCase: 'Symptom intake, prior authorization, and provider matching',
+    icon: 'people',
+    workflow: ['Verify the patient and collect intake details', 'Check approved routing and authorization guidance', 'Prepare a structured provider handoff'],
+    previewChannel: 'both',
+    responseStyleLabel: 'Response style',
+    responseStyle: 'Calm and precise',
+    proposalOverrides: {
+      name: 'Clinical Intake Assistant',
+      purpose: 'Collect structured intake information and route patients to the appropriate provider workflow.',
+      description: 'A healthcare intake agent for structured symptom collection, prior authorization status, and provider matching.',
+      instructions: '#### Role & Identity\nYou are a clinical intake assistant.\n\n#### Primary Goals\nCollect complete intake details, use approved routing guidance, and prepare a structured handoff.\n\n#### Guardrails\nDo not diagnose or recommend treatment. Protect patient information and immediately escalate emergency indicators.\n\n#### Output Rules\nUse calm, precise questions and clearly summarize the collected information.',
+    },
+    presets: [
+      selectionsPreset('knowledge', 'Knowledge', ['Service provider availability', 'FAQ database', 'Process playbooks']),
+      selectionsPreset('actions', 'Actions', ['Create intake summary', 'Check authorization status', 'Prepare provider handoff']),
+      selectionsPreset('handoff', 'Handoff', ['Escalate emergency and clinical decisions']),
+      selectionsPreset('security', 'Guardrails', ['Verify patient identity', 'Protect patient information', 'Do not diagnose or recommend treatment']),
     ],
   }),
   defineTemplate({

@@ -647,6 +647,8 @@ export interface EvaSessionState {
   /** Three-family creation state. Optional for compatibility with older sessions. */
   selectedAgentFamily?: AgentFamily | null;
   familyIntakeAnswers?: Record<string, string>;
+  /** Keeps a reopened intake step active across an in-progress session refresh. */
+  familyIntakeEditingAnswerKey?: string | null;
   familyProposal?: StarterProposal | null;
   familyProposalApplied?: boolean;
   activeDraftAgentId?: string | null;

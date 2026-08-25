@@ -13,6 +13,7 @@ import {
   duplicateDraftAs,
   encodeVoiceDestinationAnswer,
   getAdaptiveIntakeQuestions,
+  getFamilyIntakeSequence,
   getActionableStoredRecommendations,
   getCapabilityTrackerStatus,
   getMinimumPublishIssues,
@@ -124,6 +125,26 @@ test('reveals each family preset in its exact order as answers arrive', () => {
   assert.equal(employee.every(question => question.required), true);
 });
 
+test('exposes each complete family intake sequence for progress UI', () => {
+  assert.notStrictEqual(
+    getFamilyIntakeSequence('calling'),
+    getFamilyIntakeSequence('calling'),
+    'callers should receive a copy of the ordered sequence',
+  );
+  assert.deepEqual(
+    getFamilyIntakeSequence('calling').map(question => question.answerKey),
+    ['voice_destination', 'outcome', 'name', 'greeting', 'knowledge'],
+  );
+  assert.deepEqual(
+    getFamilyIntakeSequence('contact_center').map(question => question.answerKey),
+    ['channel', 'outcome', 'name', 'greeting', 'knowledge', 'actions'],
+  );
+  assert.deepEqual(
+    getFamilyIntakeSequence('internal_assistant').map(question => question.answerKey),
+    ['outcome', 'name', 'knowledge'],
+  );
+});
+
 test('round trips structured voice destinations and rejects incomplete values', () => {
   const destination = {
     location: 'San Francisco headquarters',
@@ -164,6 +185,17 @@ test('builds deterministic, use-case-aware starter proposals', () => {
   });
   assert.match(customerCx.instructions, /Help customers with/i);
   assert.doesNotMatch(customerCx.instructions, /employees assisting|employee assist|hybrid/i);
+
+  const reviewEdited = buildStarterProposal('contact_center', {
+    channel: 'Voice, Digital',
+    outcome: 'Resolve billing questions',
+    instructions: 'Use the billing playbook and confirm every account change.',
+  });
+  assert.equal(
+    reviewEdited.instructions,
+    'Use the billing playbook and confirm every account change.',
+    'explicit Review instructions should survive proposal regeneration after an earlier step is edited',
+  );
 });
 
 test('builds the Contact Center draft proposal from the verified channel, name, and greeting', () => {

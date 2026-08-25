@@ -1849,9 +1849,11 @@ test('selected guardrail activity opens its original event banner', () => {
 test('Agent Home and start-from-scratch remove free composers without dead-ending intake', () => {
   const dashboardSource = readSource('../../pages/Dashboard.tsx');
   const homeSource = readSource('../agent-home/AgentHomeDashboard.tsx');
+  const firstTimeFlowsSource = readSource('../agent-home/AgentHomeFirstTimeFlows.tsx');
   const homeStyles = readSource('../agent-home/agent-home.css');
   const evaSource = readSource('../eva/EvaChatExperience.tsx');
   const modelSource = readSource('./agentCreationModel.ts');
+  const studioStyles = readSource('../../products/ai-agent-studio/components.css');
 
   assert.match(dashboardSource, /<AgentHomeDashboard[\s\S]*?mode=\{mode\}[\s\S]*?snapshot=\{snapshot\}/);
   assert.doesNotMatch(homeSource, /agent-home__composer|composer:\s*ReactNode/);
@@ -1876,6 +1878,31 @@ test('Agent Home and start-from-scratch remove free composers without dead-endin
     'template and demo subflows should share the same route-level flow transition',
   );
   assert.match(
+    dashboardSource,
+    /const openGuidedIntake = \(\) => \{[\s\S]*?setAgentHomeFlow\('home'\);[\s\S]*?setSurface\('guided'\);[\s\S]*?action\.intent === 'start-intake'[\s\S]*?openGuidedIntake\(\)/,
+    'every create-from-scratch entry should open the existing guided intake from a clean Agent Home state',
+  );
+  assert.match(
+    homeSource,
+    /const createFromScratchAction = snapshot\.actions\.find\(action => action\.intent === 'start-intake'\);[\s\S]*?<AgentHomeFirstTimeFlows[\s\S]*?onCreateFromScratch=\{createFromScratchAction[\s\S]*?\? \(\) => onAction\(createFromScratchAction\)/,
+    'the ready-made flow should reuse the licensed start-intake action instead of creating a parallel route',
+  );
+  assert.match(
+    firstTimeFlowsSource,
+    /titleAction\?: ReactNode[\s\S]*?agent-home-flow__title-row[\s\S]*?titleAction=\{\([\s\S]*?<UpliftMomentumButton[\s\S]*?variant="secondary"[\s\S]*?size="sm"[\s\S]*?className="agent-home-flow__create-from-scratch"[\s\S]*?disabled=\{!onCreateFromScratch\}[\s\S]*?onClick=\{onCreateFromScratch\}[\s\S]*?Create from scratch/,
+    'the ready-made heading should expose an accessible secondary Momentum action for the existing scratch flow',
+  );
+  assert.match(
+    homeStyles,
+    /\.agent-home-flow--templates \.agent-home-flow__title-row\s*\{[^}]*display:\s*grid;[^}]*grid-template-columns:\s*minmax\(0, 1fr\) auto;[^}]*gap:\s*16px;[\s\S]*?\.agent-home-flow--templates \.agent-home-flow__create-from-scratch\s*\{[^}]*margin-top:\s*4px;/,
+    'the desktop header action should align to the title line without squeezing the title copy',
+  );
+  assert.match(
+    homeStyles,
+    /@media \(max-width:\s*720px\)[\s\S]*?\.agent-home-flow--templates \.agent-home-flow__title-row\s*\{[^}]*grid-template-columns:\s*minmax\(0, 1fr\);[^}]*gap:\s*12px;[\s\S]*?\.agent-home-flow--templates \.agent-home-flow__create-from-scratch\s*\{[^}]*justify-self:\s*start;[^}]*margin-top:\s*0;/,
+    'the secondary action should move below the complete title group on narrow screens',
+  );
+  assert.match(
     homeSource,
     /useEffect\(\(\) => \{\s*changeFirstTimeFlow\('home'\);\s*\}, \[changeFirstTimeFlow, mode\]\)/,
     'switching scenarios should reset both the child flow and route-level hero state',
@@ -1889,6 +1916,21 @@ test('Agent Home and start-from-scratch remove free composers without dead-endin
     homeStyles,
     /\.new-mvo-home__landing-shell:has\(\.agent-home--flow\) > \.new-mvo-home__hero\s*\{[^}]*display:\s*none/,
     'Home hero should remain hidden throughout every template and demo next step',
+  );
+  assert.match(
+    homeStyles,
+    /\.new-mvo-home--subflow > \.new-mvo-home__landing-shell\s*\{[^}]*background:\s*rgba\(0, 0, 0, 0\.5\);[^}]*backdrop-filter:\s*blur\(28px\);/,
+    'the outer landing shell should own the dark overlay throughout every subflow',
+  );
+  assert.match(
+    homeStyles,
+    /\.agent-home--flow\s*\{[^}]*background:\s*transparent;[^}]*backdrop-filter:\s*none;/,
+    'the nested Agent Home flow should stay transparent so the overlay is not doubled',
+  );
+  assert.match(
+    homeStyles,
+    /\.agent-home-flow--templates \.agent-home-flow__industry-group > h3\s*\{[^}]*padding-bottom:\s*4px;/,
+    'ready-made template category headings should keep a 4px separation from their first option',
   );
   assert.match(
     homeStyles,
@@ -1944,6 +1986,86 @@ test('Agent Home and start-from-scratch remove free composers without dead-endin
     evaSource,
     /const FAMILY_CHOICE_LABELS[\s\S]*?contact_center:\s*'Customer service agent'[\s\S]*?calling:\s*'Phone receptionist'[\s\S]*?internal_assistant:\s*'Employee assistant'[\s\S]*?const AGENT_FAMILIES:\s*AgentFamily\[\]\s*=\s*\['contact_center',\s*'calling',\s*'internal_assistant'\]/,
     'the fixed intake should use the same three agent types and order as first-time Home',
+  );
+  assert.match(
+    evaSource,
+    /getFamilyIntakeSequence\(selectedAgentFamily\)[\s\S]*?eva-first-interface--guided-intake[\s\S]*?<aside[\s\S]*?eva-family-intake-stepper--collapsed[\s\S]*?id="eva-family-intake-stepper-body"[\s\S]*?hidden=\{!familyIntakeStepperExpanded\}[\s\S]*?<MomentumStepper[\s\S]*?orientation="vertical"[\s\S]*?variant="inline"/,
+    'choice-only intake should show the complete family-specific sequence in a vertical Momentum stepper',
+  );
+  assert.match(
+    evaSource,
+    /FAMILY_INTAKE_COMPACT_WIDTH[\s\S]*?familyIntakeSurfaceRef[\s\S]*?setFamilyIntakeStepperExpanded\(!compact\)[\s\S]*?new ResizeObserver[\s\S]*?aria-expanded=\{familyIntakeStepperExpanded\}[\s\S]*?aria-controls="eva-family-intake-stepper-body"[\s\S]*?'Collapse progress'\s*:\s*'Expand progress'[\s\S]*?setFamilyIntakeStepperExpanded\(expanded => !expanded\)/,
+    'the progress rail should default compact from its available surface width and expose one accessible disclosure control',
+  );
+  assert.match(
+    evaSource,
+    /id="eva-family-intake-stepper-title">Progress<\/h2>/,
+    'the intake rail heading should use the concise Progress label',
+  );
+  assert.match(
+    evaSource,
+    /const handleActivateFamilyIntakeQuestion[\s\S]*?question\.id === familyIntakeQuestion\?\.id[\s\S]*?setPendingFamilyIntakeFocusKey\(question\.answerKey\)[\s\S]*?setFamilyIntakeEditingAnswerKey\(question\.answerKey\)[\s\S]*?setContactCenterSelectedChannels[\s\S]*?setFamilyAgentNameInput\(savedAnswer\)[\s\S]*?setFamilyGreetingInput\(savedAnswer\)[\s\S]*?setFamilyKnowledgeSelection[\s\S]*?setFamilyActionSelection[\s\S]*?originStep:\s*FAMILY_INTAKE_ORIGIN/,
+    'reopening a completed step should restore its saved control value and add the matching intake prompt',
+  );
+  assert.match(
+    evaSource,
+    /initialAnswer=\{familyIntakeAnswers\[familyIntakeQuestion\.answerKey\]\}[\s\S]*?const isAvailable = \(isComplete \|\| isCurrent\) && !evaThinking && !familyProposalApplied;[\s\S]*?aria-disabled=\{!isAvailable \? true : undefined\}[\s\S]*?tabIndex=\{isAvailable \? 0 : -1\}[\s\S]*?onClick=\{isAvailable \? \(\) => handleActivateFamilyIntakeQuestion\(question\) : undefined\}/,
+    'completed, skipped, and current steps should be keyboard-editable while unreached steps stay unavailable',
+  );
+  assert.match(
+    evaSource,
+    /setFamilyIntakeEditingAnswerKey\(null\);[\s\S]*?setFamilyIntakeAnswers\(nextAnswers\)[\s\S]*?buildStarterProposal\(selectedAgentFamily, nextAnswers\)/,
+    'saving an edited answer should leave edit mode and rebuild the next question or proposal from the updated answers',
+  );
+  assert.match(
+    evaSource,
+    /eva-family-intake-editor-\$\{pendingFamilyIntakeFocusKey\}[\s\S]*?target\.focus\(\{ preventScroll: true \}\)[\s\S]*?target\.scrollIntoView\(\{ block: 'nearest' \}\)[\s\S]*?id=\{isLatestFamilyIntakePrompt[\s\S]*?eva-family-intake-editor-\$\{familyIntakeQuestion\.answerKey\}/,
+    'activating a progress step should move focus to its reopened or current editor',
+  );
+  assert.match(
+    evaSource,
+    /const handleCancelFamilyIntakeEdit[\s\S]*?setFamilyIntakeEditingAnswerKey\(null\)[\s\S]*?setPendingFamilyIntakeFocusKey\(resumeQuestion\.answerKey\)[\s\S]*?setPendingFamilyIntakeFocusKey\('review'\)[\s\S]*?Cancel editing/,
+    'a reopened step should provide a non-destructive way back to the pending question or Review',
+  );
+  assert.match(
+    evaSource,
+    /getProposalAnswerOverrides\(familyProposal\)[\s\S]*?Save proposal edits/,
+    'review edits should be synchronized before a completed intake step is reopened',
+  );
+  assert.match(
+    modelSource,
+    /requestedInstructions = normalize\(answers\.instructions\)[\s\S]*?if \(requestedInstructions\) instructions = requestedInstructions/,
+    'custom Review instructions should survive proposal regeneration after an intake edit',
+  );
+  assert.match(
+    studioStyles,
+    /mdc-stepperitem\s*\{[^}]*cursor:\s*default;[\s\S]*?mdc-stepperitem\.eva-family-intake-stepper__step--actionable\s*\{[^}]*cursor:\s*pointer;[\s\S]*?mdc-stepperitem\[aria-disabled='true'\]\s*\{[^}]*pointer-events:\s*none;/,
+    'actionable steps should use Momentum interaction while unavailable future steps remain inert',
+  );
+  assert.match(
+    studioStyles,
+    /\.eva-first-interface--guided-intake\s*\{[^}]*--eva-intake-rail-expanded:\s*232px;[^}]*grid-template-columns:\s*minmax\(0, 1fr\) var\(--eva-intake-rail-expanded\);[\s\S]*?\.eva-family-intake-stepper\s*\{[^}]*grid-column:\s*2;[^}]*border:[^;]*var\(--outline-glass-overlay\);[^}]*var\(--bg-glass-overlay\);[^}]*backdrop-filter:\s*blur\(28px\) saturate\(140%\);/,
+    'the expanded guided flow should use a narrower semantic glass rail',
+  );
+  assert.match(
+    studioStyles,
+    /\.eva-first-interface--guided-intake-collapsed\s*\{[^}]*grid-template-columns:\s*minmax\(0, 1fr\) var\(--eva-intake-rail-collapsed\);[\s\S]*?\.eva-family-intake-stepper--collapsed\s*\{[^}]*width:\s*var\(--eva-intake-rail-collapsed\);[\s\S]*?\.eva-family-intake-stepper__body\[hidden\]\s*\{[^}]*display:\s*none;/,
+    'collapsed progress should reserve only the compact rail and hide its detailed body',
+  );
+  assert.match(
+    studioStyles,
+    /mdc-stepperconnector\s*\{[^}]*width:\s*var\(--eva-intake-marker-size\);[^}]*padding-inline-start:\s*0 !important;[\s\S]*?mdc-stepperconnector::part\(connector\)\s*\{[^}]*margin-inline:\s*auto;/,
+    'each connector line should be centered on the same track as its step marker',
+  );
+  assert.match(
+    studioStyles,
+    /@media \(max-width:\s*820px\)[\s\S]*?\.eva-first-interface--guided-intake\s*\{[^}]*display:\s*grid;[^}]*overflow:\s*clip !important;[\s\S]*?\.eva-family-intake-stepper\s*\{[^}]*position:\s*relative;[^}]*grid-column:\s*2;[^}]*width:\s*var\(--eva-intake-rail-expanded\);[\s\S]*?padding-inline-end:\s*0;/,
+    'expanding progress on a narrow screen should reserve a right column and reflow the conversation without overlap',
+  );
+  assert.match(
+    studioStyles,
+    /@media \(prefers-reduced-motion:\s*reduce\)[\s\S]*?\.eva-family-intake-stepper\s*\{[^}]*transition:\s*none;/,
+    'progress rail resizing should respect reduced-motion preferences',
   );
   assert.match(
     modelSource,

@@ -1,13 +1,11 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
-import {
-  IconProvider as MomentumIconProvider,
-  Tab as MomentumTab,
-  TabList as MomentumTabList,
-} from '@momentum-design/components/react';
-import { publicAssetUrl } from '../../app/publicAsset';
+import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import Button from '../../components/shared/Button';
+import { UpliftMomentumButton } from '../../components/shared/UpliftMomentumButton';
 import Badge from '../../components/shared/Badge';
 import { Card } from '../../components/shared/Card';
+import { Divider } from '../../components/shared/Decorator';
+import { ListItem } from '../../components/shared/ListItem';
+import Tabs, { Tab, TabPanel } from '../../components/shared/Tabs';
 import {
   AiFooter,
   Input,
@@ -18,11 +16,28 @@ import {
   Textarea,
 } from '../../components/shared';
 import Spinner from '../../components/shared/Spinner';
-import { TabPanel } from '../../components/shared/Tabs';
 import providerFedExLogo from '../../assets/provider-fedex.svg';
 import providerServiceNowLogo from '../../assets/provider-servicenow.png';
 import providerShopifyLogo from '../../assets/provider-shopify.svg';
 import providerStripeLogo from '../../assets/provider-stripe.svg';
+import readyMadeAccountStatusIcon from '../../assets/figma-ready-made/account-status.svg';
+import readyMadeApplicationIcon from '../../assets/figma-ready-made/application.svg';
+import readyMadeArrowLeftIcon from '../../assets/figma-ready-made/arrow-left.svg';
+import readyMadeArrowRightIcon from '../../assets/figma-ready-made/arrow-right.svg';
+import readyMadeCheckCircleIcon from '../../assets/figma-ready-made/check-circle.svg';
+import readyMadeCloudMutedIcon from '../../assets/figma-ready-made/cloud-muted.svg';
+import readyMadeHandshakeIcon from '../../assets/figma-ready-made/handshake.svg';
+import readyMadeHeadsetIcon from '../../assets/figma-ready-made/headset.svg';
+import readyMadeHelpdeskIcon from '../../assets/figma-ready-made/helpdesk.svg';
+import readyMadeNewManagerIcon from '../../assets/figma-ready-made/new-manager.svg';
+import readyMadePanelHeader from '../../assets/figma-ready-made/panel-header.png';
+import readyMadePrivacyIcon from '../../assets/figma-ready-made/privacy-circle.svg';
+import readyMadeSalesforceIcon from '../../assets/figma-ready-made/salesforce-color.svg';
+import readyMadeShieldIcon from '../../assets/figma-ready-made/shield.svg';
+import readyMadeSparkleIcon from '../../assets/figma-ready-made/sparkle.svg';
+import readyMadeStethoscopeIcon from '../../assets/figma-ready-made/stethoscope.svg';
+import readyMadeToolsIcon from '../../assets/figma-ready-made/tools.svg';
+import readyMadeTrackingIcon from '../../assets/figma-ready-made/tracking.svg';
 import { Icon } from '../../icons';
 import type { AgentFamily } from '../agent-creation/agentCreationModel';
 import {
@@ -50,6 +65,7 @@ export interface AgentHomeTemplateSetup {
 export interface AgentHomeFirstTimeFlowsProps {
   flow: Exclude<AgentHomeFirstTimeFlow, 'home'>;
   onFlowChange: (flow: AgentHomeFirstTimeFlow) => void;
+  onCreateFromScratch?: () => void;
   onUseTemplate: (templateId: AgentHomeTemplateId, setup?: AgentHomeTemplateSetup) => void;
   onSendDemoMessage: (
     templateId: AgentHomeTemplateId,
@@ -65,6 +81,7 @@ function FlowHeader({
   description,
   backLabel,
   onBack,
+  titleAction,
 }: {
   eyebrow?: string;
   title: string;
@@ -72,34 +89,144 @@ function FlowHeader({
   description: string;
   backLabel: string;
   onBack: () => void;
+  titleAction?: ReactNode;
 }) {
-  return (
-    <header className="agent-home-flow__header">
-      <Button variant="tertiary" size="sm" className="agent-home-flow__back" onClick={onBack}>
-        <Icon name="arrow-left" weight="bold" size="sm" />
-        {backLabel}
-      </Button>
-      {eyebrow && <span className="agent-home__section-kicker">{eyebrow}</span>}
+  const titleGroup = (
+    <div className="agent-home-flow__title-group">
       <h1 id={titleId}>{title}</h1>
       <p>{description}</p>
+    </div>
+  );
+
+  return (
+    <header className="agent-home-flow__header">
+      <button type="button" className="agent-home-flow__back" onClick={onBack}>
+        <img src={readyMadeArrowLeftIcon} alt="" aria-hidden="true" />
+        {backLabel}
+      </button>
+      {eyebrow && <span className="agent-home__section-kicker">{eyebrow}</span>}
+      {titleAction ? (
+        <div className="agent-home-flow__title-row">
+          {titleGroup}
+          {titleAction}
+        </div>
+      ) : titleGroup}
     </header>
   );
 }
 
+type ReadyMadeDisplayOption = {
+  key: string;
+  templateId: AgentHomeTemplateId;
+  name: string;
+  useCase: string;
+  industry: string;
+  iconAsset?: string;
+  template: AgentHomeTemplateDefinition;
+};
+
+const READY_MADE_CONTACT_CENTER_ROWS: ReadonlyArray<Omit<ReadyMadeDisplayOption, 'template'>> = [
+  {
+    key: 'contact_center:cx-concierge',
+    templateId: 'contact_center:cx-concierge',
+    name: 'CX concierge',
+    useCase: 'Answers, resolution, and contextual handoff',
+    industry: 'Customer service',
+    iconAsset: readyMadeHeadsetIcon,
+  },
+  {
+    key: 'contact_center:technical-support',
+    templateId: 'contact_center:technical-support',
+    name: 'Technical support concierge',
+    useCase: 'Troubleshooting, service status, and escalations',
+    industry: 'Customer service',
+    iconAsset: readyMadeToolsIcon,
+  },
+  {
+    key: 'contact_center:reservation-scheduler',
+    templateId: 'contact_center:reservation-scheduler',
+    name: 'Reservation book & schedule agent',
+    useCase: 'Reservations, scheduling, and confirmation',
+    industry: 'Customer service',
+    iconAsset: readyMadeApplicationIcon,
+  },
+  {
+    key: 'contact_center:order-management',
+    templateId: 'contact_center:order-management',
+    name: 'Order management concierge',
+    useCase: 'Order status, delivery, and returns',
+    industry: 'Commerce',
+    iconAsset: readyMadeNewManagerIcon,
+  },
+  {
+    key: 'contact_center:returns-exchanges',
+    templateId: 'contact_center:returns-exchanges',
+    name: 'Returns and exchanges concierge',
+    useCase: 'Return eligibility, exchanges, and next steps',
+    industry: 'Commerce',
+    iconAsset: readyMadeTrackingIcon,
+  },
+  {
+    key: 'contact_center:product-discovery',
+    templateId: 'contact_center:product-discovery',
+    name: 'Product discovery assistant',
+    useCase: 'Personalized recommendations, comparisons, and wish lists',
+    industry: 'Commerce',
+    iconAsset: readyMadeHandshakeIcon,
+  },
+  {
+    key: 'contact_center:patient-care',
+    templateId: 'contact_center:patient-care',
+    name: 'Patient care navigator',
+    useCase: 'Appointment scheduling, benefits inquiry, and care coordination',
+    industry: 'Healthcare',
+    iconAsset: readyMadeHandshakeIcon,
+  },
+  {
+    key: 'contact_center:clinical-intake',
+    templateId: 'contact_center:clinical-intake',
+    name: 'Clinical intake assistant',
+    useCase: 'Symptom triage, prior authorization, and provider matching',
+    industry: 'Healthcare',
+    iconAsset: readyMadeStethoscopeIcon,
+  },
+];
+
+const getReadyMadeDisplayOptions = (
+  family: AgentFamily,
+  options: readonly AgentHomeTemplateDefinition[],
+): ReadyMadeDisplayOption[] => {
+  if (family !== 'contact_center') {
+    return options.map(template => ({
+      key: template.id,
+      templateId: template.id,
+      name: template.name,
+      useCase: template.useCase,
+      industry: template.industry,
+      template,
+    }));
+  }
+
+  return READY_MADE_CONTACT_CENTER_ROWS.flatMap(row => {
+    const template = getAgentHomeTemplate(row.templateId);
+    return template ? [{ ...row, template }] : [];
+  });
+};
+
 function OptionList({
   options,
-  selectedId,
+  selectedKey,
   onSelect,
   label,
 }: {
-  options: readonly AgentHomeTemplateDefinition[];
-  selectedId: AgentHomeTemplateId;
-  onSelect: (id: AgentHomeTemplateId) => void;
+  options: readonly ReadyMadeDisplayOption[];
+  selectedKey: string;
+  onSelect: (option: ReadyMadeDisplayOption) => void;
   label: string;
 }) {
   const industryGroups = options.reduce<Array<{
     industry: string;
-    templates: AgentHomeTemplateDefinition[];
+    templates: ReadyMadeDisplayOption[];
   }>>((groups, option) => {
     const currentGroup = groups.find(group => group.industry === option.industry);
     if (currentGroup) {
@@ -112,38 +239,47 @@ function OptionList({
   }, []);
 
   return (
-    <div className="agent-home-flow__option-list" role="group" aria-label={label}>
-      {industryGroups.map(group => {
-        const headingId = `agent-home-industry-${group.templates[0].id.replace(/[^a-z0-9]+/gi, '-')}`;
+    <div className="agent-home-flow__option-list" role="listbox" aria-label={label}>
+      {industryGroups.map((group, groupIndex) => {
+        const headingId = `agent-home-industry-${group.templates[0].key.replace(/[^a-z0-9]+/gi, '-')}`;
 
         return (
-          <section
-            key={group.industry}
-            className="agent-home-flow__industry-group"
-            aria-labelledby={headingId}
-          >
-            <h3 id={headingId}>{group.industry}</h3>
-            <div className="agent-home-flow__industry-options">
-              {group.templates.map(option => (
-                <button
-                  key={option.id}
-                  type="button"
-                  className="agent-home-flow__option"
-                  aria-pressed={selectedId === option.id}
-                  onClick={() => onSelect(option.id)}
-                >
-                  <span className="agent-home-flow__option-icon" aria-hidden="true">
-                    <Icon name={option.icon} weight="bold" size="md" />
-                  </span>
-                  <span>
-                    <strong>{option.name}</strong>
-                    <span>{option.useCase}</span>
-                  </span>
-                  <Icon name="arrow-right" weight="bold" size="sm" />
-                </button>
-              ))}
-            </div>
-          </section>
+          <div key={group.industry} className="agent-home-flow__industry-block">
+            <section
+              className="agent-home-flow__industry-group"
+              aria-labelledby={headingId}
+            >
+              <h3 id={headingId}>{group.industry}</h3>
+              <div className="agent-home-flow__industry-options">
+                {group.templates.map(option => (
+                  <ListItem
+                    key={option.key}
+                    className="agent-home-flow__option"
+                    active={selectedKey === option.key}
+                    role="option"
+                    aria-label={`${option.name}. ${option.useCase}`}
+                    aria-selected={selectedKey === option.key}
+                    onClick={() => onSelect(option)}
+                    leading={(
+                      <span className="agent-home-flow__option-icon" aria-hidden="true">
+                        {option.iconAsset ? (
+                          <img src={option.iconAsset} alt="" />
+                        ) : (
+                          <Icon name={option.template.icon} weight="regular" size={20} />
+                        )}
+                      </span>
+                    )}
+                    secondaryLabel={option.useCase}
+                  >
+                    {option.name}
+                  </ListItem>
+                ))}
+              </div>
+            </section>
+            {groupIndex < industryGroups.length - 1 && (
+              <Divider variant="gradient" className="agent-home-flow__industry-divider" aria-hidden="true" />
+            )}
+          </div>
         );
       })}
     </div>
@@ -159,6 +295,39 @@ function Workflow({ option }: { option: AgentHomeTemplateDefinition }) {
           <li key={step}>
             <span aria-hidden="true">{index + 1}</span>
             <strong>{step}</strong>
+          </li>
+        ))}
+      </ol>
+    </section>
+  );
+}
+
+function ReadyMadeWorkflow({
+  steps,
+}: {
+  steps: AgentHomeTemplateDefinition['workflow'];
+}) {
+  return (
+    <section
+      className="agent-home-flow__workflow agent-home-flow__workflow--ready-made"
+      aria-labelledby="agent-home-template-workflow-title"
+    >
+      <h3 id="agent-home-template-workflow-title">Workflow</h3>
+      <ol>
+        {steps.map((step, index) => (
+          <li key={step}>
+            <div className="agent-home-flow__workflow-step">
+              <span aria-hidden="true">{index + 1}</span>
+              <strong>{step}</strong>
+            </div>
+            {index < steps.length - 1 && (
+              <img
+                className="agent-home-flow__workflow-connector"
+                src={readyMadeArrowRightIcon}
+                alt=""
+                aria-hidden="true"
+              />
+            )}
           </li>
         ))}
       </ol>
@@ -199,16 +368,12 @@ function ActionProviderLogo({ provider }: { provider: ActionProvider }) {
 
   if (provider.logo === 'salesforce') {
     return (
-      <svg
+      <img
         className="agent-home-flow__action-provider-logo"
-        viewBox="0 0 24 16"
+        src={readyMadeSalesforceIcon}
+        alt=""
         aria-hidden="true"
-      >
-        <path
-          d="M10 2.5c1.1 0 2.1.4 2.9 1.1.6-.5 1.4-.8 2.3-.8 1.9 0 3.5 1.6 3.5 3.5 0 .3 0 .5-.1.8 1.5.5 2.5 1.9 2.5 3.5 0 2.1-1.7 3.8-3.8 3.8-.4 0-.8-.1-1.2-.2-.6 1-1.8 1.7-3.1 1.7-1.1 0-2-.4-2.7-1.1-.7.7-1.7 1.1-2.7 1.1-1.5 0-2.8-.9-3.4-2.1-.3.1-.6.1-.9.1C2.1 14 1 12.9 1 11.5c0-1 .5-1.8 1.3-2.3-.2-.5-.3-1-.3-1.5C2 5.5 3.5 4 5.3 4c.6 0 1.2.2 1.7.5C7.7 3 8.8 2.5 10 2.5z"
-          fill="#00a1e0"
-        />
-      </svg>
+      />
     );
   }
 
@@ -222,77 +387,114 @@ function ActionProviderLogo({ provider }: { provider: ActionProvider }) {
   );
 }
 
-function ActionPresetItems({ items }: { items: readonly string[] }) {
+function ReadyMadeChip({
+  label,
+  icon,
+  trailingIcon,
+}: {
+  label: string;
+  icon?: string;
+  trailingIcon?: string;
+}) {
   return (
-    <div>
-      {items.map((item, index) => {
-        const provider = getActionProvider(item);
-        const authenticated = index < 2;
-        return (
-          <Badge
-            key={item}
-            variant="default"
-            className="agent-home-flow__action-chip"
-          >
-            <ActionProviderLogo provider={provider} />
-            <span>{item}</span>
-            {authenticated && (
-              <Icon
-                className="agent-home-flow__action-connected-icon"
-                name="check-circle-filled"
-                weight="bold"
-                size="xs"
-                color="var(--mds-color-theme-text-success-normal, #64d29b)"
-              />
-            )}
-            <span className="sr-only">
-              {` — ${provider.name}; ${authenticated ? 'authenticated' : 'not authenticated'}`}
-            </span>
-          </Badge>
-        );
-      })}
-    </div>
+    <span className="agent-home-flow__ready-chip">
+      {icon && <img src={icon} alt="" aria-hidden="true" />}
+      <span>{label}</span>
+      {trailingIcon && (
+        <span className="agent-home-flow__ready-chip-trailing" aria-hidden="true">
+          <img src={trailingIcon} alt="" />
+        </span>
+      )}
+    </span>
   );
 }
 
+const getPresetItems = (
+  option: AgentHomeTemplateDefinition,
+  capabilityIds: readonly string[],
+) => option.presets.find(preset => capabilityIds.includes(preset.capabilityId))?.items ?? [];
+
+const getReadyMadeActionIcon = (action: string, index: number) => {
+  const normalized = action.toLowerCase();
+  if (/handoff|transfer|route|escalate|notify/.test(normalized)) return readyMadeHelpdeskIcon;
+  if (/schedule|appointment|reservation|availability/.test(normalized)) return readyMadeApplicationIcon;
+  if (/account|status|authorization|benefit/.test(normalized)) return readyMadeAccountStatusIcon;
+  if (/ticket|case|request|summary/.test(normalized)) return readyMadeSalesforceIcon;
+  return [readyMadeTrackingIcon, readyMadeHandshakeIcon, readyMadeSalesforceIcon][index % 3];
+};
+
+const READY_MADE_GUARDRAIL_ICONS = [
+  readyMadeSparkleIcon,
+  readyMadeShieldIcon,
+  readyMadePrivacyIcon,
+] as const;
+
 function PresetDefaults({ option }: { option: AgentHomeTemplateDefinition }) {
-  const { draft } = option;
-  const channelLabel = getAgentHomePreviewChannelLabel(option.previewChannel);
-  const displayPresets = option.presets.map(preset => (
-    preset.capabilityId === 'knowledge'
-      ? { ...preset, label: 'AI Engine', items: ['Webex AI Pro 1.0'] }
-      : preset
-  ));
+  const configuredActions = getPresetItems(option, ['actions']);
+  const actions = configuredActions.length > 0
+    ? configuredActions
+    : getPresetItems(option, ['handoff']);
+  const configuredGuardrails = getPresetItems(option, ['security']);
+  const guardrails = configuredGuardrails.length > 0
+    ? configuredGuardrails
+    : getPresetItems(option, ['identity']);
 
   return (
     <section className="agent-home-flow__defaults" aria-labelledby="agent-home-template-defaults-title">
       <h3 id="agent-home-template-defaults-title">Preset defaults</h3>
-      <dl>
+      <dl className="agent-home-flow__preset-grid">
         <div>
           <dt>Language</dt>
-          <dd>{draft.language}</dd>
+          <dd>{option.proposal.language}</dd>
         </div>
         <div>
           <dt>Channel</dt>
-          <dd>{channelLabel}</dd>
+          <dd>{getAgentHomePreviewChannelLabel(option.previewChannel)}</dd>
         </div>
         <div>
           <dt>{option.responseStyleLabel}</dt>
           <dd>{option.responseStyle}</dd>
         </div>
-      </dl>
-      {displayPresets.map(preset => (
-        <div key={preset.capabilityId} className="agent-home-flow__default-group">
-          <strong>{preset.label}</strong>
-          {preset.capabilityId === 'audience' ? (
-            <span className="agent-home-flow__default-value">{preset.items.join(', ')}</span>
-          ) : preset.capabilityId === 'actions' ? (
-            <ActionPresetItems items={preset.items} />
-          ) : (
-            <div>{preset.items.map(item => <Badge key={item} variant="default">{item}</Badge>)}</div>
-          )}
+        <div>
+          <dt>AI Engine</dt>
+          <dd><ReadyMadeChip label="Webex AI Pro 1.0" /></dd>
         </div>
-      ))}
+      </dl>
+      <div className="agent-home-flow__parameter-stack">
+        {actions.length > 0 && (
+          <div className="agent-home-flow__default-group">
+            <strong>Actions</strong>
+            <div>
+              {actions.map((action, index) => (
+                <ReadyMadeChip
+                  key={action}
+                  label={action}
+                  icon={getReadyMadeActionIcon(action, index)}
+                  trailingIcon={index < 2 ? readyMadeCheckCircleIcon : readyMadeCloudMutedIcon}
+                />
+              ))}
+            </div>
+          </div>
+        )}
+        {guardrails.length > 0 && (
+          <div className="agent-home-flow__default-group">
+            <strong>Guardrails</strong>
+            <div>
+              {guardrails.map((guardrail, index) => (
+                <ReadyMadeChip
+                  key={guardrail}
+                  label={guardrail}
+                  icon={READY_MADE_GUARDRAIL_ICONS[index % READY_MADE_GUARDRAIL_ICONS.length]}
+                />
+              ))}
+            </div>
+          </div>
+        )}
+      </div>
+      <div className="agent-home-flow__instruction">
+        <strong>Instruction</strong>
+        <p>{option.proposal.instructions}</p>
+      </div>
     </section>
   );
 }
@@ -442,9 +644,10 @@ const getTemplatePreviewPrompts = (
 function TemplateFlow({
   initialTemplateId,
   onFlowChange,
+  onCreateFromScratch,
   onPreview,
   onUseTemplate,
-}: Pick<AgentHomeFirstTimeFlowsProps, 'onFlowChange' | 'onUseTemplate'> & {
+}: Pick<AgentHomeFirstTimeFlowsProps, 'onFlowChange' | 'onCreateFromScratch' | 'onUseTemplate'> & {
   initialTemplateId: AgentHomeTemplateId;
   onPreview: (templateId: AgentHomeTemplateId) => void;
 }) {
@@ -458,26 +661,28 @@ function TemplateFlow({
       : getAgentHomeTemplatesForFamily('calling')[0].id,
     contact_center: initialFamily === 'contact_center'
       ? initialTemplateId
-      : getAgentHomeTemplatesForFamily('contact_center')[0].id,
+      : 'contact_center:technical-support',
     internal_assistant: initialFamily === 'internal_assistant'
       ? initialTemplateId
       : getAgentHomeTemplatesForFamily('internal_assistant')[0].id,
   }));
   const options = getAgentHomeTemplatesForFamily(activeFamily);
+  const displayOptions = getReadyMadeDisplayOptions(activeFamily, options);
   const selectedId = selectedByFamily[activeFamily];
-  const option = getAgentHomeTemplate(selectedId) ?? options[0];
+  const selectedDisplayOption = displayOptions.find(candidate => candidate.templateId === selectedId)
+    ?? displayOptions[0];
+  const option = selectedDisplayOption?.template ?? getAgentHomeTemplate(selectedId) ?? options[0];
   const setupOption = setupTemplateId ? getAgentHomeTemplate(setupTemplateId) : undefined;
   const channelLabel = getAgentHomePreviewChannelLabel(option.previewChannel);
   const activeFamilyLabel = AGENT_HOME_TEMPLATE_FAMILIES.find(
     candidate => candidate.id === activeFamily,
   )?.label ?? 'Agent';
 
-  const handleSelect = (templateId: AgentHomeTemplateId) => {
-    setSelectedByFamily(current => ({ ...current, [activeFamily]: templateId }));
+  const handleSelect = (displayOption: ReadyMadeDisplayOption) => {
+    setSelectedByFamily(current => ({ ...current, [activeFamily]: displayOption.templateId }));
   };
 
-  const handleFamilyChange = (event: CustomEvent<{ tabId: string }>) => {
-    const nextFamily = event.detail.tabId as AgentFamily;
+  const handleFamilyChange = (nextFamily: AgentFamily) => {
     if (AGENT_HOME_TEMPLATE_FAMILIES.some(candidate => candidate.id === nextFamily)) {
       setActiveFamily(nextFamily);
     }
@@ -490,34 +695,42 @@ function TemplateFlow({
           title="Choose a ready-made agent"
           titleId="agent-home-template-title"
           description="Choose an agent type, then review its workflow and preset configuration before you start."
-          backLabel="Agent home"
+          backLabel="Home"
           onBack={() => onFlowChange('home')}
+          titleAction={(
+            <UpliftMomentumButton
+              type="button"
+              variant="secondary"
+              color="default"
+              size="sm"
+              className="agent-home-flow__create-from-scratch"
+              disabled={!onCreateFromScratch}
+              onClick={onCreateFromScratch}
+            >
+              Create from scratch
+            </UpliftMomentumButton>
+          )}
         />
         <div className="agent-home-flow__type-tabs-row">
-          <MomentumIconProvider
-            iconSet="custom-icons"
-            url={publicAssetUrl('icons').replace(/\/$/, '')}
-            fileExtension="svg"
+          <Tabs
+            variant="line"
+            className="agent-home-flow__type-tabs"
+            aria-label="Agent type"
           >
-            <MomentumTabList
-              className="agent-home-flow__type-tabs"
-              data-aria-label="Agent type"
-              activeTabId={activeFamily}
-              onChange={handleFamilyChange}
-            >
-              {AGENT_HOME_TEMPLATE_FAMILIES.map(agentFamily => (
-                <MomentumTab
-                  key={agentFamily.id}
-                  id={`agent-home-template-tab-${agentFamily.id}`}
-                  tabId={agentFamily.id}
-                  text={agentFamily.label}
-                  variant="pill"
-                  aria-controls={`agent-home-template-panel-${agentFamily.id}`}
-                  className="agent-home-flow__type-tab"
-                />
-              ))}
-            </MomentumTabList>
-          </MomentumIconProvider>
+            {AGENT_HOME_TEMPLATE_FAMILIES.map(agentFamily => (
+              <Tab
+                key={agentFamily.id}
+                id={`agent-home-template-tab-${agentFamily.id}`}
+                active={activeFamily === agentFamily.id}
+                aria-controls={`agent-home-template-panel-${agentFamily.id}`}
+                className="agent-home-flow__type-tab"
+                icon={agentFamily.icon}
+                onClick={() => handleFamilyChange(agentFamily.id)}
+              >
+                {agentFamily.label}
+              </Tab>
+            ))}
+          </Tabs>
         </div>
       </div>
       <div className="agent-home-flow__layout">
@@ -529,8 +742,8 @@ function TemplateFlow({
             className="agent-home-flow__tabpanel"
           >
             <OptionList
-              options={options}
-              selectedId={selectedId}
+              options={displayOptions}
+              selectedKey={selectedId}
               onSelect={handleSelect}
               label={`${activeFamilyLabel} templates`}
             />
@@ -538,30 +751,41 @@ function TemplateFlow({
         </div>
         <Card className="agent-home-flow__detail" aria-live="polite">
           <div className="agent-home-flow__detail-heading">
-            <div>
+            <img
+              className="agent-home-flow__detail-heading-art"
+              src={readyMadePanelHeader}
+              alt=""
+              aria-hidden="true"
+            />
+            <div className="agent-home-flow__detail-heading-copy">
               <h2>{option.name}</h2>
               <p>{option.proposal.description}</p>
             </div>
-            <span className="agent-home-flow__detail-icon" aria-hidden="true">
-              <Icon name={option.icon} weight="bold" size="lg" />
-            </span>
+            <div className="agent-home-flow__actions">
+              <Button
+                type="button"
+                variant="secondary"
+                size="sm"
+                aria-label={`Preview ${option.name}, ${channelLabel}`}
+                onClick={() => onPreview(option.id)}
+              >
+                Preview
+              </Button>
+              <Button
+                type="button"
+                variant="primary"
+                size="sm"
+                onClick={() => setSetupTemplateId(option.id)}
+              >
+                Use this template
+                <img src={readyMadeArrowRightIcon} alt="" aria-hidden="true" />
+              </Button>
+            </div>
           </div>
-          <Workflow option={option} />
-          <PresetDefaults option={option} />
-          <div className="agent-home-flow__actions">
-            <Button
-              type="button"
-              variant="secondary"
-              aria-label={`Preview ${option.name}, ${channelLabel}`}
-              onClick={() => onPreview(option.id)}
-            >
-              <Icon name="play" weight="bold" size="sm" />
-              Preview
-            </Button>
-            <Button type="button" variant="primary" onClick={() => setSetupTemplateId(option.id)}>
-              Use this template
-              <Icon name="arrow-right" weight="bold" size="sm" />
-            </Button>
+          <div className="agent-home-flow__detail-body">
+            <ReadyMadeWorkflow steps={option.workflow} />
+            <Divider variant="gradient" className="agent-home-flow__detail-divider" aria-hidden="true" />
+            <PresetDefaults option={option} />
           </div>
         </Card>
       </div>
@@ -936,11 +1160,12 @@ function DemoPreview({
 export default function AgentHomeFirstTimeFlows({
   flow,
   onFlowChange,
+  onCreateFromScratch,
   onUseTemplate,
   onSendDemoMessage,
 }: AgentHomeFirstTimeFlowsProps) {
   const [previewTemplateId, setPreviewTemplateId] = useState<AgentHomeTemplateId>(
-    () => getAgentHomeTemplatesForFamily(AGENT_HOME_TEMPLATE_FAMILIES[0].id)[0].id,
+    'contact_center:technical-support',
   );
   const [previewReturnFlow, setPreviewReturnFlow] = useState<'templates' | 'demo-select'>('demo-select');
 
@@ -949,6 +1174,7 @@ export default function AgentHomeFirstTimeFlows({
       <TemplateFlow
         initialTemplateId={previewTemplateId}
         onFlowChange={onFlowChange}
+        onCreateFromScratch={onCreateFromScratch}
         onPreview={templateId => {
           setPreviewTemplateId(templateId);
           setPreviewReturnFlow('templates');

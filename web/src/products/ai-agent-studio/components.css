@@ -14626,3 +14626,285 @@ button.eva-retail-preview-card::before {
     width: 100vw;
   }
 }
+
+/* Choice-only "From scratch" intake: keep the live conversation and the
+   family-specific Momentum stepper in one stable desktop composition. */
+.eva-first-interface--guided-intake {
+  --eva-intake-rail-collapsed: 56px;
+  --eva-intake-rail-expanded: 232px;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) var(--eva-intake-rail-expanded);
+  grid-template-rows: minmax(0, 1fr);
+  column-gap: clamp(16px, 2vw, 28px);
+  align-items: stretch;
+  transition: grid-template-columns 180ms ease, column-gap 180ms ease;
+}
+
+.eva-first-interface--guided-intake-collapsed {
+  grid-template-columns: minmax(0, 1fr) var(--eva-intake-rail-collapsed);
+  column-gap: var(--spacing-small);
+}
+
+.eva-first-interface--guided-intake .eva-first-interface__free-chat {
+  position: relative;
+  z-index: 1;
+  grid-column: 1;
+  grid-row: 1;
+  width: min(100%, calc(720px + (var(--spacing-small) * 2)));
+  height: 100%;
+  margin-inline: auto;
+}
+
+.eva-family-intake-stepper {
+  position: relative;
+  z-index: 2;
+  grid-column: 2;
+  grid-row: 1;
+  justify-self: end;
+  align-self: start;
+  width: var(--eva-intake-rail-expanded);
+  max-height: 100%;
+  padding: var(--spacing-small);
+  box-sizing: border-box;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  border: var(--border-width-small) solid var(--outline-glass-overlay);
+  border-radius: var(--border-radius-large);
+  background:
+    linear-gradient(
+      145deg,
+      color-mix(in srgb, var(--text-primary) 8%, transparent),
+      transparent 44%
+    ),
+    var(--bg-glass-overlay);
+  box-shadow:
+    var(--elevation-3),
+    inset 0 1px 0 color-mix(in srgb, var(--text-primary) 8%, transparent);
+  backdrop-filter: blur(28px) saturate(140%);
+  -webkit-backdrop-filter: blur(28px) saturate(140%);
+  transition: width 180ms ease, padding 180ms ease, box-shadow 180ms ease;
+}
+
+.eva-family-intake-stepper--collapsed {
+  width: var(--eva-intake-rail-collapsed);
+  padding: 12px;
+  overflow: hidden;
+}
+
+.eva-family-intake-stepper__header {
+  display: grid;
+  grid-template-columns: 32px minmax(0, 1fr) 32px;
+  gap: var(--spacing-xx-small);
+  align-items: start;
+  margin-bottom: var(--spacing-medium);
+  padding-bottom: var(--spacing-small);
+  border-bottom: var(--border-width-small) solid color-mix(in srgb, var(--border-color) 62%, transparent);
+}
+
+.eva-family-intake-stepper__icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border-radius: var(--border-radius-half-height);
+  background: color-mix(in srgb, var(--accent-color) 18%, var(--bg-glass));
+  color: var(--text-primary);
+}
+
+.eva-family-intake-stepper__heading {
+  min-width: 0;
+}
+
+.eva-family-intake-stepper__eyebrow {
+  display: block;
+  margin-bottom: 2px;
+  color: var(--text-secondary);
+  font-size: var(--font-size-body-small);
+  font-weight: var(--font-weight-medium);
+  line-height: var(--font-lineheight-body-small);
+}
+
+.eva-family-intake-stepper__header h2 {
+  margin: 0;
+  color: var(--text-primary);
+  font-size: var(--font-size-body-large);
+  font-weight: var(--font-weight-semibold, 600);
+  line-height: var(--font-lineheight-body-large);
+}
+
+.eva-family-intake-stepper__header p {
+  margin: 2px 0 0;
+  color: var(--text-secondary);
+  font-size: var(--font-size-body-small);
+  line-height: var(--font-lineheight-body-small);
+}
+
+.eva-family-intake-stepper__collapsed-progress {
+  display: none;
+  color: var(--text-secondary);
+  font-size: var(--font-size-body-small);
+  font-weight: var(--font-weight-medium);
+  line-height: var(--font-lineheight-body-small);
+}
+
+.eva-family-intake-stepper__toggle.btn {
+  width: 32px;
+  min-width: 32px;
+  height: 32px;
+  padding: 0;
+  border-radius: var(--border-radius-half-height);
+  color: var(--text-secondary);
+}
+
+.eva-family-intake-stepper__toggle.btn:hover:not(:disabled) {
+  color: var(--text-primary);
+}
+
+.eva-family-intake-stepper--collapsed .eva-family-intake-stepper__header {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--spacing-xx-small);
+  margin: 0;
+  padding: 0;
+  border-bottom: 0;
+}
+
+.eva-family-intake-stepper--collapsed .eva-family-intake-stepper__heading {
+  display: none;
+}
+
+.eva-family-intake-stepper--collapsed .eva-family-intake-stepper__collapsed-progress {
+  display: block;
+}
+
+.eva-family-intake-stepper--collapsed .eva-family-intake-stepper__toggle {
+  order: -1;
+}
+
+.eva-family-intake-stepper__body[hidden] {
+  display: none;
+}
+
+.eva-family-intake-stepper__steps {
+  --eva-intake-marker-size: 1.75rem;
+  display: flex;
+  width: 100%;
+  height: auto;
+  gap: 0;
+}
+
+.eva-family-intake-stepper__icon-provider {
+  display: block;
+  width: 100%;
+}
+
+.eva-family-intake-stepper__steps mdc-stepperitem {
+  width: 100%;
+  cursor: default;
+  --mdc-stepperitem-label-color: var(--text-primary);
+  --mdc-stepperitem-help-text-color: var(--text-secondary);
+}
+
+.eva-family-intake-stepper__steps mdc-stepperitem.eva-family-intake-stepper__step--actionable {
+  cursor: pointer;
+}
+
+.eva-family-intake-stepper__steps mdc-stepperitem[aria-disabled='true'] {
+  pointer-events: none;
+  cursor: default;
+}
+
+.eva-family-intake-stepper__steps mdc-stepperitem[data-step-state='skipped']::part(status-container) {
+  border-style: dashed;
+}
+
+.eva-family-intake-stepper__steps mdc-stepperitem::part(label-container) {
+  flex: 1 1 auto;
+  width: auto;
+  min-width: 0;
+}
+
+.eva-family-intake-stepper__steps mdc-stepperitem::part(status-container) {
+  flex: 0 0 var(--eva-intake-marker-size);
+}
+
+.eva-family-intake-stepper__steps mdc-stepperitem[status='current'] {
+  --mdc-stepperitem-label-container-background: color-mix(in srgb, var(--accent-color) 14%, transparent);
+}
+
+.eva-family-intake-stepper__steps mdc-stepperconnector {
+  flex: 0 0 14px;
+  align-self: flex-start;
+  justify-content: center;
+  width: var(--eva-intake-marker-size);
+  min-width: var(--eva-intake-marker-size);
+  height: 14px;
+  min-height: 14px;
+  padding-inline-start: 0 !important;
+  --mdc-stepperconnector-complete-background: var(--accent-color);
+  --mdc-stepperconnector-incomplete-background: var(--border-color);
+}
+
+/* Momentum exposes the 1px connector as a part. Centering it inside the
+   same 28px track as the status circle keeps every segment on one axis. */
+.eva-family-intake-stepper__steps mdc-stepperconnector::part(connector) {
+  margin-inline: auto;
+}
+
+@media (max-width: 1100px) {
+  .eva-first-interface--guided-intake {
+    column-gap: var(--spacing-small);
+  }
+}
+
+@media (max-width: 820px) {
+  .eva-first-interface--guided-intake {
+    display: grid;
+    grid-template-rows: minmax(0, 1fr);
+    column-gap: var(--spacing-x-small);
+    overflow: clip !important;
+  }
+
+  .eva-family-intake-stepper {
+    position: relative;
+    top: auto;
+    right: auto;
+    grid-column: 2;
+    grid-row: 1;
+    width: var(--eva-intake-rail-expanded);
+    max-height: 100%;
+    margin: 0;
+  }
+
+  .eva-first-interface--guided-intake .eva-first-interface__free-chat {
+    grid-column: 1;
+    grid-row: 1;
+    width: 100%;
+    min-height: 0;
+    padding-inline-end: 0;
+  }
+
+  .eva-family-intake-stepper--collapsed {
+    width: var(--eva-intake-rail-collapsed);
+  }
+}
+
+@media (max-width: 520px) {
+  .eva-first-interface--guided-intake {
+    --eva-intake-rail-expanded: min(200px, 44vw);
+    column-gap: var(--spacing-xx-small);
+  }
+
+  .eva-family-intake-stepper--collapsed {
+    width: var(--eva-intake-rail-collapsed);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .eva-first-interface--guided-intake,
+  .eva-family-intake-stepper {
+    transition: none;
+  }
+}

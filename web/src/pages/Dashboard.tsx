@@ -113,6 +113,10 @@ export default function Dashboard() {
     }),
     [mode, permissionGranted, resumableDraft],
   );
+  const openGuidedIntake = () => {
+    setAgentHomeFlow('home');
+    setSurface('guided');
+  };
   const existingAgents = useMemo(
     () => Object.values(agents).map(agent => ({
       id: agent.id,
@@ -130,7 +134,7 @@ export default function Dashboard() {
       return;
     }
     if (action.intent === 'start-intake') {
-      setSurface('guided');
+      openGuidedIntake();
       return;
     }
     if (action.intent === 'ask') {
