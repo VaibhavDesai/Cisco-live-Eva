@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { Card as MomentumCard } from '@momentum-design/components/react';
 import { useApp, type Agent } from '../../contexts/AppContext';
 import { useDesignVariation } from '../../contexts/DesignVariationContext';
+import { useAgentHomeScenario } from '../agent-home/AgentHomeScenarioContext';
 import Button from '../../components/shared/Button';
 import {
   Card as SharedCard,
@@ -208,6 +209,7 @@ export default function EvaAgentsTable() {
   const navigate = useNavigate();
   const { agents, agentDrafts, selectAgent, showToast } = useApp();
   const { setVariation } = useDesignVariation();
+  const { setMode: setAgentHomeMode } = useAgentHomeScenario();
   const [searchQuery, setSearchQuery] = useState('');
   const [familyFilter, setFamilyFilter] = useState<FamilyFilter>('all');
   const [creatorFilter, setCreatorFilter] = useState('All creators');
@@ -323,7 +325,8 @@ export default function EvaAgentsTable() {
       /* If storage is blocked, the canonical chat still opens. */
     }
     setVariation('landing');
-    navigate('/agents');
+    setAgentHomeMode('first-time');
+    navigate('/new-agent');
   };
 
   const familyOptions = useMemo(() => [

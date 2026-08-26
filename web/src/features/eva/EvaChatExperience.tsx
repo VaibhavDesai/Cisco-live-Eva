@@ -10,6 +10,7 @@ import {
 import { useApp } from '../../contexts/AppContext';
 import { useDesignVariation } from '../../contexts/DesignVariationContext';
 import Button from '../../components/shared/Button';
+import { UpliftMomentumButton } from '../../components/shared/UpliftMomentumButton';
 import { AccordionGroup, AccordionItem, AiFooter, AiResponseMessage, AiThreadPanel, AiUserMessage, Badge, Banner, Card, Dropdown, Input, Modal, ModalBody, ModalFooter, ModalHeader, Radio, RadioGroup, Slider, Table, TableBody, TableCell, TableHead, TableHeader, TableRow, Textarea, TextLink, Toggle } from '../../components/shared';
 import { AgentCard } from '../../components/agents';
 import { Icon } from '../../icons';
@@ -2678,7 +2679,12 @@ export default function EvaChatExperience({
       if (nextQuestion.answerKey === 'actions') setFamilyActionSelection('');
       setMessages(previous => [
         ...previous,
-        { role: 'user', text: displayAnswer, originStep: FAMILY_INTAKE_ORIGIN },
+        {
+          role: 'user',
+          text: displayAnswer,
+          originStep: FAMILY_INTAKE_ORIGIN,
+          familyIntakeAnswerKey: familyIntakeQuestion.answerKey,
+        },
       ]);
       addOnboardingAssistantMessage(
         nextMessage.text,
@@ -2693,7 +2699,12 @@ export default function EvaChatExperience({
     setInternalAudience(nextAnswers.audience ?? '');
     setMessages(previous => [
       ...previous,
-      { role: 'user', text: displayAnswer, originStep: FAMILY_INTAKE_ORIGIN },
+      {
+        role: 'user',
+        text: displayAnswer,
+        originStep: FAMILY_INTAKE_ORIGIN,
+        familyIntakeAnswerKey: familyIntakeQuestion.answerKey,
+      },
     ]);
     addOnboardingAssistantMessage(
       'Here is the smallest working configuration I recommend from your answers. Review it before applying.',
@@ -6773,7 +6784,58 @@ ${previewTranscript}`,
           >
             {messages.map((message, index) => {
               if (message.role === 'user') {
-                return <AiUserMessage key={`free-${index}`} text={message.text} />;
+                const familyAnswerQuestion = message.familyIntakeAnswerKey
+                  ? familyIntakeSequence.find(
+                    question => question.answerKey === message.familyIntakeAnswerKey,
+                  )
+                  : undefined;
+                const isLatestFamilyAnswer = Boolean(
+                  familyAnswerQuestion
+                  && index === messages.findLastIndex(candidate => (
+                    candidate.role === 'user'
+                    && candidate.familyIntakeAnswerKey === familyAnswerQuestion.answerKey
+                  )),
+                );
+                const showFamilyAnswerEdit = Boolean(
+                  choiceOnlyGuidedFlow
+                  && familyAnswerQuestion
+                  && isLatestFamilyAnswer
+                  && familyIntakeAnswers[familyAnswerQuestion.answerKey]?.trim()
+                  && !familyProposalApplied,
+                );
+                const familyAnswerLabel = familyAnswerQuestion
+                  ? FAMILY_INTAKE_STEPPER_LABELS[familyAnswerQuestion.answerKey]
+                    ?? familyAnswerQuestion.prompt
+                  : '';
+
+                return (
+                  <AiUserMessage
+                    key={`free-${index}`}
+                    text={message.text}
+                    className={showFamilyAnswerEdit ? 'eva-family-intake-answer' : ''}
+                    trailingAction={showFamilyAnswerEdit && familyAnswerQuestion ? (
+                      <UpliftMomentumButton
+                        type="button"
+                        variant="tertiary"
+                        color="default"
+                        size={32}
+                        className="eva-family-intake-answer__edit"
+                        aria-label={`Edit ${familyAnswerLabel} answer`}
+                        aria-controls={`eva-family-intake-editor-${familyAnswerQuestion.answerKey}`}
+                        title={`Edit ${familyAnswerLabel} answer`}
+                        disabled={
+                          evaThinking
+                          || familyIntakeEditingAnswerKey === familyAnswerQuestion.answerKey
+                        }
+                        onClick={() => handleActivateFamilyIntakeQuestion(familyAnswerQuestion)}
+                      >
+                        <span slot="prefix" aria-hidden="true">
+                          <Icon name="edit" weight="bold" size="sm" />
+                        </span>
+                      </UpliftMomentumButton>
+                    ) : undefined}
+                  />
+                );
               }
               /* When Eva attached follow-up options to a reply, append
                  the "View other options" sentinel chip so the user can
@@ -6943,10 +7005,6 @@ ${previewTranscript}`,
                               <strong>{label}</strong>
                               <span>{details.tagline}</span>
                               <p>{details.description}</p>
-                            </div>
-                            <div className="eva-family-choice-card__footer" aria-hidden="true">
-                              <span>{isAvailable ? 'Choose this type' : 'Not available'}</span>
-                              {isAvailable && <Icon name="arrow-right" weight="bold" size="sm" />}
                             </div>
                           </Card>
                         );
@@ -7833,10 +7891,11 @@ ${previewTranscript}`,
               <span className="eva-family-intake-stepper__collapsed-progress" aria-hidden="true">
                 {`${familyIntakeCurrentStepIndex + 1}/${familyIntakeStepCount}`}
               </span>
-              <Button
+              <UpliftMomentumButton
                 type="button"
                 variant="tertiary"
-                size="sm"
+                color="default"
+                size={32}
                 className="eva-family-intake-stepper__toggle"
                 aria-expanded={familyIntakeStepperExpanded}
                 aria-controls="eva-family-intake-stepper-body"
@@ -7844,8 +7903,14 @@ ${previewTranscript}`,
                 title={familyIntakeStepperExpanded ? 'Collapse progress' : 'Expand progress'}
                 onClick={() => setFamilyIntakeStepperExpanded(expanded => !expanded)}
               >
-                <Icon name={familyIntakeStepperExpanded ? 'arrow-right' : 'arrow-left'} weight="bold" size="sm" />
-              </Button>
+                <span slot="prefix" aria-hidden="true">
+                  <Icon
+                    name={familyIntakeStepperExpanded ? 'arrow-right' : 'arrow-left'}
+                    weight="bold"
+                    size="sm"
+                  />
+                </span>
+              </UpliftMomentumButton>
             </header>
 
             <div

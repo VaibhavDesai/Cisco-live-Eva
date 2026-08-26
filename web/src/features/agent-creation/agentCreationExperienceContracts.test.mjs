@@ -2815,7 +2815,7 @@ test('create versus edit mode keeps both primary configuration actions synchroni
   assert.doesNotMatch(saveHandlerSource, /publishAgentVersion|navigateToAgentStudio/);
 });
 
-test('AI agent list cards use the native Uplift card with a visible 16px grid gap', () => {
+test('AI agent list cards use the native Uplift card with a stable hover surface and visible 16px grid gap', () => {
   const tableSource = readSource('../eva/EvaAgentsTable.tsx');
   const styles = readSource('../../components.css');
   const spacingTokens = readSource('../../tokens/spacing-tokens.css');
@@ -2840,18 +2840,34 @@ test('AI agent list cards use the native Uplift card with a visible 16px grid ga
   );
   assert.match(
     styles.slice(cardRuleStart, cardRuleEnd),
-    /--ai-agents-agent-card-glass:\s*color-mix\([^}]*background-glass-normal[^}]*68%[^}]*transparent[^}]*background:[^}]*var\(--ai-agents-agent-card-glass\)[^}]*backdrop-filter:\s*blur\(24px\) saturate\(130%\)[^}]*box-shadow:/,
-    'every agent tile should let the shared aurora pass through a readable glass surface',
+    /--ai-agents-agent-card-surface:\s*var\([^}]*background-solid-primary-normal[^}]*#121212[^}]*background:[^}]*var\(--ai-agents-agent-card-surface\)[^}]*box-shadow:/,
+    'every agent tile should use a stable opaque surface that does not reveal GPU compositing artifacts',
+  );
+  assert.doesNotMatch(
+    styles.slice(cardRuleStart, cardRuleEnd),
+    /backdrop-filter|background-glass-normal/,
+    'agent tiles should not depend on a filtered glass layer',
   );
   assert.match(
     styles,
     /\.ai-agents-agent-card::part\(body\)\s*\{[^}]*background:\s*transparent;/,
     'the native Momentum card body should not cover the host glass treatment',
   );
+  const hoverRuleStart = styles.indexOf(
+    '.secondary-content.ai-agents-dashboard mdc-card.ai-agents-agent-card--clickable:hover,',
+  );
+  const hoverRuleEnd = styles.indexOf('}', hoverRuleStart);
+  assert.ok(hoverRuleStart >= 0 && hoverRuleEnd > hoverRuleStart);
+  const hoverRule = styles.slice(hoverRuleStart, hoverRuleEnd);
   assert.match(
-    styles,
-    /\.secondary-content\.ai-agents-dashboard mdc-card\.ai-agents-agent-card--clickable:hover,[\s\S]*?:focus-within\s*\{[^}]*border-color:\s*color-mix\(in srgb, var\(--text-primary\) 42%, var\(--outline-color\)\);[^}]*background:[^}]*var\(--ai-agents-agent-card-glass\)[^}]*box-shadow:[^}]*transform:\s*translateY\(-2px\);/,
-    'hover should preserve the glass and use a neutral elevated outline rather than a blue border',
+    hoverRule,
+    /border-color:\s*color-mix\(in srgb, var\(--text-primary\) 42%, var\(--outline-color\)\);[^}]*background:[^}]*var\(--ai-agents-agent-card-surface\)[^}]*box-shadow:/,
+    'hover should preserve the opaque surface and use a neutral elevated outline rather than a blue border',
+  );
+  assert.doesNotMatch(
+    hoverRule,
+    /transform:/,
+    'hover should not promote the card onto a separate compositing layer',
   );
   assert.doesNotMatch(
     tableSource,

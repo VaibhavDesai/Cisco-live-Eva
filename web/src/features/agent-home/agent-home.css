@@ -41,6 +41,13 @@
   font-size: 40px;
 }
 
+/* Override the generic 1080px landing-hero measure so the greeting can use
+   the same centered 1200px content column as the recurring dashboard. */
+.new-mvo-home--landing.eva-agents-landing
+  .new-mvo-home__landing-shell > .new-mvo-home__hero--recurring.eva-first-interface__hero {
+  width: 100% !important;
+}
+
 .new-mvo-home__hero--recurring.eva-first-interface__hero {
   width: 100%;
   max-width: none;
@@ -143,6 +150,12 @@
 @container uplift-assistant (max-width: 720px) {
   .new-mvo-home__hero--recurring.eva-first-interface__hero {
     padding-inline: 16px !important;
+  }
+}
+
+@container uplift-assistant (max-width: 480px) {
+  .new-mvo-home__hero--recurring.eva-first-interface__hero {
+    padding-inline: 12px !important;
   }
 }
 
@@ -2363,7 +2376,7 @@ fieldset.eva-family-structured-step {
 }
 
 .agent-home--first-time:not(.agent-home--flow) .agent-home__first-action-grid {
-  grid-template-columns: minmax(0, 1fr) minmax(280px, 320px);
+  grid-template-columns: minmax(0, 1fr);
   gap: 16px;
   width: 100%;
 }
@@ -2388,29 +2401,6 @@ fieldset.eva-family-structured-step {
   color: rgba(255, 255, 255, 0.95);
   font-family: 'Inter', var(--font-family-primary);
   transform: none;
-}
-
-.agent-home--first-time:not(.agent-home--flow)
-  .agent-home__first-action-card--builder.eva-landing-task-card.card {
-  position: relative;
-  padding: 15px 23px 23px;
-  border: 1px solid transparent;
-}
-
-.agent-home--first-time:not(.agent-home--flow)
-  .agent-home__first-action-card--builder.eva-landing-task-card.card::before {
-  position: absolute;
-  inset: 0;
-  padding: 1px;
-  border-radius: inherit;
-  background: linear-gradient(45deg, #c233c4 0%, #d43b52 100%);
-  content: '';
-  pointer-events: none;
-  -webkit-mask:
-    linear-gradient(#fff 0 0) content-box,
-    linear-gradient(#fff 0 0);
-  -webkit-mask-composite: xor;
-  mask-composite: exclude;
 }
 
 /* Returning users enter the same creation tools without onboarding emphasis.

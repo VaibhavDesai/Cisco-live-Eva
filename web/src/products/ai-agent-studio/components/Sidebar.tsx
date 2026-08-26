@@ -39,6 +39,7 @@ const CONFIGURE_ITEMS: ConfigureItem[] = [
   { section: 'Knowledge', label: 'Knowledge & Memory', icon: <KnowledgeBookIcon size={24} /> },
   { section: 'Action', label: 'Actions', icon: 'tools-bold', families: ['contact_center', 'internal_assistant'] },
   { section: 'Security', label: 'Security', icon: 'shield-bold', families: ['contact_center', 'internal_assistant'] },
+  { section: 'Conversation', label: 'Conversation', icon: 'chat-bold' },
 ];
 
 const DEPLOY_ITEMS: ConfigureItem[] = [

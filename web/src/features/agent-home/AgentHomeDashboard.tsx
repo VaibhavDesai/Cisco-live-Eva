@@ -163,7 +163,6 @@ function FirstTimeHome({
   const isRecurringCreation = creationAudience === 'recurring';
   const startWithAssistant = snapshot.quickStarts.find(item => item.id === 'start-with-assistant');
   const chooseTemplate = snapshot.quickStarts.find(item => item.id === 'choose-template');
-  const tryDemo = snapshot.quickStarts.find(item => item.id === 'try-demo');
   const mostUsedAgents = [...existingAgents]
     .map(agent => ({
       ...agent,
@@ -322,37 +321,6 @@ function FirstTimeHome({
           </Card>
         )}
 
-        {!isRecurringCreation && (
-          <Card
-            className="agent-home__first-action-card agent-home__first-action-card--demo eva-landing-task-card"
-            role="group"
-            aria-labelledby="agent-home-demo-card-title"
-          >
-            <div className="eva-landing-task-card__header">
-              <span className="eva-landing-task-card__icon" aria-hidden="true">
-                <Icon name="bot-customer-assistant" weight="bold" size={24} />
-              </span>
-              <strong id="agent-home-demo-card-title">Try with demo agent</strong>
-            </div>
-            <div className="eva-landing-task-card__divider" />
-            <div className="eva-landing-task-card__body">
-              <h2>See what your agent can do</h2>
-              <p>Start with a ready-made agent, and tailor it to your workflow</p>
-            </div>
-            <div className="eva-landing-task-card__footer-actions">
-              {tryDemo && (
-                <button
-                  type="button"
-                  className="eva-landing-task-card__action"
-                  onClick={() => onAction(tryDemo.action)}
-                >
-                  Try demo agent
-                  <Icon name="play-circle" weight="bold" size={20} />
-                </button>
-              )}
-            </div>
-          </Card>
-        )}
       </div>
     </section>
   );

@@ -35,6 +35,7 @@ import ConfigurationCategoryIcon, {
   KnowledgeBookIcon,
   type ConfigurationCategory,
 } from '../../components/shared/ConfigurationCategoryIcon';
+import { UpliftMomentumButton } from '../../components/shared/UpliftMomentumButton';
 import { useApp, type Agent } from '../../contexts/AppContext';
 import { useDesignVariation } from '../../contexts/DesignVariationContext';
 import { getElevenLabsConversationSignedUrl, getVoicePreviewErrorMessage } from '../../api/ciscoAi';
@@ -82,6 +83,14 @@ type OverviewConfigurationSection = 'Knowledge' | 'Action' | 'Security';
 type OverviewReleaseState = {
   savedRevision: string;
   pendingPublishRevision: string | null;
+};
+type OverviewNextStep = {
+  id: string;
+  title: string;
+  description: string;
+  actionLabel: string;
+  path: string;
+  icon: ConfigurationCategory | 'testing';
 };
 
 const DEFAULT_OVERVIEW_SUMMARY_ORDER: OverviewSummaryTileId[] = [
@@ -1213,9 +1222,21 @@ export default function AgentStudioLanding() {
     configuredSecurity.length - configuredAdaptiveGuardrailCount,
   );
   const configuredOrchestration = [...configuredActions, ...configuredHandoff];
+  const actionConfigurationValues = agentDraft?.familyConfiguration.actions?.values;
+  const rawActionControls = actionConfigurationValues?.controlsByActionId;
+  const configuredActionControlCount = rawActionControls
+    && typeof rawActionControls === 'object'
+    && !Array.isArray(rawActionControls)
+    ? Object.values(rawActionControls).reduce(
+        (total, value) => total + (Array.isArray(value) ? value.length : 0),
+        0,
+      )
+    : 0;
+  const hasConfiguredActionControl = configuredActionControlCount > 0;
   const connectedCapabilityCount = configuredKnowledge.length
     + configuredMemory.length
     + configuredOrchestration.length
+    + configuredActionControlCount
     + configuredSecurity.length;
   const hasConnectedResources = connectedCapabilityCount > 0;
   const usesEagleGreenShowcaseMetrics = agent.id === 'golftop-vip-reservations';
@@ -1243,7 +1264,7 @@ export default function AgentStudioLanding() {
     knowledge: usesEagleGreenShowcaseMetrics ? 14 : configuredKnowledge.length,
     memory: configuredMemory.length,
     actions: usesEagleGreenShowcaseMetrics ? 4 : configuredOrchestration.length,
-    actionControls: usesEagleGreenShowcaseMetrics ? 2 : 0,
+    actionControls: usesEagleGreenShowcaseMetrics ? 2 : configuredActionControlCount,
     guardrails: configuredSecurity.length,
   } as const;
   const connectedGuardrailActivity = configuredSecurity.map(item => ({
@@ -1270,8 +1291,93 @@ export default function AgentStudioLanding() {
   const showSelectedGuardrailDecision = selectedOverviewIntervention === 'guardrail'
     && Boolean(selectedGuardrail && selectedGuardrail.count > 0);
   const guardrailTriggerTotal = connectedGuardrailActivity.reduce((total, item) => total + item.count, 0);
-  const actionConfigurationValues = agentDraft?.familyConfiguration.actions?.values;
   const allAgentSessions = getCiscoLiveSessions(agent.id, actionConfigurationValues);
+  const parsedSessionCount = Number.parseInt(agent.sessions.replace(/,/g, ''), 10);
+  const hasRuntimeUsage = allAgentSessions.length > 0
+    || (Number.isFinite(parsedSessionCount) && parsedSessionCount > 0);
+  const supportsActionAndSecurityConfiguration = family !== 'calling';
+  const primaryConfiguredAction = configuredActions[0] ?? configuredHandoff[0] ?? 'the connected action';
+  const connectedExperience = [
+    configuredKnowledge.length > 0
+      ? `${configuredKnowledge.length} connected knowledge source${configuredKnowledge.length === 1 ? '' : 's'}`
+      : null,
+    configuredOrchestration.length > 0
+      ? `${configuredOrchestration.length} connected action${configuredOrchestration.length === 1 ? '' : 's'}`
+      : null,
+  ].filter(Boolean).join(' and ');
+  const unusedAgentNextStepCandidates: Array<OverviewNextStep | null> = [
+    configuredKnowledge.length === 0 ? {
+      id: 'connect-knowledge',
+      title: 'Connect approved knowledge',
+      description: 'Add a trusted source so the agent can answer customer questions with current information.',
+      actionLabel: 'Add knowledge',
+      path: `/agents/${encodeURIComponent(agent.id)}/configure?section=Knowledge`,
+      icon: 'knowledge',
+    } : null,
+    supportsActionAndSecurityConfiguration && configuredOrchestration.length === 0 ? {
+      id: 'connect-action',
+      title: 'Connect a customer action',
+      description: 'Let the agent complete a task or preserve context during a specialist handoff.',
+      actionLabel: 'Add action',
+      path: `/agents/${encodeURIComponent(agent.id)}/configure?section=Action`,
+      icon: 'action',
+    } : null,
+    supportsActionAndSecurityConfiguration
+      && configuredOrchestration.length > 0
+      && configuredSecurity.length === 0 ? {
+      id: 'protect-action',
+      title: 'Protect customer data',
+      description: `Add a guardrail before ${primaryConfiguredAction} handles live customer requests.`,
+      actionLabel: 'Add guardrail',
+      path: `/agents/${encodeURIComponent(agent.id)}/configure?section=Security`,
+      icon: 'guardrail',
+    } : null,
+    supportsActionAndSecurityConfiguration
+      && configuredOrchestration.length > 0
+      && !hasConfiguredActionControl ? {
+      id: 'control-action',
+      title: `Control when ${primaryConfiguredAction} runs`,
+      description: 'Require the right customer context before the action runs, then stop or redirect requests that do not match.',
+      actionLabel: 'Add agent control',
+      path: `/agents/${encodeURIComponent(agent.id)}/configure?section=Action`,
+      icon: 'action-control',
+    } : null,
+    agentDraft?.previewState.status !== 'passed' ? {
+      id: 'test-request',
+      title: 'Test a realistic request',
+      description: `Confirm ${connectedExperience || 'the configured instructions'} work as expected before the agent handles customer requests.`,
+      actionLabel: 'Start test',
+      path: `/agents/${encodeURIComponent(agent.id)}/analytics`,
+      icon: 'testing',
+    } : null,
+    supportsActionAndSecurityConfiguration && configuredHandoff.length === 0 ? {
+      id: 'add-handoff',
+      title: 'Add a specialist handoff',
+      description: 'Define when urgent or unresolved requests should transfer with the customer and conversation context.',
+      actionLabel: 'Set up handoff',
+      path: `/agents/${encodeURIComponent(agent.id)}/configure?section=Action`,
+      icon: 'orchestration',
+    } : null,
+    configuredKnowledge.length > 0 ? {
+      id: 'expand-knowledge',
+      title: 'Expand knowledge coverage',
+      description: 'Add another approved source for customer questions that the current knowledge does not cover.',
+      actionLabel: 'Review knowledge',
+      path: `/agents/${encodeURIComponent(agent.id)}/configure?section=Knowledge`,
+      icon: 'knowledge',
+    } : null,
+    {
+      id: 'review-instructions',
+      title: 'Review the agent instructions',
+      description: 'Confirm the goal, boundaries, and response behavior before the first customer interaction.',
+      actionLabel: 'Review instructions',
+      path: `/agents/${encodeURIComponent(agent.id)}/configure?section=Instructions`,
+      icon: 'testing',
+    },
+  ];
+  const unusedAgentNextSteps = unusedAgentNextStepCandidates
+    .filter((step): step is OverviewNextStep => Boolean(step))
+    .slice(0, 3);
   const operationalTimeRangeHours = OPERATIONAL_TIME_RANGE_HOURS[operationalTimeRange] ?? 6;
   const actionControlDecisions = (usesEagleGreenShowcaseMetrics
     ? getCiscoLiveActionControlDecisions(agent.id, actionConfigurationValues)
@@ -1456,24 +1562,26 @@ export default function AgentStudioLanding() {
           <div className="agent-studio-hero__main">
             <div className="agent-studio-hero__content agent-studio-overview-heading">
               <h1 id="agent-studio-title">Overview</h1>
-              <div className="agent-studio-overview-controls" role="group" aria-label="Overview filters">
-                <Dropdown
-                  className="agent-studio-operational-timerange"
-                  size="compact"
-                  leadingIcon="filter"
-                  value={operationalTimeRange}
-                  onChange={setOperationalTimeRange}
-                  options={OPERATIONAL_TIME_RANGE_OPTIONS.map(option => ({ ...option }))}
-                />
-              </div>
+              {hasRuntimeUsage && (
+                <div className="agent-studio-overview-controls" role="group" aria-label="Overview filters">
+                  <Dropdown
+                    className="agent-studio-operational-timerange"
+                    size="compact"
+                    leadingIcon="filter"
+                    value={operationalTimeRange}
+                    onChange={setOperationalTimeRange}
+                    options={OPERATIONAL_TIME_RANGE_OPTIONS.map(option => ({ ...option }))}
+                  />
+                </div>
+              )}
             </div>
           </div>
         </div>
 
         <div className="agent-studio-grid agent-studio-grid--published">
           {overviewCardOrder.map((cardId, index) => cardId === 'capability' ? (
+          <Fragment key={cardId}>
           <Card
-            key={cardId}
             className={[
               'agent-studio-card agent-studio-card--summary agent-studio-card--connections',
               'agent-studio-overview-card agent-studio-overview-tile',
@@ -1617,7 +1725,8 @@ export default function AgentStudioLanding() {
                       ))}
                     </div>
 
-                    <div className="agent-studio-connected-chart-grid">
+                    {hasRuntimeUsage && (
+                      <div className="agent-studio-connected-chart-grid">
                       {overviewChartOrder.map((tileId, index) => {
                         const tileLabel = tileId === 'signals'
                           ? 'Capability signals'
@@ -1998,9 +2107,10 @@ export default function AgentStudioLanding() {
                           </Fragment>
                         );
                       })}
-                    </div>
+                      </div>
+                    )}
 
-                    {!usesEagleGreenShowcaseMetrics && selectedGuardrail && selectedGuardrail.count > 0 ? (
+                    {hasRuntimeUsage && !usesEagleGreenShowcaseMetrics && selectedGuardrail && selectedGuardrail.count > 0 ? (
                       <Banner
                         type="success"
                         icon="shield"
@@ -2076,6 +2186,65 @@ export default function AgentStudioLanding() {
               </div>
             </CardBody>
           </Card>
+          {lifecycle === 'draft' && !hasRuntimeUsage && (
+            <Card
+              className="agent-studio-card agent-studio-card--summary agent-studio-card--unused-next agent-studio-unused-next"
+              role="region"
+              aria-labelledby="agent-studio-unused-next-title"
+            >
+              <CardHeader className="agent-studio-unused-next__header">
+                <div>
+                  <h2 id="agent-studio-unused-next-title">Recommended next steps</h2>
+                  <p>Prepare this agent for its first customer interaction.</p>
+                </div>
+              </CardHeader>
+              <CardBody>
+                <ul className="agent-studio-step-grid agent-studio-unused-next__grid">
+                  {unusedAgentNextSteps.map(step => (
+                    <li key={step.id}>
+                      <Card className="agent-studio-step-card agent-studio-unused-next__card">
+                        <CardHeader>
+                          <div className="agent-studio-unused-next__card-heading">
+                            <span className="agent-studio-unused-next__card-icon" aria-hidden="true">
+                              {step.icon === 'testing' ? (
+                                <Icon name="play-circle" weight="bold" size={20} />
+                              ) : (
+                                <ConfigurationCategoryIcon type={step.icon} size={20} />
+                              )}
+                            </span>
+                            <div>
+                              <h3>{step.title}</h3>
+                            </div>
+                          </div>
+                        </CardHeader>
+                        <CardBody className="agent-studio-unused-next__card-body">
+                          <p>{step.description}</p>
+                          <UpliftMomentumButton
+                            type="button"
+                            variant="secondary"
+                            color="default"
+                            size="sm"
+                            className="agent-studio-unused-next__action"
+                            aria-label={`${step.actionLabel}: ${step.title}`}
+                            onClick={() => {
+                              selectAgent(agent.id);
+                              navigate(step.path);
+                            }}
+                          >
+                            {step.actionLabel}
+                            <span slot="postfix" aria-hidden="true">
+                              <Icon name="arrow-right" weight="bold" size="sm" />
+                            </span>
+                          </UpliftMomentumButton>
+                        </CardBody>
+                      </Card>
+                    </li>
+                  ))}
+                </ul>
+              </CardBody>
+            </Card>
+          )}
+          </Fragment>
           ) : cardId === 'operational' && showOperationalStatus ? (
             <Card
               key={cardId}

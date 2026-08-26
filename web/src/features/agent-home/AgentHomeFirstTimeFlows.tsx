@@ -1072,7 +1072,6 @@ function DemoPreview({
   return (
     <section className="agent-home-flow agent-home-flow--demo-preview" aria-labelledby="agent-home-demo-preview-title">
       <FlowHeader
-        eyebrow="Agent Studio preview"
         title={option.draft.name}
         titleId="agent-home-demo-preview-title"
         description={`${option.industry} · ${channelLabel} preview · ${option.useCase}`}

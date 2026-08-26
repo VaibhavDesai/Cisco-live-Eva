@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect, useMemo, useCallback, type ReactNode, type RefObject } from 'react';
 import { createPortal } from 'react-dom';
-import { Navigate, useParams, Link, useSearchParams } from 'react-router-dom';
+import { Navigate, useParams, Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { useApp } from '../../contexts/AppContext';
 import { AgentHeader, AgentWorkspacePageHeading } from '../../components/agents';
 import Button from '../../components/shared/Button';
@@ -27,6 +27,9 @@ import CreateEngineModal from '../CreateEngineModal';
 import CreateFulfillmentModal from './CreateFulfillmentModal';
 import PolicyStudio from './PolicyStudio';
 import SecurityUIPolicyStudio from './SecurityUIPolicyStudio';
+import ConversationConfiguration, {
+  DEFAULT_CONVERSATION_CONFIGURATION,
+} from './ConversationConfiguration';
 import { optimizeInstructions } from '../../api/ciscoAi';
 import { Icon } from '../../icons';
 import {
@@ -346,12 +349,12 @@ type ActionRow = {
   lastUpdated: string;
 };
 
-type ConfigurationSection = 'Profile' | 'Channels' | 'Flow' | 'Instructions' | 'Knowledge' | 'Action' | 'Security' | 'Language';
+type ConfigurationSection = 'Profile' | 'Channels' | 'Flow' | 'Instructions' | 'Knowledge' | 'Action' | 'Security' | 'Conversation' | 'Language';
 
-const ACTION_SECTIONS: ConfigurationSection[] = ['Profile', 'Channels', 'Flow', 'Instructions', 'Knowledge', 'Action', 'Security', 'Language'];
+const ACTION_SECTIONS: ConfigurationSection[] = ['Profile', 'Channels', 'Flow', 'Instructions', 'Knowledge', 'Action', 'Security', 'Conversation', 'Language'];
 
 const FAMILY_SECTIONS: Record<AgentFamily, ConfigurationSection[]> = {
-  calling: ['Profile', 'Channels', 'Flow', 'Instructions', 'Knowledge', 'Language'],
+  calling: ['Profile', 'Channels', 'Flow', 'Instructions', 'Knowledge', 'Conversation', 'Language'],
   contact_center: ACTION_SECTIONS,
   internal_assistant: ACTION_SECTIONS,
 };
@@ -378,6 +381,7 @@ const CONFIGURATION_PAGE_TITLES: Record<ConfigurationSection, string> = {
   Knowledge: 'Knowledge & Memory',
   Action: 'Actions',
   Security: 'Security',
+  Conversation: 'Conversation',
   Language: 'Languages',
 };
 
@@ -625,6 +629,7 @@ const DEFAULT_ADVANCED_GROUPS: AdvancedGuardrailGroup[] = [
 
 export default function ActionConfigureV2() {
   const { agentId } = useParams();
+  const navigate = useNavigate();
   const {
     agents,
     agentDrafts,
@@ -727,6 +732,12 @@ export default function ActionConfigureV2() {
   const [optimizeAccepted, setOptimizeAccepted] = useState(false);
   const [acceptedSummary, setAcceptedSummary] = useState<{ changes: string[]; reasoning: string[] }>({ changes: [], reasoning: [] });
   const [preOptimizeText, setPreOptimizeText] = useState('');
+
+  // Conversation tab state mirrors the builder Conversation configuration
+  // defaults while participating in the page-level Save affordance.
+  const [conversationConfiguration, setConversationConfiguration] = useState(
+    DEFAULT_CONVERSATION_CONFIGURATION,
+  );
 
   // Security tab state
   const isPaidUser = true;
@@ -1376,6 +1387,7 @@ export default function ActionConfigureV2() {
       galileoActionControls,
       disabledKnowledge,
       channelConfigurationValues,
+      conversationConfiguration,
     }),
     [
       profileForm,
@@ -1385,6 +1397,7 @@ export default function ActionConfigureV2() {
       galileoActionControls,
       disabledKnowledge,
       channelConfigurationValues,
+      conversationConfiguration,
     ],
   );
   const [savedConfigurationFingerprint, setSavedConfigurationFingerprint] = useState(configurationFingerprint);
@@ -1997,27 +2010,47 @@ export default function ActionConfigureV2() {
                   />
                 </div>
 
-                <div className="v2-profile-field-group">
-                  <label className="v2-profile-label">
-                    Language <span className="v2-profile-required">*</span>
-                  </label>
-                  <Dropdown
-                    options={PROFILE_LANGUAGE_OPTIONS}
-                    value={profileForm.language}
-                    onChange={(val) => updateProfileField('language', val)}
-                  />
-                </div>
+                <section className="v2-profile-conversation-settings" aria-labelledby="v2-profile-conversation-title">
+                  <div className="v2-profile-conversation-settings__header">
+                    <h2 id="v2-profile-conversation-title">Conversation</h2>
+                    <TextLink
+                      className="v2-profile-conversation-settings__advanced-link"
+                      variant="standalone"
+                      size="md"
+                      iconTrailing="arrow-right"
+                      href={`/agents/${agent.id}/configure?section=Conversation`}
+                      onClick={(event) => {
+                        event.preventDefault();
+                        navigate(`/agents/${agent.id}/configure?section=Conversation`);
+                      }}
+                    >
+                      Advanced settings
+                    </TextLink>
+                  </div>
+                  <div className="v2-profile-conversation-settings__fields">
+                    <div className="v2-profile-field-group">
+                      <label className="v2-profile-label">
+                        Language <span className="v2-profile-required">*</span>
+                      </label>
+                      <Dropdown
+                        options={PROFILE_LANGUAGE_OPTIONS}
+                        value={profileForm.language}
+                        onChange={(val) => updateProfileField('language', val)}
+                      />
+                    </div>
 
-                <div className="v2-profile-field-group">
-                  <label className="v2-profile-label">
-                    Voice name <span className="v2-profile-required">*</span>
-                  </label>
-                  <Dropdown
-                    options={PROFILE_VOICE_OPTIONS}
-                    value={profileForm.voiceName}
-                    onChange={(val) => updateProfileField('voiceName', val)}
-                  />
-                </div>
+                    <div className="v2-profile-field-group">
+                      <label className="v2-profile-label">
+                        Voice name <span className="v2-profile-required">*</span>
+                      </label>
+                      <Dropdown
+                        options={PROFILE_VOICE_OPTIONS}
+                        value={profileForm.voiceName}
+                        onChange={(val) => updateProfileField('voiceName', val)}
+                      />
+                    </div>
+                  </div>
+                </section>
 
                 <div className="v2-profile-field-group" ref={aiEngineMenuRef}>
                   <label className="v2-profile-label">
@@ -2553,6 +2586,13 @@ export default function ActionConfigureV2() {
                 )}
               </section>
             </div>
+          )}
+
+          {activeSection === 'Conversation' && (
+            <ConversationConfiguration
+              value={conversationConfiguration}
+              onChange={setConversationConfiguration}
+            />
           )}
 
           {activeSection === 'Knowledge' && (

@@ -4860,10 +4860,11 @@ button.view-btn.active {
 
 .ai-agents-agent-card {
   --mdc-card-width: 100%;
-  --ai-agents-agent-card-glass: color-mix(
-    in srgb,
-    var(--mds-color-theme-background-glass-normal, rgba(255, 255, 255, 0.05)) 68%,
-    transparent
+  /* An opaque card avoids a GPU compositing artifact when a filtered surface
+     is promoted during hover on high-density external displays. */
+  --ai-agents-agent-card-surface: var(
+    --mds-color-theme-background-solid-primary-normal,
+    #121212
   );
   position: relative;
   display: flex;
@@ -4874,15 +4875,8 @@ button.view-btn.active {
   border-color: var(--mds-color-theme-outline-primary-normal, var(--outline-color));
   border-radius: var(--border-radius-medium);
   background:
-    linear-gradient(135deg, rgba(255, 255, 255, 0.035), rgba(255, 255, 255, 0.01)),
-    linear-gradient(
-      135deg,
-      color-mix(in srgb, var(--mds-color-theme-background-solid-primary-normal, #121212) 7%, transparent),
-      color-mix(in srgb, var(--mds-color-theme-background-solid-primary-normal, #121212) 2%, transparent)
-    ),
-    var(--ai-agents-agent-card-glass);
-  backdrop-filter: blur(24px) saturate(130%);
-  -webkit-backdrop-filter: blur(24px) saturate(130%);
+    linear-gradient(135deg, rgba(255, 255, 255, 0.035), rgba(255, 255, 255, 0.012)),
+    var(--ai-agents-agent-card-surface);
   box-shadow:
     inset 0 1px 0 rgba(255, 255, 255, 0.08),
     0 12px 32px rgba(0, 0, 0, 0.14);
@@ -4900,24 +4894,18 @@ button.view-btn.active {
 
 .ai-agents-agent-card--clickable {
   cursor: pointer;
-  transition: border-color 0.15s ease, box-shadow 0.15s ease, transform 0.15s ease;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease, background-color 0.15s ease;
 }
 
 .secondary-content.ai-agents-dashboard mdc-card.ai-agents-agent-card--clickable:hover,
 .secondary-content.ai-agents-dashboard mdc-card.ai-agents-agent-card--clickable:focus-within {
   border-color: color-mix(in srgb, var(--text-primary) 42%, var(--outline-color));
   background:
-    linear-gradient(135deg, rgba(255, 255, 255, 0.075), rgba(255, 255, 255, 0.02)),
-    linear-gradient(
-      135deg,
-      color-mix(in srgb, var(--mds-color-theme-background-solid-primary-normal, #121212) 5%, transparent),
-      color-mix(in srgb, var(--mds-color-theme-background-solid-primary-normal, #121212) 1%, transparent)
-    ),
-    var(--ai-agents-agent-card-glass);
+    linear-gradient(135deg, rgba(255, 255, 255, 0.075), rgba(255, 255, 255, 0.025)),
+    var(--ai-agents-agent-card-surface);
   box-shadow:
     inset 0 1px 0 rgba(255, 255, 255, 0.14),
     0 16px 36px rgba(0, 0, 0, 0.24);
-  transform: translateY(-2px);
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -4925,10 +4913,6 @@ button.view-btn.active {
     transition: none;
   }
 
-  .secondary-content.ai-agents-dashboard mdc-card.ai-agents-agent-card--clickable:hover,
-  .secondary-content.ai-agents-dashboard mdc-card.ai-agents-agent-card--clickable:focus-within {
-    transform: none;
-  }
 }
 
 .ai-agents-agent-card__hit-area {
@@ -13103,7 +13087,7 @@ img.app-header__wordmark-logo {
   display: grid;
   grid-template-columns: minmax(0, 1fr) 320px;
   gap: var(--spacing-small);
-  align-items: start;
+  align-items: stretch;
   width: 100%;
 }
 
@@ -13363,6 +13347,144 @@ img.app-header__wordmark-logo {
   font-size: var(--font-size-body-small);
   line-height: var(--font-lineheight-body-small);
   color: var(--text-secondary);
+}
+
+/* ── Conversation tab (configure — language and voice behavior) ── */
+
+.conversation-config {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-big);
+  width: 100%;
+  min-width: 0;
+}
+
+.conversation-config__section-heading h3 {
+  margin: 0;
+  color: var(--text-primary);
+}
+
+.conversation-config__section {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-small);
+  min-width: 0;
+}
+
+.conversation-config__section-heading {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-xx-small);
+}
+
+.conversation-config__section-heading h3 {
+  font-size: var(--font-size-body-large);
+  font-weight: var(--font-weight-bold);
+  line-height: var(--font-lineheight-body-large);
+}
+
+.conversation-config__section-heading p,
+.conversation-config__slider-field > p {
+  margin: 0;
+  color: var(--text-secondary);
+  font-size: var(--font-size-body-midsize);
+  line-height: var(--font-lineheight-body-midsize);
+}
+
+.conversation-config__language-field,
+.conversation-config__field-stack,
+.conversation-config__slider-field {
+  width: min(100%, 720px);
+}
+
+.conversation-config__accordions {
+  margin-top: var(--spacing-xx-small);
+}
+
+.conversation-config__accordions .accordion {
+  min-width: 0;
+}
+
+.conversation-config__accordions .accordion__panel-content {
+  padding: var(--spacing-large);
+}
+
+.conversation-config__field-stack {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-large);
+}
+
+.conversation-config__field-stack .conversation-config__field-stack {
+  width: 100%;
+}
+
+.conversation-config__slider-field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-xx-small);
+  padding-top: var(--spacing-xx-small);
+}
+
+.conversation-config__field-label-row {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-xxx-small);
+  min-height: 20px;
+  margin-bottom: var(--spacing-xxx-small);
+}
+
+.conversation-config__field-label-row .form-label {
+  margin: 0;
+}
+
+.conversation-config__info-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: transparent;
+  color: var(--text-secondary);
+  cursor: help;
+}
+
+.conversation-config__info-button:hover {
+  color: var(--text-primary);
+  background: var(--mds-color-theme-background-primary-hover, rgba(255, 255, 255, 0.07));
+}
+
+.conversation-config__info-button:focus-visible {
+  outline: none;
+  box-shadow:
+    0 0 0 2px var(--focus-ring-0),
+    0 0 0 4px var(--focus-ring-1),
+    0 0 0 6px var(--focus-ring-2);
+}
+
+.conversation-config__info-field > .form-group > .form-helper-row {
+  margin-top: var(--spacing-xxx-small);
+}
+
+.conversation-config__accordions .radio-group-list {
+  gap: var(--spacing-x-small);
+}
+
+@media (max-width: 680px) {
+  .conversation-config {
+    gap: var(--spacing-large);
+  }
+
+  .conversation-config__accordions .accordion__panel-content {
+    padding: var(--spacing-small);
+  }
+
+  .conversation-config__field-stack {
+    gap: var(--spacing-small);
+  }
 }
 
 .instructions-ai-footer {
@@ -16096,6 +16218,53 @@ img.app-header__wordmark-logo {
 
 .v2-profile-required {
   color: var(--danger-color);
+}
+
+.v2-profile-conversation-settings {
+  grid-column: 1 / -1;
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-small);
+  min-width: 0;
+  padding-block: var(--spacing-xx-small);
+}
+
+.v2-profile-conversation-settings__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--spacing-small);
+  min-width: 0;
+}
+
+.v2-profile-conversation-settings__header h2 {
+  margin: 0;
+  color: var(--text-primary);
+  font-size: var(--font-size-body-large);
+  font-weight: var(--font-weight-semibold, 600);
+  line-height: var(--font-lineheight-body-large);
+}
+
+.v2-profile-conversation-settings__advanced-link {
+  flex: 0 0 auto;
+  color: var(--accent-color);
+}
+
+.v2-profile-conversation-settings__fields {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--spacing-medium);
+  min-width: 0;
+}
+
+@media (max-width: 720px) {
+  .v2-profile-form {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .v2-profile-conversation-settings__fields {
+    grid-template-columns: minmax(0, 1fr);
+  }
 }
 
 .v2-profile-info-btn {
