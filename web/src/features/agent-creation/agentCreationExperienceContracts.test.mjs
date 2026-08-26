@@ -1949,6 +1949,11 @@ test('Agent Home and start-from-scratch remove free composers without dead-endin
   );
   assert.match(
     homeStyles,
+    /\.app--ai\s+\.new-mvo-home\.new-mvo-home--landing\.primary-content:not\(\.new-mvo-home--subflow\)\s*\{[^}]*background:\s*rgba\(0, 0, 0, 0\.3\);[^}]*backdrop-filter:\s*blur\(28px\);/,
+    'the dashboard should keep a 30% dark overlay above the aurora background',
+  );
+  assert.match(
+    homeStyles,
     /\.agent-home--flow\s*\{[^}]*background:\s*transparent;[^}]*backdrop-filter:\s*none;/,
     'the nested Agent Home flow should stay transparent so the overlay is not doubled',
   );
@@ -1974,8 +1979,8 @@ test('Agent Home and start-from-scratch remove free composers without dead-endin
   );
   assert.match(
     homeStyles,
-    /\.agent-home__first-action-card\.eva-landing-task-card\.card\s*\{[^}]*rgba\(7, 10, 18, 0\.68\)[^}]*rgba\(3, 5, 10, 0\.5\)[^}]*backdrop-filter:\s*blur\(24px\)/,
-    'the first-time builder should use the requested translucent dark glass surface',
+    /\.agent-home__first-action-card\.eva-landing-task-card\.card\s*\{[^}]*rgba\(7, 10, 18, 0\.2\)[^}]*--mds-color-theme-background-glass-normal[^}]*backdrop-filter:\s*blur\(24px\) saturate\(125%\)/,
+    'the first-time builder should use the shared translucent glass surface',
   );
   assert.match(
     homeStyles,
@@ -2055,8 +2060,8 @@ test('Agent Home and start-from-scratch remove free composers without dead-endin
   );
   assert.match(
     homeStyles,
-    /\.agent-home__focus-card\.card,[\s\S]*?rgba\(7, 10, 18, 0\.82\)[^}]*backdrop-filter:\s*blur\(24px\)/,
-    'the recurring dashboard cards should use the same dark glass surface',
+    /\.agent-home__focus-card\.card,[\s\S]*?rgba\(7, 10, 18, 0\.2\)[^}]*--mds-color-theme-background-glass-normal[^}]*backdrop-filter:\s*blur\(24px\) saturate\(125%\)/,
+    'the recurring dashboard cards should use a translucent glass surface',
   );
   assert.match(
     dashboardSource,

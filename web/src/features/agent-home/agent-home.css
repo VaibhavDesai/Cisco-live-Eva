@@ -13,6 +13,13 @@
   flex: 1 1 auto;
 }
 
+.app--ai
+  .new-mvo-home.new-mvo-home--landing.primary-content:not(.new-mvo-home--subflow) {
+  background: rgba(0, 0, 0, 0.3);
+  backdrop-filter: blur(28px);
+  -webkit-backdrop-filter: blur(28px);
+}
+
 .new-mvo-home--landing > .new-mvo-home__landing-shell {
   display: flex;
   flex: 1 1 auto;
@@ -2413,14 +2420,14 @@ fieldset.eva-family-structured-step {
   border-radius: 8px;
   overflow: hidden;
   background:
-    linear-gradient(120deg, rgba(7, 10, 18, 0.68), rgba(13, 17, 31, 0.58)),
-    rgba(3, 5, 10, 0.5);
+    linear-gradient(120deg, rgba(7, 10, 18, 0.2), rgba(13, 17, 31, 0.12)),
+    var(--mds-color-theme-background-glass-normal, rgba(255, 255, 255, 0.05));
   box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.06),
-    0 18px 40px rgba(0, 0, 0, 0.3),
+    inset 0 1px 0 rgba(255, 255, 255, 0.1),
+    0 18px 40px rgba(0, 0, 0, 0.18),
     var(--shadow-ai-special-border);
-  backdrop-filter: blur(24px) saturate(118%);
-  -webkit-backdrop-filter: blur(24px) saturate(118%);
+  backdrop-filter: blur(24px) saturate(125%);
+  -webkit-backdrop-filter: blur(24px) saturate(125%);
   color: rgba(255, 255, 255, 0.95);
   font-family: 'Inter', var(--font-family-primary);
   isolation: isolate;
@@ -3109,13 +3116,13 @@ fieldset.eva-family-structured-step {
   border-radius: 8px;
   overflow: hidden;
   background:
-    linear-gradient(120deg, rgba(7, 10, 18, 0.82), rgba(13, 17, 31, 0.7)),
-    rgba(3, 5, 10, 0.72);
+    linear-gradient(120deg, rgba(7, 10, 18, 0.2), rgba(13, 17, 31, 0.12)),
+    var(--mds-color-theme-background-glass-normal, rgba(255, 255, 255, 0.05));
   box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.06),
-    0 18px 40px rgba(0, 0, 0, 0.3);
-  backdrop-filter: blur(24px) saturate(118%);
-  -webkit-backdrop-filter: blur(24px) saturate(118%);
+    inset 0 1px 0 rgba(255, 255, 255, 0.1),
+    0 18px 40px rgba(0, 0, 0, 0.18);
+  backdrop-filter: blur(24px) saturate(125%);
+  -webkit-backdrop-filter: blur(24px) saturate(125%);
   color: rgba(255, 255, 255, 0.95);
   font-family: inherit;
 }
@@ -3124,8 +3131,8 @@ fieldset.eva-family-structured-step {
 .agent-home__focus-card.card-clickable:active {
   border-color: rgba(255, 255, 255, 0.28);
   background:
-    linear-gradient(120deg, rgba(11, 14, 24, 0.84), rgba(18, 23, 40, 0.74)),
-    rgba(5, 7, 13, 0.76);
+    linear-gradient(120deg, rgba(11, 14, 24, 0.28), rgba(18, 23, 40, 0.18)),
+    var(--mds-color-theme-background-glass-normal, rgba(255, 255, 255, 0.05));
 }
 
 .agent-home__focus-card--health.card {
