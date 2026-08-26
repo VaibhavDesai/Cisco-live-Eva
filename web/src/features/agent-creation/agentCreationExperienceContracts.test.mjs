@@ -1979,6 +1979,11 @@ test('Agent Home and start-from-scratch remove free composers without dead-endin
   );
   assert.match(
     homeStyles,
+    /\.agent-home--first-time:not\(\.agent-home--flow\):not\(\.agent-home--recurring-create\)\s*\.agent-home__first-actions\s*\{[^}]*width:\s*min\(100%, 960px\);[^}]*margin-inline:\s*auto;/,
+    'the first-time builder should stay centered and stop stretching beyond 960px',
+  );
+  assert.match(
+    homeStyles,
     /\.agent-home__first-action-card--builder\.eva-landing-task-card\.card::before\s*\{[^}]*padding:\s*var\(--border-ai-special-width\);[^}]*background:\s*var\(--border-ai-special-source\);[^}]*mask-composite:\s*exclude;/,
     'the first-agent builder should reuse the Uplift AI angular gradient border',
   );

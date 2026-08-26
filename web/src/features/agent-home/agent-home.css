@@ -2396,6 +2396,12 @@ fieldset.eva-family-structured-step {
   width: 100%;
 }
 
+.agent-home--first-time:not(.agent-home--flow):not(.agent-home--recurring-create)
+  .agent-home__first-actions {
+  width: min(100%, 960px);
+  margin-inline: auto;
+}
+
 .agent-home--first-time:not(.agent-home--flow)
   .agent-home__first-action-card.eva-landing-task-card.card {
   position: relative;
