@@ -1051,7 +1051,7 @@ fieldset.eva-family-structured-step {
 
 .agent-home-flow__preview-layout {
   display: grid;
-  grid-template-columns: minmax(280px, 0.88fr) minmax(360px, 1.12fr);
+  grid-template-columns: minmax(0, 1fr);
   align-items: stretch;
   gap: 20px;
 }
@@ -1139,6 +1139,14 @@ fieldset.eva-family-structured-step {
   flex-wrap: wrap;
   justify-content: flex-end;
   gap: 6px;
+}
+
+.agent-home-flow__test-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 12px;
 }
 
 .agent-home-flow__test-thread {
@@ -1233,17 +1241,24 @@ fieldset.eva-family-structured-step {
   text-align: center;
 }
 
-.agent-home-flow__voice-avatar {
+.agent-home-flow__voice-widget .agent-home-flow__voice-avatar {
   display: inline-flex;
+  align-self: center;
   align-items: center;
   justify-content: center;
   width: 48px;
   height: 48px;
   flex: 0 0 48px;
+  margin-inline: auto;
   border: 1px solid color-mix(in srgb, var(--accent-color) 40%, var(--border-color));
   border-radius: 50%;
   background: color-mix(in srgb, var(--accent-bg) 52%, var(--bg-secondary));
   color: var(--text-primary);
+  text-align: center;
+}
+
+.agent-home-flow__voice-widget .agent-home-flow__voice-avatar > * {
+  margin: auto;
 }
 
 .agent-home-flow__voice-widget .eva-voice-preview__controls {
@@ -2383,6 +2398,7 @@ fieldset.eva-family-structured-step {
 
 .agent-home--first-time:not(.agent-home--flow)
   .agent-home__first-action-card.eva-landing-task-card.card {
+  position: relative;
   height: 321px;
   min-height: 321px;
   padding: 16px 24px 24px;
@@ -2391,16 +2407,46 @@ fieldset.eva-family-structured-step {
   border-radius: 8px;
   overflow: hidden;
   background:
-    linear-gradient(120deg, rgba(7, 10, 18, 0.82), rgba(13, 17, 31, 0.7)),
-    rgba(3, 5, 10, 0.72);
+    linear-gradient(120deg, rgba(7, 10, 18, 0.68), rgba(13, 17, 31, 0.58)),
+    rgba(3, 5, 10, 0.5);
   box-shadow:
     inset 0 1px 0 rgba(255, 255, 255, 0.06),
-    0 18px 40px rgba(0, 0, 0, 0.3);
+    0 18px 40px rgba(0, 0, 0, 0.3),
+    var(--shadow-ai-special-border);
   backdrop-filter: blur(24px) saturate(118%);
   -webkit-backdrop-filter: blur(24px) saturate(118%);
   color: rgba(255, 255, 255, 0.95);
   font-family: 'Inter', var(--font-family-primary);
+  isolation: isolate;
   transform: none;
+}
+
+.agent-home--first-time:not(.agent-home--flow)
+  .agent-home__first-action-card--builder.eva-landing-task-card.card::before {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  padding: var(--border-ai-special-width);
+  border-radius: inherit;
+  background: var(--border-ai-special-source);
+  background-position: 50% 50%;
+  background-size: 220% 220%;
+  content: '';
+  pointer-events: none;
+  -webkit-mask:
+    linear-gradient(#000 0 0) content-box,
+    linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+  mask:
+    linear-gradient(#000 0 0) content-box,
+    linear-gradient(#000 0 0);
+  mask-composite: exclude;
+}
+
+.agent-home--first-time:not(.agent-home--flow)
+  .agent-home__first-action-card--builder.eva-landing-task-card.card > * {
+  position: relative;
+  z-index: 1;
 }
 
 /* Returning users enter the same creation tools without onboarding emphasis.
@@ -2443,11 +2489,6 @@ fieldset.eva-family-structured-step {
 .agent-home--first-time.agent-home--recurring-create:not(.agent-home--flow)
   .agent-home__first-action-card--agents.eva-landing-task-card.card {
   padding-inline: 16px;
-}
-
-.agent-home--first-time.agent-home--recurring-create:not(.agent-home--flow)
-  .agent-home__first-action-card--builder.eva-landing-task-card.card::before {
-  content: none;
 }
 
 .agent-home--first-time.agent-home--recurring-create:not(.agent-home--flow)
@@ -2591,13 +2632,22 @@ fieldset.eva-family-structured-step {
   background: rgba(255, 255, 255, 0.2);
 }
 
+.eva-landing-task-card__agent-types-title {
+  width: 100%;
+  margin: 0;
+  color: rgba(255, 255, 255, 0.5);
+  font-size: 12px;
+  font-weight: 400;
+  line-height: 18px;
+}
+
 .eva-landing-task-card__agent-types {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
   width: 100%;
-  height: 188px;
-  flex: 0 0 188px;
-  gap: 8px;
+  height: 158px;
+  flex: 0 0 158px;
+  gap: 32px;
   margin: 0;
   padding: 0;
   list-style: none;
@@ -2606,44 +2656,12 @@ fieldset.eva-family-structured-step {
 .eva-landing-task-card__agent-types > li {
   display: flex;
   min-width: 0;
-  height: 188px;
+  height: 158px;
   align-items: flex-start;
-  padding: 12px 9px 12px 8px;
-  overflow: hidden;
-  border-radius: 12px;
-  background:
-    linear-gradient(
-      0deg,
-      rgba(17, 112, 207, 0.2) 0.27%,
-      rgba(17, 112, 207, 0.158) 25.09%,
-      rgba(17, 112, 207, 0) 99.73%
-    ),
-    rgba(0, 0, 0, 0.22);
+  padding: 12px 0;
   color: rgba(255, 255, 255, 0.95);
   font-family: 'Inter', var(--font-family-primary);
   font-weight: 400;
-}
-
-.eva-landing-task-card__agent-types > li:nth-child(2) {
-  background:
-    linear-gradient(
-      0deg,
-      rgba(17, 112, 207, 0.2) 0.27%,
-      rgba(17, 112, 207, 0.144) 23.23%,
-      rgba(17, 112, 207, 0) 99.73%
-    ),
-    rgba(0, 0, 0, 0.22);
-}
-
-.eva-landing-task-card__agent-types > li:nth-child(3) {
-  background:
-    linear-gradient(
-      0deg,
-      rgba(17, 112, 207, 0.2) 0.27%,
-      rgba(17, 112, 207, 0.102) 23.74%,
-      rgba(17, 112, 207, 0) 99.73%
-    ),
-    rgba(0, 0, 0, 0.22);
 }
 
 .eva-landing-task-card__agent-type-content {
@@ -2652,7 +2670,7 @@ fieldset.eva-family-structured-step {
   min-width: 0;
   align-items: flex-start;
   gap: 10px;
-  padding-inline: 8px;
+  padding-inline: 0;
 }
 
 .eva-landing-task-card__agent-type-icon {
@@ -2874,23 +2892,6 @@ fieldset.eva-family-structured-step {
   box-shadow: inset 0 -4px 5px rgba(255, 255, 255, 0.2);
 }
 
-@container uplift-assistant (min-width: 1001px) and (max-width: 1200px) {
-  .eva-landing-task-card__agent-type-heading > strong {
-    font-size: 12px;
-    line-height: 16px;
-  }
-
-  .eva-landing-task-card__agent-type-heading > span {
-    font-size: 9px;
-    line-height: 11px;
-  }
-
-  .eva-landing-task-card__agent-type-copy > p {
-    font-size: 10px;
-    line-height: 15px;
-  }
-}
-
 @container uplift-assistant (max-width: 1000px) {
   .agent-home--first-time:not(.agent-home--flow) .agent-home__first-action-grid {
     grid-template-columns: minmax(0, 1fr);
@@ -2940,11 +2941,13 @@ fieldset.eva-family-structured-step {
     height: auto;
     flex-basis: auto;
     grid-template-columns: minmax(0, 1fr);
+    gap: 24px;
   }
 
   .eva-landing-task-card__agent-types > li {
     height: auto;
-    min-height: 188px;
+    min-height: 0;
+    padding-block: 4px;
   }
 
   .agent-home--first-time:not(.agent-home--flow) .agent-home__composer {
@@ -4103,6 +4106,12 @@ fieldset.eva-family-structured-step {
   margin: 0;
 }
 
+.agent-home--flow .agent-home__scroll-region > .agent-home-flow--demo-preview {
+  width: 100%;
+  max-width: none;
+  margin: 0;
+}
+
 .agent-home-flow--templates {
   gap: 24px;
   min-height: 1085px;
@@ -4126,6 +4135,14 @@ fieldset.eva-family-structured-step {
 }
 
 .agent-home-flow--templates .agent-home-flow__header {
+  display: flex;
+  max-width: none;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 12px;
+}
+
+.agent-home-flow--demo-preview .agent-home-flow__header {
   display: flex;
   max-width: none;
   flex-direction: column;
@@ -4173,6 +4190,14 @@ fieldset.eva-family-structured-step {
   font-family: 'Momentum', var(--font-family-primary);
 }
 
+.agent-home-flow--demo-preview .agent-home-flow__title-group {
+  display: flex;
+  width: 100%;
+  flex-direction: column;
+  gap: 8px;
+  font-family: 'Momentum', var(--font-family-primary);
+}
+
 .agent-home-flow--templates .agent-home-flow__title-row {
   display: grid;
   width: 100%;
@@ -4199,7 +4224,26 @@ fieldset.eva-family-structured-step {
   text-wrap: initial;
 }
 
+.agent-home-flow--demo-preview .agent-home-flow__header h1 {
+  margin: 0;
+  color: rgba(255, 255, 255, 0.95);
+  font-size: 32px;
+  font-weight: 400;
+  line-height: 40px;
+  text-wrap: initial;
+}
+
 .agent-home-flow--templates .agent-home-flow__header p {
+  max-width: none;
+  margin: 0;
+  color: rgba(255, 255, 255, 0.6);
+  font-size: 16px;
+  font-weight: 400;
+  line-height: 24px;
+  text-wrap: initial;
+}
+
+.agent-home-flow--demo-preview .agent-home-flow__header p {
   max-width: none;
   margin: 0;
   color: rgba(255, 255, 255, 0.6);

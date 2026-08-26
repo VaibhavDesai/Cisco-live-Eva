@@ -286,22 +286,6 @@ function OptionList({
   );
 }
 
-function Workflow({ option }: { option: AgentHomeTemplateDefinition }) {
-  return (
-    <section className="agent-home-flow__workflow" aria-labelledby="agent-home-template-workflow-title">
-      <h3 id="agent-home-template-workflow-title">Workflow</h3>
-      <ol>
-        {option.workflow.map((step, index) => (
-          <li key={step}>
-            <span aria-hidden="true">{index + 1}</span>
-            <strong>{step}</strong>
-          </li>
-        ))}
-      </ol>
-    </section>
-  );
-}
-
 function ReadyMadeWorkflow({
   steps,
 }: {
@@ -863,25 +847,6 @@ function DemoSelector({
 
 type VoicePreviewStatus = 'idle' | 'connecting' | 'listening' | 'speaking' | 'ended';
 
-function PreviewChannelChips({
-  channel,
-}: {
-  channel: AgentHomeTemplateDefinition['previewChannel'];
-}) {
-  const channels = channel === 'both'
-    ? ['Voice', 'Digital']
-    : [getAgentHomePreviewChannelLabel(channel)];
-
-  return (
-    <div className="agent-home-flow__preview-channel">
-      <div aria-label={`${channels.join(' and ')} preview ${channels.length > 1 ? 'channels' : 'channel'}`}>
-        {channels.map(label => <Badge key={label} variant="default">{label}</Badge>)}
-      </div>
-      <span>preview {channels.length > 1 ? 'channels' : 'channel'}</span>
-    </div>
-  );
-}
-
 function VoicePreviewWidget({
   option,
   prompts,
@@ -1079,35 +1044,25 @@ function DemoPreview({
         onBack={() => onFlowChange(backFlow)}
       />
       <div className="agent-home-flow__preview-layout">
-        <Card className="agent-home-flow__preview-context">
-          <div className="agent-home-flow__preview-context-heading">
-            <span aria-hidden="true"><Icon name={option.icon} weight="bold" size="lg" /></span>
-            <div>
-              <span className="agent-home__section-kicker">Configured agent</span>
-              <h2>What this agent can do</h2>
-            </div>
-          </div>
-          <p>{option.draft.description}</p>
-          <Workflow option={option} />
-          <div className="agent-home-flow__preview-defaults">
-            <span><strong>{option.draft.knowledgeBases.length}</strong> knowledge sources</span>
-            <span><strong>{option.presets.length}</strong> configured defaults</span>
-            <PreviewChannelChips channel={option.previewChannel} />
-          </div>
-          <Button variant="secondary" onClick={() => onUseTemplate(templateId)}>
-            Start with this agent
-            <Icon name="arrow-right" weight="bold" size="sm" />
-          </Button>
-        </Card>
-
         <Card className="agent-home-flow__test" aria-label={`Test ${option.draft.name}`}>
           <div className="agent-home-flow__test-header">
             <div>
               <span className="agent-home__section-kicker">Test agent</span>
               <h2>{testTitle}</h2>
             </div>
-            <div className="agent-home-flow__test-status">
-              <Badge variant="info">{channelLabel}</Badge>
+            <div className="agent-home-flow__test-actions">
+              <div className="agent-home-flow__test-status">
+                <Badge variant="info">{channelLabel}</Badge>
+              </div>
+              <Button
+                type="button"
+                variant="secondary"
+                size="sm"
+                onClick={() => onUseTemplate(templateId)}
+              >
+                Start with this agent
+                <Icon name="arrow-right" weight="bold" size="sm" />
+              </Button>
             </div>
           </div>
           {option.previewChannel === 'voice' ? (

@@ -1,6 +1,6 @@
 import { useParams, Navigate } from 'react-router-dom';
 import { useApp } from '../../contexts/AppContext';
-import { AgentHeader, AgentWorkspacePageHeading } from '../../components/agents';
+import { AgentHeader, AgentHeaderActions, AgentWorkspacePageHeading } from '../../components/agents';
 import { Card } from '../../components/shared/Card';
 import Button from '../../components/shared/Button';
 import Badge from '../../components/shared/Badge';
@@ -58,7 +58,13 @@ export default function AgentHistory() {
 
   return (
     <div className="primary-content agent-workspace-page">
-      <AgentHeader agent={agent} activeTab="history" showPublishButton={false} showTabs={false} />
+      <AgentHeader
+        agent={agent}
+        activeTab="history"
+        showPublishButton={false}
+        showTabs={false}
+        headerRight={<AgentHeaderActions agent={agent} />}
+      />
       <AgentWorkspacePageHeading title="History" />
 
       <div className="secondary-content agent-workspace-section-canvas">

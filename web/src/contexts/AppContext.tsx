@@ -94,6 +94,7 @@ export interface AppContextValue {
   selectAgent: (agentId: string) => void;
   goToAgent: (agentId: string) => void;
   closeAgentNav: (agentId: string) => void;
+  removeAgent: (agentId: string) => boolean;
   addAgent: (newAgent: Partial<Agent>) => Agent;
   createAgentDraft: (draft: AgentDraft) => Agent;
   updateAgentDraft: (agentId: string, update: AgentDraftUpdate) => void;
@@ -695,6 +696,24 @@ export function AppProvider({ children }: AppProviderProps) {
     setCurrentAgent(current => current?.id === agentId ? null : current);
   }, []);
 
+  const removeAgent = useCallback((agentId: string) => {
+    const snapshot = agentStateRef.current;
+    if (!snapshot.agents[agentId]) return false;
+
+    const nextAgents = { ...snapshot.agents };
+    const nextDrafts = { ...snapshot.agentDrafts };
+    delete nextAgents[agentId];
+    delete nextDrafts[agentId];
+    replaceAgentState({
+      ...snapshot,
+      agents: nextAgents,
+      agentDrafts: nextDrafts,
+    });
+    setOpenAgents(previous => previous.filter(id => id !== agentId));
+    setCurrentAgent(current => current?.id === agentId ? null : current);
+    return true;
+  }, [replaceAgentState]);
+
   const showToast = useCallback((message: string, type?: 'default' | 'info' | 'success' | 'warning' | 'error') => {
     setToast({ message, type });
     setTimeout(() => setToast(null), 3000);
@@ -953,6 +972,7 @@ export function AppProvider({ children }: AppProviderProps) {
     selectAgent,
     goToAgent,
     closeAgentNav,
+    removeAgent,
     addAgent,
     createAgentDraft,
     updateAgentDraft,

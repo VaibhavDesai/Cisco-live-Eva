@@ -260,13 +260,11 @@ export default function Sidebar({
      builder can appear at the root, on either canvas route, or at /agents
      before a family agent exists. Those states all remain under Home;
      AI Agents becomes active only when /agents is showing the agent list. */
-  const hasFamilyAgents = Object.keys(agentDrafts).length > 0 ||
-    Object.values(agents).some(candidate => Boolean(candidate.family));
   const agentsRouteShowsBuildingExperience =
     location.pathname === '/agents/eva-canvas' ||
     (
       location.pathname === '/agents' &&
-      (variation !== 'dashboard' || !hasFamilyAgents)
+      variation !== 'dashboard'
     );
   const isNewAgentActive =
     location.pathname === '/new-agent' ||
@@ -300,7 +298,7 @@ export default function Sidebar({
                     label={item.label}
                     active={itemActive}
                     onClick={() => {
-                      if (item.path === '/new-agent') {
+                      if (item.path === '/new-agent' || item.path === '/agents') {
                         setVariation('dashboard');
                       }
                       navigate(item.path);

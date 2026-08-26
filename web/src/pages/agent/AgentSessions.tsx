@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { Navigate, useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { useApp } from '../../contexts/AppContext';
-import { AgentHeader, AgentWorkspacePageHeading } from '../../components/agents';
+import { AgentHeader, AgentHeaderActions, AgentWorkspacePageHeading } from '../../components/agents';
 import { Card } from '../../components/shared/Card';
 import Badge from '../../components/shared/Badge';
 import Button from '../../components/shared/Button';
@@ -482,6 +482,7 @@ export default function AgentSessions() {
         activeTab="sessions"
         showPublishButton={false}
         showTabs={false}
+        headerRight={<AgentHeaderActions agent={agent} />}
       />
 
       {!activeSession && (

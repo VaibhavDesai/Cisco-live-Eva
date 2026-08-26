@@ -2,7 +2,7 @@ import { useState, useRef, useEffect, useMemo, useCallback, type ReactNode, type
 import { createPortal } from 'react-dom';
 import { Navigate, useParams, Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { useApp } from '../../contexts/AppContext';
-import { AgentHeader, AgentWorkspacePageHeading } from '../../components/agents';
+import { AgentHeader, AgentHeaderActions, AgentWorkspacePageHeading } from '../../components/agents';
 import Button from '../../components/shared/Button';
 import Tabs, { Tab, SegmentControl, SegmentItem } from '../../components/shared/Tabs';
 import Toggle from '../../components/shared/Toggle';
@@ -637,6 +637,7 @@ export default function ActionConfigureV2() {
     selectAgent,
     updateAgentDraft,
     showToast,
+    toggleAgentPublish,
     aiEngines,
     addAiEngine,
   } = useApp();
@@ -1778,20 +1779,20 @@ export default function ActionConfigureV2() {
   );
 
   const headerActions = (
-    <div className="action-config-v2-header-actions">
-      {hasUnsavedChanges && (
-        <Button type="button" onClick={handleSaveConfiguration}>
-          Save
-        </Button>
-      )}
-      <Button type="button" variant="secondary">
-        <Icon name="chat" weight="bold" size="xs" />
-        Preview
-      </Button>
-      <button type="button" className="action-config-v2-more-btn" aria-label="More options">
-        <Icon name="more" weight="bold" size={20} />
-      </button>
-    </div>
+    <AgentHeaderActions
+      agent={agent}
+      releaseLabel={agent.status === 'Published' ? 'Unpublish' : 'Save'}
+      releaseDisabled={agent.status !== 'Published' && !hasUnsavedChanges}
+      releaseVariant={agent.status === 'Published' ? 'secondary' : 'primary'}
+      onRelease={() => {
+        if (agent.status === 'Published') {
+          toggleAgentPublish(agent.id);
+          showToast('Agent unpublished successfully', 'success');
+          return;
+        }
+        handleSaveConfiguration();
+      }}
+    />
   );
 
   const actionPageActions = activeSection === 'Action' ? (

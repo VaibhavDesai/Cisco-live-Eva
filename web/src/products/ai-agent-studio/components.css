@@ -1452,8 +1452,53 @@ html[data-product='ai-agent-studio'] .app-header__menu-row-hint {
   display: flex;
   align-items: center;
   justify-content: flex-end;
-  flex-wrap: wrap;
   gap: var(--spacing-xx-small);
+}
+
+.agent-studio-header-actions .btn {
+  height: 28px;
+  min-height: 28px;
+  gap: 6px;
+  padding: 1px var(--spacing-x-small);
+  border-radius: var(--border-radius-pill);
+  font-family: var(--font-family-primary);
+  font-size: 13px;
+  font-weight: var(--font-weight-medium);
+  line-height: var(--font-lineheight-body-large);
+}
+
+.agent-studio-header-more-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  min-width: 32px;
+  height: 32px;
+  padding: 0;
+  border: var(--border-width-small) solid var(--outline-button);
+  border-radius: 50%;
+  background: transparent;
+  color: var(--text-primary);
+  cursor: pointer;
+  transition: background 0.12s ease, border-color 0.12s ease;
+}
+
+.agent-studio-header-more-button:hover {
+  background: var(--mds-color-theme-background-primary-hover);
+}
+
+.agent-studio-header-more-button:active,
+.agent-studio-header-more-button[aria-expanded='true'] {
+  background: var(--mds-color-theme-background-primary-active);
+}
+
+.agent-studio-header-more-button:focus-visible {
+  outline: 2px solid var(--accent-color);
+  outline-offset: 2px;
+}
+
+.agent-studio-header-menu.menu-overlay {
+  min-width: 264px;
 }
 
 .agent-studio-agent-metadata {

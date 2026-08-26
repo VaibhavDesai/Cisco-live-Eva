@@ -2585,15 +2585,32 @@ export default function EvaChatExperience({
     }
 
     const editMessage = getFamilyIntakeMessage(selectedAgentFamily, question, syncedAnswers);
-    setMessages(previous => [
-      ...previous,
-      {
+    const resumeQuestion = getAdaptiveIntakeQuestions(selectedAgentFamily, syncedAnswers)
+      .find(candidate => !syncedAnswers[candidate.answerKey]?.trim());
+    const resumeMessage = resumeQuestion
+      ? getFamilyIntakeMessage(selectedAgentFamily, resumeQuestion, syncedAnswers)
+      : null;
+    setMessages(previous => {
+      const resumePromptIndex = resumeMessage
+        ? previous.findLastIndex(candidate => (
+          candidate.role === 'assistant'
+          && candidate.originStep === FAMILY_INTAKE_ORIGIN
+          && candidate.text === resumeMessage.text
+        ))
+        : -1;
+      const messagesWithoutSuspendedPrompt = resumePromptIndex >= 0
+        ? previous.filter((_, index) => index !== resumePromptIndex)
+        : previous;
+      return [
+        ...messagesWithoutSuspendedPrompt,
+        {
         role: 'assistant',
         text: editMessage.text,
         followups: editMessage.followups,
         originStep: FAMILY_INTAKE_ORIGIN,
-      },
-    ]);
+        },
+      ];
+    });
   };
 
   const handleCancelFamilyIntakeEdit = () => {
@@ -7011,7 +7028,11 @@ ${previewTranscript}`,
                       })}
                     </div>
                   )}
-                  {isLatestFamilyIntakePrompt && familyIntakeEditingQuestion && !evaThinking && (
+                  {isLatestFamilyIntakePrompt
+                    && familyIntakeEditingQuestion
+                    && !isFamilyNamePrompt
+                    && !isFamilyGreetingPrompt
+                    && !evaThinking && (
                     <div className="eva-family-intake-edit-actions">
                       <Button size="sm" variant="secondary" onClick={handleCancelFamilyIntakeEdit}>
                         Cancel editing
@@ -7144,6 +7165,11 @@ ${previewTranscript}`,
                             onChange={event => setFamilyAgentNameInput(event.target.value)}
                             aria-label="Edit agent name"
                           />
+                          {familyIntakeEditingQuestion && (
+                            <Button size="sm" variant="secondary" onClick={handleCancelFamilyIntakeEdit}>
+                              Cancel editing
+                            </Button>
+                          )}
                           <Button
                             size="sm"
                             onClick={() => handleFamilyIntakeAnswer(familyAgentNameInput)}
@@ -7176,13 +7202,20 @@ ${previewTranscript}`,
                         </span>
                         <div className="eva-retail-welcome-option__actions">
                           {familyGreetingInputVisible ? (
-                            <Button
-                              size="sm"
-                              onClick={() => handleFamilyIntakeAnswer(familyGreetingInput)}
-                              disabled={!familyGreetingInput.trim()}
-                            >
-                              Use edited greeting
-                            </Button>
+                            <>
+                              {familyIntakeEditingQuestion && (
+                                <Button size="sm" variant="secondary" onClick={handleCancelFamilyIntakeEdit}>
+                                  Cancel editing
+                                </Button>
+                              )}
+                              <Button
+                                size="sm"
+                                onClick={() => handleFamilyIntakeAnswer(familyGreetingInput)}
+                                disabled={!familyGreetingInput.trim()}
+                              >
+                                Use edited greeting
+                              </Button>
+                            </>
                           ) : (
                             <>
                               <Button

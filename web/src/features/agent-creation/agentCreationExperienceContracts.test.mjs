@@ -485,14 +485,39 @@ test('Agent Studio header saves configuration changes before publishing a new ve
   assert.match(handlerSource, /publishAgentVersion\(agent\.id\)/);
   assert.match(handlerSource, /Published version \$\{publishedDraft\.version\}/);
   assert.match(handlerSource, /const hasUnsavedConfigurationChanges[\s\S]*?currentAgentRevision !== overviewReleaseState\.savedRevision/);
-  assert.match(handlerSource, /const releaseActionLabel = hasSavedConfigurationReadyToPublish \? ['"]Publish['"] : ['"]Save['"]/);
-  assert.match(handlerSource, /const handleReleaseAction[\s\S]*?showToast\(['"]Configuration saved['"], ['"]success['"]\)[\s\S]*?handlePublishVersion\(\)/);
+  assert.match(handlerSource, /const releaseActionLabel = lifecycle === ['"]published['"][\s\S]*?['"]Unpublish['"][\s\S]*?hasSavedConfigurationReadyToPublish[\s\S]*?['"]Publish['"][\s\S]*?['"]Save['"]/);
+  assert.match(handlerSource, /const handleReleaseAction[\s\S]*?lifecycle === ['"]published['"][\s\S]*?toggleAgentPublish\(agent\.id\)[\s\S]*?showToast\(['"]Agent unpublished successfully['"], ['"]success['"]\)[\s\S]*?showToast\(['"]Configuration saved['"], ['"]success['"]\)[\s\S]*?handlePublishVersion\(\)/);
   assert.match(
     headerActionsSource,
-    /disabled=\{releaseActionDisabled\}[\s\S]*?onClick=\{handleReleaseAction\}[\s\S]*?\{releaseActionLabel\}/,
-    'the action should be disabled without changes, then progress from Save to Publish',
+    /<AgentHeaderActions[\s\S]*?releaseLabel=\{releaseActionLabel\}[\s\S]*?releaseDisabled=\{releaseActionDisabled\}[\s\S]*?releaseVariant=\{lifecycle === ['"]published['"] \? ['"]secondary['"] : ['"]primary['"]\}[\s\S]*?onRelease=\{handleReleaseAction\}/,
+    'the action should progress from Save to Publish, then become a secondary Unpublish action',
   );
   assert.doesNotMatch(headerActionsSource, /Duplicate as…/);
+});
+
+test('all Agent Studio pages share the Preview, release, and overflow action group', () => {
+  const sharedActionsSource = readSource('../../components/agents/AgentHeaderActions.tsx');
+  const overviewSource = readSource('../../pages/agent/AgentStudioLanding.tsx');
+  const configureSource = readSource('../../pages/agent/ActionConfigureV2.tsx');
+  const sessionsSource = readSource('../../pages/agent/AgentSessions.tsx');
+  const historySource = readSource('../../pages/agent/AgentHistory.tsx');
+  const testingSource = readSource('../../pages/agent/AgentAnalytics.tsx');
+  const contextSource = readSource('../../contexts/AppContext.tsx');
+  const styles = readSource('../../products/ai-agent-studio/components.css');
+
+  assert.match(sharedActionsSource, /Preview[\s\S]*?releaseLabel[\s\S]*?agent-studio-header-more-button/);
+  assert.match(sharedActionsSource, /label="Make this agent as a template"[\s\S]*?label="Delete"[\s\S]*?danger/);
+  assert.match(sharedActionsSource, /deleteConfirmationOpen[\s\S]*?This action cannot be undone[\s\S]*?Delete agent/);
+  assert.match(contextSource, /removeAgent:\s*\(agentId: string\) => boolean[\s\S]*?const removeAgent = useCallback[\s\S]*?delete nextAgents\[agentId\][\s\S]*?delete nextDrafts\[agentId\]/);
+  [overviewSource, configureSource, sessionsSource, historySource, testingSource].forEach(source => {
+    assert.match(source, /<AgentHeaderActions\s+agent=\{agent\}/);
+  });
+  assert.match(styles, /\.agent-studio-header-more-button\s*\{[^}]*width:\s*32px;[^}]*height:\s*32px;[^}]*border-radius:\s*50%;/);
+  assert.match(
+    styles,
+    /\.agent-studio-header-actions \.btn\s*\{[^}]*height:\s*28px;[^}]*min-height:\s*28px;[^}]*font-size:\s*13px;/,
+    'shared header buttons should retain the compact Overview dimensions on every workspace page',
+  );
 });
 
 test('overview cards can be reordered and persist their layout per agent', () => {
@@ -1949,8 +1974,79 @@ test('Agent Home and start-from-scratch remove free composers without dead-endin
   );
   assert.match(
     homeStyles,
-    /\.agent-home__first-action-card\.eva-landing-task-card\.card\s*\{[^}]*rgba\(7, 10, 18, 0\.82\)[^}]*backdrop-filter:\s*blur\(24px\)/,
-    'the first-time builder and demo cards should use the requested dark glass surface',
+    /\.agent-home__first-action-card\.eva-landing-task-card\.card\s*\{[^}]*rgba\(7, 10, 18, 0\.68\)[^}]*rgba\(3, 5, 10, 0\.5\)[^}]*backdrop-filter:\s*blur\(24px\)/,
+    'the first-time builder should use the requested translucent dark glass surface',
+  );
+  assert.match(
+    homeStyles,
+    /\.agent-home__first-action-card--builder\.eva-landing-task-card\.card::before\s*\{[^}]*padding:\s*var\(--border-ai-special-width\);[^}]*background:\s*var\(--border-ai-special-source\);[^}]*mask-composite:\s*exclude;/,
+    'the first-agent builder should reuse the Uplift AI angular gradient border',
+  );
+  assert.match(
+    homeStyles,
+    /\.eva-landing-task-card__agent-types\s*\{[^}]*grid-template-columns:\s*repeat\(3, minmax\(0, 1fr\)\);[^}]*gap:\s*32px;/,
+    'the three agent type groups should be separated by spacing',
+  );
+  assert.match(
+    homeSource,
+    /<h3 id="agent-home-agent-types-title" className="eva-landing-task-card__agent-types-title">\s*Available agent types\s*<\/h3>[\s\S]*?<ul[\s\S]*?aria-labelledby="agent-home-agent-types-title"/,
+    'the first-agent card should label its available agent type group',
+  );
+  assert.match(
+    homeStyles,
+    /\.eva-landing-task-card__agent-types-title\s*\{[^}]*color:\s*rgba\(255, 255, 255, 0\.5\);[^}]*font-weight:\s*400;/,
+    'the available-agent-types heading should use subdued secondary text styling',
+  );
+  const firstAgentTypeRuleStart = homeStyles.indexOf('.eva-landing-task-card__agent-types > li {');
+  const firstAgentTypeRuleEnd = homeStyles.indexOf('}', firstAgentTypeRuleStart);
+  const firstAgentTypeRule = homeStyles.slice(firstAgentTypeRuleStart, firstAgentTypeRuleEnd);
+  assert.doesNotMatch(
+    firstAgentTypeRule,
+    /background:|border-radius:|box-shadow:/,
+    'agent type information should remain flat text groups rather than nested cards',
+  );
+  assert.match(
+    homeStyles,
+    /\.eva-landing-task-card__agent-type-content\s*\{[^}]*padding-inline:\s*0;/,
+    'flat agent type groups should not retain the former card side padding',
+  );
+  assert.doesNotMatch(
+    homeStyles,
+    /@container uplift-assistant \(min-width: 1001px\) and \(max-width: 1200px\)[\s\S]*?\.eva-landing-task-card__agent-type-heading > strong/,
+    'the original agent type typography should not shrink at intermediate widths',
+  );
+  const demoPreviewStart = firstTimeFlowsSource.indexOf('function DemoPreview');
+  const demoPreviewEnd = firstTimeFlowsSource.indexOf('export default function AgentHomeFirstTimeFlows', demoPreviewStart);
+  const demoPreviewSource = firstTimeFlowsSource.slice(demoPreviewStart, demoPreviewEnd);
+  assert.doesNotMatch(
+    demoPreviewSource,
+    /agent-home-flow__preview-context|What this agent can do|Configured agent/,
+    'the preview should no longer render a separate configured-agent summary card',
+  );
+  assert.match(
+    demoPreviewSource,
+    /agent-home-flow__test-actions[\s\S]*?Start with this agent/,
+    'the template adoption action should live inside the remaining test panel',
+  );
+  assert.match(
+    homeStyles,
+    /\.agent-home-flow__preview-layout\s*\{[^}]*grid-template-columns:\s*minmax\(0, 1fr\);/,
+    'the remaining preview panel should use the full available width',
+  );
+  assert.match(
+    homeStyles,
+    /\.agent-home-flow--demo-preview \.agent-home-flow__title-group\s*\{[^}]*gap:\s*8px;[^}]*font-family:\s*['"]Momentum['"]/,
+    'the preview title group should share the ready-made template header rhythm',
+  );
+  assert.match(
+    homeStyles,
+    /\.agent-home-flow--demo-preview \.agent-home-flow__header h1\s*\{[^}]*margin:\s*0;[^}]*font-size:\s*32px;[^}]*font-weight:\s*400;[^}]*line-height:\s*40px;/,
+    'the preview heading should match the ready-made template heading typography',
+  );
+  assert.match(
+    homeStyles,
+    /\.agent-home-flow__voice-widget \.agent-home-flow__voice-avatar\s*\{[^}]*align-self:\s*center;[^}]*justify-content:\s*center;[^}]*margin-inline:\s*auto;/,
+    'the voice preview icon should stay centered in its panel',
   );
   assert.match(
     homeStyles,
@@ -1976,6 +2072,16 @@ test('Agent Home and start-from-scratch remove free composers without dead-endin
     evaSource,
     /isChoiceOnlyFreeformIntake[\s\S]*?<PresetIntakeAnswer[\s\S]*?onSubmit=\{handleFamilyIntakeAnswer\}/,
     'non-option questions need an inline suggested answer and edit path',
+  );
+  assert.match(
+    evaSource,
+    /const resumePromptIndex = resumeMessage[\s\S]*?previous\.findLastIndex[\s\S]*?messagesWithoutSuspendedPrompt = resumePromptIndex >= 0[\s\S]*?previous\.filter\(\(_, index\) => index !== resumePromptIndex\)/,
+    'editing a previous answer should temporarily remove the unanswered current prompt',
+  );
+  assert.match(
+    evaSource,
+    /aria-label="Edit agent name"[\s\S]*?familyIntakeEditingQuestion[\s\S]*?Cancel editing[\s\S]*?Use edited name/,
+    'the name editor should place Cancel editing beside its primary confirmation action',
   );
   assert.match(
     evaSource,
@@ -2965,15 +3071,31 @@ test('Control Hub landing routes AI Agent Studio into the adaptive Home experien
   assert.match(sidebarSource, /\{\s*path:\s*['"]\/new-agent['"],\s*label:\s*['"]Home['"]/);
   assert.doesNotMatch(sidebarSource, /\{\s*path:\s*['"]\/['"],\s*label:\s*['"](?:Dashboard|Home)['"]/);
   assert.match(sidebarSource, /item\.path === ['"]\/new-agent['"][\s\S]*?setVariation\(['"]dashboard['"]\)/);
+  assert.match(
+    sidebarSource,
+    /item\.path === ['"]\/new-agent['"] \|\| item\.path === ['"]\/agents['"][\s\S]*?setVariation\(['"]dashboard['"]\)/,
+    'AI Agents should explicitly select the current dashboard list instead of reusing a legacy variation',
+  );
   assert.match(sidebarSource, /navigate\(item\.path\)/);
   assert.match(
     sidebarSource,
-    /agentsRouteShowsBuildingExperience[\s\S]*?location\.pathname === '\/agents\/eva-canvas'[\s\S]*?location\.pathname === '\/agents'[\s\S]*?variation !== 'dashboard' \|\| !hasFamilyAgents/,
+    /agentsRouteShowsBuildingExperience[\s\S]*?location\.pathname === '\/agents\/eva-canvas'[\s\S]*?location\.pathname === '\/agents'[\s\S]*?variation !== 'dashboard'/,
     'creation experiences rendered under an agents route should still belong to Home navigation',
   );
   assert.match(
     sidebarSource,
     /item\.path === '\/new-agent'[\s\S]*?isNewAgentActive[\s\S]*?item\.path === '\/agents'[\s\S]*?!agentsRouteShowsBuildingExperience && isActive\(item\.path\)/,
     'Home and AI Agents should never both be selected while the builder is active',
+  );
+  const agentsSource = readSource('../../pages/Agents.tsx');
+  assert.match(
+    agentsSource,
+    /if \(variation === ['"]dashboard['"]\) \{\s*variationView = <EvaAgentsTable \/>;/,
+    'the current dashboard variation should always render the AI Agents list, including its empty state',
+  );
+  assert.doesNotMatch(
+    agentsSource,
+    /hasFamilyAgents[\s\S]*?<EvaChatExperience/,
+    'the AI Agents list should not fall back to the legacy creation landing when it is empty',
   );
 });

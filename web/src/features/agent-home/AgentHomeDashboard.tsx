@@ -222,7 +222,13 @@ function FirstTimeHome({
             </strong>
           </div>
           <div className="eva-landing-task-card__divider" />
-          <ul className="eva-landing-task-card__agent-types">
+          <h3 id="agent-home-agent-types-title" className="eva-landing-task-card__agent-types-title">
+            Available agent types
+          </h3>
+          <ul
+            className="eva-landing-task-card__agent-types"
+            aria-labelledby="agent-home-agent-types-title"
+          >
             {FIRST_TIME_AGENT_TYPES.map(agentType => (
               <li key={agentType.label}>
                 <div className="eva-landing-task-card__agent-type-content">

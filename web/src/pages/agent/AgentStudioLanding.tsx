@@ -7,11 +7,11 @@ import {
   type KeyboardEvent as ReactKeyboardEvent,
   type ReactNode,
 } from 'react';
-import { Link, Navigate, useNavigate, useParams } from 'react-router-dom';
+import { Link, Navigate, useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { IconProvider, StaticChip, ThemeProvider } from '@momentum-design/components/react';
 import { ThemeModeProvider, useThemeMode } from '../../app/ThemeContext';
 import { publicAssetUrl } from '../../app/publicAsset';
-import { AgentHeader } from '../../components/agents';
+import { AgentHeader, AgentHeaderActions } from '../../components/agents';
 import {
   Badge,
   Banner,
@@ -65,7 +65,6 @@ import {
 } from '../../features/eva/evaFormConfig';
 import { EVA_TEMPLATES } from '../../features/eva/evaTemplates';
 import {
-  FAMILY_METADATA,
   type AgentDraft,
   type AgentFamily,
   type AgentLifecycle,
@@ -259,13 +258,6 @@ type PreviewSocketMessage = {
   };
 };
 
-const lifecycleLabel = (lifecycle: AgentLifecycle, version: number) => {
-  if (lifecycle === 'draft') return 'Draft';
-  if (lifecycle === 'published') return `Published version ${version}`;
-  if (lifecycle === 'deployed') return `Version ${version} deployed`;
-  return `Version ${version} live`;
-};
-
 const lifecycleStatusLabel = (lifecycle: AgentLifecycle) => {
   if (lifecycle === 'draft') return 'Draft';
   if (lifecycle === 'published') return 'Published';
@@ -441,12 +433,14 @@ function getPreviewTimeLabel() {
 export default function AgentStudioLanding() {
   const { agentId } = useParams();
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
   const {
     agents,
     agentDrafts,
     publishAgentVersion,
     selectAgent,
     showToast,
+    toggleAgentPublish,
   } = useApp();
   const { setVariation } = useDesignVariation();
   const agent = agentId ? agents[agentId] : null;
@@ -516,6 +510,14 @@ export default function AgentStudioLanding() {
   }, [agentId]);
 
   useEffect(() => {
+    if (searchParams.get('preview') !== '1') return;
+    setPreviewWidgetOpen(true);
+    const nextParams = new URLSearchParams(searchParams);
+    nextParams.delete('preview');
+    setSearchParams(nextParams, { replace: true });
+  }, [searchParams, setSearchParams]);
+
+  useEffect(() => {
     if (!agentId) return;
     const nextState = readOverviewReleaseState(agentId, currentAgentRevision);
     setOverviewReleaseState(nextState);
@@ -532,8 +534,6 @@ export default function AgentStudioLanding() {
   const agentDraft = agentDrafts[agent.id];
   const family = agentDraft?.family ?? agent.family;
   const lifecycle = agentDraft?.lifecycle ?? agent.lifecycle ?? 'draft';
-  const version = agentDraft?.version ?? agent.version ?? 1;
-  const familyName = family ? FAMILY_METADATA[family].label : 'Agent family not assigned';
   const summary = getConfiguredSummary(agent, agentDraft);
   const existingEvaSession = readEvaSessionState();
   const phoneNumberDeferred = Boolean(
@@ -793,12 +793,23 @@ export default function AgentStudioLanding() {
     !hasUnsavedConfigurationChanges
     && Boolean(currentAgentRevision)
     && overviewReleaseState.pendingPublishRevision === currentAgentRevision;
-  const releaseActionLabel = hasSavedConfigurationReadyToPublish ? 'Publish' : 'Save';
+  const releaseActionLabel = lifecycle === 'published'
+    ? 'Unpublish'
+    : hasSavedConfigurationReadyToPublish
+      ? 'Publish'
+      : 'Save';
   const releaseActionDisabled =
-    !hasUnsavedConfigurationChanges
+    lifecycle !== 'published'
+    && !hasUnsavedConfigurationChanges
     && !hasSavedConfigurationReadyToPublish;
 
   const handleReleaseAction = () => {
+    if (lifecycle === 'published') {
+      toggleAgentPublish(agent.id);
+      showToast('Agent unpublished successfully', 'success');
+      return;
+    }
+
     if (hasUnsavedConfigurationChanges) {
       const nextState = {
         savedRevision: currentAgentRevision,
@@ -1165,30 +1176,14 @@ export default function AgentStudioLanding() {
   );
 
   const headerActions = (
-    <div
-      className="agent-studio-header-actions"
-      role="group"
-      aria-label={`${familyName}; ${lifecycleLabel(lifecycle, version)}; version actions`}
-    >
-      <Button
-        variant="secondary"
-        aria-haspopup="dialog"
-        aria-expanded={previewWidgetOpen}
-        aria-pressed={previewWidgetOpen}
-        onClick={() => setPreviewWidgetOpen(open => !open)}
-      >
-        <Icon name="play" weight="bold" size="xs" />
-        Preview
-      </Button>
-      <Button
-        type="button"
-        disabled={releaseActionDisabled}
-        aria-label={`${releaseActionLabel} ${agent.name}`}
-        onClick={handleReleaseAction}
-      >
-        {releaseActionLabel}
-      </Button>
-    </div>
+    <AgentHeaderActions
+      agent={agent}
+      onPreview={() => setPreviewWidgetOpen(open => !open)}
+      releaseLabel={releaseActionLabel}
+      releaseDisabled={releaseActionDisabled}
+      releaseVariant={lifecycle === 'published' ? 'secondary' : 'primary'}
+      onRelease={handleReleaseAction}
+    />
   );
   const sessionsDeepLink = previewSessionId
     ? `/agents/${agent.id}/sessions?sessionId=${encodeURIComponent(previewSessionId)}&source=preview`
