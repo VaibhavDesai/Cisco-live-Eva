@@ -1149,18 +1149,22 @@ export const createDraftFromProposal = (
 
 /**
  * Creates the smallest valid draft shell for the direct "Start from scratch"
- * path. Only the user-provided name is configured; the remaining capability
- * states stay untouched so the agent Overview can guide setup from zero.
+ * path. The name and optional goal seed a useful instruction draft; the
+ * remaining capability states stay untouched so the Agent Overview can guide
+ * setup from there.
  */
 export const createBlankAgentDraft = (
   name: string,
   family: AgentFamily = 'contact_center',
+  goal = '',
 ): AgentDraft => createDraftFromProposal(family, {
   name: name.trim(),
-  purpose: '',
-  description: '',
+  purpose: goal.trim(),
+  description: goal.trim(),
   language: FAMILY_METADATA[family].defaultLanguage,
-  instructions: '',
+  instructions: goal.trim()
+    ? `#### Role & Identity\nYou are ${name.trim()}, an AI agent for the organization.\n\n#### Primary Goals\n${goal.trim()}\n\n#### Guardrails\nUse approved information, protect confidential data, and escalate requests that require a person.\n\n#### Output Rules\nBe clear, helpful, and transparent about what you can do.`
+    : '',
 });
 
 /**

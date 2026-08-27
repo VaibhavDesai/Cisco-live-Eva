@@ -3497,10 +3497,6 @@ fieldset.eva-family-structured-step {
   height: 550px;
 }
 
-.agent-home__focus-card--review-open.card {
-  height: auto;
-}
-
 .agent-home__focus-review-body {
   display: flex;
   min-height: 0;
@@ -3580,27 +3576,6 @@ fieldset.eva-family-structured-step {
 
 .agent-home__focus-review-list button:hover {
   background: rgba(255, 255, 255, 0.08);
-}
-
-.agent-home__focus-review-footer {
-  display: flex;
-  align-items: center;
-  justify-content: flex-end;
-  margin-top: auto;
-}
-
-.agent-home__focus-review-footer .agent-home__focus-pill {
-  min-width: 173px;
-}
-
-.agent-home__focus-card--review .agent-home__workflow {
-  padding: 0;
-  border: 0;
-  background: transparent;
-}
-
-.agent-home__focus-card--review .agent-home__workflow-heading {
-  align-items: flex-start;
 }
 
 .agent-home--recurring .agent-home__composer {

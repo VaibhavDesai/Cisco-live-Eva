@@ -1943,18 +1943,18 @@ test('Agent Home and start-from-scratch remove free composers without dead-endin
   );
   assert.match(
     quickCreateSource,
-    /createBlankAgentDraft\(trimmedName, family\)[\s\S]*?navigate\(`\/agents\/\$\{encodeURIComponent\(agent\.id\)\}`\)[\s\S]*?title="Start from scratch"[\s\S]*?label="Agent name"/,
-    'the direct scratch modal should collect only a name, persist an empty draft, and open its Overview',
+    /createBlankAgentDraft\(trimmedName, family, trimmedGoal\)[\s\S]*?navigate\(`\/agents\/\$\{encodeURIComponent\(agent\.id\)\}`\)[\s\S]*?title="Start from scratch"[\s\S]*?label="Agent name"[\s\S]*?label="Agent goal"/,
+    'the direct scratch modal should collect a name and goal, prepare the initial instructions, and open its Overview',
   );
   assert.doesNotMatch(
     quickCreateSource,
-    /Textarea|Knowledge|agent type|selectedKbs|step, setStep/,
+    /Knowledge|agent type|selectedKbs|step, setStep/,
     'the direct scratch modal should not become another setup wizard',
   );
   assert.match(
     modelSource,
-    /createBlankAgentDraft[\s\S]*?purpose: ''[\s\S]*?description: ''[\s\S]*?instructions: ''/,
-    'the direct scratch helper should leave configuration content empty',
+    /createBlankAgentDraft[\s\S]*?purpose: goal\.trim\(\)[\s\S]*?description: goal\.trim\(\)[\s\S]*?#### Primary Goals/,
+    'the direct scratch helper should use the supplied goal to prepare the initial instructions',
   );
   assert.match(
     evaSource,

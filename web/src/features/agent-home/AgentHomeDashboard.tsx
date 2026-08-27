@@ -839,13 +839,7 @@ function RecurringBuildAgentCard({
 function RecurringReviewCard({
   snapshot,
   onAction,
-  workflowOpen,
-  onToggleWorkflow,
-  onOpenWorkflowActivity,
-}: Pick<AgentHomeDashboardProps, 'snapshot' | 'onAction' | 'onOpenWorkflowActivity'> & {
-  workflowOpen: boolean;
-  onToggleWorkflow: () => void;
-}) {
+}: Pick<AgentHomeDashboardProps, 'snapshot' | 'onAction'>) {
   const attentionItem = snapshot.attentionItems[0];
   const reviewSessionAction = attentionItem?.actions.find(action => action.id === 'review-session')
     ?? snapshot.actions.find(action => action.id === 'review-session');
@@ -888,7 +882,7 @@ function RecurringReviewCard({
   return (
     <Card
       id="agent-home-attention-detail"
-      className={`agent-home__focus-card agent-home__focus-card--review${workflowOpen ? ' agent-home__focus-card--review-open' : ''}`}
+      className="agent-home__focus-card agent-home__focus-card--review"
       role="region"
       aria-label="Recommended for review details"
     >
@@ -898,42 +892,25 @@ function RecurringReviewCard({
         titleId="agent-home-review-title"
       />
       <div className="agent-home__focus-review-body">
-        {workflowOpen && snapshot.workflowActivity.length > 0 ? (
-          <WorkflowTimeline snapshot={snapshot} onOpenWorkflowActivity={onOpenWorkflowActivity} />
-        ) : (
-          <ol className="agent-home__focus-review-list" aria-labelledby="agent-home-review-title">
-            {recommendations.map(item => (
-              <li key={item.id}>
-                <span className="agent-home__focus-review-icon" aria-hidden="true">
-                  <Icon name={item.icon} weight="regular" size={16} />
-                </span>
-                <div>
-                  <strong title={item.title}>{item.title}</strong>
-                  <p>{item.description}</p>
-                  {item.action && (
-                    <button type="button" onClick={() => onAction(item.action)}>
-                      {item.actionLabel}
-                      <Icon name="arrow-right" weight="regular" size={16} />
-                    </button>
-                  )}
-                </div>
-              </li>
-            ))}
-          </ol>
-        )}
-        <div className="agent-home__focus-review-footer">
-          <button
-            type="button"
-            className="agent-home__focus-pill agent-home__focus-pill--ai"
-            aria-expanded={workflowOpen}
-            aria-controls="agent-home-workflow"
-            disabled={snapshot.workflowActivity.length === 0}
-            onClick={onToggleWorkflow}
-          >
-            <Icon name="sparkle" weight="regular" size={16} />
-            {workflowOpen ? 'Hide workflow' : 'Walk me through'}
-          </button>
-        </div>
+        <ol className="agent-home__focus-review-list" aria-labelledby="agent-home-review-title">
+          {recommendations.map(item => (
+            <li key={item.id}>
+              <span className="agent-home__focus-review-icon" aria-hidden="true">
+                <Icon name={item.icon} weight="regular" size={16} />
+              </span>
+              <div>
+                <strong title={item.title}>{item.title}</strong>
+                <p>{item.description}</p>
+                {item.action && (
+                  <button type="button" onClick={() => onAction(item.action)}>
+                    {item.actionLabel}
+                    <Icon name="arrow-right" weight="regular" size={16} />
+                  </button>
+                )}
+              </div>
+            </li>
+          ))}
+        </ol>
       </div>
     </Card>
   );
@@ -1095,8 +1072,7 @@ function RecurringHome(props: Pick<
 > & {
   onBrowseTemplates: () => void;
 }) {
-  const { snapshot, onAction, onStartFromScratch, onOpenWorkflowActivity, onBrowseTemplates } = props;
-  const [workflowOpen, setWorkflowOpen] = useState(false);
+  const { snapshot, onAction, onStartFromScratch, onBrowseTemplates } = props;
 
   if (snapshot.dataState.loading) {
     return (
@@ -1142,9 +1118,6 @@ function RecurringHome(props: Pick<
           <RecurringReviewCard
             snapshot={snapshot}
             onAction={onAction}
-            workflowOpen={workflowOpen}
-            onToggleWorkflow={() => setWorkflowOpen(open => !open)}
-            onOpenWorkflowActivity={onOpenWorkflowActivity}
           />
         </div>
       </section>

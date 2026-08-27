@@ -199,17 +199,22 @@ test('builds deterministic, use-case-aware starter proposals', () => {
   );
 });
 
-test('creates a name-only draft shell for the direct start-from-scratch path', () => {
-  const draft = createBlankAgentDraft('  My empty agent  ');
+test('creates a goal-led draft for the direct start-from-scratch path', () => {
+  const draft = createBlankAgentDraft(
+    '  My support agent  ',
+    'contact_center',
+    '  Help employees resolve approved access and device issues.  ',
+  );
 
   assert.equal(draft.family, 'contact_center');
-  assert.equal(draft.basics.name, 'My empty agent');
-  assert.equal(draft.basics.purpose, '');
-  assert.equal(draft.basics.description, '');
-  assert.equal(draft.instructions.content, '');
-  assert.equal(draft.instructions.applied, false);
-  assert.equal(draft.familyConfiguration.profile.progress, 'in_progress');
-  assert.equal(draft.familyConfiguration.instructions.progress, 'not_started');
+  assert.equal(draft.basics.name, 'My support agent');
+  assert.equal(draft.basics.purpose, 'Help employees resolve approved access and device issues.');
+  assert.equal(draft.basics.description, 'Help employees resolve approved access and device issues.');
+  assert.match(draft.instructions.content, /You are My support agent/);
+  assert.match(draft.instructions.content, /Help employees resolve approved access and device issues/);
+  assert.equal(draft.instructions.applied, true);
+  assert.equal(draft.familyConfiguration.profile.progress, 'configured');
+  assert.equal(draft.familyConfiguration.instructions.progress, 'configured');
   assert.equal(draft.lifecycle, 'draft');
 });
 
