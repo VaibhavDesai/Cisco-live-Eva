@@ -5,7 +5,7 @@ import Badge from '../../components/shared/Badge';
 import { Card } from '../../components/shared/Card';
 import { Divider } from '../../components/shared/Decorator';
 import { ListItem } from '../../components/shared/ListItem';
-import Tabs, { Tab, TabPanel } from '../../components/shared/Tabs';
+import SearchField from '../../components/shared/SearchField';
 import {
   AiFooter,
   Input,
@@ -13,6 +13,9 @@ import {
   ModalBody,
   ModalFooter,
   ModalHeader,
+  Popover,
+  Tab,
+  Tabs,
   Textarea,
 } from '../../components/shared';
 import Spinner from '../../components/shared/Spinner';
@@ -27,18 +30,15 @@ import readyMadeArrowRightIcon from '../../assets/figma-ready-made/arrow-right.s
 import readyMadeCheckCircleIcon from '../../assets/figma-ready-made/check-circle.svg';
 import readyMadeCloudMutedIcon from '../../assets/figma-ready-made/cloud-muted.svg';
 import readyMadeHandshakeIcon from '../../assets/figma-ready-made/handshake.svg';
-import readyMadeHeadsetIcon from '../../assets/figma-ready-made/headset.svg';
 import readyMadeHelpdeskIcon from '../../assets/figma-ready-made/helpdesk.svg';
-import readyMadeNewManagerIcon from '../../assets/figma-ready-made/new-manager.svg';
 import readyMadePanelHeader from '../../assets/figma-ready-made/panel-header.png';
 import readyMadePrivacyIcon from '../../assets/figma-ready-made/privacy-circle.svg';
 import readyMadeSalesforceIcon from '../../assets/figma-ready-made/salesforce-color.svg';
 import readyMadeShieldIcon from '../../assets/figma-ready-made/shield.svg';
 import readyMadeSparkleIcon from '../../assets/figma-ready-made/sparkle.svg';
-import readyMadeStethoscopeIcon from '../../assets/figma-ready-made/stethoscope.svg';
-import readyMadeToolsIcon from '../../assets/figma-ready-made/tools.svg';
 import readyMadeTrackingIcon from '../../assets/figma-ready-made/tracking.svg';
 import { Icon } from '../../icons';
+import type { IconName } from '../../icons/types';
 import type { AgentFamily } from '../agent-creation/agentCreationModel';
 import {
   AGENT_HOME_DEMO_OPTIONS,
@@ -121,9 +121,124 @@ type ReadyMadeDisplayOption = {
   name: string;
   useCase: string;
   industry: string;
-  iconAsset?: string;
   template: AgentHomeTemplateDefinition;
 };
+
+type AgentTypeFilter = 'all' | AgentFamily;
+type TemplateFilterTab = 'agent-type' | 'industry';
+type TemplateFilterOption<T extends string = string> = {
+  value: T;
+  label: string;
+  count?: number;
+  icon?: IconName;
+};
+
+function TemplateFilterMenu({
+  agentTypeOptions,
+  agentTypeValue,
+  onAgentTypeChange,
+  industryOptions,
+  industryValue,
+  onIndustryChange,
+  onClear,
+}: {
+  agentTypeOptions: readonly TemplateFilterOption<AgentTypeFilter>[];
+  agentTypeValue: AgentTypeFilter;
+  onAgentTypeChange: (value: AgentTypeFilter) => void;
+  industryOptions: readonly TemplateFilterOption[];
+  industryValue: string;
+  onIndustryChange: (value: string) => void;
+  onClear: () => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const [activeTab, setActiveTab] = useState<TemplateFilterTab>('agent-type');
+  const anchorRef = useRef<HTMLSpanElement>(null);
+  const hasActiveFilters = agentTypeValue !== 'all' || industryValue !== 'all';
+  const activeOptions = activeTab === 'agent-type' ? agentTypeOptions : industryOptions;
+  const activeValue = activeTab === 'agent-type' ? agentTypeValue : industryValue;
+
+  const selectOption = (value: string) => {
+    if (activeTab === 'agent-type') onAgentTypeChange(value as AgentTypeFilter);
+    else onIndustryChange(value);
+  };
+
+  return (
+    <>
+      <span ref={anchorRef} className="agent-home-flow__filter-trigger-anchor">
+        <UpliftMomentumButton
+          type="button"
+          variant="secondary"
+          color="default"
+          size="sm"
+          className={`agent-home-flow__filter-trigger${hasActiveFilters ? ' active' : ''}`}
+          aria-label={`Filter templates${hasActiveFilters ? ', filters applied' : ''}`}
+          aria-haspopup="dialog"
+          aria-expanded={open}
+          onClick={() => setOpen(current => !current)}
+        >
+          <Icon name="filter" weight="bold" size={16} />
+        </UpliftMomentumButton>
+      </span>
+      <Popover
+        open={open}
+        onOpenChange={setOpen}
+        anchorRef={anchorRef}
+        placement="bottom-end"
+        className="agent-home-flow__filter-popover"
+        aria-label="Filter templates"
+      >
+        <Tabs variant="line" aria-label="Template filter category">
+          <Tab
+            id="agent-home-filter-agent-type-tab"
+            active={activeTab === 'agent-type'}
+            aria-controls="agent-home-filter-panel"
+            onClick={() => setActiveTab('agent-type')}
+          >
+            Agent type
+          </Tab>
+          <Tab
+            id="agent-home-filter-industry-tab"
+            active={activeTab === 'industry'}
+            aria-controls="agent-home-filter-panel"
+            onClick={() => setActiveTab('industry')}
+          >
+            Industry
+          </Tab>
+        </Tabs>
+        <div
+          id="agent-home-filter-panel"
+          className="agent-home-flow__filter-options"
+          role="tabpanel"
+          aria-labelledby={activeTab === 'agent-type'
+            ? 'agent-home-filter-agent-type-tab'
+            : 'agent-home-filter-industry-tab'}
+        >
+          {activeOptions.map(option => (
+            <button
+              key={option.value}
+              type="button"
+              className={`agent-home-flow__filter-option${activeValue === option.value ? ' active' : ''}`}
+              aria-pressed={activeValue === option.value}
+              onClick={() => selectOption(option.value)}
+            >
+              <span className="agent-home-flow__filter-option-icon" aria-hidden="true">
+                {option.icon && <Icon name={option.icon} weight="regular" size={16} />}
+              </span>
+              <span>{option.label}</span>
+              {typeof option.count === 'number' && <small>{option.count}</small>}
+              {activeValue === option.value && <Icon name="check" weight="bold" size={16} />}
+            </button>
+          ))}
+        </div>
+        {hasActiveFilters && (
+          <button type="button" className="agent-home-flow__filter-clear" onClick={onClear}>
+            Clear filters
+          </button>
+        )}
+      </Popover>
+    </>
+  );
+}
 
 const READY_MADE_CONTACT_CENTER_ROWS: ReadonlyArray<Omit<ReadyMadeDisplayOption, 'template'>> = [
   {
@@ -132,7 +247,6 @@ const READY_MADE_CONTACT_CENTER_ROWS: ReadonlyArray<Omit<ReadyMadeDisplayOption,
     name: 'CX concierge',
     useCase: 'Answers, resolution, and contextual handoff',
     industry: 'Customer service',
-    iconAsset: readyMadeHeadsetIcon,
   },
   {
     key: 'contact_center:technical-support',
@@ -140,7 +254,6 @@ const READY_MADE_CONTACT_CENTER_ROWS: ReadonlyArray<Omit<ReadyMadeDisplayOption,
     name: 'Technical support concierge',
     useCase: 'Troubleshooting, service status, and escalations',
     industry: 'Customer service',
-    iconAsset: readyMadeToolsIcon,
   },
   {
     key: 'contact_center:reservation-scheduler',
@@ -148,7 +261,6 @@ const READY_MADE_CONTACT_CENTER_ROWS: ReadonlyArray<Omit<ReadyMadeDisplayOption,
     name: 'Reservation book & schedule agent',
     useCase: 'Reservations, scheduling, and confirmation',
     industry: 'Customer service',
-    iconAsset: readyMadeApplicationIcon,
   },
   {
     key: 'contact_center:order-management',
@@ -156,7 +268,6 @@ const READY_MADE_CONTACT_CENTER_ROWS: ReadonlyArray<Omit<ReadyMadeDisplayOption,
     name: 'Order management concierge',
     useCase: 'Order status, delivery, and returns',
     industry: 'Commerce',
-    iconAsset: readyMadeNewManagerIcon,
   },
   {
     key: 'contact_center:returns-exchanges',
@@ -164,7 +275,6 @@ const READY_MADE_CONTACT_CENTER_ROWS: ReadonlyArray<Omit<ReadyMadeDisplayOption,
     name: 'Returns and exchanges concierge',
     useCase: 'Return eligibility, exchanges, and next steps',
     industry: 'Commerce',
-    iconAsset: readyMadeTrackingIcon,
   },
   {
     key: 'contact_center:product-discovery',
@@ -172,7 +282,6 @@ const READY_MADE_CONTACT_CENTER_ROWS: ReadonlyArray<Omit<ReadyMadeDisplayOption,
     name: 'Product discovery assistant',
     useCase: 'Personalized recommendations, comparisons, and wish lists',
     industry: 'Commerce',
-    iconAsset: readyMadeHandshakeIcon,
   },
   {
     key: 'contact_center:patient-care',
@@ -180,7 +289,6 @@ const READY_MADE_CONTACT_CENTER_ROWS: ReadonlyArray<Omit<ReadyMadeDisplayOption,
     name: 'Patient care navigator',
     useCase: 'Appointment scheduling, benefits inquiry, and care coordination',
     industry: 'Healthcare',
-    iconAsset: readyMadeHandshakeIcon,
   },
   {
     key: 'contact_center:clinical-intake',
@@ -188,7 +296,6 @@ const READY_MADE_CONTACT_CENTER_ROWS: ReadonlyArray<Omit<ReadyMadeDisplayOption,
     name: 'Clinical intake assistant',
     useCase: 'Symptom triage, prior authorization, and provider matching',
     industry: 'Healthcare',
-    iconAsset: readyMadeStethoscopeIcon,
   },
 ];
 
@@ -217,71 +324,31 @@ function OptionList({
   options,
   selectedKey,
   onSelect,
-  label,
+  labelledBy,
 }: {
   options: readonly ReadyMadeDisplayOption[];
   selectedKey: string;
   onSelect: (option: ReadyMadeDisplayOption) => void;
-  label: string;
+  labelledBy: string;
 }) {
-  const industryGroups = options.reduce<Array<{
-    industry: string;
-    templates: ReadyMadeDisplayOption[];
-  }>>((groups, option) => {
-    const currentGroup = groups.find(group => group.industry === option.industry);
-    if (currentGroup) {
-      currentGroup.templates.push(option);
-      return groups;
-    }
-
-    groups.push({ industry: option.industry, templates: [option] });
-    return groups;
-  }, []);
-
   return (
-    <div className="agent-home-flow__option-list" role="listbox" aria-label={label}>
-      {industryGroups.map((group, groupIndex) => {
-        const headingId = `agent-home-industry-${group.templates[0].key.replace(/[^a-z0-9]+/gi, '-')}`;
-
-        return (
-          <div key={group.industry} className="agent-home-flow__industry-block">
-            <section
-              className="agent-home-flow__industry-group"
-              aria-labelledby={headingId}
-            >
-              <h3 id={headingId}>{group.industry}</h3>
-              <div className="agent-home-flow__industry-options">
-                {group.templates.map(option => (
-                  <ListItem
-                    key={option.key}
-                    className="agent-home-flow__option"
-                    active={selectedKey === option.key}
-                    role="option"
-                    aria-label={`${option.name}. ${option.useCase}`}
-                    aria-selected={selectedKey === option.key}
-                    onClick={() => onSelect(option)}
-                    leading={(
-                      <span className="agent-home-flow__option-icon" aria-hidden="true">
-                        {option.iconAsset ? (
-                          <img src={option.iconAsset} alt="" />
-                        ) : (
-                          <Icon name={option.template.icon} weight="regular" size={20} />
-                        )}
-                      </span>
-                    )}
-                    secondaryLabel={option.useCase}
-                  >
-                    {option.name}
-                  </ListItem>
-                ))}
-              </div>
-            </section>
-            {groupIndex < industryGroups.length - 1 && (
-              <Divider variant="gradient" className="agent-home-flow__industry-divider" aria-hidden="true" />
-            )}
-          </div>
-        );
-      })}
+    <div className="agent-home-flow__option-list">
+      <div className="agent-home-flow__template-options" role="listbox" aria-labelledby={labelledBy}>
+        {options.map(option => (
+          <ListItem
+            key={option.key}
+            className="agent-home-flow__option"
+            active={selectedKey === option.key}
+            role="option"
+            aria-label={`${option.name}. ${option.useCase}`}
+            aria-selected={selectedKey === option.key}
+            onClick={() => onSelect(option)}
+            secondaryLabel={option.useCase}
+          >
+            {option.name}
+          </ListItem>
+        ))}
+      </div>
     </div>
   );
 }
@@ -436,12 +503,8 @@ function PresetDefaults({ option }: { option: AgentHomeTemplateDefinition }) {
           <dd>{getAgentHomePreviewChannelLabel(option.previewChannel)}</dd>
         </div>
         <div>
-          <dt>{option.responseStyleLabel}</dt>
-          <dd>{option.responseStyle}</dd>
-        </div>
-        <div>
           <dt>AI Engine</dt>
-          <dd><ReadyMadeChip label="Webex AI Pro 1.0" /></dd>
+          <dd>Webex AI Pro 1.0</dd>
         </div>
       </dl>
       <div className="agent-home-flow__parameter-stack">
@@ -635,41 +698,93 @@ function TemplateFlow({
   initialTemplateId: AgentHomeTemplateId;
   onPreview: (templateId: AgentHomeTemplateId) => void;
 }) {
-  const initialFamily = getAgentHomeTemplate(initialTemplateId)?.family
-    ?? AGENT_HOME_TEMPLATE_FAMILIES[0].id;
-  const [activeFamily, setActiveFamily] = useState<AgentFamily>(initialFamily);
   const [setupTemplateId, setSetupTemplateId] = useState<AgentHomeTemplateId | null>(null);
-  const [selectedByFamily, setSelectedByFamily] = useState<Record<AgentFamily, AgentHomeTemplateId>>(() => ({
-    calling: initialFamily === 'calling'
-      ? initialTemplateId
-      : getAgentHomeTemplatesForFamily('calling')[0].id,
-    contact_center: initialFamily === 'contact_center'
-      ? initialTemplateId
-      : 'contact_center:technical-support',
-    internal_assistant: initialFamily === 'internal_assistant'
-      ? initialTemplateId
-      : getAgentHomeTemplatesForFamily('internal_assistant')[0].id,
-  }));
-  const options = getAgentHomeTemplatesForFamily(activeFamily);
-  const displayOptions = getReadyMadeDisplayOptions(activeFamily, options);
-  const selectedId = selectedByFamily[activeFamily];
+  const [selectedId, setSelectedId] = useState<AgentHomeTemplateId>(initialTemplateId);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [agentTypeFilter, setAgentTypeFilter] = useState<AgentTypeFilter>('all');
+  const [industryFilter, setIndustryFilter] = useState('all');
+  const allDisplayOptions = useMemo(
+    () => AGENT_HOME_TEMPLATE_FAMILIES.flatMap(agentFamily => getReadyMadeDisplayOptions(
+      agentFamily.id,
+      getAgentHomeTemplatesForFamily(agentFamily.id),
+    )),
+    [],
+  );
+  const agentFamilyLabels = useMemo(
+    () => new Map(AGENT_HOME_TEMPLATE_FAMILIES.map(agentFamily => [agentFamily.id, agentFamily.label])),
+    [],
+  );
+  const agentTypeOptions = useMemo(() => [
+    {
+      value: 'all' as const,
+      label: 'All agent types',
+      count: allDisplayOptions.length,
+      icon: 'filter' as const,
+    },
+    ...AGENT_HOME_TEMPLATE_FAMILIES.map(agentFamily => ({
+      value: agentFamily.id,
+      label: agentFamily.label,
+      count: allDisplayOptions.filter(candidate => candidate.template.family === agentFamily.id).length,
+      icon: agentFamily.icon,
+    })),
+  ], [allDisplayOptions]);
+  const optionsForAgentType = useMemo(
+    () => agentTypeFilter === 'all'
+      ? allDisplayOptions
+      : allDisplayOptions.filter(candidate => candidate.template.family === agentTypeFilter),
+    [agentTypeFilter, allDisplayOptions],
+  );
+  const industryOptions = useMemo(() => {
+    const industries = [...new Set(optionsForAgentType.map(candidate => candidate.industry))];
+    return [
+      { value: 'all', label: 'All industries', count: optionsForAgentType.length },
+      ...industries.map(industry => ({
+        value: industry,
+        label: industry,
+        count: optionsForAgentType.filter(candidate => candidate.industry === industry).length,
+      })),
+    ];
+  }, [optionsForAgentType]);
+  const displayOptions = useMemo(() => {
+    const normalizedQuery = searchQuery.trim().toLowerCase();
+    return optionsForAgentType.filter(candidate => {
+      if (industryFilter !== 'all' && candidate.industry !== industryFilter) return false;
+      if (!normalizedQuery) return true;
+      const familyLabel = agentFamilyLabels.get(candidate.template.family) ?? '';
+      return [candidate.name, candidate.useCase, candidate.industry, familyLabel]
+        .some(value => value.toLowerCase().includes(normalizedQuery));
+    });
+  }, [agentFamilyLabels, industryFilter, optionsForAgentType, searchQuery]);
   const selectedDisplayOption = displayOptions.find(candidate => candidate.templateId === selectedId)
     ?? displayOptions[0];
-  const option = selectedDisplayOption?.template ?? getAgentHomeTemplate(selectedId) ?? options[0];
+  const option = selectedDisplayOption?.template;
   const setupOption = setupTemplateId ? getAgentHomeTemplate(setupTemplateId) : undefined;
-  const channelLabel = getAgentHomePreviewChannelLabel(option.previewChannel);
-  const activeFamilyLabel = AGENT_HOME_TEMPLATE_FAMILIES.find(
-    candidate => candidate.id === activeFamily,
-  )?.label ?? 'Agent';
+  const channelLabel = option ? getAgentHomePreviewChannelLabel(option.previewChannel) : '';
 
   const handleSelect = (displayOption: ReadyMadeDisplayOption) => {
-    setSelectedByFamily(current => ({ ...current, [activeFamily]: displayOption.templateId }));
+    setSelectedId(displayOption.templateId);
   };
 
-  const handleFamilyChange = (nextFamily: AgentFamily) => {
-    if (AGENT_HOME_TEMPLATE_FAMILIES.some(candidate => candidate.id === nextFamily)) {
-      setActiveFamily(nextFamily);
+  const handleAgentTypeChange = (nextAgentType: AgentTypeFilter) => {
+    setAgentTypeFilter(nextAgentType);
+    if (industryFilter !== 'all') {
+      const industryStillAvailable = allDisplayOptions.some(candidate => (
+        (nextAgentType === 'all' || candidate.template.family === nextAgentType)
+        && candidate.industry === industryFilter
+      ));
+      if (!industryStillAvailable) setIndustryFilter('all');
     }
+  };
+
+  const clearDiscoveryFilters = () => {
+    setSearchQuery('');
+    setAgentTypeFilter('all');
+    setIndustryFilter('all');
+  };
+
+  const clearTemplateFilters = () => {
+    setAgentTypeFilter('all');
+    setIndustryFilter('all');
   };
 
   return (
@@ -695,45 +810,45 @@ function TemplateFlow({
             </UpliftMomentumButton>
           )}
         />
-        <div className="agent-home-flow__type-tabs-row">
-          <Tabs
-            variant="line"
-            className="agent-home-flow__type-tabs"
-            aria-label="Agent type"
-          >
-            {AGENT_HOME_TEMPLATE_FAMILIES.map(agentFamily => (
-              <Tab
-                key={agentFamily.id}
-                id={`agent-home-template-tab-${agentFamily.id}`}
-                active={activeFamily === agentFamily.id}
-                aria-controls={`agent-home-template-panel-${agentFamily.id}`}
-                className="agent-home-flow__type-tab"
-                icon={agentFamily.icon}
-                onClick={() => handleFamilyChange(agentFamily.id)}
-              >
-                {agentFamily.label}
-              </Tab>
-            ))}
-          </Tabs>
-        </div>
       </div>
-      <div className="agent-home-flow__layout">
-        <div className="agent-home-flow__template-sidebar">
-          <TabPanel
-            active
-            id={`agent-home-template-panel-${activeFamily}`}
-            aria-labelledby={`agent-home-template-tab-${activeFamily}`}
-            className="agent-home-flow__tabpanel"
-          >
+      {option ? (
+        <div className="agent-home-flow__layout">
+          <div className="agent-home-flow__template-sidebar">
+            <div className="agent-home-flow__selector-header">
+              <h3 id="agent-home-all-templates-title">All templates</h3>
+              <div
+                className="agent-home-flow__discovery-toolbar"
+                role="search"
+                aria-label="Find ready-made agents"
+              >
+                <SearchField
+                  className="agent-home-flow__template-search"
+                  label="Search"
+                  placeholder="Search templates"
+                  value={searchQuery}
+                  onChange={setSearchQuery}
+                />
+                <TemplateFilterMenu
+                  agentTypeOptions={agentTypeOptions}
+                  agentTypeValue={agentTypeFilter}
+                  onAgentTypeChange={handleAgentTypeChange}
+                  industryOptions={industryOptions}
+                  industryValue={industryFilter}
+                  onIndustryChange={setIndustryFilter}
+                  onClear={clearTemplateFilters}
+                />
+              </div>
+            </div>
+            <div className="agent-home-flow__tabpanel">
             <OptionList
               options={displayOptions}
               selectedKey={selectedId}
               onSelect={handleSelect}
-              label={`${activeFamilyLabel} templates`}
+              labelledBy="agent-home-all-templates-title"
             />
-          </TabPanel>
-        </div>
-        <Card className="agent-home-flow__detail" aria-live="polite">
+            </div>
+          </div>
+          <Card className="agent-home-flow__detail" aria-live="polite">
           <div className="agent-home-flow__detail-heading">
             <img
               className="agent-home-flow__detail-heading-art"
@@ -762,7 +877,6 @@ function TemplateFlow({
                 onClick={() => setSetupTemplateId(option.id)}
               >
                 Use this template
-                <img src={readyMadeArrowRightIcon} alt="" aria-hidden="true" />
               </Button>
             </div>
           </div>
@@ -771,8 +885,17 @@ function TemplateFlow({
             <Divider variant="gradient" className="agent-home-flow__detail-divider" aria-hidden="true" />
             <PresetDefaults option={option} />
           </div>
-        </Card>
-      </div>
+          </Card>
+        </div>
+      ) : (
+        <div className="agent-home-flow__empty" role="status">
+          <h2>No ready-made agents found</h2>
+          <p>Try a different search or filter.</p>
+          <Button type="button" variant="secondary" size="sm" onClick={clearDiscoveryFilters}>
+            Clear search and filters
+          </Button>
+        </div>
+      )}
       {setupTemplateId && setupOption && (
         <TemplateSetupDialog
           key={setupTemplateId}

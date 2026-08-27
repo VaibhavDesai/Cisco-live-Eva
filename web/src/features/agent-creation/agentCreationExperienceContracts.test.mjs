@@ -1917,10 +1917,90 @@ test('Agent Home and start-from-scratch remove free composers without dead-endin
     /titleAction\?: ReactNode[\s\S]*?agent-home-flow__title-row[\s\S]*?titleAction=\{\([\s\S]*?<UpliftMomentumButton[\s\S]*?variant="secondary"[\s\S]*?size="sm"[\s\S]*?className="agent-home-flow__create-from-scratch"[\s\S]*?disabled=\{!onCreateFromScratch\}[\s\S]*?onClick=\{onCreateFromScratch\}[\s\S]*?Create from scratch/,
     'the ready-made heading should expose an accessible secondary Momentum action for the existing scratch flow',
   );
+  assert.doesNotMatch(
+    firstTimeFlowsSource,
+    /agent-home-flow__type-tabs/,
+    'the ready-made catalog should not use agent-family tabs',
+  );
+  assert.match(
+    firstTimeFlowsSource,
+    /className="agent-home-flow__template-sidebar"[\s\S]*?<h3 id="agent-home-all-templates-title">All templates<\/h3>[\s\S]*?className="agent-home-flow__discovery-toolbar"[\s\S]*?<SearchField[\s\S]*?placeholder="Search templates"[\s\S]*?<TemplateFilterMenu/,
+    'the template sidebar should place search and one consolidated filter menu beneath All templates',
+  );
+  assert.match(
+    firstTimeFlowsSource,
+    /label: 'All agent types',[\s\S]*?icon: 'filter'[\s\S]*?AGENT_HOME_TEMPLATE_FAMILIES\.map[\s\S]*?icon: agentFamily\.icon/,
+    'the agent type filter should assign an appropriate icon to every option',
+  );
+  assert.match(
+    firstTimeFlowsSource,
+    /<UpliftMomentumButton[\s\S]*?className=\{`agent-home-flow__filter-trigger[\s\S]*?aria-label=\{`Filter templates[\s\S]*?<Icon name="filter"[\s\S]*?<Popover[\s\S]*?<Tabs variant="line"[\s\S]*?>\s*Agent type[\s\S]*?>\s*Industry/,
+    'the consolidated filter should use a native Momentum icon-only trigger and a two-tab popover',
+  );
+  assert.match(
+    firstTimeFlowsSource,
+    /candidate\.name, candidate\.useCase, candidate\.industry, familyLabel[\s\S]*?No ready-made agents found[\s\S]*?Clear search and filters/,
+    'catalog discovery should search useful metadata and provide a recoverable empty state',
+  );
+  assert.match(
+    firstTimeFlowsSource,
+    /className="agent-home-flow__template-options" role="listbox" aria-labelledby=\{labelledBy\}/,
+    'the template selector should present one mixed list under an All templates title',
+  );
+  assert.doesNotMatch(
+    firstTimeFlowsSource,
+    /industryGroups|agent-home-flow__industry-divider/,
+    'the template selector should not group or divide templates by industry',
+  );
   assert.match(
     homeStyles,
     /\.agent-home-flow--templates \.agent-home-flow__title-row\s*\{[^}]*display:\s*grid;[^}]*grid-template-columns:\s*minmax\(0, 1fr\) auto;[^}]*gap:\s*16px;[\s\S]*?\.agent-home-flow--templates \.agent-home-flow__create-from-scratch\s*\{[^}]*margin-top:\s*4px;/,
     'the desktop header action should align to the title line without squeezing the title copy',
+  );
+  assert.match(
+    homeStyles,
+    /\.agent-home-flow--templates \.agent-home-flow__discovery-toolbar\s*\{[^}]*grid-template-columns:\s*minmax\(0, 1fr\) 32px;[^}]*gap:\s*8px;/,
+    'the sidebar discovery row should reserve one square filter slot beside the search field',
+  );
+  assert.match(
+    homeStyles,
+    /\.agent-home-flow__filter-popover\.popover-surface\s*\{[^}]*background:\s*#1c1c1e;[^}]*--fill-0:\s*#1c1c1e;/,
+    'the template filter popover should use a fully opaque dark surface',
+  );
+  assert.match(
+    homeStyles,
+    /\.agent-home-flow--templates \.agent-home-flow__filter-trigger::part\(button-text\)\s*\{[^}]*display:\s*inline-flex;[^}]*align-items:\s*center;[^}]*justify-content:\s*center;/,
+    'the Momentum filter icon should be centered within the button content part',
+  );
+  assert.match(
+    homeStyles,
+    /\.agent-home-flow--templates \.agent-home-flow__discovery-toolbar \.form-label\s*\{[^}]*position:\s*absolute;[^}]*clip:\s*rect\(0, 0, 0, 0\);/,
+    'discovery control titles should be visually hidden while remaining available as accessible labels',
+  );
+  assert.match(
+    homeStyles,
+    /\.agent-home--flow \.agent-home__scroll-region\s*\{[^}]*overflow-y:\s*hidden;[\s\S]*?\.agent-home-flow--templates\s*\{[^}]*height:\s*100%;[^}]*min-height:\s*0;[\s\S]*?\.agent-home-flow--templates \.agent-home-flow__tabpanel\s*\{[^}]*overflow-y:\s*auto;/,
+    'the ready-made selector should fill the route height and own its vertical scrolling',
+  );
+  assert.doesNotMatch(
+    firstTimeFlowsSource,
+    /<dt>\{option\.responseStyleLabel\}<\/dt>/,
+    'ready-made agent preset defaults should omit response style',
+  );
+  assert.match(
+    firstTimeFlowsSource,
+    /<dt>AI Engine<\/dt>\s*<dd>Webex AI Pro 1\.0<\/dd>/,
+    'the AI engine preset should render as plain text instead of a chip',
+  );
+  assert.doesNotMatch(
+    firstTimeFlowsSource,
+    /Use this template\s*<img/,
+    'the Use this template action should not render a trailing icon',
+  );
+  assert.match(
+    homeStyles,
+    /\.agent-home-flow--templates \.agent-home-flow__preset-grid\s*\{[^}]*grid-template-columns:\s*repeat\(3, minmax\(0, 1fr\)\);/,
+    'the remaining preset defaults should share a balanced three-column grid',
   );
   assert.match(
     homeStyles,
@@ -1959,8 +2039,38 @@ test('Agent Home and start-from-scratch remove free composers without dead-endin
   );
   assert.match(
     homeStyles,
-    /\.agent-home-flow--templates \.agent-home-flow__industry-group > h3\s*\{[^}]*padding-bottom:\s*4px;/,
-    'ready-made template category headings should keep a 4px separation from their first option',
+    /\.agent-home-flow--templates \.agent-home-flow__selector-header > h3\s*\{[^}]*padding:\s*0 8px;/,
+    'the All templates heading should align with the mixed list',
+  );
+  assert.match(
+    homeStyles,
+    /\.agent-home-flow--templates \.agent-home-flow__layout\s*\{[^}]*grid-template-columns:\s*336px minmax\(0, 1fr\);/,
+    'the desktop template selector should use the wider side-panel measure',
+  );
+  assert.match(
+    homeStyles,
+    /\.agent-home--flow \.agent-home__scroll-region\s*\{[^}]*padding:\s*32px 0 0;/,
+    'the ready-made flow should align to both horizontal edges and the bottom without container padding',
+  );
+  assert.doesNotMatch(
+    firstTimeFlowsSource,
+    /className="agent-home-flow__option-icon"/,
+    'ready-made template options should not render leading icons',
+  );
+  assert.match(
+    homeStyles,
+    /\.agent-home-flow--templates \.agent-home-flow__detail\.card\s*\{[^}]*rgba\(7, 10, 18, 0\.2\)[^}]*--mds-color-theme-background-glass-normal[^}]*backdrop-filter:\s*blur\(24px\) saturate\(125%\)/,
+    'the ready-made template detail panel should use the shared translucent glass surface',
+  );
+  assert.match(
+    homeStyles,
+    /\.agent-home-flow--templates \.agent-home-flow__detail-heading\s*\{[^}]*background:\s*transparent;[\s\S]*?\.agent-home-flow--templates \.agent-home-flow__detail-heading-art\s*\{[^}]*opacity:\s*0;/,
+    'the ready-made detail header should stay transparent over the glass panel',
+  );
+  assert.match(
+    homeStyles,
+    /\.agent-home-flow--templates \.agent-home-flow__defaults\s*\{[^}]*gap:\s*24px;[\s\S]*?\.agent-home-flow--templates \.agent-home-flow__parameter-stack\s*\{[^}]*gap:\s*24px;/,
+    'the preset defaults subsections should use a clear 24px vertical rhythm',
   );
   assert.match(
     homeStyles,
