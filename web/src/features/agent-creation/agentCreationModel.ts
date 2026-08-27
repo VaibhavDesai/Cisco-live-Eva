@@ -1148,6 +1148,22 @@ export const createDraftFromProposal = (
 };
 
 /**
+ * Creates the smallest valid draft shell for the direct "Start from scratch"
+ * path. Only the user-provided name is configured; the remaining capability
+ * states stay untouched so the agent Overview can guide setup from zero.
+ */
+export const createBlankAgentDraft = (
+  name: string,
+  family: AgentFamily = 'contact_center',
+): AgentDraft => createDraftFromProposal(family, {
+  name: name.trim(),
+  purpose: '',
+  description: '',
+  language: FAMILY_METADATA[family].defaultLanguage,
+  instructions: '',
+});
+
+/**
  * Applies the structured preset-intake answers before the draft is persisted.
  * Keeping this pure makes the first saved Draft independent of asynchronous
  * React state updates in the conversational experience.

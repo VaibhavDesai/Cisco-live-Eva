@@ -5,6 +5,7 @@ import Sidebar from '../../products/ai-agent-studio/components/Sidebar';
 import AiAssistantPanel from '../../products/ai-agent-studio/components/AiAssistantPanel';
 import { useToast } from '../shared/Toast';
 import CreateAgentModal from '../agents/CreateAgentModal';
+import QuickCreateAgentModal from '../agents/QuickCreateAgentModal';
 import { useApp } from '../../contexts/AppContext';
 import { ReviewOverlay } from '../../features/review';
 
@@ -25,7 +26,12 @@ function LegacyToastBridge() {
 }
 
 export default function MainLayout() {
-  const { isCreateModalOpen, setIsCreateModalOpen } = useApp();
+  const {
+    isCreateModalOpen,
+    setIsCreateModalOpen,
+    isQuickCreateModalOpen,
+    setIsQuickCreateModalOpen,
+  } = useApp();
   const [sidebarCollapsed, setSidebarCollapsed] = useState(true);
   const [agentPanelOpen, setAgentPanelOpen] = useState(true);
   const [aiPanelOpen, setAiPanelOpen] = useState(false);
@@ -88,6 +94,9 @@ export default function MainLayout() {
       <LegacyToastBridge />
       {isCreateModalOpen && (
         <CreateAgentModal onClose={() => setIsCreateModalOpen(false)} />
+      )}
+      {isQuickCreateModalOpen && (
+        <QuickCreateAgentModal onClose={() => setIsQuickCreateModalOpen(false)} />
       )}
       <ReviewOverlay />
     </>

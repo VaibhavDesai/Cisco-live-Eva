@@ -223,7 +223,7 @@ type FormBuilderPhase = 'landing' | 'planning' | 'waterfall' | 'complete';
 export default function EvaFormBuilder() {
   const navigate = useNavigate();
   const location = useLocation();
-  const { addAgent, aiEngines, setIsCreateModalOpen, showToast } = useApp();
+  const { addAgent, aiEngines, setIsQuickCreateModalOpen, showToast } = useApp();
   const { setVariation } = useDesignVariation();
 
   const restoredRef = useRef<EvaSessionState | null>(null);
@@ -941,12 +941,10 @@ export default function EvaFormBuilder() {
     navigate(canvasPath);
   };
 
-  /* "Start from scratch" landing button — opens the global Create
-     Agent modal so the user can name a fresh agent and configure it
-     without going through Eva's template waterfall. Mirrors the same
-     entry point used by the +Create Agent buttons elsewhere. */
+  /* "Start from scratch" opens the name-only quick-create modal. The
+     full Create Agent wizard remains available to its existing entry points. */
   const handleStartFromScratch = () => {
-    setIsCreateModalOpen(true);
+    setIsQuickCreateModalOpen(true);
   };
 
   /* "Existing agent" landing button — switches the design variation to
@@ -1290,8 +1288,8 @@ export default function EvaFormBuilder() {
 
               {/* Secondary entry points for users who don't want to use
                   Eva's template flow at all — either pick up an agent
-                  they've already created, or open the bare Create Agent
-                  modal to start with no preset. The divider's "Or" label
+                  they've already created, or create a name-only empty draft.
+                  The divider's "Or" label
                   visually separates these from the templated path above. */}
               <div className="eva-form-builder__landing-divider" role="separator" aria-label="or">
                 <span className="eva-form-builder__landing-divider-line" aria-hidden="true" />

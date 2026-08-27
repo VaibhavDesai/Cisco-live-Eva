@@ -39,34 +39,6 @@ const noticeType = (tone: AgentHomeSnapshot['dataState']['notices'][number]['ton
   tone === 'danger' ? 'error' : tone
 );
 
-interface FirstTimeAgentTypeVisual {
-  label: string;
-  tagline: string;
-  description: string;
-  icon: IconName;
-}
-
-const FIRST_TIME_AGENT_TYPES: FirstTimeAgentTypeVisual[] = [
-  {
-    label: 'Customer service agent',
-    tagline: 'serves customers across channels',
-    description: 'Handles customer service across voice, digital, and video, with built-in AI Defense, testing, and insights.',
-    icon: 'concierge',
-  },
-  {
-    label: 'Phone receptionist',
-    tagline: 'answers and routes calls',
-    description: 'Greets callers, answers common questions, schedules appointments, and routes calls to the right team.',
-    icon: 'phone',
-  },
-  {
-    label: 'Employee assistant',
-    tagline: 'helps employees get work done',
-    description: 'Uses company knowledge and tools while respecting each employee’s permissions and security policies.',
-    icon: 'bot-customer-assistant',
-  },
-];
-
 const RECURRING_HEALTH_ROWS = [
   { id: 'vip-reservation', label: 'EAGLE Green VIP Reservation', value: 95.8, tone: 'healthy' },
   { id: 'servicenow', label: 'EAGLE Green ServiceNow agent', value: 93.6, tone: 'healthy' },
@@ -122,6 +94,7 @@ export interface AgentHomeDashboardProps {
   onFirstTimeFlowChange?: (flow: AgentHomeFirstTimeFlow) => void;
   snapshot: AgentHomeSnapshot;
   onAction: (action: AgentHomeAction) => void;
+  onStartFromScratch: () => void;
   onUseTemplate: (templateId: AgentHomeTemplateId, setup?: AgentHomeTemplateSetup) => void;
   onSendDemoMessage: (
     templateId: AgentHomeTemplateId,
@@ -155,9 +128,10 @@ function HomeNotices({ snapshot }: { snapshot: AgentHomeSnapshot }) {
 function FirstTimeHome({
   snapshot,
   onAction,
+  onStartFromScratch,
   creationAudience = 'first-time',
   existingAgents = [],
-}: Pick<AgentHomeDashboardProps, 'snapshot' | 'onAction' | 'creationAudience' | 'existingAgents'>) {
+}: Pick<AgentHomeDashboardProps, 'snapshot' | 'onAction' | 'onStartFromScratch' | 'creationAudience' | 'existingAgents'>) {
   const primaryAction = snapshot.actions[0];
   const permissionMissing = snapshot.dataState.permission === 'missing';
   const isRecurringCreation = creationAudience === 'recurring';
@@ -221,50 +195,39 @@ function FirstTimeHome({
                 : 'Let\'s build your first agent — it only takes 2 minutes'}
             </strong>
           </div>
-          <div className="eva-landing-task-card__divider" />
-          <h3 id="agent-home-agent-types-title" className="eva-landing-task-card__agent-types-title">
-            Available agent types
-          </h3>
-          <ul
-            className="eva-landing-task-card__agent-types"
-            aria-labelledby="agent-home-agent-types-title"
-          >
-            {FIRST_TIME_AGENT_TYPES.map(agentType => (
-              <li key={agentType.label}>
-                <div className="eva-landing-task-card__agent-type-content">
-                  <span className="eva-landing-task-card__agent-type-icon" aria-hidden="true">
-                    <Icon name={agentType.icon} weight="regular" size={16} />
-                  </span>
-                  <div className="eva-landing-task-card__agent-type-copy">
-                    <div className="eva-landing-task-card__agent-type-heading">
-                      <strong>{agentType.label}</strong>
-                      <span>{agentType.tagline}</span>
-                    </div>
-                    <p>{agentType.description}</p>
-                  </div>
-                </div>
-              </li>
-            ))}
-          </ul>
-          <div className="eva-landing-task-card__footer-actions">
-            {chooseTemplate && (
-              <button
-                type="button"
-                className="eva-landing-task-card__action eva-landing-task-card__action--primary"
-                onClick={() => onAction(chooseTemplate.action)}
-              >
-                Browse template
-              </button>
-            )}
-            {startWithAssistant && (
-              <button
-                type="button"
-                className="eva-landing-task-card__action"
-                onClick={() => onAction(startWithAssistant.action)}
-              >
-                Start from scratch
-              </button>
-            )}
+          <p className="eva-landing-task-card__start-options-intro">
+            Create AI agents for your teams, customers, and collaboration services.
+          </p>
+          <div className="eva-landing-task-card__start-options" role="group" aria-label="Agent creation options">
+            <button
+              type="button"
+              className="eva-landing-task-card__start-option eva-landing-task-card__start-option--primary"
+              disabled={!chooseTemplate}
+              onClick={() => chooseTemplate && onAction(chooseTemplate.action)}
+            >
+              <Icon name="guide" weight="bold" size={20} aria-hidden="true" />
+              <span>Browse template</span>
+              <small>Start with a ready-made agent</small>
+            </button>
+            <button
+              type="button"
+              className="eva-landing-task-card__start-option"
+              disabled={!startWithAssistant}
+              onClick={() => startWithAssistant && onAction(startWithAssistant.action)}
+            >
+              <Icon name="magic-pen" weight="bold" size={20} aria-hidden="true" />
+              <span>Create with guide</span>
+              <small>Build with guided setup</small>
+            </button>
+            <button
+              type="button"
+              className="eva-landing-task-card__start-option"
+              onClick={onStartFromScratch}
+            >
+              <Icon name="plus" weight="bold" size={20} aria-hidden="true" />
+              <span>Start from scratch</span>
+              <small>Create an empty agent</small>
+            </button>
           </div>
         </Card>
 
@@ -837,15 +800,12 @@ function RecurringUsageCard({
 }
 
 function RecurringBuildAgentCard({
-  snapshot,
-  onAction,
   onBrowseTemplates,
-}: Pick<AgentHomeDashboardProps, 'snapshot' | 'onAction'> & {
+  onStartFromScratch,
+}: {
   onBrowseTemplates: () => void;
+  onStartFromScratch: () => void;
 }) {
-  const createAction = snapshot.actions.find(action => action.id === 'create-agent')
-    ?? snapshot.actions.find(action => action.intent === 'start-intake');
-
   return (
     <Card className="agent-home__focus-card agent-home__focus-card--build-agent">
       <RecurringFocusCardHeader
@@ -866,8 +826,7 @@ function RecurringBuildAgentCard({
           <button
             type="button"
             className="agent-home__focus-pill"
-            disabled={!createAction}
-            onClick={() => createAction && onAction(createAction)}
+            onClick={onStartFromScratch}
           >
             From Scratch
           </button>
@@ -1132,11 +1091,11 @@ function Fleet({
 
 function RecurringHome(props: Pick<
   AgentHomeDashboardProps,
-  'snapshot' | 'onAction' | 'onOpenFleetAgent' | 'onOpenWorkflowActivity'
+  'snapshot' | 'onAction' | 'onStartFromScratch' | 'onOpenFleetAgent' | 'onOpenWorkflowActivity'
 > & {
   onBrowseTemplates: () => void;
 }) {
-  const { snapshot, onAction, onOpenWorkflowActivity, onBrowseTemplates } = props;
+  const { snapshot, onAction, onStartFromScratch, onOpenWorkflowActivity, onBrowseTemplates } = props;
   const [workflowOpen, setWorkflowOpen] = useState(false);
 
   if (snapshot.dataState.loading) {
@@ -1175,9 +1134,8 @@ function RecurringHome(props: Pick<
             <div className="agent-home__focus-bottom-cards">
               <RecurringUsageCard snapshot={snapshot} onAction={onAction} />
               <RecurringBuildAgentCard
-                snapshot={snapshot}
-                onAction={onAction}
                 onBrowseTemplates={onBrowseTemplates}
+                onStartFromScratch={onStartFromScratch}
               />
             </div>
           </div>
@@ -1201,6 +1159,7 @@ export default function AgentHomeDashboard({
   onFirstTimeFlowChange,
   snapshot,
   onAction,
+  onStartFromScratch,
   onUseTemplate,
   onSendDemoMessage,
   onOpenFleetAgent,
@@ -1258,7 +1217,7 @@ export default function AgentHomeDashboard({
             flow={firstTimeFlow}
             onFlowChange={changeFirstTimeFlow}
             onCreateFromScratch={createFromScratchAction
-              ? () => onAction(createFromScratchAction)
+              ? onStartFromScratch
               : undefined}
             onUseTemplate={onUseTemplate}
             onSendDemoMessage={onSendDemoMessage}
@@ -1285,6 +1244,7 @@ export default function AgentHomeDashboard({
                 creationAudience={creationAudience}
                 existingAgents={existingAgents}
                 onAction={handleFirstTimeAction}
+                onStartFromScratch={onStartFromScratch}
               />
             </div>
           ) : showingFigmaRecurringHome ? (
@@ -1305,6 +1265,7 @@ export default function AgentHomeDashboard({
               <RecurringHome
                 snapshot={snapshot}
                 onAction={onAction}
+                onStartFromScratch={onStartFromScratch}
                 onBrowseTemplates={() => changeFirstTimeFlow('templates')}
                 onOpenFleetAgent={onOpenFleetAgent}
                 onOpenWorkflowActivity={onOpenWorkflowActivity}
@@ -1330,6 +1291,7 @@ export default function AgentHomeDashboard({
                 creationAudience={creationAudience}
                 existingAgents={existingAgents}
                 onAction={handleFirstTimeAction}
+                onStartFromScratch={onStartFromScratch}
               />
             </>
           )

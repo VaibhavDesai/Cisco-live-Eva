@@ -56,6 +56,20 @@ export interface AgentHomeTemplateDemo {
   prompts: readonly [string, string, string];
 }
 
+export interface AgentHomeTemplateWorkflowStep {
+  label: string;
+  actions?: readonly string[];
+}
+
+export interface AgentHomeTemplateWorkflowBranch {
+  branches: readonly AgentHomeTemplateWorkflowStep[];
+}
+
+export interface AgentHomeTemplateWorkflowDiagram {
+  layout: 'tree';
+  stages: readonly (AgentHomeTemplateWorkflowStep | AgentHomeTemplateWorkflowBranch)[];
+}
+
 export interface AgentHomeTemplateDefinition {
   id: AgentHomeTemplateId;
   family: AgentFamily;
@@ -63,7 +77,8 @@ export interface AgentHomeTemplateDefinition {
   industry: string;
   useCase: string;
   icon: IconName;
-  workflow: readonly [string, string, string];
+  workflow: readonly string[];
+  workflowDiagram?: AgentHomeTemplateWorkflowDiagram;
   previewChannel: AgentHomePreviewChannel;
   responseStyleLabel: 'Voice' | 'Response style';
   responseStyle: string;
@@ -360,7 +375,28 @@ export const AGENT_HOME_TEMPLATE_OPTIONS: readonly AgentHomeTemplateDefinition[]
     industry: 'Customer service',
     useCase: 'Troubleshooting, service status, and escalation',
     icon: 'headset',
-    workflow: ['Understand the issue and customer context', 'Guide approved troubleshooting steps', 'Escalate with diagnostics and conversation history'],
+    workflow: [
+      'Identify the issue and confirm the service context',
+      'Check service status and known incidents',
+      'Guide approved troubleshooting steps',
+      'Confirm the outcome and document diagnostics',
+      'Escalate with the complete conversation history',
+    ],
+    workflowDiagram: {
+      layout: 'tree',
+      stages: [
+        { label: 'Identify the issue and confirm the service context' },
+        { label: 'Check service status and known incidents', actions: ['Check service status'] },
+        {
+          branches: [
+            { label: 'Known incident: share a verified service update' },
+            { label: 'No incident: guide approved troubleshooting' },
+          ],
+        },
+        { label: 'Confirm the outcome and document diagnostics', actions: ['Create support case'] },
+        { label: 'Escalate with the complete conversation history', actions: ['Prepare specialist handoff'] },
+      ],
+    },
     previewChannel: 'both',
     responseStyleLabel: 'Response style',
     responseStyle: 'Patient and precise',

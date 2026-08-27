@@ -8,6 +8,7 @@ import {
   SKIPPED_INTAKE_ANSWER,
   applyPresetAnswersToDraft,
   buildStarterProposal,
+  createBlankAgentDraft,
   createDraftFromProposal,
   decodeVoiceDestinationAnswer,
   duplicateDraftAs,
@@ -196,6 +197,20 @@ test('builds deterministic, use-case-aware starter proposals', () => {
     'Use the billing playbook and confirm every account change.',
     'explicit Review instructions should survive proposal regeneration after an earlier step is edited',
   );
+});
+
+test('creates a name-only draft shell for the direct start-from-scratch path', () => {
+  const draft = createBlankAgentDraft('  My empty agent  ');
+
+  assert.equal(draft.family, 'contact_center');
+  assert.equal(draft.basics.name, 'My empty agent');
+  assert.equal(draft.basics.purpose, '');
+  assert.equal(draft.basics.description, '');
+  assert.equal(draft.instructions.content, '');
+  assert.equal(draft.instructions.applied, false);
+  assert.equal(draft.familyConfiguration.profile.progress, 'in_progress');
+  assert.equal(draft.familyConfiguration.instructions.progress, 'not_started');
+  assert.equal(draft.lifecycle, 'draft');
 });
 
 test('builds the Contact Center draft proposal from the verified channel, name, and greeting', () => {

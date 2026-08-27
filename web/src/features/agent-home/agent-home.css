@@ -705,8 +705,7 @@ fieldset.eva-family-structured-step {
 }
 
 .agent-home-flow__detail-heading h2,
-.agent-home-flow__preview-context-heading h2,
-.agent-home-flow__test-header h2 {
+.agent-home-flow__preview-context-heading h2 {
   margin: 8px 0 4px;
   color: var(--text-primary);
   font-size: var(--font-size-heading-small, 18px);
@@ -1076,8 +1075,7 @@ fieldset.eva-family-structured-step {
   gap: 12px;
 }
 
-.agent-home-flow__preview-context-heading h2,
-.agent-home-flow__test-header h2 {
+.agent-home-flow__preview-context-heading h2 {
   margin-top: 2px;
 }
 
@@ -1130,15 +1128,6 @@ fieldset.eva-family-structured-step {
   flex-direction: column;
   padding: 0;
   overflow: hidden;
-}
-
-.agent-home-flow__test-header {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 16px;
-  padding: 18px 20px;
-  border-bottom: 1px solid color-mix(in srgb, var(--border-color) 58%, transparent);
 }
 
 .agent-home-flow__test-status {
@@ -2424,42 +2413,13 @@ fieldset.eva-family-structured-step {
     var(--mds-color-theme-background-glass-normal, rgba(255, 255, 255, 0.05));
   box-shadow:
     inset 0 1px 0 rgba(255, 255, 255, 0.1),
-    0 18px 40px rgba(0, 0, 0, 0.18),
-    var(--shadow-ai-special-border);
+    0 18px 40px rgba(0, 0, 0, 0.18);
   backdrop-filter: blur(24px) saturate(125%);
   -webkit-backdrop-filter: blur(24px) saturate(125%);
   color: rgba(255, 255, 255, 0.95);
   font-family: 'Inter', var(--font-family-primary);
   isolation: isolate;
   transform: none;
-}
-
-.agent-home--first-time:not(.agent-home--flow)
-  .agent-home__first-action-card--builder.eva-landing-task-card.card::before {
-  position: absolute;
-  inset: 0;
-  z-index: 0;
-  padding: var(--border-ai-special-width);
-  border-radius: inherit;
-  background: var(--border-ai-special-source);
-  background-position: 50% 50%;
-  background-size: 220% 220%;
-  content: '';
-  pointer-events: none;
-  -webkit-mask:
-    linear-gradient(#000 0 0) content-box,
-    linear-gradient(#000 0 0);
-  -webkit-mask-composite: xor;
-  mask:
-    linear-gradient(#000 0 0) content-box,
-    linear-gradient(#000 0 0);
-  mask-composite: exclude;
-}
-
-.agent-home--first-time:not(.agent-home--flow)
-  .agent-home__first-action-card--builder.eva-landing-task-card.card > * {
-  position: relative;
-  z-index: 1;
 }
 
 /* Returning users enter the same creation tools without onboarding emphasis.
@@ -2635,9 +2595,9 @@ fieldset.eva-family-structured-step {
 .agent-home--first-time:not(.agent-home--flow) .eva-landing-task-card__header > strong {
   min-width: 0;
   font-family: 'Segoe UI', var(--font-family-primary);
-  font-size: 16px;
+  font-size: 18px;
   font-weight: 700;
-  line-height: 24px;
+  line-height: 26px;
 }
 
 .agent-home--first-time:not(.agent-home--flow) .eva-landing-task-card__divider {
@@ -2645,94 +2605,108 @@ fieldset.eva-family-structured-step {
   background: rgba(255, 255, 255, 0.2);
 }
 
-.eva-landing-task-card__agent-types-title {
+.eva-landing-task-card__start-options-intro {
   width: 100%;
   margin: 0;
-  color: rgba(255, 255, 255, 0.5);
+  color: rgba(255, 255, 255, 0.74);
+  font-size: 13px;
+  font-weight: 400;
+  line-height: 20px;
+}
+
+.eva-landing-task-card__start-options {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  width: 100%;
+  flex: 1 1 auto;
+  min-height: 0;
+  gap: 12px;
+  margin: 0;
+  padding: 0;
+}
+
+.eva-landing-task-card__start-option {
+  display: flex;
+  min-width: 0;
+  min-height: 132px;
+  align-items: center;
+  justify-content: center;
+  flex-direction: column;
+  gap: 12px;
+  padding: 16px;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.04);
+  color: rgba(255, 255, 255, 0.95);
+  font-family: 'Inter', var(--font-family-primary);
+  font-size: 16px;
+  font-weight: 600;
+  line-height: 22px;
+  text-align: center;
+  cursor: pointer;
+  transition: background-color 160ms ease, border-color 160ms ease, transform 160ms ease;
+}
+
+.eva-landing-task-card__start-option:hover:not(:disabled) {
+  border-color: rgba(255, 255, 255, 0.3);
+  background: rgba(255, 255, 255, 0.09);
+}
+
+.eva-landing-task-card__start-option:focus-visible {
+  outline: 2px solid var(--accent-color);
+  outline-offset: 2px;
+}
+
+.eva-landing-task-card__start-option:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.eva-landing-task-card__start-option small {
+  color: rgba(255, 255, 255, 0.65);
   font-size: 12px;
   font-weight: 400;
   line-height: 18px;
 }
 
-.eva-landing-task-card__agent-types {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  width: 100%;
-  height: 158px;
-  flex: 0 0 158px;
-  gap: 32px;
-  margin: 0;
-  padding: 0;
-  list-style: none;
+.eva-landing-task-card__start-option--primary {
+  position: relative;
+  z-index: 0;
+  isolation: isolate;
+  border-color: transparent;
+  background: rgba(255, 255, 255, 0.04);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.12);
 }
 
-.eva-landing-task-card__agent-types > li {
-  display: flex;
-  min-width: 0;
-  height: 158px;
-  align-items: flex-start;
-  padding: 12px 0;
-  color: rgba(255, 255, 255, 0.95);
-  font-family: 'Inter', var(--font-family-primary);
-  font-weight: 400;
+.eva-landing-task-card__start-option--primary::before {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  padding: var(--border-ai-special-width);
+  border-radius: inherit;
+  background: var(--border-ai-special-source);
+  background-position: 50% 50%;
+  background-size: 220% 220%;
+  content: '';
+  pointer-events: none;
+  -webkit-mask:
+    linear-gradient(#000 0 0) content-box,
+    linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+  mask:
+    linear-gradient(#000 0 0) content-box,
+    linear-gradient(#000 0 0);
+  mask-composite: exclude;
 }
 
-.eva-landing-task-card__agent-type-content {
-  display: flex;
-  width: 100%;
-  min-width: 0;
-  align-items: flex-start;
-  gap: 10px;
-  padding-inline: 0;
+.eva-landing-task-card__start-option--primary > * {
+  position: relative;
+  z-index: 1;
 }
 
-.eva-landing-task-card__agent-type-icon {
-  display: inline-flex;
-  width: 16px;
-  height: 16px;
-  flex: 0 0 16px;
-  align-items: center;
-  justify-content: center;
-}
-
-.eva-landing-task-card__agent-type-copy {
-  display: flex;
-  min-width: 0;
-  flex: 1 1 auto;
-  flex-direction: column;
-  align-items: flex-start;
-  gap: 16px;
-}
-
-.eva-landing-task-card__agent-type-heading {
-  display: flex;
-  width: 100%;
-  min-width: 0;
-  flex-direction: column;
-  align-items: flex-start;
-}
-
-.eva-landing-task-card__agent-type-heading > strong {
-  width: 100%;
-  color: rgba(255, 255, 255, 0.95);
-  font-size: 14px;
-  font-weight: 400;
-  line-height: 20px;
-}
-
-.eva-landing-task-card__agent-type-heading > span {
-  width: 100%;
-  color: rgba(255, 255, 255, 0.7);
-  font-size: 10px;
-  line-height: 12px;
-}
-
-.eva-landing-task-card__agent-type-copy > p {
-  width: 100%;
-  margin: 0;
-  color: rgba(255, 255, 255, 0.7);
-  font-size: 12px;
-  line-height: 20px;
+.eva-landing-task-card__start-option--primary:hover:not(:disabled) {
+  border-color: transparent;
+  background: rgba(255, 255, 255, 0.09);
 }
 
 .agent-home--first-time:not(.agent-home--flow) .eva-landing-task-card__body {
@@ -2950,17 +2924,19 @@ fieldset.eva-family-structured-step {
     min-height: 321px;
   }
 
-  .eva-landing-task-card__agent-types {
+  .eva-landing-task-card__start-options {
     height: auto;
     flex-basis: auto;
     grid-template-columns: minmax(0, 1fr);
-    gap: 24px;
+    gap: 12px;
   }
 
-  .eva-landing-task-card__agent-types > li {
+  .eva-landing-task-card__start-option {
     height: auto;
-    min-height: 0;
-    padding-block: 4px;
+    min-height: 72px;
+    flex-direction: row;
+    justify-content: flex-start;
+    padding: 16px;
   }
 
   .agent-home--first-time:not(.agent-home--flow) .agent-home__composer {
@@ -4122,8 +4098,24 @@ fieldset.eva-family-structured-step {
 
 .agent-home--flow .agent-home__scroll-region > .agent-home-flow--demo-preview {
   width: 100%;
+  height: 100%;
+  min-height: 0;
   max-width: none;
   margin: 0;
+}
+
+.agent-home-flow--demo-preview .agent-home-flow__preview-layout {
+  min-height: 0;
+  flex: 1 1 auto;
+}
+
+.agent-home-flow--demo-preview .agent-home-flow__test.card {
+  height: 100%;
+  min-height: 0;
+}
+
+.agent-home-flow--demo-preview .agent-home-flow__test-thread {
+  max-height: none;
 }
 
 .agent-home-flow--templates {
@@ -4224,6 +4216,25 @@ fieldset.eva-family-structured-step {
 .agent-home-flow--templates .agent-home-flow__title-row > .agent-home-flow__title-group {
   width: auto;
   min-width: 0;
+}
+
+.agent-home-flow--demo-preview .agent-home-flow__title-row {
+  display: grid;
+  width: 100%;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: start;
+  gap: 16px;
+}
+
+.agent-home-flow--demo-preview .agent-home-flow__title-row > .agent-home-flow__title-group {
+  width: auto;
+  min-width: 0;
+}
+
+.agent-home-flow--demo-preview .agent-home-flow__test-actions {
+  align-self: start;
+  justify-self: end;
+  margin-top: 4px;
 }
 
 .agent-home-flow--templates .agent-home-flow__create-from-scratch {
@@ -4405,7 +4416,7 @@ fieldset.eva-family-structured-step {
   display: grid;
   min-height: 0;
   flex: 1 1 auto;
-  grid-template-columns: 336px minmax(0, 1fr);
+  grid-template-columns: 384px minmax(0, 1fr);
   align-items: stretch;
   gap: 24px;
   margin: 0;
@@ -4461,6 +4472,13 @@ fieldset.eva-family-structured-step {
   display: flex;
   flex-direction: column;
   gap: 8px;
+  box-sizing: border-box;
+  padding: 12px;
+  border: 0;
+  border-radius: 16px;
+  background: var(--mds-color-theme-background-glass-normal, rgba(15, 24, 42, 0.56));
+  backdrop-filter: blur(24px) saturate(125%);
+  -webkit-backdrop-filter: blur(24px) saturate(125%);
   overflow: hidden;
 }
 
@@ -4474,9 +4492,9 @@ fieldset.eva-family-structured-step {
   margin: 0;
   padding: 0 8px;
   color: rgba(255, 255, 255, 0.7);
-  font-size: 14px;
+  font-size: 16px;
   font-weight: 600;
-  line-height: 22px;
+  line-height: 24px;
 }
 
 .agent-home-flow--templates .agent-home-flow__tabpanel {
@@ -4595,7 +4613,24 @@ fieldset.eva-family-structured-step {
   color: rgba(255, 255, 255, 0.95);
 }
 
+.agent-home-flow--templates .agent-home-flow__option--contact_center .agent-home-flow__option-icon {
+  background: rgba(34, 139, 230, 0.34);
+}
+
+.agent-home-flow--templates .agent-home-flow__option--calling .agent-home-flow__option-icon {
+  background: rgba(65, 196, 173, 0.34);
+}
+
+.agent-home-flow--templates .agent-home-flow__option--internal_assistant .agent-home-flow__option-icon {
+  background: rgba(158, 111, 232, 0.34);
+}
+
 .agent-home-flow--templates .agent-home-flow__option-icon > img {
+  width: 20px;
+  height: 20px;
+}
+
+.agent-home-flow--templates .agent-home-flow__option-icon > svg {
   width: 20px;
   height: 20px;
 }
@@ -4759,11 +4794,16 @@ fieldset.eva-family-structured-step {
 }
 
 .agent-home-flow--templates .agent-home-flow__detail-body {
-  display: flex;
-  flex-direction: column;
-  gap: 24px;
+  display: grid;
+  grid-template-columns: minmax(260px, 0.8fr) minmax(0, 1.6fr);
+  gap: 40px;
   margin-top: 24px;
   padding: 0 32px;
+}
+
+.agent-home-flow--templates .agent-home-flow__workflow-column,
+.agent-home-flow--templates .agent-home-flow__defaults-column {
+  min-width: 0;
 }
 
 .agent-home-flow--templates .agent-home-flow__workflow--ready-made {
@@ -4782,16 +4822,23 @@ fieldset.eva-family-structured-step {
 }
 
 .agent-home-flow--templates .agent-home-flow__workflow--ready-made ol {
-  display: grid;
-  grid-template-columns: minmax(0, 1.8fr) 16px minmax(220px, 1fr) 16px minmax(0, 1.8fr);
-  gap: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 0;
   margin: 0;
   padding: 0;
   list-style: none;
 }
 
 .agent-home-flow--templates .agent-home-flow__workflow--ready-made li {
-  display: contents;
+  display: flex;
+  flex-direction: column;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
 }
 
 .agent-home-flow--templates .agent-home-flow__workflow-step {
@@ -4799,11 +4846,17 @@ fieldset.eva-family-structured-step {
   min-width: 0;
   min-height: 62px;
   align-items: center;
+  justify-content: center;
   gap: 12px;
   padding: 8px;
-  border: 0;
+  box-sizing: border-box;
+  width: 100%;
+  border: 1px solid var(--mds-color-theme-outline-glass-normal, rgba(255, 255, 255, 0.12));
   border-radius: 8px;
-  background: transparent;
+  background: var(--mds-color-theme-background-glass-normal, rgba(255, 255, 255, 0.05));
+  backdrop-filter: blur(16px) saturate(125%);
+  -webkit-backdrop-filter: blur(16px) saturate(125%);
+  text-align: center;
 }
 
 .agent-home-flow--templates .agent-home-flow__workflow-step > span {
@@ -4830,10 +4883,53 @@ fieldset.eva-family-structured-step {
   line-height: 22px;
 }
 
+.agent-home-flow--templates .agent-home-flow__workflow-step-content {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+}
+
+.agent-home-flow--templates .agent-home-flow__workflow-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 4px;
+}
+
+.agent-home-flow--templates .agent-home-flow__workflow-actions .agent-home-flow__ready-chip {
+  min-height: 22px;
+  padding: 1px 6px;
+  font-size: 12px;
+  line-height: 18px;
+  white-space: normal;
+}
+
+.agent-home-flow--templates .agent-home-flow__workflow-actions .agent-home-flow__ready-chip > img,
+.agent-home-flow--templates .agent-home-flow__workflow-actions .agent-home-flow__ready-chip-trailing > img {
+  width: 14px;
+  height: 14px;
+}
+
+.agent-home-flow--templates .agent-home-flow__workflow-branch-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.agent-home-flow--templates .agent-home-flow__workflow-step--branch {
+  min-height: 82px;
+  flex-direction: column;
+  gap: 6px;
+}
+
 .agent-home-flow--templates .agent-home-flow__workflow-connector {
   width: 16px;
   height: 16px;
   align-self: center;
+  margin: 6px 0;
+  transform: rotate(90deg);
 }
 
 .agent-home-flow--templates .agent-home-flow__defaults {
@@ -4953,7 +5049,7 @@ fieldset.eva-family-structured-step {
 
 @media (max-width: 1180px) {
   .agent-home-flow--templates .agent-home-flow__layout {
-    grid-template-columns: 320px minmax(0, 1fr);
+    grid-template-columns: 352px minmax(0, 1fr);
   }
 
   .agent-home-flow--templates .agent-home-flow__option.listitem.active {
@@ -4964,8 +5060,9 @@ fieldset.eva-family-structured-step {
     gap: 16px;
   }
 
-  .agent-home-flow--templates .agent-home-flow__workflow--ready-made ol {
-    grid-template-columns: minmax(0, 1.35fr) 16px minmax(180px, 1fr) 16px minmax(0, 1.35fr);
+  .agent-home-flow--templates .agent-home-flow__detail-body {
+    grid-template-columns: minmax(224px, 0.8fr) minmax(0, 1.5fr);
+    gap: 28px;
   }
 }
 
@@ -4993,6 +5090,14 @@ fieldset.eva-family-structured-step {
     min-height: 0;
     overflow: hidden;
   }
+
+  .agent-home-flow--templates .agent-home-flow__detail-body {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .agent-home-flow--templates .agent-home-flow__workflow-branch-grid {
+    max-width: 640px;
+  }
 }
 
 @media (max-width: 720px) {
@@ -5003,6 +5108,16 @@ fieldset.eva-family-structured-step {
   .agent-home-flow--templates .agent-home-flow__title-row {
     grid-template-columns: minmax(0, 1fr);
     gap: 12px;
+  }
+
+  .agent-home-flow--demo-preview .agent-home-flow__title-row {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 12px;
+  }
+
+  .agent-home-flow--demo-preview .agent-home-flow__test-actions {
+    justify-self: start;
+    margin-top: 0;
   }
 
   .agent-home-flow--templates .agent-home-flow__create-from-scratch {
@@ -5024,22 +5139,11 @@ fieldset.eva-family-structured-step {
     padding: 0 24px;
   }
 
-  .agent-home-flow--templates .agent-home-flow__workflow--ready-made ol {
-    display: flex;
-    flex-direction: column;
-    gap: 4px;
-  }
-
-  .agent-home-flow--templates .agent-home-flow__workflow--ready-made li {
-    display: flex;
-    flex-direction: column;
-  }
-
-  .agent-home-flow--templates .agent-home-flow__workflow-connector {
-    display: none;
-  }
-
   .agent-home-flow--templates .agent-home-flow__preset-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .agent-home-flow--templates .agent-home-flow__workflow-branch-grid {
+    grid-template-columns: minmax(0, 1fr);
   }
 }

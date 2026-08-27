@@ -3,7 +3,6 @@ import Button from '../../components/shared/Button';
 import { UpliftMomentumButton } from '../../components/shared/UpliftMomentumButton';
 import Badge from '../../components/shared/Badge';
 import { Card } from '../../components/shared/Card';
-import { Divider } from '../../components/shared/Decorator';
 import { ListItem } from '../../components/shared/ListItem';
 import SearchField from '../../components/shared/SearchField';
 import {
@@ -242,17 +241,17 @@ function TemplateFilterMenu({
 
 const READY_MADE_CONTACT_CENTER_ROWS: ReadonlyArray<Omit<ReadyMadeDisplayOption, 'template'>> = [
   {
-    key: 'contact_center:cx-concierge',
-    templateId: 'contact_center:cx-concierge',
-    name: 'CX concierge',
-    useCase: 'Answers, resolution, and contextual handoff',
-    industry: 'Customer service',
-  },
-  {
     key: 'contact_center:technical-support',
     templateId: 'contact_center:technical-support',
     name: 'Technical support concierge',
     useCase: 'Troubleshooting, service status, and escalations',
+    industry: 'Customer service',
+  },
+  {
+    key: 'contact_center:cx-concierge',
+    templateId: 'contact_center:cx-concierge',
+    name: 'CX concierge',
+    useCase: 'Answers, resolution, and contextual handoff',
     industry: 'Customer service',
   },
   {
@@ -334,44 +333,88 @@ function OptionList({
   return (
     <div className="agent-home-flow__option-list">
       <div className="agent-home-flow__template-options" role="listbox" aria-labelledby={labelledBy}>
-        {options.map(option => (
-          <ListItem
-            key={option.key}
-            className="agent-home-flow__option"
-            active={selectedKey === option.key}
-            role="option"
-            aria-label={`${option.name}. ${option.useCase}`}
-            aria-selected={selectedKey === option.key}
-            onClick={() => onSelect(option)}
-            secondaryLabel={option.useCase}
-          >
-            {option.name}
-          </ListItem>
-        ))}
+        {options.map(option => {
+          const family = AGENT_HOME_TEMPLATE_FAMILIES.find(item => item.id === option.template.family);
+          return (
+            <ListItem
+              key={option.key}
+              className={`agent-home-flow__option agent-home-flow__option--${option.template.family}`}
+              active={selectedKey === option.key}
+              role="option"
+              aria-label={`${option.name}. ${option.useCase}`}
+              aria-selected={selectedKey === option.key}
+              onClick={() => onSelect(option)}
+              secondaryLabel={option.useCase}
+              leading={family && (
+                <span className="agent-home-flow__option-icon" aria-hidden="true">
+                  <Icon name={family.icon} size={20} />
+                </span>
+              )}
+            >
+              {option.name}
+            </ListItem>
+          );
+        })}
       </div>
     </div>
   );
 }
 
-function ReadyMadeWorkflow({
-  steps,
-}: {
-  steps: AgentHomeTemplateDefinition['workflow'];
-}) {
+function ReadyMadeWorkflow({ option }: { option: AgentHomeTemplateDefinition }) {
+  const actions = getWorkflowActionItems(option);
+  const stages = option.workflowDiagram?.stages
+    ?? option.workflow.map((label, index) => ({
+      label,
+      actions: actions[index] ? [actions[index]] : [],
+    }));
+  const isTree = option.workflowDiagram?.layout === 'tree';
+
+  const renderStep = (
+    step: { label: string; actions?: readonly string[] },
+    number: string | number,
+    className = '',
+  ) => (
+    <div className={`agent-home-flow__workflow-step ${className}`.trim()}>
+      <span aria-hidden="true">{number}</span>
+      <div className="agent-home-flow__workflow-step-content">
+        <strong>{step.label}</strong>
+        {step.actions && step.actions.length > 0 && (
+          <div className="agent-home-flow__workflow-actions" aria-label={`Actions for step ${number}`}>
+            {step.actions.map((action, index) => (
+              <ReadyMadeChip
+                key={action}
+                label={action}
+                icon={getReadyMadeActionIcon(action, index)}
+                trailingIcon={/handoff|transfer|route|escalate/.test(action.toLowerCase())
+                  ? readyMadeCloudMutedIcon
+                  : readyMadeCheckCircleIcon}
+              />
+            ))}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+
   return (
     <section
-      className="agent-home-flow__workflow agent-home-flow__workflow--ready-made"
+      className={`agent-home-flow__workflow agent-home-flow__workflow--ready-made${isTree ? ' agent-home-flow__workflow--tree' : ''}`}
       aria-labelledby="agent-home-template-workflow-title"
     >
       <h3 id="agent-home-template-workflow-title">Workflow</h3>
       <ol>
-        {steps.map((step, index) => (
-          <li key={step}>
-            <div className="agent-home-flow__workflow-step">
-              <span aria-hidden="true">{index + 1}</span>
-              <strong>{step}</strong>
-            </div>
-            {index < steps.length - 1 && (
+        {stages.map((stage, index) => (
+          <li key={'branches' in stage ? `branch-${index}` : stage.label}>
+            {'branches' in stage ? (
+              <div className="agent-home-flow__workflow-branch-grid">
+                {stage.branches.map((branch, branchIndex) => renderStep(
+                  branch,
+                  `${index + 1}${String.fromCharCode(65 + branchIndex)}`,
+                  'agent-home-flow__workflow-step--branch',
+                ))}
+              </div>
+            ) : renderStep(stage, index + 1)}
+            {index < stages.length - 1 && (
               <img
                 className="agent-home-flow__workflow-connector"
                 src={readyMadeArrowRightIcon}
@@ -465,6 +508,11 @@ const getPresetItems = (
   capabilityIds: readonly string[],
 ) => option.presets.find(preset => capabilityIds.includes(preset.capabilityId))?.items ?? [];
 
+const getWorkflowActionItems = (option: AgentHomeTemplateDefinition) => {
+  const actions = getPresetItems(option, ['actions']);
+  return actions.length > 0 ? actions : getPresetItems(option, ['handoff']);
+};
+
 const getReadyMadeActionIcon = (action: string, index: number) => {
   const normalized = action.toLowerCase();
   if (/handoff|transfer|route|escalate|notify/.test(normalized)) return readyMadeHelpdeskIcon;
@@ -481,10 +529,7 @@ const READY_MADE_GUARDRAIL_ICONS = [
 ] as const;
 
 function PresetDefaults({ option }: { option: AgentHomeTemplateDefinition }) {
-  const configuredActions = getPresetItems(option, ['actions']);
-  const actions = configuredActions.length > 0
-    ? configuredActions
-    : getPresetItems(option, ['handoff']);
+  const actions = getWorkflowActionItems(option);
   const configuredGuardrails = getPresetItems(option, ['security']);
   const guardrails = configuredGuardrails.length > 0
     ? configuredGuardrails
@@ -517,7 +562,9 @@ function PresetDefaults({ option }: { option: AgentHomeTemplateDefinition }) {
                   key={action}
                   label={action}
                   icon={getReadyMadeActionIcon(action, index)}
-                  trailingIcon={index < 2 ? readyMadeCheckCircleIcon : readyMadeCloudMutedIcon}
+                  trailingIcon={/handoff|transfer|route|escalate/.test(action.toLowerCase())
+                    ? readyMadeCloudMutedIcon
+                    : readyMadeCheckCircleIcon}
                 />
               ))}
             </div>
@@ -881,9 +928,12 @@ function TemplateFlow({
             </div>
           </div>
           <div className="agent-home-flow__detail-body">
-            <ReadyMadeWorkflow steps={option.workflow} />
-            <Divider variant="gradient" className="agent-home-flow__detail-divider" aria-hidden="true" />
-            <PresetDefaults option={option} />
+            <div className="agent-home-flow__workflow-column">
+              <ReadyMadeWorkflow option={option} />
+            </div>
+            <div className="agent-home-flow__defaults-column">
+              <PresetDefaults option={option} />
+            </div>
           </div>
           </Card>
         </div>
@@ -1108,11 +1158,6 @@ function DemoPreview({
     ?? AGENT_HOME_DEMO_OPTIONS[0];
   const previewPrompts = getTemplatePreviewPrompts(option);
   const channelLabel = getAgentHomePreviewChannelLabel(option.previewChannel);
-  const testTitle = option.previewChannel === 'voice'
-    ? 'Talk with the voice preview'
-    : option.previewChannel === 'digital'
-      ? 'Chat with the preview'
-      : 'Test voice or digital';
   const inputPlaceholder = option.previewChannel === 'digital'
       ? 'Type a message'
       : 'Type a voice or digital request';
@@ -1165,29 +1210,25 @@ function DemoPreview({
         description={`${option.industry} · ${channelLabel} preview · ${option.useCase}`}
         backLabel={backFlow === 'templates' ? 'Back to templates' : 'Choose another demo'}
         onBack={() => onFlowChange(backFlow)}
+        titleAction={(
+          <div className="agent-home-flow__test-actions">
+            <div className="agent-home-flow__test-status">
+              <Badge variant="info">{channelLabel}</Badge>
+            </div>
+            <Button
+              type="button"
+              variant="secondary"
+              size="sm"
+              onClick={() => onUseTemplate(templateId)}
+            >
+              Start with this agent
+              <Icon name="arrow-right" weight="bold" size="sm" />
+            </Button>
+          </div>
+        )}
       />
       <div className="agent-home-flow__preview-layout">
         <Card className="agent-home-flow__test" aria-label={`Test ${option.draft.name}`}>
-          <div className="agent-home-flow__test-header">
-            <div>
-              <span className="agent-home__section-kicker">Test agent</span>
-              <h2>{testTitle}</h2>
-            </div>
-            <div className="agent-home-flow__test-actions">
-              <div className="agent-home-flow__test-status">
-                <Badge variant="info">{channelLabel}</Badge>
-              </div>
-              <Button
-                type="button"
-                variant="secondary"
-                size="sm"
-                onClick={() => onUseTemplate(templateId)}
-              >
-                Start with this agent
-                <Icon name="arrow-right" weight="bold" size="sm" />
-              </Button>
-            </div>
-          </div>
           {option.previewChannel === 'voice' ? (
             <VoicePreviewWidget
               option={option}

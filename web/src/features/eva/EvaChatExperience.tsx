@@ -1384,6 +1384,7 @@ export default function EvaChatExperience({
     aiEngines,
     selectAgent,
     setIsCreateModalOpen,
+    setIsQuickCreateModalOpen,
     showToast,
   } = useApp();
   const { setVariation } = useDesignVariation();
@@ -6725,8 +6726,7 @@ ${previewTranscript}`,
         )}
 
         {/* Secondary entry points — same pattern used on the form-builder
-            landing. The "Or" divider separates the templated/free-text
-            path above from the two direct shortcuts below. */}
+            landing. Start from scratch creates a name-only empty draft. */}
         {showLandingOptions && landingMode === 'build' && (
           <>
             <div className="eva-landing-divider" role="separator" aria-label="or">
@@ -6741,7 +6741,7 @@ ${previewTranscript}`,
                 All agents
               </Button>
 
-              <Button variant="secondary" onClick={() => setIsCreateModalOpen(true)}>
+              <Button variant="secondary" onClick={() => setIsQuickCreateModalOpen(true)}>
                 <Icon name="plus" weight="bold" size="sm" />
                 Start from scratch
               </Button>

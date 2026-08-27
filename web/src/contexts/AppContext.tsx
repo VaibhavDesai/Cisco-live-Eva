@@ -112,6 +112,8 @@ export interface AppContextValue {
   showToast: (message: string, type?: 'default' | 'info' | 'success' | 'warning' | 'error') => void;
   isCreateModalOpen: boolean;
   setIsCreateModalOpen: (open: boolean) => void;
+  isQuickCreateModalOpen: boolean;
+  setIsQuickCreateModalOpen: (open: boolean) => void;
   aiEngines: AiEngine[];
   addAiEngine: (engine: Omit<AiEngine, 'id' | 'lastUpdated' | 'type' | 'editable'>) => void;
   updateAiEngine: (id: string, data: { name: string; description: string }) => void;
@@ -613,6 +615,7 @@ export function AppProvider({ children }: AppProviderProps) {
 
   // Modal state
   const [isCreateModalOpen, setIsCreateModalOpen] = useState<boolean>(false);
+  const [isQuickCreateModalOpen, setIsQuickCreateModalOpen] = useState<boolean>(false);
 
   // Shared AI engine list
   const [aiEngines, setAiEngines] = useState<AiEngine[]>([
@@ -986,6 +989,8 @@ export function AppProvider({ children }: AppProviderProps) {
     showToast,
     isCreateModalOpen,
     setIsCreateModalOpen,
+    isQuickCreateModalOpen,
+    setIsQuickCreateModalOpen,
     aiEngines,
     addAiEngine,
     updateAiEngine,

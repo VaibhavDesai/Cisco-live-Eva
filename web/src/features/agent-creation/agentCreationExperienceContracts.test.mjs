@@ -1877,7 +1877,11 @@ test('Agent Home and start-from-scratch remove free composers without dead-endin
   const firstTimeFlowsSource = readSource('../agent-home/AgentHomeFirstTimeFlows.tsx');
   const homeStyles = readSource('../agent-home/agent-home.css');
   const evaSource = readSource('../eva/EvaChatExperience.tsx');
+  const formBuilderSource = readSource('../eva/EvaFormBuilder.tsx');
   const modelSource = readSource('./agentCreationModel.ts');
+  const appContextSource = readSource('../../contexts/AppContext.tsx');
+  const layoutSource = readSource('../../components/layout/MainLayout.tsx');
+  const quickCreateSource = readSource('../../components/agents/QuickCreateAgentModal.tsx');
   const studioStyles = readSource('../../products/ai-agent-studio/components.css');
 
   assert.match(dashboardSource, /<AgentHomeDashboard[\s\S]*?mode=\{mode\}[\s\S]*?snapshot=\{snapshot\}/);
@@ -1905,17 +1909,62 @@ test('Agent Home and start-from-scratch remove free composers without dead-endin
   assert.match(
     dashboardSource,
     /const openGuidedIntake = \(\) => \{[\s\S]*?setAgentHomeFlow\('home'\);[\s\S]*?setSurface\('guided'\);[\s\S]*?action\.intent === 'start-intake'[\s\S]*?openGuidedIntake\(\)/,
-    'every create-from-scratch entry should open the existing guided intake from a clean Agent Home state',
+    'the Create my own action should preserve the existing guided intake from a clean Agent Home state',
   );
   assert.match(
     homeSource,
-    /const createFromScratchAction = snapshot\.actions\.find\(action => action\.intent === 'start-intake'\);[\s\S]*?<AgentHomeFirstTimeFlows[\s\S]*?onCreateFromScratch=\{createFromScratchAction[\s\S]*?\? \(\) => onAction\(createFromScratchAction\)/,
-    'the ready-made flow should reuse the licensed start-intake action instead of creating a parallel route',
+    /onClick=\{\(\) => startWithAssistant && onAction\(startWithAssistant\.action\)\}[\s\S]*?Create with guide[\s\S]*?onClick=\{onStartFromScratch\}[\s\S]*?Start from scratch/,
+    'the home card should keep guided creation under Create with guide and expose a separate direct scratch action',
+  );
+  assert.match(
+    homeSource,
+    /const createFromScratchAction = snapshot\.actions\.find\(action => action\.intent === 'start-intake'\);[\s\S]*?<AgentHomeFirstTimeFlows[\s\S]*?onCreateFromScratch=\{createFromScratchAction[\s\S]*?\? onStartFromScratch[\s\S]*?: undefined\}/,
+    'the ready-made flow should expose the licensed direct scratch callback in its page header',
   );
   assert.match(
     firstTimeFlowsSource,
     /titleAction\?: ReactNode[\s\S]*?agent-home-flow__title-row[\s\S]*?titleAction=\{\([\s\S]*?<UpliftMomentumButton[\s\S]*?variant="secondary"[\s\S]*?size="sm"[\s\S]*?className="agent-home-flow__create-from-scratch"[\s\S]*?disabled=\{!onCreateFromScratch\}[\s\S]*?onClick=\{onCreateFromScratch\}[\s\S]*?Create from scratch/,
-    'the ready-made heading should expose an accessible secondary Momentum action for the existing scratch flow',
+    'the ready-made heading should expose an accessible secondary Momentum action for direct scratch creation',
+  );
+  assert.match(
+    dashboardSource,
+    /setIsQuickCreateModalOpen[\s\S]*?<AgentHomeDashboard[\s\S]*?onStartFromScratch=\{\(\) => setIsQuickCreateModalOpen\(true\)\}/,
+    'Agent Home should open the dedicated quick-create modal for Start from scratch',
+  );
+  assert.match(
+    appContextSource,
+    /isQuickCreateModalOpen[\s\S]*?setIsQuickCreateModalOpen/,
+    'quick scratch creation should have modal state independent from the full Create Agent wizard',
+  );
+  assert.match(
+    layoutSource,
+    /isQuickCreateModalOpen[\s\S]*?<QuickCreateAgentModal onClose=\{\(\) => setIsQuickCreateModalOpen\(false\)\}/,
+    'the shared layout should host the direct scratch modal',
+  );
+  assert.match(
+    quickCreateSource,
+    /createBlankAgentDraft\(trimmedName, family\)[\s\S]*?navigate\(`\/agents\/\$\{encodeURIComponent\(agent\.id\)\}`\)[\s\S]*?title="Start from scratch"[\s\S]*?label="Agent name"/,
+    'the direct scratch modal should collect only a name, persist an empty draft, and open its Overview',
+  );
+  assert.doesNotMatch(
+    quickCreateSource,
+    /Textarea|Knowledge|agent type|selectedKbs|step, setStep/,
+    'the direct scratch modal should not become another setup wizard',
+  );
+  assert.match(
+    modelSource,
+    /createBlankAgentDraft[\s\S]*?purpose: ''[\s\S]*?description: ''[\s\S]*?instructions: ''/,
+    'the direct scratch helper should leave configuration content empty',
+  );
+  assert.match(
+    evaSource,
+    /Start from scratch[\s\S]*?setIsQuickCreateModalOpen|setIsQuickCreateModalOpen\(true\)[\s\S]*?Start from scratch/,
+    'the conversational landing Start from scratch shortcut should use quick creation',
+  );
+  assert.match(
+    formBuilderSource,
+    /handleStartFromScratch[\s\S]*?setIsQuickCreateModalOpen\(true\)/,
+    'the form-builder landing Start from scratch shortcut should use quick creation',
   );
   assert.doesNotMatch(
     firstTimeFlowsSource,
@@ -2044,7 +2093,7 @@ test('Agent Home and start-from-scratch remove free composers without dead-endin
   );
   assert.match(
     homeStyles,
-    /\.agent-home-flow--templates \.agent-home-flow__layout\s*\{[^}]*grid-template-columns:\s*336px minmax\(0, 1fr\);/,
+    /\.agent-home-flow--templates \.agent-home-flow__layout\s*\{[^}]*grid-template-columns:\s*384px minmax\(0, 1fr\);/,
     'the desktop template selector should use the wider side-panel measure',
   );
   assert.match(
@@ -2052,10 +2101,10 @@ test('Agent Home and start-from-scratch remove free composers without dead-endin
     /\.agent-home--flow \.agent-home__scroll-region\s*\{[^}]*padding:\s*32px 0 0;/,
     'the ready-made flow should align to both horizontal edges and the bottom without container padding',
   );
-  assert.doesNotMatch(
+  assert.match(
     firstTimeFlowsSource,
-    /className="agent-home-flow__option-icon"/,
-    'ready-made template options should not render leading icons',
+    /AGENT_HOME_TEMPLATE_FAMILIES\.find\(item => item\.id === option\.template\.family\)[\s\S]*?className="agent-home-flow__option-icon"[\s\S]*?<Icon name=\{family\.icon\}/,
+    'ready-made template options should render the icon associated with their agent family',
   );
   assert.match(
     homeStyles,
@@ -2099,41 +2148,38 @@ test('Agent Home and start-from-scratch remove free composers without dead-endin
   );
   assert.match(
     homeStyles,
-    /\.agent-home__first-action-card--builder\.eva-landing-task-card\.card::before\s*\{[^}]*padding:\s*var\(--border-ai-special-width\);[^}]*background:\s*var\(--border-ai-special-source\);[^}]*mask-composite:\s*exclude;/,
-    'the first-agent builder should reuse the Uplift AI angular gradient border',
+    /\.eva-landing-task-card__start-option--primary::before\s*\{[^}]*padding:\s*var\(--border-ai-special-width\);[^}]*background:\s*var\(--border-ai-special-source\);[^}]*mask-composite:\s*exclude;/,
+    'Browse template should own the Uplift AI angular gradient border',
+  );
+  assert.doesNotMatch(
+    homeStyles,
+    /agent-home__first-action-card--builder\.eva-landing-task-card\.card::before/,
+    'the outer builder surface should remain borderless',
   );
   assert.match(
     homeStyles,
-    /\.eva-landing-task-card__agent-types\s*\{[^}]*grid-template-columns:\s*repeat\(3, minmax\(0, 1fr\)\);[^}]*gap:\s*32px;/,
-    'the three agent type groups should be separated by spacing',
+    /\.eva-landing-task-card__start-options\s*\{[^}]*grid-template-columns:\s*repeat\(3, minmax\(0, 1fr\)\);[^}]*gap:\s*12px;/,
+    'the three starting actions should be presented as an even card grid',
   );
   assert.match(
     homeSource,
-    /<h3 id="agent-home-agent-types-title" className="eva-landing-task-card__agent-types-title">\s*Available agent types\s*<\/h3>[\s\S]*?<ul[\s\S]*?aria-labelledby="agent-home-agent-types-title"/,
-    'the first-agent card should label its available agent type group',
+    /className="eva-landing-task-card__start-options-intro"[\s\S]*?Create AI agents for your teams, customers, and collaboration services\.[\s\S]*?className="eva-landing-task-card__start-options" role="group" aria-label="Agent creation options"/,
+    'the first-agent card should introduce its three starting actions without a redundant heading',
   );
   assert.match(
     homeStyles,
-    /\.eva-landing-task-card__agent-types-title\s*\{[^}]*color:\s*rgba\(255, 255, 255, 0\.5\);[^}]*font-weight:\s*400;/,
-    'the available-agent-types heading should use subdued secondary text styling',
-  );
-  const firstAgentTypeRuleStart = homeStyles.indexOf('.eva-landing-task-card__agent-types > li {');
-  const firstAgentTypeRuleEnd = homeStyles.indexOf('}', firstAgentTypeRuleStart);
-  const firstAgentTypeRule = homeStyles.slice(firstAgentTypeRuleStart, firstAgentTypeRuleEnd);
-  assert.doesNotMatch(
-    firstAgentTypeRule,
-    /background:|border-radius:|box-shadow:/,
-    'agent type information should remain flat text groups rather than nested cards',
+    /\.eva-landing-task-card__start-options-intro\s*\{[^}]*color:\s*rgba\(255, 255, 255, 0\.74\);[^}]*font-size:\s*13px;[^}]*font-weight:\s*400;/,
+    'the starting-action introduction should use subdued secondary text styling',
   );
   assert.match(
     homeStyles,
-    /\.eva-landing-task-card__agent-type-content\s*\{[^}]*padding-inline:\s*0;/,
-    'flat agent type groups should not retain the former card side padding',
+    /\.eva-landing-task-card__start-option\s*\{[^}]*border-radius:\s*10px;[^}]*background:\s*rgba\(255, 255, 255, 0\.04\);[\s\S]*?\.eva-landing-task-card__start-option--primary\s*\{[^}]*background:/,
+    'Browse template should be a visually distinct primary card beside the two secondary starting actions',
   );
   assert.doesNotMatch(
-    homeStyles,
-    /@container uplift-assistant \(min-width: 1001px\) and \(max-width: 1200px\)[\s\S]*?\.eva-landing-task-card__agent-type-heading > strong/,
-    'the original agent type typography should not shrink at intermediate widths',
+    homeSource,
+    /FIRST_TIME_AGENT_TYPES|eva-landing-task-card__agent-types/,
+    'the first-agent card should remove explanatory agent-type content',
   );
   const demoPreviewStart = firstTimeFlowsSource.indexOf('function DemoPreview');
   const demoPreviewEnd = firstTimeFlowsSource.indexOf('export default function AgentHomeFirstTimeFlows', demoPreviewStart);
@@ -2145,8 +2191,13 @@ test('Agent Home and start-from-scratch remove free composers without dead-endin
   );
   assert.match(
     demoPreviewSource,
-    /agent-home-flow__test-actions[\s\S]*?Start with this agent/,
-    'the template adoption action should live inside the remaining test panel',
+    /<FlowHeader[\s\S]*?titleAction=\{\([\s\S]*?agent-home-flow__test-actions[\s\S]*?Start with this agent/,
+    'the preview status and template adoption action should live in the page header',
+  );
+  assert.doesNotMatch(
+    demoPreviewSource,
+    /agent-home-flow__test-header|Test agent|testTitle/,
+    'the remaining test panel should not repeat a secondary header',
   );
   assert.match(
     homeStyles,
@@ -2155,8 +2206,33 @@ test('Agent Home and start-from-scratch remove free composers without dead-endin
   );
   assert.match(
     homeStyles,
+    /\.agent-home--flow \.agent-home__scroll-region > \.agent-home-flow--demo-preview\s*\{[^}]*height:\s*100%;[^}]*min-height:\s*0;[\s\S]*?\.agent-home-flow--demo-preview \.agent-home-flow__preview-layout\s*\{[^}]*min-height:\s*0;[^}]*flex:\s*1 1 auto;[\s\S]*?\.agent-home-flow--demo-preview \.agent-home-flow__test\.card\s*\{[^}]*height:\s*100%;[^}]*min-height:\s*0;/,
+    'the test-agent panel should fill the available preview route height',
+  );
+  assert.match(
+    homeStyles,
+    /\.agent-home-flow--demo-preview \.agent-home-flow__test-thread\s*\{[^}]*max-height:\s*none;/,
+    'the digital preview thread should absorb remaining panel height before scrolling',
+  );
+  assert.match(
+    homeStyles,
+    /\.agent-home-flow--templates \.agent-home-flow__workflow--ready-made ol\s*\{[^}]*display:\s*flex;[^}]*flex-direction:\s*column;[^}]*gap:\s*0;/,
+    'ready-made workflows should use a vertical sequence with consistent connector spacing',
+  );
+  assert.match(
+    homeStyles,
+    /\.agent-home-flow--templates \.agent-home-flow__workflow-connector\s*\{[^}]*margin:\s*6px 0;[^}]*transform:\s*rotate\(90deg\);/,
+    'workflow connectors should sit outside cards between each vertical step',
+  );
+  assert.match(
+    homeStyles,
     /\.agent-home-flow--demo-preview \.agent-home-flow__title-group\s*\{[^}]*gap:\s*8px;[^}]*font-family:\s*['"]Momentum['"]/,
     'the preview title group should share the ready-made template header rhythm',
+  );
+  assert.match(
+    homeStyles,
+    /\.agent-home-flow--demo-preview \.agent-home-flow__title-row\s*\{[^}]*display:\s*grid;[^}]*grid-template-columns:\s*minmax\(0, 1fr\) auto;/,
+    'the preview action group should occupy the page header right-hand column',
   );
   assert.match(
     homeStyles,
@@ -2176,7 +2252,7 @@ test('Agent Home and start-from-scratch remove free composers without dead-endin
   assert.match(
     dashboardSource,
     /<EvaChatExperience[\s\S]*?resetSessionOnInitialMount[\s\S]*?choiceOnlyGuidedFlow/,
-    'Start from scratch should opt into the choice-only conversational flow',
+    'Create my own should preserve the choice-only conversational flow',
   );
   assert.match(
     evaSource,

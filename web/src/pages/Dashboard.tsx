@@ -91,6 +91,7 @@ export default function Dashboard() {
     createAgentDraft,
     selectAgent,
     showToast,
+    setIsQuickCreateModalOpen,
   } = useApp();
   const { mode } = useAgentHomeScenario();
   const [surface, setSurface] = useState<DashboardSurface>('home');
@@ -225,6 +226,7 @@ export default function Dashboard() {
             onFirstTimeFlowChange={setAgentHomeFlow}
             snapshot={snapshot}
             onAction={handleAction}
+            onStartFromScratch={() => setIsQuickCreateModalOpen(true)}
             onUseTemplate={handleUseTemplate}
             onSendDemoMessage={handleDemoMessage}
             onOpenFleetAgent={openFleetAgent}
