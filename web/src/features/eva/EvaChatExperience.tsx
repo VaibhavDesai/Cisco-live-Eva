@@ -656,6 +656,15 @@ const RETAIL_CENTERED_ORIGIN_BY_STEP: Partial<Record<RetailPrototypeStep, string
   'ready-to-preview': 'retail-final-actions',
 };
 
+const GUIDED_CENTERED_ORIGINS = new Set([
+  FAMILY_CHOICE_ORIGIN,
+  UNIFIED_CHANNEL_CHOICE_ORIGIN,
+  UNIFIED_GOAL_ORIGIN,
+  FAMILY_INTAKE_ORIGIN,
+  FAMILY_PROPOSAL_ORIGIN,
+  ...Object.values(RETAIL_CENTERED_ORIGIN_BY_STEP).filter((origin): origin is string => Boolean(origin)),
+]);
+
 const RETAIL_RECEPTIONIST_AGENT_NAME = 'Acme Electronics agent';
 const RETAIL_RECEPTIONIST_DESCRIPTION = 'Voice agent for Acme Electronics in San Jose';
 const RETAIL_RECOMMENDED_WELCOME_MESSAGES = [
@@ -2072,14 +2081,20 @@ export default function EvaChatExperience({
         if (centeredRetailOrigin && latestAssistantMessage?.originStep !== centeredRetailOrigin) {
           return;
         }
-        const shouldCenterRetailActivePrompt = Boolean(
-          centeredRetailOrigin && latestAssistantMessage?.originStep === centeredRetailOrigin,
+        const shouldCenterGuidedActivePrompt = Boolean(
+          latestAssistantMessage?.originStep && GUIDED_CENTERED_ORIGINS.has(latestAssistantMessage.originStep),
         );
         const latestBlockRect = latestBlock.getBoundingClientRect();
         const scrollContainerRect = scrollContainer.getBoundingClientRect();
-        const baseOffset = shouldCenterRetailActivePrompt
-          ? scrollContainer.scrollTop + latestBlockRect.top - (
-            (window.innerHeight - latestBlockRect.height) / 2
+        const composer = document.querySelector<HTMLElement>('.eva-first-interface__chat--sticky');
+        const composerRect = composer?.getBoundingClientRect();
+        const visibleConversationHeight = composerRect
+          ? Math.max(0, composerRect.top - scrollContainerRect.top)
+          : scrollContainer.clientHeight;
+        const baseOffset = shouldCenterGuidedActivePrompt
+          ? scrollContainer.scrollTop + latestBlockRect.top - scrollContainerRect.top - Math.max(
+            24,
+            (visibleConversationHeight - latestBlockRect.height) / 2,
           )
           : shouldCenterRetailPrompt || shouldLiftAnsweredRetailNamePrompt
           ? scrollContainer.scrollTop + latestBlockRect.top - scrollContainerRect.top - (
@@ -2094,7 +2109,6 @@ export default function EvaChatExperience({
         const phoneMenu = latestAssistantMessage?.originStep === 'retail-phone-choice'
           ? latestBlock.querySelector<HTMLElement>('.eva-retail-phone-selector__menu')
           : null;
-        const composer = document.querySelector<HTMLElement>('.eva-first-interface__chat--sticky');
         const actionClearance = composer
           ? Math.max(
             proposalActions
@@ -5637,9 +5651,10 @@ ${previewTranscript}`,
   const hasCenteredRetailPrompt = messages.some(message => (
     Object.values(RETAIL_CENTERED_ORIGIN_BY_STEP).includes(message.originStep)
   ));
-  const shouldHoldActiveRetailPromptPosition = Boolean(
-    activeRetailFocusOrigin &&
+  const shouldHoldActiveGuidedPromptPosition = Boolean(
+    messages.some(message => GUIDED_CENTERED_ORIGINS.has(message.originStep)) &&
     (
+      !activeRetailFocusOrigin ||
       messages.some(message => message.originStep === activeRetailFocusOrigin) ||
       (evaThinking && hasCenteredRetailPrompt)
     ),
@@ -6885,7 +6900,7 @@ ${previewTranscript}`,
                 ? ' eva-first-interface__free-chat--dense-bottom'
                 : ''
             }${
-              shouldHoldActiveRetailPromptPosition
+              shouldHoldActiveGuidedPromptPosition
                 ? ' eva-first-interface__free-chat--active-prompt-focus'
                 : ''
             }${
@@ -7505,11 +7520,7 @@ ${previewTranscript}`,
                   {isLatestFamilyProposalPrompt && familyProposal && !familyProposalApplied && !familyIntakeEditingQuestion && !evaThinking && (
                     <section className="eva-family-proposal" aria-label="Recommended starter configuration">
                       <div className="eva-family-proposal__header">
-                        <span className="eva-family-chip">
-                          <Icon name="bot" weight="bold" size="sm" />
-                          Recommended setup
-                        </span>
-                        <Badge variant="default">Draft proposal</Badge>
+                        <h3 className="eva-family-proposal__title">Draft proposal</h3>
                       </div>
                       {familyProposalEditing ? (
                         <div className="eva-family-proposal__editor">

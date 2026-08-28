@@ -115,10 +115,10 @@
 
 .agent-home--first-time:not(.agent-home--flow) .agent-home__first-actions--composer {
   display: flex;
-  flex: 0 1 720px;
+  flex: 0 0 auto;
   flex-direction: column;
   align-self: center;
-  width: min(100%, 720px);
+  width: min(100%, 960px);
   margin: 0 auto;
 }
 
@@ -160,7 +160,7 @@
 
 .new-mvo-home--guided {
   flex-direction: column;
-  background: rgba(0, 0, 0, 0.5);
+  background: rgba(0, 0, 0, 0.68);
   backdrop-filter: blur(28px);
   -webkit-backdrop-filter: blur(28px);
 }
@@ -168,6 +168,7 @@
 .new-mvo-home--guided > .eva-agents-landing {
   flex: 1 1 auto;
   min-height: 0;
+  overflow: hidden;
 }
 
 .new-mvo-home__guided-toolbar {
@@ -885,7 +886,7 @@ fieldset.eva-family-structured-step {
 
 .agent-home-template-setup-form {
   display: grid;
-  gap: 20px;
+  gap: 24px;
   padding-top: 4px;
 }
 
@@ -2320,7 +2321,8 @@ fieldset.eva-family-structured-step {
    keeps the content high enough to stay comfortably within the viewport. */
 .agent-home--first-time:not(.agent-home--flow) .agent-home__scroll-region {
   display: block;
-  padding: 32px calc(clamp(20px, 4cqi, 56px) + 4px) 24px clamp(20px, 4cqi, 56px);
+  padding: 32px calc(clamp(20px, 4cqi, 56px) + 4px) 22px clamp(20px, 4cqi, 56px);
+  overflow-y: hidden;
   scrollbar-gutter: auto;
 }
 
@@ -2438,6 +2440,14 @@ fieldset.eva-family-structured-step {
 .agent-home--first-time:not(.agent-home--flow):not(.agent-home--recurring-create)
   .agent-home__first-actions {
   width: min(100%, 960px);
+  margin-inline: auto;
+}
+
+/* The footer component keeps the actual landing composer at a 752px
+   maximum. Give the divider that same measure instead of the broader action
+   stack, so the two edges remain visually aligned. */
+.agent-home--first-time:not(.agent-home--flow) .agent-home__first-actions--composer .agent-home__landing-divider {
+  width: min(100%, 752px);
   margin-inline: auto;
 }
 
@@ -2832,9 +2842,9 @@ fieldset.eva-family-structured-step {
 
 .app--ai .agent-home--first-time:not(.agent-home--flow) .agent-home__composer > .ai-footer {
   position: relative;
-  left: 6px;
-  width: min(100%, 582px) !important;
-  max-width: 582px !important;
+  left: 0;
+  width: 100% !important;
+  max-width: none !important;
   padding: 0 !important;
 }
 
@@ -4106,6 +4116,8 @@ fieldset.eva-family-structured-step {
   width: 100%;
   max-width: none;
   margin: 0;
+  box-sizing: border-box;
+  padding-inline: 32px;
 }
 
 .agent-home--flow .agent-home__scroll-region > .agent-home-flow--demo-preview {
@@ -4114,6 +4126,8 @@ fieldset.eva-family-structured-step {
   min-height: 0;
   max-width: none;
   margin: 0;
+  box-sizing: border-box;
+  padding-inline: 32px;
 }
 
 .agent-home-flow--demo-preview .agent-home-flow__preview-layout {
@@ -4490,11 +4504,11 @@ fieldset.eva-family-structured-step {
   gap: 8px;
   box-sizing: border-box;
   padding: 12px;
-  border: 0;
+  border: 1px solid rgba(255, 255, 255, 0.32);
   border-radius: 16px;
-  background: var(--mds-color-theme-background-glass-normal, rgba(15, 24, 42, 0.56));
-  backdrop-filter: blur(24px) saturate(125%);
-  -webkit-backdrop-filter: blur(24px) saturate(125%);
+  background: transparent;
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
   overflow: hidden;
 }
 
@@ -4518,7 +4532,29 @@ fieldset.eva-family-structured-step {
   overflow-x: hidden;
   overflow-y: auto;
   overscroll-behavior: contain;
-  scrollbar-gutter: stable;
+  scrollbar-width: none;
+}
+
+.agent-home-flow--templates .agent-home-flow__tabpanel::-webkit-scrollbar {
+  width: 0;
+}
+
+.agent-home-flow--templates .agent-home-flow__tabpanel:hover,
+.agent-home-flow--templates .agent-home-flow__tabpanel:focus-within {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255, 255, 255, 0.28) transparent;
+}
+
+.agent-home-flow--templates .agent-home-flow__tabpanel:hover::-webkit-scrollbar,
+.agent-home-flow--templates .agent-home-flow__tabpanel:focus-within::-webkit-scrollbar {
+  width: 8px;
+}
+
+.agent-home-flow--templates .agent-home-flow__tabpanel::-webkit-scrollbar-thumb {
+  border: 2px solid transparent;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.28);
+  background-clip: padding-box;
 }
 
 .agent-home-flow--templates .agent-home-flow__option-list {
@@ -4698,19 +4734,15 @@ fieldset.eva-family-structured-step {
   flex-direction: column;
   gap: 0;
   margin: 0;
-  padding: 0 0 32px;
+  padding: 0;
   overflow-x: hidden;
   overflow-y: auto;
-  border: 1px solid rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.32);
   border-radius: 16px;
-  background:
-    linear-gradient(120deg, rgba(7, 10, 18, 0.2), rgba(13, 17, 31, 0.12)),
-    var(--mds-color-theme-background-glass-normal, rgba(255, 255, 255, 0.05));
-  box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.1),
-    0 18px 40px rgba(0, 0, 0, 0.18);
-  backdrop-filter: blur(24px) saturate(125%);
-  -webkit-backdrop-filter: blur(24px) saturate(125%);
+  background: transparent;
+  box-shadow: none;
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
 }
 
 .agent-home-flow--templates .agent-home-flow__detail-heading {
@@ -4809,22 +4841,57 @@ fieldset.eva-family-structured-step {
   height: 16px;
 }
 
+.agent-home-flow--templates .agent-home-flow__detail-view-toggle {
+  flex: 0 0 auto;
+  --mdc-buttongroup-border-radius: 100px;
+  --mdc-buttongroup-border-color: rgba(255, 255, 255, 0.2);
+  --mdc-buttongroup-divider-color: rgba(255, 255, 255, 0.2);
+}
+
+.agent-home-flow--templates .agent-home-flow__detail-view-toggle-option.uplift-momentum-button {
+  display: inline-flex;
+  width: 31px;
+  min-width: 31px;
+  height: 32px;
+  min-height: 32px;
+  padding: 0;
+  align-items: center;
+  justify-content: center;
+}
+
+.agent-home-flow--templates .agent-home-flow__detail-view-toggle-option.uplift-momentum-button > .mds-icon-inline-svg {
+  display: block;
+  margin: auto;
+  transform: translateY(2.5px);
+}
+
+.agent-home-flow--templates .agent-home-flow__detail-view-toggle-option.active {
+  --mdc-button-background: rgba(255, 255, 255, 0.2);
+}
+
 .agent-home-flow--templates .agent-home-flow__detail-body {
-  display: grid;
-  grid-template-columns: minmax(260px, 0.8fr) minmax(0, 1.6fr);
-  gap: 40px;
+  display: flex;
+  min-height: 0;
+  flex: 1 1 auto;
   margin-top: 24px;
   padding: 0 32px;
 }
 
 .agent-home-flow--templates .agent-home-flow__workflow-column,
 .agent-home-flow--templates .agent-home-flow__defaults-column {
+  width: 100%;
   min-width: 0;
+}
+
+.agent-home-flow--templates .agent-home-flow__defaults-column {
+  display: flex;
+  min-height: 0;
 }
 
 .agent-home-flow--templates .agent-home-flow__workflow--ready-made {
   display: flex;
   flex-direction: column;
+  align-items: center;
   gap: 4px;
 }
 
@@ -4837,9 +4904,16 @@ fieldset.eva-family-structured-step {
   line-height: 22px;
 }
 
+.agent-home-flow--templates .agent-home-flow__workflow--ready-made h3 {
+  align-self: flex-start;
+}
+
 .agent-home-flow--templates .agent-home-flow__workflow--ready-made ol {
   display: flex;
+  width: fit-content;
+  max-width: 100%;
   flex-direction: column;
+  align-items: center;
   gap: 0;
   margin: 0;
   padding: 0;
@@ -4848,7 +4922,10 @@ fieldset.eva-family-structured-step {
 
 .agent-home-flow--templates .agent-home-flow__workflow--ready-made li {
   display: flex;
+  width: fit-content;
+  max-width: 100%;
   flex-direction: column;
+  align-items: center;
   padding: 0;
   border: 0;
   border-radius: 0;
@@ -4866,7 +4943,8 @@ fieldset.eva-family-structured-step {
   gap: 12px;
   padding: 8px;
   box-sizing: border-box;
-  width: 100%;
+  width: fit-content;
+  max-width: 100%;
   border: 1px solid var(--mds-color-theme-outline-glass-normal, rgba(255, 255, 255, 0.12));
   border-radius: 8px;
   background: var(--mds-color-theme-background-glass-normal, rgba(255, 255, 255, 0.05));
@@ -4930,11 +5008,14 @@ fieldset.eva-family-structured-step {
 
 .agent-home-flow--templates .agent-home-flow__workflow-branch-grid {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  width: fit-content;
+  max-width: 100%;
+  grid-template-columns: repeat(2, minmax(0, max-content));
   gap: 12px;
 }
 
 .agent-home-flow--templates .agent-home-flow__workflow-step--branch {
+  width: fit-content;
   min-height: 82px;
   flex-direction: column;
   gap: 6px;
@@ -4950,6 +5031,9 @@ fieldset.eva-family-structured-step {
 
 .agent-home-flow--templates .agent-home-flow__defaults {
   display: flex;
+  width: min(100%, 760px);
+  min-height: 0;
+  flex: 0 1 760px;
   flex-direction: column;
   gap: 24px;
   padding: 0;
@@ -4977,7 +5061,7 @@ fieldset.eva-family-structured-step {
 
 .agent-home-flow--templates .agent-home-flow__preset-grid dt,
 .agent-home-flow--templates .agent-home-flow__default-group > strong,
-.agent-home-flow--templates .agent-home-flow__instruction > strong {
+.agent-home-flow--templates .agent-home-flow__instruction-heading > strong {
   color: rgba(255, 255, 255, 0.4);
   font-family: 'Momentum', var(--font-family-primary);
   font-size: 12px;
@@ -4995,8 +5079,8 @@ fieldset.eva-family-structured-step {
 }
 
 .agent-home-flow--templates .agent-home-flow__parameter-stack {
-  display: flex;
-  flex-direction: column;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 24px;
 }
 
@@ -5012,12 +5096,14 @@ fieldset.eva-family-structured-step {
 
 .agent-home-flow--templates .agent-home-flow__default-group > div {
   display: flex;
-  flex-wrap: wrap;
+  flex-direction: column;
+  align-items: flex-start;
   gap: 8px;
 }
 
 .agent-home-flow--templates .agent-home-flow__ready-chip {
   display: inline-flex;
+  max-width: 100%;
   min-height: 26px;
   align-items: center;
   gap: 4px;
@@ -5028,6 +5114,14 @@ fieldset.eva-family-structured-step {
   font-size: 14px;
   font-weight: 400;
   line-height: 22px;
+  overflow: hidden;
+  white-space: nowrap;
+}
+
+.agent-home-flow--templates .agent-home-flow__ready-chip > span:not(.agent-home-flow__ready-chip-trailing) {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
   white-space: nowrap;
 }
 
@@ -5049,11 +5143,40 @@ fieldset.eva-family-structured-step {
 .agent-home-flow--templates .agent-home-flow__instruction {
   display: flex;
   min-width: 0;
+  min-height: 0;
+  flex: 1 1 auto;
   flex-direction: column;
   gap: 4px;
 }
 
-.agent-home-flow--templates .agent-home-flow__instruction > p {
+.agent-home-flow--templates .agent-home-flow__instruction-card {
+  display: flex;
+  min-height: 0;
+  flex: 1 1 auto;
+  flex-direction: column;
+  gap: 4px;
+  padding: 16px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 12px;
+  background: rgba(7, 10, 18, 0.2);
+  box-shadow: none;
+}
+
+.agent-home-flow--templates .agent-home-flow__instruction-heading {
+  display: flex;
+  align-items: center;
+}
+
+.agent-home-flow--templates .agent-home-flow__instruction-view-all.uplift-momentum-button {
+  align-self: flex-end;
+  margin-top: 4px;
+  min-height: 28px;
+  padding-inline: 10px;
+}
+
+.agent-home-flow--templates .agent-home-flow__instruction-card > p {
+  min-height: 0;
+  flex: 1 1 auto;
   margin: 0;
   color: rgba(255, 255, 255, 0.92);
   font-family: 'Momentum', var(--font-family-primary);
@@ -5061,6 +5184,27 @@ fieldset.eva-family-structured-step {
   font-weight: 500;
   line-height: 20px;
   white-space: pre-wrap;
+}
+
+.agent-home-flow--templates .agent-home-flow__instruction:not(.is-expanded) .agent-home-flow__instruction-card > p {
+  position: relative;
+  overflow: hidden;
+}
+
+.agent-home-flow--templates .agent-home-flow__instruction:not(.is-expanded) .agent-home-flow__instruction-card > p::after {
+  content: '…';
+  position: absolute;
+  left: 0;
+  bottom: 0;
+  width: 32px;
+  background: rgba(7, 10, 18, 0.2);
+}
+
+.agent-home-flow--templates .agent-home-flow__instruction.is-expanded .agent-home-flow__instruction-card {
+  max-height: min(560px, calc(100dvh - 420px));
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-gutter: stable;
 }
 
 @media (max-width: 1180px) {
@@ -5077,8 +5221,11 @@ fieldset.eva-family-structured-step {
   }
 
   .agent-home-flow--templates .agent-home-flow__detail-body {
-    grid-template-columns: minmax(224px, 0.8fr) minmax(0, 1.5fr);
-    gap: 28px;
+    padding: 0 28px;
+  }
+
+  .agent-home-flow--templates .agent-home-flow__parameter-stack {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
 
@@ -5108,7 +5255,7 @@ fieldset.eva-family-structured-step {
   }
 
   .agent-home-flow--templates .agent-home-flow__detail-body {
-    grid-template-columns: minmax(0, 1fr);
+    padding: 0 24px;
   }
 
   .agent-home-flow--templates .agent-home-flow__workflow-branch-grid {
@@ -5119,6 +5266,10 @@ fieldset.eva-family-structured-step {
 @media (max-width: 720px) {
   .agent-home--flow .agent-home__scroll-region {
     padding: 20px 0 0;
+  }
+
+  .agent-home-flow--templates .agent-home-flow__parameter-stack {
+    grid-template-columns: minmax(0, 1fr);
   }
 
   .agent-home-flow--templates .agent-home-flow__title-row {

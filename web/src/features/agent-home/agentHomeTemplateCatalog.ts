@@ -167,6 +167,49 @@ interface TemplateBlueprint extends Omit<AgentHomeTemplateDefinition, 'draft' | 
   proposalOverrides?: Partial<StarterProposal>;
 }
 
+const buildOperationalInstructions = ({
+  name,
+  purpose,
+  workflow,
+  responseStyle,
+  knowledge,
+  actions,
+  identityChecks,
+  handoff,
+  guardrails,
+}: {
+  name: string;
+  purpose: string;
+  workflow: readonly string[];
+  responseStyle: string;
+  knowledge: readonly string[];
+  actions: readonly string[];
+  identityChecks: readonly string[];
+  handoff: readonly string[];
+  guardrails: readonly string[];
+}) => {
+  const approvedKnowledge = knowledge.length > 0 ? knowledge.join(', ') : 'the approved knowledge sources available to you';
+  const availableActions = actions.length > 0 ? actions.join(', ') : 'the approved workflow actions available to you';
+  const verification = identityChecks.length > 0 ? identityChecks.join('; ') : 'verify the information needed for the request before continuing';
+  const escalation = handoff.length > 0 ? handoff.join('; ') : 'escalate to the appropriate team with the relevant context';
+  const safety = guardrails.length > 0 ? guardrails.join('; ') : 'protect private information and follow applicable company policy';
+
+  return [
+    '#### Role & purpose',
+    `You are ${name}. ${purpose} Own the conversation from the first request through a clear next step, while staying within the approved workflow.`,
+    '#### Operating procedure',
+    workflow.map((step, index) => `${index + 1}. ${step}.`).join('\n'),
+    '#### Approved information and actions',
+    `Use only these approved sources when answering: ${approvedKnowledge}. Use these actions only when they are needed and permitted: ${availableActions}. Do not guess, invent a policy, or imply that an action has completed until it is confirmed.`,
+    '#### Verification and escalation',
+    `Before sharing account-specific, appointment-specific, or sensitive details, ${verification}. When the request is outside your scope, information is missing, or a specialist is required, ${escalation}. Include the request, facts already confirmed, actions taken, and the unresolved question in the handoff.`,
+    '#### Privacy and safety',
+    `Follow these guardrails: ${safety}. Minimize personal data in the conversation, do not expose private records or internal-only information, and pause for confirmation before any consequential action.`,
+    '#### Response format',
+    `Use a ${responseStyle.toLowerCase()} tone. Ask one focused follow-up question at a time when context is missing. Give clear, ordered next steps, distinguish verified information from suggestions, and close with a brief summary of the outcome or handoff.`,
+  ].join('\n\n');
+};
+
 const defineTemplate = (blueprint: TemplateBlueprint): AgentHomeTemplateDefinition => {
   const { starterId, proposalOverrides, ...definition } = blueprint;
   const baseProposal = {
@@ -178,10 +221,26 @@ const defineTemplate = (blueprint: TemplateBlueprint): AgentHomeTemplateDefiniti
     : definition.previewChannel === 'voice'
       ? ['voice']
       : ['digital'];
+  const knowledgeNames = definition.presets.find(preset => preset.capabilityId === 'knowledge')?.items ?? [];
+  const actions = definition.presets.find(preset => preset.capabilityId === 'actions')?.items ?? [];
+  const identityChecks = definition.presets.find(preset => preset.capabilityId === 'identity')?.items ?? [];
+  const handoff = definition.presets.find(preset => preset.capabilityId === 'handoff')?.items ?? [];
+  const security = definition.presets.find(preset => preset.capabilityId === 'security')?.items ?? [];
   const greeting = `Hi, I’m ${baseProposal.name}. How can I help?`;
   const proposal: StarterProposal = definition.family === 'contact_center'
     ? {
         ...baseProposal,
+        instructions: buildOperationalInstructions({
+          name: baseProposal.name,
+          purpose: baseProposal.purpose,
+          workflow: definition.workflow,
+          responseStyle: definition.responseStyle,
+          knowledge: knowledgeNames,
+          actions,
+          identityChecks,
+          handoff,
+          guardrails: security,
+        }),
         channel: definition.previewChannel === 'both'
           ? 'Both'
           : definition.previewChannel === 'voice'
@@ -191,10 +250,20 @@ const defineTemplate = (blueprint: TemplateBlueprint): AgentHomeTemplateDefiniti
         selectedChannels,
         greetings: Object.fromEntries(selectedChannels.map(channel => [channel, greeting])),
       }
-    : baseProposal;
-  const knowledgeNames = definition.presets.find(preset => preset.capabilityId === 'knowledge')?.items ?? [];
-  const actions = definition.presets.find(preset => preset.capabilityId === 'actions')?.items ?? [];
-  const security = definition.presets.find(preset => preset.capabilityId === 'security')?.items ?? [];
+    : {
+        ...baseProposal,
+        instructions: buildOperationalInstructions({
+          name: baseProposal.name,
+          purpose: baseProposal.purpose,
+          workflow: definition.workflow,
+          responseStyle: definition.responseStyle,
+          knowledge: knowledgeNames,
+          actions,
+          identityChecks,
+          handoff,
+          guardrails: security,
+        }),
+      };
 
   return {
     ...definition,

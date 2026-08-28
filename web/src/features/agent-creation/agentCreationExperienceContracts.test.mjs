@@ -1875,6 +1875,7 @@ test('Agent Home and start-from-scratch remove free composers without dead-endin
   const dashboardSource = readSource('../../pages/Dashboard.tsx');
   const homeSource = readSource('../agent-home/AgentHomeDashboard.tsx');
   const firstTimeFlowsSource = readSource('../agent-home/AgentHomeFirstTimeFlows.tsx');
+  const templateCatalogSource = readSource('../agent-home/agentHomeTemplateCatalog.ts');
   const homeStyles = readSource('../agent-home/agent-home.css');
   const evaSource = readSource('../eva/EvaChatExperience.tsx');
   const formBuilderSource = readSource('../eva/EvaFormBuilder.tsx');
@@ -2112,8 +2113,13 @@ test('Agent Home and start-from-scratch remove free composers without dead-endin
   );
   assert.match(
     homeStyles,
-    /\.agent-home-flow--templates \.agent-home-flow__detail\.card\s*\{[^}]*rgba\(7, 10, 18, 0\.2\)[^}]*--mds-color-theme-background-glass-normal[^}]*backdrop-filter:\s*blur\(24px\) saturate\(125%\)/,
-    'the ready-made template detail panel should use the shared translucent glass surface',
+    /\.agent-home-flow--templates \.agent-home-flow__detail\.card\s*\{[^}]*border:\s*1px solid rgba\(255, 255, 255, 0\.32\);[^}]*background:\s*transparent;[^}]*box-shadow:\s*none;[^}]*backdrop-filter:\s*none;/,
+    'the ready-made template detail card should use a transparent surface with a white border',
+  );
+  assert.match(
+    homeStyles,
+    /\.agent-home-flow--templates \.agent-home-flow__template-sidebar\s*\{[^}]*border:\s*1px solid rgba\(255, 255, 255, 0\.32\);[^}]*background:\s*transparent;[^}]*backdrop-filter:\s*none;/,
+    'the ready-made template list should match the transparent white-border detail surface',
   );
   assert.match(
     homeStyles,
@@ -2227,6 +2233,46 @@ test('Agent Home and start-from-scratch remove free composers without dead-endin
     homeStyles,
     /\.agent-home-flow--templates \.agent-home-flow__workflow-connector\s*\{[^}]*margin:\s*6px 0;[^}]*transform:\s*rotate\(90deg\);/,
     'workflow connectors should sit outside cards between each vertical step',
+  );
+  assert.match(
+    homeStyles,
+    /\.agent-home-flow--templates \.agent-home-flow__workflow--ready-made\s*\{[^}]*align-items:\s*center;[\s\S]*?\.agent-home-flow--templates \.agent-home-flow__workflow--ready-made ol\s*\{[^}]*width:\s*fit-content;[^}]*align-items:\s*center;[\s\S]*?\.agent-home-flow--templates \.agent-home-flow__workflow-step\s*\{[^}]*width:\s*fit-content;[^}]*max-width:\s*100%;[\s\S]*?\.agent-home-flow--templates \.agent-home-flow__workflow-branch-grid\s*\{[^}]*width:\s*fit-content;[^}]*grid-template-columns:\s*repeat\(2, minmax\(0, max-content\)\);/,
+    'workflow steps and decision branches should center and hug their content instead of filling the view width',
+  );
+  assert.match(
+    firstTimeFlowsSource,
+    /ButtonGroup as MomentumButtonGroup[\s\S]*?const TemplateDetailButtonGroup = MomentumButtonGroup as any;[\s\S]*?type TemplateDetailView = 'preset-defaults' \| 'workflow';[\s\S]*?useState<TemplateDetailView>\('preset-defaults'\)[\s\S]*?<TemplateDetailButtonGroup[\s\S]*?size=\{32\}[\s\S]*?variant="secondary"[\s\S]*?aria-label="Template detail view"[\s\S]*?aria-label="Show preset defaults view"[\s\S]*?aria-label="Show workflow view"[\s\S]*?agent-home-flow__detail-body--\$\{templateDetailView\}[\s\S]*?templateDetailView === 'workflow'/,
+    'template details should use the Figma Button Group component for the accessible two-part view switch',
+  );
+  assert.match(
+    templateCatalogSource,
+    /const buildOperationalInstructions[\s\S]*?#### Role & purpose[\s\S]*?#### Operating procedure[\s\S]*?#### Approved information and actions[\s\S]*?#### Verification and escalation[\s\S]*?#### Privacy and safety[\s\S]*?#### Response format[\s\S]*?instructions:\s*buildOperationalInstructions/,
+    'ready-made templates should provide realistic operational instructions with workflow, verification, safety, and response guidance',
+  );
+  assert.match(
+    firstTimeFlowsSource,
+    /const \[isInstructionExpanded, setIsInstructionExpanded\] = useState\(false\);[\s\S]*?className=\{`agent-home-flow__instruction[\s\S]*?className="agent-home-flow__instruction-heading"[\s\S]*?<strong>Instruction<\/strong>[\s\S]*?className="card agent-home-flow__instruction-card"[\s\S]*?<p id="agent-home-template-instruction">[\s\S]*?variant="tertiary"[\s\S]*?aria-expanded=\{isInstructionExpanded\}[\s\S]*?\{isInstructionExpanded \? 'Show less' : 'View all'\}/,
+    'preset defaults should keep the Instruction heading outside its expandable instruction card',
+  );
+  assert.match(
+    homeStyles,
+    /.agent-home-flow--templates \.agent-home-flow__detail-body\s*\{[^}]*display:\s*flex;[^}]*flex:\s*1 1 auto;[\s\S]*?\.agent-home-flow--templates \.agent-home-flow__defaults\s*\{[^}]*width:\s*min\(100%, 760px\);[^}]*flex:\s*0 1 760px;[\s\S]*?\.agent-home-flow--templates \.agent-home-flow__instruction-card\s*\{[^}]*padding:\s*16px;[^}]*background:\s*rgba\(7, 10, 18, 0\.2\);[\s\S]*?\.agent-home-flow--templates \.agent-home-flow__instruction:not\(\.is-expanded\) \.agent-home-flow__instruction-card > p\s*\{[^}]*position:\s*relative;[^}]*overflow:\s*hidden;[\s\S]*?\.agent-home-flow--templates \.agent-home-flow__instruction:not\(\.is-expanded\) \.agent-home-flow__instruction-card > p::after\s*\{[^}]*content:\s*'…';[^}]*bottom:\s*0;[\s\S]*?\.agent-home-flow--templates \.agent-home-flow__instruction\.is-expanded \.agent-home-flow__instruction-card\s*\{[^}]*max-height:\s*min\(560px, calc\(100dvh - 420px\)\);[^}]*overflow-y:\s*auto;/,
+    'the preset view should use a compact readable measure while keeping complete instructions behind View all',
+  );
+  assert.match(
+    homeStyles,
+    /\.agent-home--first-time:not\(\.agent-home--flow\) \.agent-home__first-actions--composer\s*\{[^}]*flex:\s*0 0 auto;[^}]*width:\s*min\(100%, 960px\);[\s\S]*?\.agent-home--first-time:not\(\.agent-home--flow\) \.agent-home__first-actions--composer \.agent-home__landing-divider\s*\{[^}]*width:\s*min\(100%, 752px\);[^}]*margin-inline:\s*auto;/,
+    'the Quick start divider and composer should share one centered landing measure',
+  );
+  assert.match(
+    homeStyles,
+    /\.agent-home--first-time:not\(\.agent-home--flow\) \.agent-home__scroll-region\s*\{[^}]*overflow-y:\s*hidden;/,
+    'the desktop first-time landing should fit its viewport without an internal scrollbar',
+  );
+  assert.match(
+    homeStyles,
+    /\.agent-home-flow--templates \.agent-home-flow__detail-view-toggle\s*\{[^}]*--mdc-buttongroup-border-radius:\s*100px;[^}]*--mdc-buttongroup-divider-color:\s*rgba\(255, 255, 255, 0\.2\);[\s\S]*?\.agent-home-flow--templates \.agent-home-flow__detail-view-toggle-option\.uplift-momentum-button\s*\{[^}]*width:\s*31px;[^}]*height:\s*32px;[\s\S]*?\.agent-home-flow--templates \.agent-home-flow__detail-view-toggle-option\.uplift-momentum-button > \.mds-icon-inline-svg\s*\{[^}]*transform:\s*translateY\(2\.5px\);[\s\S]*?\.agent-home-flow--templates \.agent-home-flow__detail-view-toggle-option\.active\s*\{[^}]*--mdc-button-background:\s*rgba\(255, 255, 255, 0\.2\);[\s\S]*?\.agent-home-flow--templates \.agent-home-flow__detail-body\s*\{[^}]*display:\s*flex;[^}]*flex:\s*1 1 auto;/,
+    'the template detail switch should match the Figma Button Group geometry, icon alignment, and selected state',
   );
   assert.match(
     homeStyles,
@@ -2575,8 +2621,13 @@ test('guided prompts from greeting onward keep a stable centered stop position',
   );
   assert.match(
     source,
-    /centeredRetailOrigin\s*=\s*RETAIL_CENTERED_ORIGIN_BY_STEP\[retailPrototypeStep\][\s\S]*?shouldCenterRetailActivePrompt\s*=\s*Boolean\([\s\S]*?centeredRetailOrigin\s*&&[\s\S]*?window\.innerHeight/,
-    'the current guided response should scroll to the viewport center when it appears',
+    /GUIDED_CENTERED_ORIGINS\s*=\s*new Set\([\s\S]*?UNIFIED_CHANNEL_CHOICE_ORIGIN[\s\S]*?UNIFIED_GOAL_ORIGIN[\s\S]*?FAMILY_INTAKE_ORIGIN[\s\S]*?FAMILY_PROPOSAL_ORIGIN/,
+    'every unified guided question should participate in the centered focus contract',
+  );
+  assert.match(
+    source,
+    /shouldCenterGuidedActivePrompt\s*=\s*Boolean\([\s\S]*?GUIDED_CENTERED_ORIGINS\.has[\s\S]*?visibleConversationHeight\s*=\s*composerRect[\s\S]*?composerRect\.top\s*-\s*scrollContainerRect\.top[\s\S]*?visibleConversationHeight\s*-\s*latestBlockRect\.height/,
+    'the current guided response should center within the visible conversation area above the composer',
   );
   assert.match(
     source,
@@ -2605,8 +2656,8 @@ test('guided prompts from greeting onward keep a stable centered stop position',
   );
   assert.match(
     source,
-    /hasCenteredRetailPrompt[\s\S]*?shouldHoldActiveRetailPromptPosition[\s\S]*?evaThinking\s*&&\s*hasCenteredRetailPrompt[\s\S]*?eva-first-interface__free-chat--active-prompt-focus/,
-    'the active guided step should retain its focus spacing while the next response is generated',
+    /hasCenteredRetailPrompt[\s\S]*?shouldHoldActiveGuidedPromptPosition[\s\S]*?GUIDED_CENTERED_ORIGINS\.has\(message\.originStep\)[\s\S]*?evaThinking\s*&&\s*hasCenteredRetailPrompt[\s\S]*?eva-first-interface__free-chat--active-prompt-focus/,
+    'every active guided step should retain its focus spacing while the next response is generated',
   );
   assert.match(
     styles,
@@ -2642,11 +2693,18 @@ test('guided prompts from greeting onward keep a stable centered stop position',
 
 test('preset proposal review shows the verified setup choices and preserves them for the Draft', () => {
   const source = readSource('../eva/EvaChatExperience.tsx');
+  const styles = readSource('../../products/ai-agent-studio/components.css');
   const proposalStart = source.indexOf('className="eva-family-proposal"');
   const proposalEnd = source.indexOf('className="eva-family-proposal__actions"', proposalStart);
 
   assert.ok(proposalStart >= 0 && proposalEnd > proposalStart, 'the family proposal card should be present');
   const proposalSource = source.slice(proposalStart, proposalEnd);
+  assert.doesNotMatch(proposalSource, /Recommended setup/, 'the redundant setup chip should be removed');
+  assert.match(
+    proposalSource,
+    /className="eva-family-proposal__header"[\s\S]*?<h3 className="eva-family-proposal__title">Draft proposal<\/h3>/,
+    'the proposal should use a plain left-aligned title instead of a status chip',
+  );
   for (const label of ['Channel', 'Location', 'Phone number', 'Name', 'Welcome message', 'Knowledge base', 'Action', 'Instructions']) {
     assert.match(
       proposalSource,
@@ -2654,6 +2712,16 @@ test('preset proposal review shows the verified setup choices and preserves them
       `the proposal should let the user verify ${label.toLowerCase()}`,
     );
   }
+  assert.match(
+    styles,
+    /\.eva-family-proposal__summary pre\s*{[^}]*border:\s*1px solid var\(--border-color\);[^}]*background:\s*transparent;/s,
+    'the instructions should use a transparent bordered container',
+  );
+  assert.match(
+    styles,
+    /\.eva-family-proposal__actions\s*{[^}]*justify-content:\s*flex-end;/s,
+    'the proposal actions should align to the right',
+  );
 
   const applyStart = source.indexOf('const applyProposalToConfiguration');
   const applyEnd = source.indexOf('const getFamilyIntakeMessage', applyStart);
@@ -3235,6 +3303,27 @@ test('Studio routes keep document scrolling locked to one route-level surface', 
     styles,
     /\.app--ai \.primary-content\s*\{[^}]*height:\s*100%;[^}]*min-height:\s*0;[^}]*overflow-y:\s*auto;/,
     'the primary content should remain the single vertical scroll owner',
+  );
+});
+
+test('guided intake keeps scrolling inside the composer-aligned conversation without a visible gutter', () => {
+  const styles = readSource('../../products/ai-agent-studio/components.css');
+  const homeStyles = readSource('../agent-home/agent-home.css');
+
+  assert.match(
+    homeStyles,
+    /\.new-mvo-home--guided > \.eva-agents-landing\s*\{[^}]*overflow:\s*hidden;/,
+    'the guided route shell should not become a second scroll owner',
+  );
+  assert.match(
+    styles,
+    /\.eva-first-interface--free-chat \.eva-first-interface__free-chat\s*\{[^}]*width:\s*min\(100%, calc\(720px \+ \(var\(--spacing-small\) \* 2\)\)\);[^}]*overflow-y:\s*auto;[^}]*scrollbar-gutter:\s*auto;[^}]*scrollbar-width:\s*none;/,
+    'the conversation should retain scrolling at the same width as the composer without reserving a scrollbar gutter',
+  );
+  assert.match(
+    styles,
+    /\.eva-first-interface--free-chat \.eva-first-interface__free-chat::\-webkit-scrollbar,[\s\S]*?\{[^}]*width:\s*0;[^}]*height:\s*0;/,
+    'the conversation scrollbar should remain visually hidden in WebKit browsers',
   );
 });
 

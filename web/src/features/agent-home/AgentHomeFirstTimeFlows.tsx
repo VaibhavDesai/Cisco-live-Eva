@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
+import { ButtonGroup as MomentumButtonGroup } from '@momentum-design/components/react';
 import Button from '../../components/shared/Button';
 import { UpliftMomentumButton } from '../../components/shared/UpliftMomentumButton';
 import Badge from '../../components/shared/Badge';
@@ -48,6 +49,8 @@ import {
   type AgentHomeTemplateDefinition,
   type AgentHomeTemplateId,
 } from './agentHomeTemplateCatalog';
+
+const TemplateDetailButtonGroup = MomentumButtonGroup as any;
 
 export type AgentHomeFirstTimeFlow = 'home' | 'templates' | 'demo-select' | 'demo-preview';
 
@@ -125,6 +128,7 @@ type ReadyMadeDisplayOption = {
 
 type AgentTypeFilter = 'all' | AgentFamily;
 type TemplateFilterTab = 'agent-type' | 'industry';
+type TemplateDetailView = 'preset-defaults' | 'workflow';
 type TemplateFilterOption<T extends string = string> = {
   value: T;
   label: string;
@@ -534,10 +538,14 @@ function PresetDefaults({ option }: { option: AgentHomeTemplateDefinition }) {
   const guardrails = configuredGuardrails.length > 0
     ? configuredGuardrails
     : getPresetItems(option, ['identity']);
+  const [isInstructionExpanded, setIsInstructionExpanded] = useState(false);
+
+  useEffect(() => {
+    setIsInstructionExpanded(false);
+  }, [option.id]);
 
   return (
-    <section className="agent-home-flow__defaults" aria-labelledby="agent-home-template-defaults-title">
-      <h3 id="agent-home-template-defaults-title">Preset defaults</h3>
+    <section className="agent-home-flow__defaults" aria-label="Preset defaults">
       <dl className="agent-home-flow__preset-grid">
         <div>
           <dt>Language</dt>
@@ -585,9 +593,25 @@ function PresetDefaults({ option }: { option: AgentHomeTemplateDefinition }) {
           </div>
         )}
       </div>
-      <div className="agent-home-flow__instruction">
-        <strong>Instruction</strong>
-        <p>{option.proposal.instructions}</p>
+      <div className={`agent-home-flow__instruction${isInstructionExpanded ? ' is-expanded' : ''}`}>
+        <div className="agent-home-flow__instruction-heading">
+          <strong>Instruction</strong>
+        </div>
+        <div className="card agent-home-flow__instruction-card">
+          <p id="agent-home-template-instruction">{option.proposal.instructions}</p>
+          <UpliftMomentumButton
+            type="button"
+            variant="tertiary"
+            color="default"
+            size="sm"
+            className="agent-home-flow__instruction-view-all"
+            aria-expanded={isInstructionExpanded}
+            aria-controls="agent-home-template-instruction"
+            onClick={() => setIsInstructionExpanded(expanded => !expanded)}
+          >
+            {isInstructionExpanded ? 'Show less' : 'View all'}
+          </UpliftMomentumButton>
+        </div>
       </div>
     </section>
   );
@@ -747,6 +771,7 @@ function TemplateFlow({
 }) {
   const [setupTemplateId, setSetupTemplateId] = useState<AgentHomeTemplateId | null>(null);
   const [selectedId, setSelectedId] = useState<AgentHomeTemplateId>(initialTemplateId);
+  const [templateDetailView, setTemplateDetailView] = useState<TemplateDetailView>('preset-defaults');
   const [searchQuery, setSearchQuery] = useState('');
   const [agentTypeFilter, setAgentTypeFilter] = useState<AgentTypeFilter>('all');
   const [industryFilter, setIndustryFilter] = useState('all');
@@ -908,6 +933,39 @@ function TemplateFlow({
               <p>{option.proposal.description}</p>
             </div>
             <div className="agent-home-flow__actions">
+              <TemplateDetailButtonGroup
+                className="agent-home-flow__detail-view-toggle"
+                size={32}
+                variant="secondary"
+                aria-label="Template detail view"
+              >
+                <UpliftMomentumButton
+                  type="button"
+                  variant="secondary"
+                  color="default"
+                  size="sm"
+                  className={`agent-home-flow__detail-view-toggle-option${templateDetailView === 'preset-defaults' ? ' active' : ''}`}
+                  aria-label="Show preset defaults view"
+                  aria-pressed={templateDetailView === 'preset-defaults'}
+                  title="Show preset defaults"
+                  onClick={() => setTemplateDetailView('preset-defaults')}
+                >
+                  <Icon name="view-list" weight="regular" size={16} />
+                </UpliftMomentumButton>
+                <UpliftMomentumButton
+                  type="button"
+                  variant="secondary"
+                  color="default"
+                  size="sm"
+                  className={`agent-home-flow__detail-view-toggle-option${templateDetailView === 'workflow' ? ' active' : ''}`}
+                  aria-label="Show workflow view"
+                  aria-pressed={templateDetailView === 'workflow'}
+                  title="Show workflow"
+                  onClick={() => setTemplateDetailView('workflow')}
+                >
+                  <Icon name="workflow-deployments" weight="regular" size={16} />
+                </UpliftMomentumButton>
+              </TemplateDetailButtonGroup>
               <Button
                 type="button"
                 variant="secondary"
@@ -927,13 +985,16 @@ function TemplateFlow({
               </Button>
             </div>
           </div>
-          <div className="agent-home-flow__detail-body">
-            <div className="agent-home-flow__workflow-column">
+          <div className={`agent-home-flow__detail-body agent-home-flow__detail-body--${templateDetailView}`}>
+            {templateDetailView === 'workflow' ? (
+              <div className="agent-home-flow__workflow-column">
               <ReadyMadeWorkflow option={option} />
-            </div>
-            <div className="agent-home-flow__defaults-column">
+              </div>
+            ) : (
+              <div className="agent-home-flow__defaults-column">
               <PresetDefaults option={option} />
-            </div>
+              </div>
+            )}
           </div>
           </Card>
         </div>
