@@ -14849,6 +14849,20 @@ button.eva-retail-preview-card::before {
   margin-inline: auto;
 }
 
+/* Free-chat normally pins a 960px composer to the entire landing surface.
+   During the guided intake that rule must not escape the transcript column:
+   Progress owns the second grid column, so the footer shares the transcript's
+   exact left and right edges at every rail width. */
+.eva-agents-landing .eva-first-interface.eva-first-interface--guided-intake > .eva-first-interface__chat--sticky {
+  position: relative;
+  left: auto;
+  right: auto;
+  bottom: auto;
+  width: min(100%, calc(720px + (var(--spacing-small) * 2))) !important;
+  max-width: none !important;
+  margin-inline: auto !important;
+}
+
 .eva-family-intake-stepper {
   position: relative;
   z-index: 2;

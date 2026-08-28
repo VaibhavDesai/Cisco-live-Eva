@@ -2375,6 +2375,11 @@ test('Agent Home and start-from-scratch remove free composers without dead-endin
   );
   assert.match(
     studioStyles,
+    /\.eva-agents-landing \.eva-first-interface\.eva-first-interface--guided-intake > \.eva-first-interface__chat--sticky\s*\{[^}]*position:\s*relative;[^}]*left:\s*auto;[^}]*right:\s*auto;[^}]*bottom:\s*auto;[^}]*width:\s*min\(100%, calc\(720px \+ \(var\(--spacing-small\) \* 2\)\)\) !important;/,
+    'the guided composer should override the legacy free-chat absolute footer geometry',
+  );
+  assert.match(
+    studioStyles,
     /\.eva-first-interface--guided-intake-collapsed\s*\{[^}]*grid-template-columns:\s*minmax\(0, 1fr\) var\(--eva-intake-rail-collapsed\);[\s\S]*?\.eva-family-intake-stepper--collapsed\s*\{[^}]*width:\s*var\(--eva-intake-rail-collapsed\);[\s\S]*?\.eva-family-intake-stepper__body\[hidden\]\s*\{[^}]*display:\s*none;/,
     'collapsed progress should reserve only the compact rail and hide its detailed body',
   );
@@ -2665,7 +2670,7 @@ test('preset proposal review shows the verified setup choices and preserves them
   );
 });
 
-test('preset intake reuses established channel and verification patterns with structured selectors', () => {
+test('preset intake reuses established channel and verification patterns with selection cards', () => {
   const source = readSource('../eva/EvaChatExperience.tsx');
   const styles = readSource('../../products/ai-agent-studio/components.css');
   const homeStyles = readSource('../agent-home/agent-home.css');
@@ -2704,9 +2709,20 @@ test('preset intake reuses established channel and verification patterns with st
     /isCallingDestinationPrompt[\s\S]*?label="Location"[\s\S]*?label="Phone number"[\s\S]*?disabled=\{!familyVoiceLocation \|\| !familyVoicePhoneNumber\}/,
     'Phone receptionist should require both endpoint selections before continuing',
   );
-  assert.match(source, /isFamilyKnowledgePrompt[\s\S]*?familyKnowledgeDropdownOptions[\s\S]*?Skip for now/);
-  assert.match(source, /isFamilyActionPrompt[\s\S]*?familyActionDropdownOptions[\s\S]*?Skip for now/);
+  assert.match(
+    source,
+    /isFamilyKnowledgePrompt[\s\S]*?eva-family-recommendation-panel[\s\S]*?Connected knowledge bases[\s\S]*?familyRecommendedKnowledgeBases[\s\S]*?Confirm knowledge bases[\s\S]*?Skip for now/,
+    'knowledge selection should reuse the main branch chip-and-recommendation-card format',
+  );
+  assert.match(
+    source,
+    /isFamilyActionPrompt[\s\S]*?eva-family-recommendation-panel[\s\S]*?Connected actions[\s\S]*?familyRecommendedActions[\s\S]*?Skip for now[\s\S]*?Confirm actions/,
+    'action selection should reuse the main branch chip-and-recommendation-card format',
+  );
   assert.match(styles, /\.eva-retail-channel-option\.card\s*\{/);
+  assert.match(styles, /\.eva-retail-recommendation-panel\s*\{/);
+  assert.match(styles, /\.eva-retail-connected-chip\s*\{/);
+  assert.match(styles, /\.eva-retail-recommendation-card\.card\s*\{/);
   assert.match(styles, /\.eva-retail-agent-name-options\s*\{/);
   assert.match(styles, /\.eva-retail-welcome-option\s*\{/);
   assert.match(homeStyles, /\.eva-family-structured-step\s*\{[^}]*display:\s*grid;[^}]*gap:/);

@@ -5732,12 +5732,11 @@ ${previewTranscript}`,
         .map(source => [source.name, source]),
     ).values(),
   );
-  const familyKnowledgeDropdownOptions = (
-    knowledgeBaseOptions.length > 0 ? knowledgeBaseOptions : fallbackKnowledgeBases
-  ).map(source => ({ value: source.name, label: source.name }));
-  const familyActionDropdownOptions = Array.from(
+  const familyRecommendedKnowledgeBases = knowledgeBaseOptions.length > 0
+    ? knowledgeBaseOptions
+    : fallbackKnowledgeBases;
+  const familyRecommendedActions = Array.from(
     new Map(EVA_ACTION_ROWS.map(action => [action.name, action])).values(),
-    action => ({ value: action.name, label: action.name }),
   );
   const presetVoiceDestination = decodeVoiceDestinationAnswer(familyIntakeAnswers.voice_destination);
   const presetVoiceLocationLabel = VOICE_LOCATION_OPTIONS.find(
@@ -7339,7 +7338,7 @@ ${previewTranscript}`,
                     </div>
                   )}
                   {isFamilyKnowledgePrompt && !evaThinking && familyIntakeQuestion && (
-                    <div className="eva-family-structured-step" role="group" aria-label="Select a knowledge base">
+                    <div className="eva-retail-recommendation-panel eva-family-recommendation-panel" role="group" aria-label="Select a knowledge base">
                       {knowledgeInventoryError && (
                         <Banner
                           type="error"
@@ -7352,17 +7351,57 @@ ${previewTranscript}`,
                           dismissable={false}
                         />
                       )}
-                      <Dropdown
-                        id={`preset-${selectedAgentFamily}-knowledge`}
-                        label="Knowledge base"
-                        required={familyIntakeQuestion.required}
-                        options={familyKnowledgeDropdownOptions}
-                        value={familyKnowledgeSelection}
-                        placeholder="Select a knowledge base"
-                        disabled={familyKnowledgeDropdownOptions.length === 0}
-                        onChange={setFamilyKnowledgeSelection}
-                      />
-                      <div className="eva-family-structured-step__actions">
+                      {familyKnowledgeSelection && (
+                        <div className="eva-retail-recommendation-section">
+                          <span className="eva-retail-recommendation-eyebrow">
+                            <Icon name="sparkle" weight="bold" size={14} />
+                            Connected knowledge bases
+                          </span>
+                          <div className="eva-retail-connected-list">
+                            <span className="eva-retail-connected-chip">
+                              <Icon className="eva-retail-connected-chip__status" name="check-circle-filled" weight="bold" size="sm" />
+                              {familyKnowledgeSelection}
+                              <button
+                                type="button"
+                                className="eva-retail-connected-chip__close"
+                                aria-label={`Remove ${familyKnowledgeSelection}`}
+                                onClick={() => setFamilyKnowledgeSelection('')}
+                              >
+                                <Icon name="cancel" weight="regular" size="sm" />
+                              </button>
+                            </span>
+                          </div>
+                        </div>
+                      )}
+                      <div className="eva-retail-recommendation-section">
+                        <span className="eva-retail-recommendation-eyebrow">Recommended knowledge bases</span>
+                        <div className="eva-retail-recommendation-list">
+                          {familyRecommendedKnowledgeBases.slice(0, 3).map(option => {
+                            const isSelected = familyKnowledgeSelection === option.name;
+                            return (
+                              <Card
+                                key={option.name}
+                                clickable
+                                selected={isSelected}
+                                className="eva-retail-recommendation-card card-selectable"
+                                aria-label={`${option.name}. ${option.description}`}
+                                aria-pressed={isSelected}
+                                onClick={() => setFamilyKnowledgeSelection(option.name)}
+                              >
+                                <span className="card-select-icon eva-retail-recommendation-card__select" aria-hidden="true">
+                                  <Icon name={isSelected ? 'check-circle-filled' : 'check-circle'} weight="bold" size={20} />
+                                </span>
+                                <span className="eva-retail-recommendation-card__icon" aria-hidden="true">
+                                  <Icon name="files" weight="regular" size={24} />
+                                </span>
+                                <strong>{option.name}</strong>
+                                <span className="eva-retail-recommendation-card__description">{option.description}</span>
+                              </Card>
+                            );
+                          })}
+                        </div>
+                      </div>
+                      <div className="eva-retail-recommendation-actions">
                         {!familyIntakeQuestion.required && (
                           <Button
                             size="sm"
@@ -7377,23 +7416,66 @@ ${previewTranscript}`,
                           disabled={!familyKnowledgeSelection}
                           onClick={() => handleFamilyIntakeAnswer(familyKnowledgeSelection)}
                         >
-                          Continue
+                          Confirm knowledge bases
                         </Button>
                       </div>
                     </div>
                   )}
                   {isFamilyActionPrompt && !evaThinking && familyIntakeQuestion && (
-                    <div className="eva-family-structured-step" role="group" aria-label="Select an action">
-                      <Dropdown
-                        id="preset-contact-center-action"
-                        label="Action"
-                        options={familyActionDropdownOptions}
-                        value={familyActionSelection}
-                        placeholder="Select an action"
-                        disabled={familyActionDropdownOptions.length === 0}
-                        onChange={setFamilyActionSelection}
-                      />
-                      <div className="eva-family-structured-step__actions">
+                    <div className="eva-retail-recommendation-panel eva-family-recommendation-panel" role="group" aria-label="Select an action">
+                      {familyActionSelection && (
+                        <div className="eva-retail-recommendation-section">
+                          <span className="eva-retail-recommendation-eyebrow">
+                            <Icon name="sparkle" weight="bold" size={14} />
+                            Connected actions
+                          </span>
+                          <div className="eva-retail-connected-list">
+                            <span className="eva-retail-connected-chip">
+                              <Icon className="eva-retail-connected-chip__status" name="check-circle-filled" weight="bold" size="sm" />
+                              {familyActionSelection}
+                              <button
+                                type="button"
+                                className="eva-retail-connected-chip__close"
+                                aria-label={`Remove ${familyActionSelection}`}
+                                onClick={() => setFamilyActionSelection('')}
+                              >
+                                <Icon name="cancel" weight="regular" size="sm" />
+                              </button>
+                            </span>
+                          </div>
+                        </div>
+                      )}
+                      <div className="eva-retail-recommendation-section">
+                        <span className="eva-retail-recommendation-eyebrow">Recommended actions</span>
+                        <div className="eva-retail-recommendation-list">
+                          {familyRecommendedActions.slice(0, 3).map(option => {
+                            const isSelected = familyActionSelection === option.name;
+                            return (
+                              <Card
+                                key={option.id}
+                                clickable
+                                selected={isSelected}
+                                className="eva-retail-recommendation-card card-selectable"
+                                aria-label={`${option.name}. ${option.providerType}. ${option.description}`}
+                                aria-pressed={isSelected}
+                                onClick={() => setFamilyActionSelection(option.name)}
+                              >
+                                <span className="card-select-icon eva-retail-recommendation-card__select" aria-hidden="true">
+                                  <Icon name={isSelected ? 'check-circle-filled' : 'check-circle'} weight="bold" size={20} />
+                                </span>
+                                <span className="eva-retail-recommendation-card__icon" aria-hidden="true">
+                                  <Icon name="sparkle" weight="bold" size={24} />
+                                </span>
+                                <strong>{option.name}</strong>
+                                <span className="eva-retail-recommendation-card__description">
+                                  {`${option.providerType}. ${option.description}`}
+                                </span>
+                              </Card>
+                            );
+                          })}
+                        </div>
+                      </div>
+                      <div className="eva-retail-recommendation-actions">
                         <Button
                           size="sm"
                           variant="secondary"
@@ -7406,7 +7488,7 @@ ${previewTranscript}`,
                           disabled={!familyActionSelection}
                           onClick={() => handleFamilyIntakeAnswer(familyActionSelection)}
                         >
-                          Continue
+                          Confirm actions
                         </Button>
                       </div>
                     </div>
