@@ -1885,7 +1885,11 @@ test('Agent Home and start-from-scratch remove free composers without dead-endin
   const studioStyles = readSource('../../products/ai-agent-studio/components.css');
 
   assert.match(dashboardSource, /<AgentHomeDashboard[\s\S]*?mode=\{mode\}[\s\S]*?snapshot=\{snapshot\}/);
-  assert.doesNotMatch(homeSource, /agent-home__composer|composer:\s*ReactNode/);
+  assert.match(
+    homeSource,
+    /onGuidedComposerSend\?: \(prompt: string\) => void;[\s\S]*?agent-home__landing-composer eva-landing-composer[\s\S]*?<AiFooter[\s\S]*?onGuidedComposerSend\(prompt\)/,
+    'the first-time home should use the shared main composer and pass its prompt into guided setup',
+  );
   assert.match(
     dashboardSource,
     /agentHomeFlow === 'home' && \([\s\S]*?new-mvo-home__hero[\s\S]*?onFirstTimeFlowChange=\{setAgentHomeFlow\}/,
@@ -1908,13 +1912,13 @@ test('Agent Home and start-from-scratch remove free composers without dead-endin
   );
   assert.match(
     dashboardSource,
-    /const openGuidedIntake = \(\) => \{[\s\S]*?setAgentHomeFlow\('home'\);[\s\S]*?setSurface\('guided'\);[\s\S]*?action\.intent === 'start-intake'[\s\S]*?openGuidedIntake\(\)/,
-    'the Create my own action should preserve the existing guided intake from a clean Agent Home state',
+    /const openGuidedIntake = \(prompt = ''\) => \{[\s\S]*?setAgentHomeFlow\('home'\);[\s\S]*?setGuidedPrompt\(prompt\.trim\(\)\);[\s\S]*?setSurface\('guided'\);[\s\S]*?action\.intent === 'start-intake'[\s\S]*?openGuidedIntake\(\)/,
+    'guided entry should preserve the existing clean intake path and carry the composer prompt into it',
   );
   assert.match(
     homeSource,
-    /onClick=\{\(\) => startWithAssistant && onAction\(startWithAssistant\.action\)\}[\s\S]*?Create with guide[\s\S]*?onClick=\{onStartFromScratch\}[\s\S]*?Start from scratch/,
-    'the home card should keep guided creation under Create with guide and expose a separate direct scratch action',
+    /placeholder=\{'Describe the agent you want to build\.[\s\S]*?Browse Templates[\s\S]*?onClick=\{onStartFromScratch\}[\s\S]*?Start from Scratch/,
+    'the home composer should launch guided creation while Browse Templates and Start from Scratch retain their direct paths',
   );
   assert.match(
     homeSource,
@@ -2236,7 +2240,7 @@ test('Agent Home and start-from-scratch remove free composers without dead-endin
   );
   assert.match(
     homeStyles,
-    /\.agent-home-flow--demo-preview \.agent-home-flow__header h1\s*\{[^}]*margin:\s*0;[^}]*font-size:\s*32px;[^}]*font-weight:\s*400;[^}]*line-height:\s*40px;/,
+    /\.agent-home-flow--demo-preview \.agent-home-flow__header h1\s*\{[^}]*margin:\s*0;[^}]*font-size:\s*28px;[^}]*font-weight:\s*400;[^}]*line-height:\s*36px;/,
     'the preview heading should match the ready-made template heading typography',
   );
   assert.match(
@@ -2256,13 +2260,13 @@ test('Agent Home and start-from-scratch remove free composers without dead-endin
   );
   assert.match(
     evaSource,
-    /!choiceOnlyGuidedFlow && showBuildFlow[\s\S]*?eva-generated-composer/,
-    'the generated-side composer should stay hidden in the choice-only flow',
+    /buildChoiceOnlyGuidedStart[\s\S]*?role: 'user'[\s\S]*?Which channels should this agent support\?/,
+    'a landing composer prompt should become context before the channel-first guided flow',
   );
   assert.match(
     evaSource,
-    /!choiceOnlyGuidedFlow && showBuildFlow && !showGeneratedSidePanel[\s\S]*?<AiFooter/,
-    'the bottom composer should stay hidden in the choice-only flow',
+    /showBuildFlow && !showGeneratedSidePanel && !showLandingOptions[\s\S]*?<AiFooter/,
+    'the bottom composer should stay available while the choice-only flow is guiding setup',
   );
   assert.match(
     evaSource,
@@ -2281,33 +2285,28 @@ test('Agent Home and start-from-scratch remove free composers without dead-endin
   );
   assert.match(
     evaSource,
-    /CHOICE_ONLY_GUIDED_START[\s\S]*?What type of agent do you want to create\?[\s\S]*?getAdaptiveIntakeQuestions\(family, \{\}\)\[0\][\s\S]*?getAdaptiveIntakeQuestions\(selectedAgentFamily, nextAnswers\)/,
-    'choice-only creation should follow the fixed main intake model from agent type through every family question',
+    /UNIFIED_CHANNEL_CHOICE_ORIGIN[\s\S]*?UNIFIED_GOAL_ORIGIN[\s\S]*?CHOICE_ONLY_GUIDED_START[\s\S]*?Which channels should this agent support\?[\s\S]*?handleUnifiedChannelSelection[\s\S]*?const savedGoal = initialGuidedPrompt\.trim\(\);[\s\S]*?\{ channel: channelAnswer, outcome: savedGoal \}[\s\S]*?handleUnifiedGoalSubmit/,
+    'choice-only creation should begin with channels and reuse the home prompt as its goal before asking for anything again',
   );
   assert.match(
     evaSource,
-    /const FAMILY_CHOICE_LABELS[\s\S]*?contact_center:\s*'Customer service agent'[\s\S]*?calling:\s*'Phone receptionist'[\s\S]*?internal_assistant:\s*'Employee assistant'[\s\S]*?const AGENT_FAMILIES:\s*AgentFamily\[\]\s*=\s*\['contact_center',\s*'calling',\s*'internal_assistant'\]/,
-    'the fixed intake should use the same three agent types and order as first-time Home',
+    /const resolveUnifiedAgentFamily[\s\S]*?hasVoice && hasDigital\) return 'contact_center'[\s\S]*?employee\|internal[\s\S]*?return 'internal_assistant'[\s\S]*?reception\|front desk[\s\S]*?return 'calling'/,
+    'the unified router should map voice and digital to service, employee goals to internal support, and receptionist goals to calling',
+  );
+  assert.doesNotMatch(
+    evaSource,
+    /className="eva-family-choice-grid"/,
+    'the unified flow should not render a visible agent-type card chooser',
   );
   assert.match(
     evaSource,
-    /isFamilyChoicePrompt[\s\S]*?followups=\{[^}]*isFamilyChoicePrompt[^}]*\? \[\] : followups\}[\s\S]*?className="eva-family-choice-grid"[\s\S]*?AGENT_FAMILIES\.map\(family => \{[\s\S]*?getFamilyIntakeSequence\(family\)\.length \+ 1[\s\S]*?<Card[\s\S]*?clickable[\s\S]*?onClick=\{\(\) => handleAgentFamilySelect\(family, label\)\}/,
-    'the guided family prompt should replace generic chips with large clickable cards whose step counts include Review',
+    /isChannelSelectionPrompt[\s\S]*?aria-label="Channel options"[\s\S]*?handleUnifiedChannelSelection\(\)[\s\S]*?isUnifiedGoalPrompt[\s\S]*?<Textarea[\s\S]*?label="Agent goal"[\s\S]*?handleUnifiedGoalSubmit/,
+    'the visible intake should collect channel choices before a goal when routing remains ambiguous',
   );
-  assert.match(
-    evaSource,
-    /const FAMILY_CHOICE_DETAILS[\s\S]*?Serves customers across channels[\s\S]*?Handles customer service across voice, digital, and video[\s\S]*?Answers and routes calls[\s\S]*?Greets callers, answers common questions[\s\S]*?Helps employees get work done[\s\S]*?Uses company knowledge and tools/,
-    'each agent-family card should explain the experience before selection',
-  );
-  assert.match(
+  assert.doesNotMatch(
     studioStyles,
-    /\.eva-family-choice-grid\s*\{[^}]*display:\s*grid;[^}]*grid-template-columns:\s*repeat\(3, minmax\(0, 1fr\)\);[^}]*gap:[^;}]+;[\s\S]*?\.eva-family-choice-card\.card\s*\{[^}]*min-height:\s*188px;[^}]*border-radius:\s*12px;[^}]*var\(--bg-glass-overlay\)[^}]*backdrop-filter:\s*blur\(20px\) saturate\(125%\);/,
-    'agent-family choices should use the larger three-column glass-card treatment',
-  );
-  assert.match(
-    studioStyles,
-    /@media \(max-width:\s*860px\)[\s\S]*?\.eva-family-choice-grid,[\s\S]*?grid-template-columns:\s*1fr;[\s\S]*?\.eva-family-choice-card\.card\s*\{[^}]*min-height:\s*0;/,
-    'agent-family cards should stack without fixed height on narrow screens',
+    /\.eva-family-choice-grid/,
+    'the deprecated agent-type card treatment should not remain in the active Studio stylesheet',
   );
   assert.match(
     evaSource,
@@ -2368,6 +2367,11 @@ test('Agent Home and start-from-scratch remove free composers without dead-endin
     studioStyles,
     /\.eva-first-interface--guided-intake\s*\{[^}]*--eva-intake-rail-expanded:\s*232px;[^}]*grid-template-columns:\s*minmax\(0, 1fr\) var\(--eva-intake-rail-expanded\);[\s\S]*?\.eva-family-intake-stepper\s*\{[^}]*grid-column:\s*2;[^}]*border:[^;]*var\(--outline-glass-overlay\);[^}]*var\(--bg-glass-overlay\);[^}]*backdrop-filter:\s*blur\(28px\) saturate\(140%\);/,
     'the expanded guided flow should use a narrower semantic glass rail',
+  );
+  assert.match(
+    studioStyles,
+    /\.eva-first-interface--guided-intake \.eva-first-interface__free-chat\s*\{[^}]*grid-column:\s*1;[^}]*width:\s*min\(100%, calc\(720px \+ \(var\(--spacing-small\) \* 2\)\)\);[\s\S]*?\.eva-first-interface--guided-intake > \.eva-first-interface__chat--sticky\s*\{[^}]*grid-column:\s*1;[^}]*grid-row:\s*1;[^}]*align-self:\s*end;[^}]*width:\s*min\(100%, calc\(720px \+ \(var\(--spacing-small\) \* 2\)\)\);/,
+    'the guided composer should share the same left and right edges as the transcript when progress is present',
   );
   assert.match(
     studioStyles,
@@ -2647,7 +2651,7 @@ test('preset proposal review shows the verified setup choices and preserves them
   }
 
   const applyStart = source.indexOf('const applyProposalToConfiguration');
-  const applyEnd = source.indexOf('const handleAgentFamilySelect', applyStart);
+  const applyEnd = source.indexOf('const getFamilyIntakeMessage', applyStart);
   const applySource = source.slice(applyStart, applyEnd);
   assert.match(applySource, /proposal\.selectedChannels/);
   assert.match(applySource, /setSelectedChannels\(/);

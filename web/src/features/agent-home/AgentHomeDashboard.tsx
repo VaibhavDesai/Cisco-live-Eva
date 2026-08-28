@@ -4,7 +4,7 @@ import Badge, { type BadgeVariant } from '../../components/shared/Badge';
 import { Banner } from '../../components/shared/Banner';
 import { Card } from '../../components/shared/Card';
 import Spinner from '../../components/shared/Spinner';
-import { AiSymbol } from '../../components/shared';
+import { AiFooter, AiSymbol } from '../../components/shared';
 import { Icon, type IconName } from '../../icons';
 import EvaHeroAnimation from '../eva/EvaHeroAnimation';
 import AgentHomeFirstTimeFlows, {
@@ -92,6 +92,7 @@ export interface AgentHomeDashboardProps {
   creationAudience?: DemoHomeMode;
   showGreeting?: boolean;
   onFirstTimeFlowChange?: (flow: AgentHomeFirstTimeFlow) => void;
+  onGuidedComposerSend?: (prompt: string) => void;
   snapshot: AgentHomeSnapshot;
   onAction: (action: AgentHomeAction) => void;
   onStartFromScratch: () => void;
@@ -129,12 +130,14 @@ function FirstTimeHome({
   snapshot,
   onAction,
   onStartFromScratch,
+  onGuidedComposerSend,
   creationAudience = 'first-time',
   existingAgents = [],
-}: Pick<AgentHomeDashboardProps, 'snapshot' | 'onAction' | 'onStartFromScratch' | 'creationAudience' | 'existingAgents'>) {
+}: Pick<AgentHomeDashboardProps, 'snapshot' | 'onAction' | 'onStartFromScratch' | 'onGuidedComposerSend' | 'creationAudience' | 'existingAgents'>) {
   const primaryAction = snapshot.actions[0];
   const permissionMissing = snapshot.dataState.permission === 'missing';
   const isRecurringCreation = creationAudience === 'recurring';
+  const [voiceActive, setVoiceActive] = useState(false);
   const startWithAssistant = snapshot.quickStarts.find(item => item.id === 'start-with-assistant');
   const chooseTemplate = snapshot.quickStarts.find(item => item.id === 'choose-template');
   const mostUsedAgents = [...existingAgents]
@@ -173,6 +176,47 @@ function FirstTimeHome({
         </div>
         <Button variant="primary" onClick={() => onAction(primaryAction)}>{primaryAction.label}</Button>
       </Card>
+    );
+  }
+
+  if (!isRecurringCreation) {
+    return (
+      <section className="agent-home__first-actions agent-home__first-actions--composer" aria-labelledby="agent-home-quick-start-title">
+        <h2 id="agent-home-quick-start-title" className="sr-only">Start creating an agent</h2>
+        <div className="agent-home__landing-composer eva-landing-composer" aria-label="Describe the agent you want to build">
+          <AiFooter
+            className="eva-ai-footer"
+            fillContainer
+            onSend={(prompt) => {
+              if (onGuidedComposerSend) {
+                onGuidedComposerSend(prompt);
+                return;
+              }
+              if (startWithAssistant) onAction(startWithAssistant.action);
+            }}
+            processing={false}
+            disabled={!startWithAssistant}
+            placeholder={'Describe the agent you want to build.\ne.g. A friendly banking assistant that helps customers check their balance, dispute charges, and get account help — always calm and reassuring.'}
+            suggestions={[]}
+            voiceActive={voiceActive}
+            onVoiceToggle={setVoiceActive}
+            showDisclaimer={false}
+          />
+        </div>
+        <div className="eva-landing-divider agent-home__landing-divider" role="separator" aria-label="Quick start with">
+          <span className="eva-landing-divider-line" aria-hidden="true" />
+          <span className="eva-landing-divider-text">Quick start with</span>
+          <span className="eva-landing-divider-line" aria-hidden="true" />
+        </div>
+        <div className="eva-landing-secondary-actions agent-home__landing-actions" role="group" aria-label="Other ways to create an agent">
+          <Button variant="primary" onClick={() => chooseTemplate && onAction(chooseTemplate.action)} disabled={!chooseTemplate}>
+            Browse Templates
+          </Button>
+          <Button variant="secondary" onClick={onStartFromScratch}>
+            Start from Scratch
+          </Button>
+        </div>
+      </section>
     );
   }
 
@@ -902,10 +946,15 @@ function RecurringReviewCard({
                 <strong title={item.title}>{item.title}</strong>
                 <p>{item.description}</p>
                 {item.action && (
-                  <button type="button" onClick={() => onAction(item.action)}>
+                  <Button
+                    className="agent-home__focus-review-action agent-home__focus-review-action--tertiary"
+                    variant="tertiary"
+                    size="sm"
+                    onClick={() => onAction(item.action)}
+                  >
                     {item.actionLabel}
                     <Icon name="arrow-right" weight="regular" size={16} />
-                  </button>
+                  </Button>
                 )}
               </div>
             </li>
@@ -1130,6 +1179,7 @@ export default function AgentHomeDashboard({
   creationAudience = 'first-time',
   showGreeting = true,
   onFirstTimeFlowChange,
+  onGuidedComposerSend,
   snapshot,
   onAction,
   onStartFromScratch,
@@ -1218,6 +1268,7 @@ export default function AgentHomeDashboard({
                 existingAgents={existingAgents}
                 onAction={handleFirstTimeAction}
                 onStartFromScratch={onStartFromScratch}
+                onGuidedComposerSend={onGuidedComposerSend}
               />
             </div>
           ) : showingFigmaRecurringHome ? (
@@ -1265,6 +1316,7 @@ export default function AgentHomeDashboard({
                 existingAgents={existingAgents}
                 onAction={handleFirstTimeAction}
                 onStartFromScratch={onStartFromScratch}
+                onGuidedComposerSend={onGuidedComposerSend}
               />
             </>
           )

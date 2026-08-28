@@ -103,6 +103,49 @@
   padding-top: 0;
 }
 
+/* The first-time entry point now uses the established assistant composer
+   rather than a separate creation card. Keep it on the same centered measure
+   as the main landing while preserving the template and empty-draft routes. */
+.agent-home--first-time:not(.agent-home--flow) .agent-home__first-time-summary:has(.agent-home__first-actions--composer) {
+  display: flex;
+  flex: 1 1 auto;
+  justify-content: center;
+  padding: 0;
+}
+
+.agent-home--first-time:not(.agent-home--flow) .agent-home__first-actions--composer {
+  display: flex;
+  flex: 0 1 720px;
+  flex-direction: column;
+  align-self: center;
+  width: min(100%, 720px);
+  margin: 0 auto;
+}
+
+.agent-home--first-time:not(.agent-home--flow) .agent-home__landing-composer.eva-landing-composer {
+  width: 100%;
+  margin: 0;
+  animation: none !important;
+  opacity: 1;
+  transform: none;
+}
+
+.agent-home--first-time:not(.agent-home--flow) .agent-home__landing-divider,
+.agent-home--first-time:not(.agent-home--flow) .agent-home__landing-actions {
+  width: 100%;
+  opacity: 1;
+  transform: none;
+  animation: none;
+}
+
+.agent-home--first-time:not(.agent-home--flow) .agent-home__landing-divider {
+  margin-top: var(--spacing-x-large);
+}
+
+.agent-home--first-time:not(.agent-home--flow) .agent-home__landing-actions {
+  margin-top: var(--spacing-medium);
+}
+
 .new-mvo-home__dashboard .agent-home--recurring .agent-home__scroll-region {
   padding-top: 0;
 }
@@ -1198,7 +1241,7 @@ fieldset.eva-family-structured-step {
   gap: 10px;
   max-width: none;
   padding: 14px 20px 16px;
-  border-top: 1px solid color-mix(in srgb, var(--border-color) 58%, transparent);
+  border-top: 0;
   background: color-mix(in srgb, var(--bg-secondary) 66%, transparent);
 }
 
@@ -2901,6 +2944,10 @@ fieldset.eva-family-structured-step {
     padding-block: 0;
   }
 
+  .agent-home--first-time:not(.agent-home--flow) .agent-home__first-actions--composer {
+    width: 100%;
+  }
+
   .agent-home__figma-greeting {
     min-height: 0;
     flex-direction: column;
@@ -3507,7 +3554,7 @@ fieldset.eva-family-structured-step {
 
 .agent-home__focus-review-list {
   display: grid;
-  grid-template-rows: 92px 92px 76px 76px;
+  grid-template-rows: 92px 92px 92px 76px;
   gap: 8px;
 }
 
@@ -3554,28 +3601,18 @@ fieldset.eva-family-structured-step {
   -webkit-line-clamp: 2;
 }
 
-.agent-home__focus-review-list button {
+.app--ai .agent-home__focus-review-list .agent-home__focus-review-action--tertiary.btn.btn-tertiary {
   display: flex;
-  height: 24px;
-  align-items: center;
-  justify-content: flex-end;
-  gap: 6px;
+  width: fit-content;
   margin-top: 12px;
   margin-left: auto;
-  padding: 3px 8px;
-  border: 0;
-  border-radius: 6px;
+  border-color: transparent;
   background: transparent;
-  color: rgba(255, 255, 255, 0.95);
-  font-family: inherit;
-  font-size: 12px;
-  font-weight: 400;
-  line-height: 18px;
-  cursor: pointer;
 }
 
-.agent-home__focus-review-list button:hover {
-  background: rgba(255, 255, 255, 0.08);
+.app--ai .agent-home__focus-review-list .agent-home__focus-review-action--tertiary.btn.btn-tertiary:hover:not(:disabled) {
+  border-color: transparent;
+  background: var(--mds-color-theme-background-primary-active, var(--button-secondary-hover));
 }
 
 .agent-home--recurring .agent-home__composer {
@@ -4091,6 +4128,9 @@ fieldset.eva-family-structured-step {
 
 .agent-home-flow--demo-preview .agent-home-flow__test-thread {
   max-height: none;
+  width: min(100%, 830px);
+  align-self: center;
+  box-sizing: border-box;
 }
 
 .agent-home-flow--templates {
@@ -4219,18 +4259,18 @@ fieldset.eva-family-structured-step {
 .agent-home-flow--templates .agent-home-flow__header h1 {
   margin: 0;
   color: rgba(255, 255, 255, 0.95);
-  font-size: 32px;
+  font-size: 28px;
   font-weight: 400;
-  line-height: 40px;
+  line-height: 36px;
   text-wrap: initial;
 }
 
 .agent-home-flow--demo-preview .agent-home-flow__header h1 {
   margin: 0;
   color: rgba(255, 255, 255, 0.95);
-  font-size: 32px;
+  font-size: 28px;
   font-weight: 400;
-  line-height: 40px;
+  line-height: 36px;
   text-wrap: initial;
 }
 
@@ -4394,6 +4434,7 @@ fieldset.eva-family-structured-step {
   grid-template-columns: 384px minmax(0, 1fr);
   align-items: stretch;
   gap: 24px;
+  column-gap: 12px;
   margin: 0;
   overflow: hidden;
 }
@@ -4487,7 +4528,7 @@ fieldset.eva-family-structured-step {
 
 .agent-home-flow--templates .agent-home-flow__template-options {
   display: grid;
-  gap: 0;
+  gap: var(--spacing-xx-small);
 }
 
 .agent-home-flow--templates .agent-home-flow__industry-block {
@@ -4836,9 +4877,9 @@ fieldset.eva-family-structured-step {
 
 .agent-home-flow--templates .agent-home-flow__workflow-step > span {
   display: inline-flex;
-  width: 32px;
-  height: 32px;
-  flex: 0 0 32px;
+  width: 24px;
+  height: 24px;
+  flex: 0 0 24px;
   align-items: center;
   justify-content: center;
   border: 0;
@@ -4846,9 +4887,9 @@ fieldset.eva-family-structured-step {
   background: #545454;
   color: rgba(255, 255, 255, 0.95);
   font-family: 'Momentum', var(--font-family-primary);
-  font-size: 14px;
+  font-size: 12px;
   font-weight: 500;
-  line-height: 20px;
+  line-height: 16px;
 }
 
 .agent-home-flow--templates .agent-home-flow__workflow-step strong {

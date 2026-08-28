@@ -395,6 +395,8 @@ function extractFollowupsAndProse(content: string): { prose: string; followups?:
    its reveal cadence without re-deriving the array inside the component. */
 
 const FAMILY_CHOICE_ORIGIN = 'agent-family-choice';
+const UNIFIED_CHANNEL_CHOICE_ORIGIN = 'agent-channel-choice';
+const UNIFIED_GOAL_ORIGIN = 'agent-goal';
 const FAMILY_INTAKE_ORIGIN = 'agent-family-intake';
 const FAMILY_PROPOSAL_ORIGIN = 'agent-family-proposal';
 
@@ -429,9 +431,21 @@ const AGENT_FAMILIES: AgentFamily[] = ['contact_center', 'calling', 'internal_as
 
 const CHOICE_ONLY_GUIDED_START: EvaMessage = {
   role: 'assistant',
-  text: 'What type of agent do you want to create?',
-  followups: AGENT_FAMILIES.map(family => FAMILY_CHOICE_LABELS[family]),
-  originStep: FAMILY_CHOICE_ORIGIN,
+  text: 'Which channels should this agent support?',
+  originStep: UNIFIED_CHANNEL_CHOICE_ORIGIN,
+};
+
+const buildChoiceOnlyGuidedStart = (initialPrompt = ''): EvaMessage[] => {
+  const prompt = initialPrompt.trim();
+  if (!prompt) return [CHOICE_ONLY_GUIDED_START];
+
+  return [
+    { role: 'user', text: prompt, originStep: FAMILY_CHOICE_ORIGIN },
+    {
+      ...CHOICE_ONLY_GUIDED_START,
+      text: 'That is a helpful starting point. Which channels should this agent support?',
+    },
+  ];
 };
 
 const FAMILY_PRESET_ANSWERS: Record<AgentFamily, Record<string, string>> = {
@@ -1362,10 +1376,12 @@ function getReadinessRecommendationFixMeta(recommendation: string): {
 export default function EvaChatExperience({
   resetSessionOnInitialMount = false,
   choiceOnlyGuidedFlow = false,
+  initialGuidedPrompt = '',
   voiceTranscribePath = '/transcribe',
 }: {
   resetSessionOnInitialMount?: boolean;
   choiceOnlyGuidedFlow?: boolean;
+  initialGuidedPrompt?: string;
   voiceTranscribePath?: string;
 } = {}) {
   const navigate = useNavigate();
@@ -1417,7 +1433,7 @@ export default function EvaChatExperience({
   const [selectedTemplateId, setSelectedTemplateId] = useState<EvaTemplateId | null>(restoredEvaSession?.selectedTemplateId ?? null);
   const [draft, setDraft] = useState<EvaAgentDraft>(restoredEvaSession?.draft ?? EVA_TEMPLATES[0].draft);
   const [messages, setMessages] = useState<EvaMessage[]>(
-    restoredEvaSession?.messages ?? (choiceOnlyGuidedFlow ? [CHOICE_ONLY_GUIDED_START] : []),
+    restoredEvaSession?.messages ?? (choiceOnlyGuidedFlow ? buildChoiceOnlyGuidedStart(initialGuidedPrompt) : []),
   );
   const [guidanceVisible, setGuidanceVisible] = useState(restoredEvaSession?.guidanceVisible ?? false);
   const [evaThinking, setEvaThinking] = useState(false);
@@ -1457,6 +1473,7 @@ export default function EvaChatExperience({
       .map(channel => channel.trim())
       .filter(Boolean) ?? []
   ));
+  const [unifiedAgentGoal, setUnifiedAgentGoal] = useState('');
   const [familyProposal, setFamilyProposal] = useState<StarterProposal | null>(
     restoredEvaSession?.familyProposal ?? null,
   );
@@ -2315,8 +2332,16 @@ export default function EvaChatExperience({
       setDigitalChannel('chat');
       setPhoneNumberDeferred(nextChannels.includes('voice'));
     } else {
-      setSelectedChannels(['digital']);
-      setSelectedDigitalChannels(['chat']);
+      const requestedChannels = (familyIntakeAnswers.channel ?? '')
+        .split(',')
+        .map(channel => channel.trim().toLowerCase())
+        .filter((channel): channel is EvaChannelSelection => (
+          channel === 'voice' || channel === 'digital' || channel === 'video'
+        ));
+      const nextChannels = requestedChannels.length ? requestedChannels : ['digital'];
+      setSelectedChannels(nextChannels);
+      setChannelType(nextChannels.includes('voice') ? 'voice' : 'digital');
+      setSelectedDigitalChannels(nextChannels.includes('digital') ? ['chat'] : []);
     }
   };
 
@@ -2354,18 +2379,27 @@ export default function EvaChatExperience({
       .join(', ');
   };
 
-  const handleAgentFamilySelect = (family: AgentFamily, initialRequest = FAMILY_METADATA[family].label) => {
+  const beginFamilyIntake = (
+    family: AgentFamily,
+    answers: Record<string, string>,
+    initialRequest: string,
+    priorMessages?: EvaMessage[],
+  ) => {
     if (entitlements[family] !== 'licensed') {
       showToast(`${FAMILY_METADATA[family].label} is not available with the current license.`, 'warning');
       return;
     }
 
-    const firstQuestion = getAdaptiveIntakeQuestions(family, {})[0];
-    const firstMessage = getFamilyIntakeMessage(family, firstQuestion, {});
+    const firstQuestion = getAdaptiveIntakeQuestions(family, answers)
+      .find(question => !answers[question.answerKey]?.trim());
+    if (!firstQuestion) return;
+    const firstMessage = getFamilyIntakeMessage(family, firstQuestion, answers);
     setSelectedAgentFamily(family);
-    setFamilyIntakeAnswers({});
+    setFamilyIntakeAnswers(answers);
     setFamilyIntakeEditingAnswerKey(null);
-    setContactCenterSelectedChannels([]);
+    setContactCenterSelectedChannels(
+      answers.channel?.split(',').map(channel => channel.trim()).filter(Boolean) ?? [],
+    );
     setFamilyProposal(null);
     setFamilyProposalApplied(false);
     setFamilyProposalEditing(false);
@@ -2386,13 +2420,89 @@ export default function EvaChatExperience({
     setGuidanceVisible(false);
     setFreeChatActive(true);
     setOrchestrationSuggested(false);
-    setMessages([
+    setMessages(priorMessages ?? [
       { role: 'user', text: initialRequest, originStep: FAMILY_CHOICE_ORIGIN },
     ]);
     addOnboardingAssistantMessage(
       firstMessage.text,
       firstMessage.followups,
       FAMILY_INTAKE_ORIGIN,
+    );
+  };
+
+  const handleAgentFamilySelect = (family: AgentFamily, initialRequest = FAMILY_METADATA[family].label) => {
+    beginFamilyIntake(family, {}, initialRequest);
+  };
+
+  const resolveUnifiedAgentFamily = (channels: string[], goal: string): AgentFamily => {
+    const normalizedGoal = goal.toLowerCase();
+    const hasVoice = channels.includes('Voice');
+    const hasDigital = channels.includes('Digital');
+    if (hasVoice && hasDigital) return 'contact_center';
+    if (/(employee|internal|workplace|colleague|team member|hr\b|human resources|it support|help desk|policy)/.test(normalizedGoal)) {
+      return 'internal_assistant';
+    }
+    if (channels.length === 1 && hasVoice && /(reception|front desk|appointment|route calls?|caller|incoming calls?)/.test(normalizedGoal)) {
+      return 'calling';
+    }
+    return 'contact_center';
+  };
+
+  const handleUnifiedChannelSelection = () => {
+    if (contactCenterSelectedChannels.length === 0) return;
+    const channelAnswer = contactCenterSelectedChannels.join(', ');
+    const hasVoiceAndDigital = contactCenterSelectedChannels.includes('Voice')
+      && contactCenterSelectedChannels.includes('Digital');
+    const channelMessage: EvaMessage = {
+      role: 'user',
+      text: channelAnswer,
+      originStep: UNIFIED_CHANNEL_CHOICE_ORIGIN,
+    };
+
+    if (hasVoiceAndDigital) {
+      beginFamilyIntake(
+        'contact_center',
+        { channel: channelAnswer },
+        channelAnswer,
+        [...messages, channelMessage],
+      );
+      return;
+    }
+
+    const savedGoal = initialGuidedPrompt.trim();
+    if (savedGoal) {
+      const family = resolveUnifiedAgentFamily(contactCenterSelectedChannels, savedGoal);
+      beginFamilyIntake(
+        family,
+        { channel: channelAnswer, outcome: savedGoal },
+        savedGoal,
+        [...messages, channelMessage],
+      );
+      return;
+    }
+
+    setUnifiedAgentGoal('');
+    setMessages(previous => [
+      ...previous,
+      channelMessage,
+      {
+        role: 'assistant',
+        text: "What's this agent's main goal?",
+        originStep: UNIFIED_GOAL_ORIGIN,
+      },
+    ]);
+  };
+
+  const handleUnifiedGoalSubmit = () => {
+    const goal = unifiedAgentGoal.trim();
+    if (!goal || contactCenterSelectedChannels.length === 0) return;
+    const channelAnswer = contactCenterSelectedChannels.join(', ');
+    const family = resolveUnifiedAgentFamily(contactCenterSelectedChannels, goal);
+    beginFamilyIntake(
+      family,
+      { channel: channelAnswer, outcome: goal },
+      goal,
+      [...messages, { role: 'user', text: goal, originStep: UNIFIED_GOAL_ORIGIN }],
     );
   };
 
@@ -6876,6 +6986,10 @@ ${previewTranscript}`,
               const isRetailCompleteActions = message.originStep === 'retail-complete-actions';
               const isRetailInlinePreview = message.originStep === 'retail-inline-preview';
               const isFamilyChoicePrompt = message.originStep === FAMILY_CHOICE_ORIGIN;
+              const isUnifiedChannelPrompt = message.originStep === UNIFIED_CHANNEL_CHOICE_ORIGIN
+                && !selectedAgentFamily;
+              const isUnifiedGoalPrompt = message.originStep === UNIFIED_GOAL_ORIGIN
+                && !selectedAgentFamily;
               const isFamilyIntakePrompt = message.originStep === FAMILY_INTAKE_ORIGIN;
               const isLatestFamilyIntakePrompt = isFamilyIntakePrompt && index === messages.findLastIndex(
                 candidate => candidate.role === 'assistant' && candidate.originStep === FAMILY_INTAKE_ORIGIN,
@@ -6884,6 +6998,7 @@ ${previewTranscript}`,
                 isLatestFamilyIntakePrompt
                 && selectedAgentFamily === 'contact_center'
                 && familyIntakeQuestion?.answerKey === 'channel';
+              const isChannelSelectionPrompt = isUnifiedChannelPrompt || isContactCenterChannelPrompt;
               const isFamilyNamePrompt =
                 isLatestFamilyIntakePrompt
                 && familyIntakeQuestion?.answerKey === 'name';
@@ -6989,45 +7104,9 @@ ${previewTranscript}`,
                       </div>
                     </div>
                   ) : message.text}
-                  followups={isRetailChannelChoice || isRetailPhonePrompt || isRetailAgentNamePrompt || isRetailWelcomePrompt || isRetailKnowledgePrompt || isRetailActionsPrompt || isRetailFinalActions || isRetailCompleteActions || isRetailInlinePreview || isFamilyChoicePrompt || isFamilyProposalPrompt || isContactCenterChannelPrompt || isFamilyNamePrompt || isFamilyGreetingPrompt || isCallingDestinationPrompt || isFamilyKnowledgePrompt || isFamilyActionPrompt || (isFamilyIntakePrompt && (!isLatestFamilyIntakePrompt || evaThinking)) ? [] : followups}
+                  followups={isRetailChannelChoice || isRetailPhonePrompt || isRetailAgentNamePrompt || isRetailWelcomePrompt || isRetailKnowledgePrompt || isRetailActionsPrompt || isRetailFinalActions || isRetailCompleteActions || isRetailInlinePreview || isFamilyChoicePrompt || isUnifiedChannelPrompt || isUnifiedGoalPrompt || isFamilyProposalPrompt || isContactCenterChannelPrompt || isFamilyNamePrompt || isFamilyGreetingPrompt || isCallingDestinationPrompt || isFamilyKnowledgePrompt || isFamilyActionPrompt || (isFamilyIntakePrompt && (!isLatestFamilyIntakePrompt || evaThinking)) ? [] : followups}
                   onFollowup={handleLlmFollowupClick}
                 >
-                  {isFamilyChoicePrompt && !evaThinking && (
-                    <div className="eva-family-choice-grid" role="group" aria-label="Choose an agent type">
-                      {AGENT_FAMILIES.map(family => {
-                        const label = FAMILY_CHOICE_LABELS[family];
-                        const details = FAMILY_CHOICE_DETAILS[family];
-                        const configurationStepCount = getFamilyIntakeSequence(family).length + 1;
-                        const isAvailable = entitlements[family] === 'licensed';
-
-                        return (
-                          <Card
-                            key={family}
-                            clickable
-                            disabled={!isAvailable}
-                            aria-disabled={!isAvailable || undefined}
-                            aria-label={`${label}. ${details.tagline}. ${details.description} ${configurationStepCount} configuration steps.`}
-                            className={`eva-family-choice-card eva-family-choice-card--${family}`}
-                            onClick={() => handleAgentFamilySelect(family, label)}
-                          >
-                            <div className="eva-family-choice-card__header">
-                              <span className="eva-family-choice-card__icon" aria-hidden="true">
-                                <Icon name={FAMILY_ICONS[family]} weight="regular" size={20} />
-                              </span>
-                              <span className="eva-family-choice-card__step-count">
-                                {configurationStepCount} steps
-                              </span>
-                            </div>
-                            <div className="eva-family-choice-card__copy">
-                              <strong>{label}</strong>
-                              <span>{details.tagline}</span>
-                              <p>{details.description}</p>
-                            </div>
-                          </Card>
-                        );
-                      })}
-                    </div>
-                  )}
                   {isLatestFamilyIntakePrompt
                     && familyIntakeEditingQuestion
                     && !isFamilyNamePrompt
@@ -7039,12 +7118,12 @@ ${previewTranscript}`,
                       </Button>
                     </div>
                   )}
-                  {isContactCenterChannelPrompt && !evaThinking && (
+                  {isChannelSelectionPrompt && !evaThinking && (
                     <div className="eva-retail-channel-panel">
                       <div
                         className="eva-retail-channel-options"
                         role="group"
-                        aria-label="Contact Center channel options"
+                        aria-label="Channel options"
                       >
                         {CONTACT_CENTER_INTAKE_CHANNEL_OPTIONS.map(option => {
                           const isSelected = contactCenterSelectedChannels.includes(option.label);
@@ -7078,11 +7157,29 @@ ${previewTranscript}`,
                       {contactCenterSelectedChannels.length > 0 && (
                         <Button
                           className="eva-retail-channel-panel__continue"
-                          onClick={() => handleFamilyIntakeAnswer(contactCenterSelectedChannels.join(', '))}
+                          onClick={() => isUnifiedChannelPrompt
+                            ? handleUnifiedChannelSelection()
+                            : handleFamilyIntakeAnswer(contactCenterSelectedChannels.join(', '))}
                         >
                           Continue
                         </Button>
                       )}
+                    </div>
+                  )}
+                  {isUnifiedGoalPrompt && !evaThinking && (
+                    <div className="eva-family-structured-step" role="group" aria-label="Describe the agent goal">
+                      <Textarea
+                        label="Agent goal"
+                        value={unifiedAgentGoal}
+                        onChange={event => setUnifiedAgentGoal(event.target.value)}
+                        placeholder="For example, answer customer questions, route callers, or help employees find approved information."
+                        rows={4}
+                      />
+                      <div className="eva-family-structured-step__actions">
+                        <Button size="sm" disabled={!unifiedAgentGoal.trim()} onClick={handleUnifiedGoalSubmit}>
+                          Continue
+                        </Button>
+                      </div>
                     </div>
                   )}
                   {isCallingDestinationPrompt && !evaThinking && (
@@ -7093,7 +7190,7 @@ ${previewTranscript}`,
                           id="preset-voice-location"
                           label="Location"
                           required
-                          hint="Choose the location this receptionist supports"
+                          hint="Choose the location this agent supports"
                           options={VOICE_LOCATION_OPTIONS}
                           value={familyVoiceLocation}
                           placeholder="Select location"
@@ -7103,7 +7200,7 @@ ${previewTranscript}`,
                           id="preset-voice-phone-number"
                           label="Phone number"
                           required
-                          hint="Choose the number callers use to reach this receptionist"
+                          hint="Choose the number callers use to reach this agent"
                           options={VOICE_PHONE_NUMBER_OPTIONS}
                           value={familyVoicePhoneNumber}
                           placeholder="Select phone number"
@@ -7198,7 +7295,7 @@ ${previewTranscript}`,
                         )}
                         <span className="eva-retail-welcome-option__reason">
                           <Icon name="sparkle" weight="bold" size="sm" />
-                          Suggested from the agent type and goal.
+                          Suggested from your channels and goal.
                         </span>
                         <div className="eva-retail-welcome-option__actions">
                           {familyGreetingInputVisible ? (
@@ -7326,9 +7423,9 @@ ${previewTranscript}`,
                   {isLatestFamilyProposalPrompt && familyProposal && !familyProposalApplied && !familyIntakeEditingQuestion && !evaThinking && (
                     <section className="eva-family-proposal" aria-label="Recommended starter configuration">
                       <div className="eva-family-proposal__header">
-                        <span className={`eva-family-chip eva-family-chip--${selectedAgentFamily}`}>
-                          <Icon name={selectedAgentFamily ? FAMILY_ICONS[selectedAgentFamily] : 'bot'} weight="bold" size="sm" />
-                          {selectedAgentFamily ? FAMILY_CHOICE_LABELS[selectedAgentFamily] : 'AI agent'}
+                        <span className="eva-family-chip">
+                          <Icon name="bot" weight="bold" size="sm" />
+                          Recommended setup
                         </span>
                         <Badge variant="default">Draft proposal</Badge>
                       </div>
@@ -7908,15 +8005,15 @@ ${previewTranscript}`,
             aria-labelledby={familyIntakeStepperExpanded ? 'eva-family-intake-stepper-title' : undefined}
             aria-label={familyIntakeStepperExpanded
               ? undefined
-              : `${FAMILY_CHOICE_LABELS[selectedAgentFamily]} progress, step ${familyIntakeCurrentStepIndex + 1} of ${familyIntakeStepCount}`}
+              : `Setup progress, step ${familyIntakeCurrentStepIndex + 1} of ${familyIntakeStepCount}`}
           >
             <header className="eva-family-intake-stepper__header">
-              <span className={`eva-family-intake-stepper__icon eva-family-chip--${selectedAgentFamily}`} aria-hidden="true">
-                <Icon name={FAMILY_ICONS[selectedAgentFamily]} weight="bold" size="md" />
+              <span className="eva-family-intake-stepper__icon" aria-hidden="true">
+                <Icon name="bot" weight="bold" size="md" />
               </span>
               <div className="eva-family-intake-stepper__heading">
                 <span className="eva-family-intake-stepper__eyebrow">
-                  {FAMILY_CHOICE_LABELS[selectedAgentFamily]}
+                  Guided setup
                 </span>
                 <h2 id="eva-family-intake-stepper-title">Progress</h2>
                 <p aria-live="polite">{`Step ${familyIntakeCurrentStepIndex + 1} of ${familyIntakeStepCount}`}</p>
@@ -7961,7 +8058,7 @@ ${previewTranscript}`,
                   className="eva-family-intake-stepper__steps"
                   orientation="vertical"
                   variant="inline"
-                  aria-label={`${FAMILY_CHOICE_LABELS[selectedAgentFamily]} configuration progress`}
+                  aria-label="Configuration progress"
                 >
                   {familyIntakeSequence.map((question, index) => {
                     const answer = familyIntakeAnswers[question.answerKey]?.trim();
@@ -8242,7 +8339,7 @@ ${previewTranscript}`,
                 </div>
               </div>
 
-              {!choiceOnlyGuidedFlow && showBuildFlow && (
+              {showBuildFlow && (
                 <section
                   className="eva-first-interface__chat eva-first-interface__chat--sticky eva-generated-composer"
                   aria-label="Ask about this configuration"
@@ -8290,12 +8387,6 @@ ${previewTranscript}`,
                     <div className="agent-info">
                       <div className="agent-name-row">
                         <span className="agent-name">{agentName}</span>
-                        {selectedAgentFamily && (
-                          <span className={`eva-family-chip eva-family-chip--${selectedAgentFamily}`}>
-                            <Icon name={FAMILY_ICONS[selectedAgentFamily]} weight="bold" size="sm" />
-                            {FAMILY_CHOICE_LABELS[selectedAgentFamily]}
-                          </span>
-                        )}
                         <span className={`agent-studio-lifecycle-status agent-studio-lifecycle-status--${activeAgentDraft?.lifecycle ?? 'draft'}`}>
                           <span className="agent-studio-lifecycle-status__dot" aria-hidden="true" />
                           {activeAgentDraft?.lifecycle === 'published'
@@ -9244,7 +9335,7 @@ ${previewTranscript}`,
                   className="eva-ai-response"
                   showActions={false}
                   assistantName="AI Assistant"
-                  content={`${agentName} now has the minimum reusable configuration: a licensed family, name, purpose, applied instructions, and default language. Optional capabilities do not block publishing.`}
+                  content={`${agentName} now has the minimum reusable configuration: a name, purpose, applied instructions, and default language. Optional capabilities do not block publishing.`}
                 >
                   <div className="eva-config-block">
                     <div className={`eva-config-summary${selectedAgentFamily === 'internal_assistant' ? ' eva-config-summary--internal' : ''}`}>
@@ -10291,7 +10382,7 @@ ${previewTranscript}`,
             landing-mode entry point. This footer composer is for the
             "build flow" once Eva is generating / has generated content
             — show it only when we're past the landing screen. */}
-        {!choiceOnlyGuidedFlow && showBuildFlow && !showGeneratedSidePanel && !showLandingOptions && (
+        {showBuildFlow && !showGeneratedSidePanel && !showLandingOptions && (
           <section className="eva-first-interface__chat eva-first-interface__chat--sticky" aria-label="Talk to AI Assistant">
             {!guidanceVisible && !evaThinking && <div className="eva-chat-spacer" aria-hidden />}
             <AiFooter

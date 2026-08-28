@@ -96,10 +96,12 @@ export default function Dashboard() {
   const { mode } = useAgentHomeScenario();
   const [surface, setSurface] = useState<DashboardSurface>('home');
   const [agentHomeFlow, setAgentHomeFlow] = useState<AgentHomeFirstTimeFlow>('home');
+  const [guidedPrompt, setGuidedPrompt] = useState('');
 
   useEffect(() => {
     setSurface('home');
     setAgentHomeFlow('home');
+    setGuidedPrompt('');
   }, [mode]);
 
   const resumableDraft = useMemo(
@@ -114,8 +116,9 @@ export default function Dashboard() {
     }),
     [mode, permissionGranted, resumableDraft],
   );
-  const openGuidedIntake = () => {
+  const openGuidedIntake = (prompt = '') => {
     setAgentHomeFlow('home');
+    setGuidedPrompt(prompt.trim());
     setSurface('guided');
   };
   const existingAgents = useMemo(
@@ -197,7 +200,12 @@ export default function Dashboard() {
             Back to agent home
           </Button>
         </div>
-        <EvaChatExperience key={`guided-${mode}`} resetSessionOnInitialMount choiceOnlyGuidedFlow />
+        <EvaChatExperience
+          key={`guided-${mode}-${guidedPrompt}`}
+          resetSessionOnInitialMount
+          choiceOnlyGuidedFlow
+          initialGuidedPrompt={guidedPrompt}
+        />
       </div>
     );
   }
@@ -226,6 +234,7 @@ export default function Dashboard() {
             onFirstTimeFlowChange={setAgentHomeFlow}
             snapshot={snapshot}
             onAction={handleAction}
+            onGuidedComposerSend={openGuidedIntake}
             onStartFromScratch={() => setIsQuickCreateModalOpen(true)}
             onUseTemplate={handleUseTemplate}
             onSendDemoMessage={handleDemoMessage}
