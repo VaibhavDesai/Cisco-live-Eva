@@ -686,6 +686,17 @@ export default function ActionConfigureV2() {
   }, [agentId, availableSections, navigate, searchParams]);
   const activeSection = availableSections.includes(selectedSection) ? selectedSection : 'Profile';
   const pageTitle = CONFIGURATION_PAGE_TITLES[activeSection];
+  const configuredChannelValues = agentDraft?.familyConfiguration.channels?.values
+    ?? (agentDraft?.family === 'calling' ? agentDraft?.familyConfiguration.voice?.values : undefined);
+  const configuredGreetings = configuredChannelValues?.greetings
+    && typeof configuredChannelValues.greetings === 'object'
+    ? configuredChannelValues.greetings as Record<string, unknown>
+    : {};
+  const configuredWelcomeMessage = typeof configuredGreetings.digital === 'string'
+    ? configuredGreetings.digital
+    : typeof configuredGreetings.voice === 'string'
+      ? configuredGreetings.voice
+      : ciscoLiveAgent.welcomeMessage;
 
   // Profile form state
   const [profileForm, setProfileForm] = useState(() => ({
@@ -696,7 +707,7 @@ export default function ActionConfigureV2() {
     language: profileLanguageValue(agentDraft?.language.defaultLanguage),
     voiceName: 'ava',
     aiEngine: 'Webex AI Pro 1.0',
-    welcomeMessage: ciscoLiveAgent.welcomeMessage,
+    welcomeMessage: configuredWelcomeMessage,
     agentGoal: agentDraft?.basics.purpose ?? '',
     instructions: agentDraft?.instructions.content?.trim()
       ? agentDraft.instructions.content
@@ -717,6 +728,34 @@ export default function ActionConfigureV2() {
         ...draft,
         instructions: { ...draft.instructions, content: value },
       }));
+    } else if (field === 'welcomeMessage') {
+      updateAgentDraft(agentId, draft => {
+        const channelCapabilityId = draft.family === 'calling' ? 'voice' : 'channels';
+        const channelCapability = draft.familyConfiguration[channelCapabilityId];
+        const channelValues = channelCapability?.values ?? {};
+        const existingGreetings = channelValues.greetings;
+        const greetings = existingGreetings && typeof existingGreetings === 'object'
+          ? existingGreetings as Record<string, unknown>
+          : {};
+        const selectedChannels = Array.isArray(channelValues.selectedChannels)
+          ? channelValues.selectedChannels
+          : [];
+        const greetingChannel = selectedChannels.includes('digital') ? 'digital' : 'voice';
+
+        return {
+          ...draft,
+          familyConfiguration: {
+            ...draft.familyConfiguration,
+            [channelCapabilityId]: {
+              ...channelCapability,
+              values: {
+                ...channelValues,
+                greetings: { ...greetings, [greetingChannel]: value },
+              },
+            },
+          },
+        };
+      });
     } else if (field === 'language') {
       updateAgentDraft(agentId, draft => ({
         ...draft,

@@ -9,6 +9,7 @@ import {
   type ReactNode,
 } from 'react';
 import { Link, Navigate, useNavigate, useParams, useSearchParams } from 'react-router-dom';
+import { createPortal } from 'react-dom';
 import { IconProvider, StaticChip, ThemeProvider } from '@momentum-design/components/react';
 import { ThemeModeProvider, useThemeMode } from '../../app/ThemeContext';
 import { publicAssetUrl } from '../../app/publicAsset';
@@ -557,6 +558,13 @@ export default function AgentStudioLanding() {
     : [];
   const isDigitalOnlyPreview = previewChannels.length > 0
     && previewChannels.every(channel => channel === 'digital');
+  const previewGreetings = previewChannelValues?.greetings
+    && typeof previewChannelValues.greetings === 'object'
+    ? previewChannelValues.greetings as Record<string, unknown>
+    : {};
+  const previewDigitalGreeting = typeof previewGreetings.digital === 'string'
+    ? previewGreetings.digital.trim()
+    : '';
   const existingEvaSession = readEvaSessionState();
   const phoneNumberDeferred = Boolean(
     existingEvaSession?.phoneNumberDeferred && existingEvaSession.agentName === agent.name,
@@ -1203,7 +1211,7 @@ Configured agent:
 - Name: ${agent.name}
 - Description: ${agent.description || '(not set)'}
 - Purpose: ${agentDraft?.basics.purpose || agent.description || '(not set)'}
-- Welcome message: ${previewChannelValues?.greetings && typeof previewChannelValues.greetings === 'object' && typeof (previewChannelValues.greetings as Record<string, unknown>).digital === 'string' ? (previewChannelValues.greetings as Record<string, string>).digital : '(not set)'}
+- Welcome message: ${previewDigitalGreeting || '(not set)'}
 - Language: ${agentDraft?.language.defaultLanguage || 'en-US'}
 - Knowledge sources available: ${summary.knowledgeBases.length > 0 ? summary.knowledgeBases.join(', ') : '(none selected)'}
 - Actions enabled: ${summary.actions.length > 0 ? summary.actions.join(', ') : '(none enabled)'}
@@ -1251,10 +1259,17 @@ Simulation rules:
     })();
   };
 
+  const togglePreview = () => {
+    if (!previewWidgetOpen && isDigitalOnlyPreview && previewDigitalGreeting && previewChatMessages.length === 0) {
+      setPreviewChatMessages([{ role: 'assistant', text: previewDigitalGreeting }]);
+    }
+    setPreviewWidgetOpen(open => !open);
+  };
+
   const headerActions = (
     <AgentHeaderActions
       agent={agent}
-      onPreview={() => setPreviewWidgetOpen(open => !open)}
+      onPreview={togglePreview}
       releaseLabel={releaseActionLabel}
       releaseDisabled={releaseActionDisabled}
       releaseVariant={lifecycle === 'published' ? 'secondary' : 'primary'}
@@ -1581,11 +1596,9 @@ Simulation rules:
         )}
       </div>
       <form className="agent-studio-preview-chat__composer" onSubmit={handleDigitalPreviewSend}>
-        <label className="sr-only" htmlFor="agent-studio-preview-chat-input">
-          Message {agent.name}
-        </label>
         <textarea
           id="agent-studio-preview-chat-input"
+          aria-label={`Message ${agent.name}`}
           value={previewChatDraft}
           onChange={event => setPreviewChatDraft(event.target.value)}
           placeholder={`Message ${agent.name}`}
@@ -2643,7 +2656,7 @@ Simulation rules:
         </Modal>
       )}
 
-      {previewWidgetOpen && (
+      {previewWidgetOpen && createPortal(
         <div
           className="agent-studio-preview-widget"
           role="dialog"
@@ -2669,7 +2682,7 @@ Simulation rules:
           </div>
           {previewExperience}
         </div>
-      )}
+      , document.body)}
     </div>
   );
 }
