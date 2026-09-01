@@ -429,6 +429,31 @@ const FAMILY_CHOICE_DETAILS: Record<AgentFamily, { tagline: string; description:
 
 const AGENT_FAMILIES: AgentFamily[] = ['contact_center', 'calling', 'internal_assistant'];
 
+/* Keep the first free-form prompt useful: explicit language in it can select
+   the established family intake before the generic conversation router runs.
+   Order is intentional when a prompt includes cues from more than one family. */
+const NEW_MVO_PROMPT_FAMILY_KEYWORDS: ReadonlyArray<{
+  family: AgentFamily;
+  keywords: readonly string[];
+}> = [
+  { family: 'calling', keywords: ['phone', 'air', 'receptionist', 'calling'] },
+  { family: 'contact_center', keywords: ['cx', 'contact center', 'concierge'] },
+  { family: 'internal_assistant', keywords: ['internal', 'employee', 'troubleshooting', 'personal agent'] },
+];
+
+const promptContainsKeyword = (prompt: string, keyword: string) => {
+  const escapedKeyword = keyword.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  return new RegExp(`(^|\\W)${escapedKeyword}(?=\\W|$)`, 'i').test(prompt);
+};
+
+const matchNewMvoPromptFamily = (prompt: string): AgentFamily | null => {
+  const trimmedPrompt = prompt.trim();
+  if (!trimmedPrompt) return null;
+  return NEW_MVO_PROMPT_FAMILY_KEYWORDS.find(({ keywords }) => (
+    keywords.some(keyword => promptContainsKeyword(trimmedPrompt, keyword))
+  ))?.family ?? null;
+};
+
 const CHOICE_ONLY_GUIDED_START: EvaMessage = {
   role: 'assistant',
   text: 'Which channels should this agent support?',
@@ -3906,6 +3931,12 @@ export default function EvaChatExperience({
     }
 
     if (retailPrototypeStep !== 'idle' && handleRetailReceptionistStoryAnswer(text)) {
+      return;
+    }
+
+    const promptFamily = matchNewMvoPromptFamily(text);
+    if (promptFamily) {
+      beginFamilyIntake(promptFamily, { outcome: text.trim() }, text);
       return;
     }
 

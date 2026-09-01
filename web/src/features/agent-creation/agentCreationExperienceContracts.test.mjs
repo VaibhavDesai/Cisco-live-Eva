@@ -2838,6 +2838,33 @@ test('family intake uses the established thinking interval before each assistant
   );
 });
 
+test('New MVO routes explicit initial-prompt keywords into the matching family intake', () => {
+  const source = readSource('../eva/EvaChatExperience.tsx');
+  const handleSendStart = source.indexOf('const handleSend');
+  const handleSendEnd = source.indexOf('const matchTemplateFromText', handleSendStart);
+  const handleSendSource = source.slice(handleSendStart, handleSendEnd);
+
+  assert.match(
+    source,
+    /NEW_MVO_PROMPT_FAMILY_KEYWORDS[\s\S]*?family:\s*['"]calling['"][\s\S]*?['"]phone['"][\s\S]*?['"]air['"][\s\S]*?['"]receptionist['"][\s\S]*?['"]calling['"][\s\S]*?family:\s*['"]contact_center['"][\s\S]*?['"]cx['"][\s\S]*?['"]contact center['"][\s\S]*?['"]concierge['"][\s\S]*?family:\s*['"]internal_assistant['"][\s\S]*?['"]internal['"][\s\S]*?['"]employee['"][\s\S]*?['"]troubleshooting['"][\s\S]*?['"]personal agent['"]/,
+    'the requested phone, CX, and employee terms should map to their existing agent families',
+  );
+  assert.match(
+    source,
+    /promptContainsKeyword[\s\S]*?new RegExp\(`\(\^\|\\\\W\).*?\(\?=\\\\W\|\$\)`/,
+    'keyword matching should use token boundaries instead of matching fragments inside unrelated words',
+  );
+  assert.match(
+    handleSendSource,
+    /const promptFamily = matchNewMvoPromptFamily\(text\);[\s\S]*?if \(promptFamily\) \{[\s\S]*?beginFamilyIntake\(promptFamily, \{ outcome: text\.trim\(\) \}, text\);/,
+    'a routed prompt should retain the entered goal and start its existing family intake directly',
+  );
+  assert.ok(
+    handleSendSource.indexOf('matchNewMvoPromptFamily(text)') < handleSendSource.indexOf('getVoiceAgentWorkflowIntent(text)'),
+    'explicit New MVO routing should take precedence over the legacy voice intent router',
+  );
+});
+
 test('starter proposal actions edit the plan or create a draft on its overview', () => {
   const source = readSource('../eva/EvaChatExperience.tsx');
   const handlerStart = source.indexOf('const saveFamilyProposalDraft');
