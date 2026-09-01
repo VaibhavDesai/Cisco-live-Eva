@@ -1933,6 +1933,11 @@ test('Agent Home sends prompts to the conversational builder while preserving di
     'sending a home prompt should open the conversational builder with the submitted intent',
   );
   assert.match(
+    homeStyles,
+    /\.new-mvo-home--guided > \.eva-agents-landing\s*\{[^}]*overflow:\s*hidden;[^}]*border-top-left-radius:\s*16px;/,
+    'the guided workspace should share the rounded leading corner used by the other page surfaces',
+  );
+  assert.match(
     appSource,
     /DesignVariationProvider[\s\S]*?<AgentHomeScenarioProvider[\s\S]*?<Route path="new-agent" element=\{<Dashboard \/>\}/,
     'the conversational builder should retain the shared design-variation provider it requires',
