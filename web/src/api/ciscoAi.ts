@@ -14,6 +14,11 @@ export interface ChatMessage {
   content: string;
 }
 
+export interface AgentGoalDraft {
+  acknowledgement: string;
+  systemPrompt: string;
+}
+
 function getCompanionApiUrl(path: string): string {
   const chatApiUrl = import.meta.env.VITE_CHAT_API_URL;
   if (!chatApiUrl) return `/api${path}`;
@@ -204,6 +209,51 @@ export async function sendEvaChat(messages: ChatMessage[]): Promise<string> {
   const data = await res.json();
   const content: string = typeof data.content === 'string' ? data.content : '';
   return content.trim();
+}
+
+/**
+ * Turns the first plain-language agent goal into an instruction set that can
+ * travel with the draft. The browser only calls the local /api/chat proxy, so
+ * the model credential stays on the server side.
+ */
+export async function generateAgentGoalDraft(goal: string): Promise<AgentGoalDraft> {
+  const reply = await sendEvaChat([
+    {
+      role: 'system',
+      content: `You are helping an admin create an AI agent. Turn the user's initial goal into a realistic first draft of the agent's system instructions.
+
+Return ONLY a fenced JSON object in exactly this shape:
+\`\`\`json
+{
+  "acknowledgement": "One concise, natural sentence confirming the goal and saying you will refine the setup with the user.",
+  "systemPrompt": "A complete agent system prompt in Markdown. Include ## Role, ## Goal, ## Conversation behavior, ## Boundaries and safety, and ## Escalation. Make it specific to the user's goal. Do not invent company facts, policies, tools, or integrations."
+}
+\`\`\`
+
+The system prompt is for the agent being created, not for the setup assistant. Keep it practical, specific, and under 500 words.`,
+    },
+    { role: 'user', content: goal },
+  ]);
+
+  const fencedJson = reply.match(/```json\s*([\s\S]*?)```/i);
+  const rawJson = reply.match(/\{[\s\S]*\}/);
+  const jsonText = fencedJson?.[1] ?? rawJson?.[0];
+  if (!jsonText) throw new Error('The model did not return a structured agent draft.');
+
+  const parsed = JSON.parse(jsonText.trim()) as Partial<AgentGoalDraft>;
+  if (
+    typeof parsed.acknowledgement !== 'string' ||
+    !parsed.acknowledgement.trim() ||
+    typeof parsed.systemPrompt !== 'string' ||
+    !parsed.systemPrompt.trim()
+  ) {
+    throw new Error('The model returned an incomplete agent draft.');
+  }
+
+  return {
+    acknowledgement: parsed.acknowledgement.trim(),
+    systemPrompt: parsed.systemPrompt.trim(),
+  };
 }
 
 export async function getElevenLabsConversationSignedUrl(): Promise<string> {

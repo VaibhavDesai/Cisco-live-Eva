@@ -3389,6 +3389,96 @@ button.agent-studio-guardrail-chart__plot.is-selected .agent-studio-guardrail-ch
   gap: var(--spacing-xx-small);
 }
 
+.agent-studio-preview-chat {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-x-small);
+  min-height: 300px;
+}
+
+.agent-studio-preview-chat__messages {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: var(--spacing-x-small);
+  min-height: 220px;
+  max-height: 340px;
+  overflow-y: auto;
+  padding: var(--spacing-x-small);
+  border: 1px solid var(--mds-color-theme-outline-secondary-normal, rgba(255, 255, 255, 0.12));
+  border-radius: var(--border-radius-medium, 8px);
+  background: var(--mds-color-theme-background-secondary-normal, rgba(255, 255, 255, 0.03));
+}
+
+.agent-studio-preview-chat__empty {
+  margin: auto;
+  color: var(--text-secondary);
+  font-size: var(--font-size-body-small);
+  line-height: var(--font-lineheight-body-small);
+  text-align: center;
+}
+
+.agent-studio-preview-chat__message {
+  display: flex;
+  flex-direction: column;
+  align-self: flex-start;
+  gap: var(--spacing-micro);
+  max-width: 88%;
+}
+
+.agent-studio-preview-chat__message--user {
+  align-self: flex-end;
+}
+
+.agent-studio-preview-chat__message span,
+.agent-studio-preview-chat__thinking {
+  color: var(--text-secondary);
+  font-size: var(--font-size-caption);
+  line-height: var(--font-lineheight-caption);
+}
+
+.agent-studio-preview-chat__message p {
+  margin: 0;
+  padding: var(--spacing-x-small);
+  border-radius: var(--border-radius-medium, 8px);
+  background: var(--mds-color-theme-background-primary-hover, rgba(255, 255, 255, 0.07));
+  color: var(--text-primary);
+  font-size: var(--font-size-body-small);
+  line-height: var(--font-lineheight-body-small);
+  white-space: pre-wrap;
+}
+
+.agent-studio-preview-chat__message--user p {
+  background: var(--mds-color-theme-background-accent-normal, #0b5fff);
+}
+
+.agent-studio-preview-chat__thinking {
+  padding: 0 var(--spacing-xx-small);
+}
+
+.agent-studio-preview-chat__composer {
+  display: flex;
+  align-items: flex-end;
+  gap: var(--spacing-xx-small);
+}
+
+.agent-studio-preview-chat__composer textarea {
+  flex: 1;
+  min-width: 0;
+  resize: none;
+  padding: var(--spacing-x-small);
+  border: 1px solid var(--mds-color-theme-outline-secondary-normal, rgba(255, 255, 255, 0.12));
+  border-radius: var(--border-radius-medium, 8px);
+  background: var(--mds-color-theme-background-primary-normal, rgba(0, 0, 0, 0.2));
+  color: var(--text-primary);
+  font: inherit;
+}
+
+.agent-studio-preview-chat__composer textarea:focus-visible {
+  outline: 2px solid var(--mds-color-theme-outline-primary-active, #0b5fff);
+  outline-offset: 1px;
+}
+
 /* Floating preview widget, toggled by the header "Preview" button and docked
    to the bottom-right of the viewport. */
 .agent-studio-preview-widget {

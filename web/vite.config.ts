@@ -469,8 +469,10 @@ export default defineConfig({
           try {
             const token = await getCiscoToken()
 
+            const completionUrl = process.env.CISCO_AI_COMPLETIONS_URL
+              || 'https://chat-ai.cisco.com/openai/deployments/gpt-5-nano/chat/completions'
             const aiRes = await fetch(
-              'https://chat-ai.cisco.com/openai/deployments/gpt-5-nano/chat/completions',
+              completionUrl,
               {
                 method: 'POST',
                 headers: {

@@ -4,6 +4,7 @@ import {
   useRef,
   useState,
   type DragEvent as ReactDragEvent,
+  type FormEvent,
   type KeyboardEvent as ReactKeyboardEvent,
   type ReactNode,
 } from 'react';
@@ -38,7 +39,7 @@ import ConfigurationCategoryIcon, {
 import { UpliftMomentumButton } from '../../components/shared/UpliftMomentumButton';
 import { useApp, type Agent } from '../../contexts/AppContext';
 import { useDesignVariation } from '../../contexts/DesignVariationContext';
-import { getElevenLabsConversationSignedUrl, getVoicePreviewErrorMessage } from '../../api/ciscoAi';
+import { getElevenLabsConversationSignedUrl, getVoicePreviewErrorMessage, sendEvaChat } from '../../api/ciscoAi';
 import {
   CISCO_LIVE_AGENTS,
   CISCO_LIVE_ACTION_CONTROL_SUMMARY_24H,
@@ -236,6 +237,11 @@ type PreviewTranscriptEntry = {
   text: string;
   timestamp: string;
   timeLabel: string;
+};
+
+type PreviewChatMessage = {
+  role: 'user' | 'assistant';
+  text: string;
 };
 
 type PreviewSocketMessage = {
@@ -480,6 +486,9 @@ export default function AgentStudioLanding() {
   const [previewSessionId, setPreviewSessionId] = useState('');
   const [previewTranscript, setPreviewTranscript] = useState<PreviewTranscriptEntry[]>([]);
   const [previewPaused, setPreviewPaused] = useState(false);
+  const [previewChatMessages, setPreviewChatMessages] = useState<PreviewChatMessage[]>([]);
+  const [previewChatDraft, setPreviewChatDraft] = useState('');
+  const [previewChatThinking, setPreviewChatThinking] = useState(false);
   const previewCallStatusRef = useRef<PreviewCallStatus>('idle');
   const previewWsRef = useRef<WebSocket | null>(null);
   const previewAudioContextRef = useRef<AudioContext | null>(null);
@@ -507,6 +516,9 @@ export default function AgentStudioLanding() {
     setOverviewDropTarget(null);
     setSelectedGuardrailActivity(undefined);
     setSelectedOverviewIntervention(agentId === CISCO_LIVE_PRIMARY_AGENT_ID ? 'action_control' : null);
+    setPreviewChatMessages([]);
+    setPreviewChatDraft('');
+    setPreviewChatThinking(false);
   }, [agentId]);
 
   useEffect(() => {
@@ -535,6 +547,16 @@ export default function AgentStudioLanding() {
   const family = agentDraft?.family ?? agent.family;
   const lifecycle = agentDraft?.lifecycle ?? agent.lifecycle ?? 'draft';
   const summary = getConfiguredSummary(agent, agentDraft);
+  const previewChannelValues = agentDraft?.familyConfiguration.channels?.values
+    ?? (family === 'calling' ? agentDraft?.familyConfiguration.voice?.values : undefined);
+  const previewChannels = Array.isArray(previewChannelValues?.selectedChannels)
+    ? previewChannelValues.selectedChannels.filter(
+        (channel): channel is 'voice' | 'digital' | 'video' =>
+          channel === 'voice' || channel === 'digital' || channel === 'video',
+      )
+    : [];
+  const isDigitalOnlyPreview = previewChannels.length > 0
+    && previewChannels.every(channel => channel === 'digital');
   const existingEvaSession = readEvaSessionState();
   const phoneNumberDeferred = Boolean(
     existingEvaSession?.phoneNumberDeferred && existingEvaSession.agentName === agent.name,
@@ -1175,6 +1197,60 @@ export default function AgentStudioLanding() {
     </div>
   );
 
+  const buildDigitalPreviewSystemPrompt = () => `You are simulating the configured agent in a pre-launch digital chat preview. Reply as the agent, not as AI Assistant.
+
+Configured agent:
+- Name: ${agent.name}
+- Description: ${agent.description || '(not set)'}
+- Purpose: ${agentDraft?.basics.purpose || agent.description || '(not set)'}
+- Welcome message: ${previewChannelValues?.greetings && typeof previewChannelValues.greetings === 'object' && typeof (previewChannelValues.greetings as Record<string, unknown>).digital === 'string' ? (previewChannelValues.greetings as Record<string, string>).digital : '(not set)'}
+- Language: ${agentDraft?.language.defaultLanguage || 'en-US'}
+- Knowledge sources available: ${summary.knowledgeBases.length > 0 ? summary.knowledgeBases.join(', ') : '(none selected)'}
+- Actions enabled: ${summary.actions.length > 0 ? summary.actions.join(', ') : '(none enabled)'}
+- Instructions: ${agentDraft?.instructions.content || '(not set)'}
+
+Simulation rules:
+- Answer as the configured agent would answer an end user in a digital channel.
+- Stay within the configured purpose and instructions.
+- Do not claim that you completed actions or accessed systems; explain what you would need or do next.
+- If a request is outside scope or unsafe, briefly explain and offer an allowed next step.
+- Keep replies natural, concise, and useful for a realistic preview.`;
+
+  const handleDigitalPreviewSend = (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    const text = previewChatDraft.trim();
+    if (!text || previewChatThinking) return;
+
+    const historySnapshot = previewChatMessages;
+    setPreviewChatMessages(messages => [...messages, { role: 'user', text }]);
+    setPreviewChatDraft('');
+    setPreviewChatThinking(true);
+
+    void (async () => {
+      try {
+        const reply = await sendEvaChat([
+          { role: 'system', content: buildDigitalPreviewSystemPrompt() },
+          ...historySnapshot.map(message => ({ role: message.role, content: message.text })),
+          { role: 'user', content: text },
+        ]);
+        setPreviewChatMessages(messages => [
+          ...messages,
+          { role: 'assistant', text: reply || 'Could you share a little more detail so I can help?' },
+        ]);
+      } catch {
+        setPreviewChatMessages(messages => [
+          ...messages,
+          {
+            role: 'assistant',
+            text: 'I could not reach the configured model just now. Please try again in a moment.',
+          },
+        ]);
+      } finally {
+        setPreviewChatThinking(false);
+      }
+    })();
+  };
+
   const headerActions = (
     <AgentHeaderActions
       agent={agent}
@@ -1480,7 +1556,48 @@ export default function AgentStudioLanding() {
       Text transcript
     </Button>
   );
-  const previewExperience = (
+  const previewExperience = isDigitalOnlyPreview ? (
+    <div className="agent-studio-preview-chat" aria-label={`Chat with ${agent.name}`}>
+      <div className="agent-studio-preview-chat__messages" aria-live="polite">
+        {previewChatMessages.length === 0 ? (
+          <p className="agent-studio-preview-chat__empty">
+            Send a message to test how this agent responds in chat.
+          </p>
+        ) : (
+          previewChatMessages.map((message, index) => (
+            <article
+              key={`${message.role}-${index}-${message.text}`}
+              className={`agent-studio-preview-chat__message agent-studio-preview-chat__message--${message.role}`}
+            >
+              <span>{message.role === 'assistant' ? agent.name : 'You'}</span>
+              <p>{message.text}</p>
+            </article>
+          ))
+        )}
+        {previewChatThinking && (
+          <div className="agent-studio-preview-chat__thinking" role="status">
+            {agent.name} is thinking...
+          </div>
+        )}
+      </div>
+      <form className="agent-studio-preview-chat__composer" onSubmit={handleDigitalPreviewSend}>
+        <label className="sr-only" htmlFor="agent-studio-preview-chat-input">
+          Message {agent.name}
+        </label>
+        <textarea
+          id="agent-studio-preview-chat-input"
+          value={previewChatDraft}
+          onChange={event => setPreviewChatDraft(event.target.value)}
+          placeholder={`Message ${agent.name}`}
+          rows={2}
+          disabled={previewChatThinking}
+        />
+        <Button type="submit" size="sm" disabled={!previewChatDraft.trim() || previewChatThinking}>
+          Send
+        </Button>
+      </form>
+    </div>
+  ) : (
     <div
       className={`agent-studio-preview-soundbar${previewCallStatus === 'connecting' || previewCallStatus === 'listening' || previewCallStatus === 'speaking' ? ' agent-studio-preview-soundbar--active' : ''}`}
       aria-label="Preview configured greeting"
@@ -2536,10 +2653,10 @@ export default function AgentStudioLanding() {
           <div className="agent-studio-preview-widget__header">
             <div className="agent-studio-preview-widget__heading">
               <strong id="agent-studio-preview-widget-title">Preview</strong>
-              <small>Try what is already configured</small>
+              <small>{isDigitalOnlyPreview ? 'Chat with the configured agent' : 'Try what is already configured'}</small>
             </div>
             <div className="agent-studio-preview-widget__header-actions">
-              {previewTranscriptButton}
+              {!isDigitalOnlyPreview && previewTranscriptButton}
               <button
                 type="button"
                 className="agent-studio-preview-widget__close"

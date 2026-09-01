@@ -1418,6 +1418,16 @@ test('agent navigation groups deployment destinations under Deploy and renders F
   );
   assert.match(
     sidebarSource,
+    /section:\s*['"]Flow['"][\s\S]*?families:\s*\[['"]contact_center['"]\]/,
+    'Flow should appear only for Customer Service agents',
+  );
+  assert.match(
+    configureSource,
+    /calling:\s*\[['"]Profile['"][\s\S]*?['"]Channels['"][\s\S]*?['"]Instructions['"][\s\S]*?\][\s\S]*?contact_center:\s*ACTION_SECTIONS[\s\S]*?internal_assistant:\s*\[['"]Profile['"][\s\S]*?['"]Instructions['"][\s\S]*?\]/,
+    'Phone Receptionist and Employee Assistant should omit Flow from their available configuration sections',
+  );
+  assert.match(
+    sidebarSource,
     /const TESTING_ITEM:[\s\S]*?path:\s*['"]analytics['"][\s\S]*?<SideNav\.Section header="Configure">[\s\S]*?configureItems\.map[\s\S]*?label=\{TESTING_ITEM\.label\}[\s\S]*?<\/SideNav\.Section>[\s\S]*?<SideNav\.Section header="Deploy">/,
     'Testing should be the final destination in Configure while preserving its analytics route',
   );

@@ -44,7 +44,7 @@ const CONFIGURE_ITEMS: ConfigureItem[] = [
 
 const DEPLOY_ITEMS: ConfigureItem[] = [
   { section: 'Channels', label: 'Channels', icon: 'headset-bold', families: ['calling', 'contact_center'] },
-  { section: 'Flow', label: 'Flow', icon: 'workflow-deployments-bold' },
+  { section: 'Flow', label: 'Flow', icon: 'workflow-deployments-bold', families: ['contact_center'] },
 ];
 
 interface MonitorItem {

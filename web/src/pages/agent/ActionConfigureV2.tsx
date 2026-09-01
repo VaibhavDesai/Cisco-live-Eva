@@ -354,9 +354,9 @@ type ConfigurationSection = 'Profile' | 'Channels' | 'Flow' | 'Instructions' | '
 const ACTION_SECTIONS: ConfigurationSection[] = ['Profile', 'Channels', 'Flow', 'Instructions', 'Knowledge', 'Action', 'Security', 'Conversation', 'Language'];
 
 const FAMILY_SECTIONS: Record<AgentFamily, ConfigurationSection[]> = {
-  calling: ['Profile', 'Channels', 'Flow', 'Instructions', 'Knowledge', 'Conversation', 'Language'],
+  calling: ['Profile', 'Channels', 'Instructions', 'Knowledge', 'Conversation', 'Language'],
   contact_center: ACTION_SECTIONS,
-  internal_assistant: ACTION_SECTIONS,
+  internal_assistant: ['Profile', 'Instructions', 'Knowledge', 'Action', 'Security', 'Conversation', 'Language'],
 };
 
 const FAMILY_SECTION_LABELS: Record<AgentFamily, Partial<Record<ConfigurationSection, string>>> = {
@@ -671,12 +671,19 @@ export default function ActionConfigureV2() {
   // highlight sections. Falls back to Profile when the param is absent.
   useEffect(() => {
     const raw = searchParams.get('section');
-    if (raw && ACTION_SECTIONS.includes(raw as ConfigurationSection)) {
+    if (raw && availableSections.includes(raw as ConfigurationSection)) {
       setSelectedSection(raw as ConfigurationSection);
-    } else if (!raw) {
+    } else {
       setSelectedSection('Profile');
+      if (raw) {
+        const nextParams = new URLSearchParams(searchParams);
+        nextParams.set('section', 'Profile');
+        if (agentId) {
+          navigate(`/agents/${agentId}/configure?${nextParams.toString()}`, { replace: true });
+        }
+      }
     }
-  }, [searchParams]);
+  }, [agentId, availableSections, navigate, searchParams]);
   const activeSection = availableSections.includes(selectedSection) ? selectedSection : 'Profile';
   const pageTitle = CONFIGURATION_PAGE_TITLES[activeSection];
 

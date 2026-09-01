@@ -26,7 +26,7 @@ import { EVA_TEMPLATES } from './evaTemplates';
 import type { EvaAgentDraft, EvaFieldSuggestion, EvaKnowledgeRecommendation, EvaMessage, EvaTemplateId } from './types';
 import { formatRelative } from '../../pages/knowledge/utils';
 import { listReadyCollections } from '../../services/knowledgeService';
-import { getElevenLabsConversationSignedUrl, getVoicePreviewErrorMessage, optimizeInstructions, sendEvaChat } from '../../api/ciscoAi';
+import { generateAgentGoalDraft, getElevenLabsConversationSignedUrl, getVoicePreviewErrorMessage, optimizeInstructions, sendEvaChat } from '../../api/ciscoAi';
 import {
   FIELD_SUGGESTION_RESPONSE_RULES,
   extractFieldSuggestionAndProse,
@@ -1508,6 +1508,8 @@ export default function EvaChatExperience({
       .filter(Boolean) ?? []
   ));
   const [unifiedAgentGoal, setUnifiedAgentGoal] = useState('');
+  const [generatedGoalSystemPrompt, setGeneratedGoalSystemPrompt] = useState('');
+  const generatedGoalRequestRef = useRef<string | null>(null);
   const [familyProposal, setFamilyProposal] = useState<StarterProposal | null>(
     restoredEvaSession?.familyProposal ?? null,
   );
@@ -1544,6 +1546,48 @@ export default function EvaChatExperience({
       ? ''
       : restoredEvaSession?.familyIntakeAnswers?.actions ?? '',
   );
+
+  useEffect(() => {
+    const goal = initialGuidedPrompt.trim();
+    if (!choiceOnlyGuidedFlow || !goal || generatedGoalRequestRef.current === goal) return;
+
+    generatedGoalRequestRef.current = goal;
+    let cancelled = false;
+    setEvaThinking(true);
+
+    void generateAgentGoalDraft(goal)
+      .then(({ acknowledgement, systemPrompt }) => {
+        if (cancelled) return;
+        setGeneratedGoalSystemPrompt(systemPrompt);
+        setInstructionPrompt(systemPrompt);
+        setMessages(previous => previous.map(message => (
+          message.role === 'assistant' && message.originStep === UNIFIED_CHANNEL_CHOICE_ORIGIN
+            ? {
+                ...message,
+                text: `${acknowledgement}\n\nWhich channels should this agent support?`,
+              }
+            : message
+        )));
+      })
+      .catch(() => {
+        if (cancelled) return;
+        setMessages(previous => previous.map(message => (
+          message.role === 'assistant' && message.originStep === UNIFIED_CHANNEL_CHOICE_ORIGIN
+            ? {
+                ...message,
+                text: 'Your goal is saved, but I could not generate the first instruction draft. Check the local model connection, then start a new draft to try again.\n\nWhich channels should this agent support?',
+              }
+            : message
+        )));
+      })
+      .finally(() => {
+        if (!cancelled) setEvaThinking(false);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [choiceOnlyGuidedFlow, initialGuidedPrompt]);
   const [familyHelpVisible, setFamilyHelpVisible] = useState(false);
   const [activeDraftAgentId, setActiveDraftAgentId] = useState<string | null>(
     restoredEvaSession?.activeDraftAgentId ?? null,
@@ -2418,6 +2462,21 @@ export default function EvaChatExperience({
       .join(', ');
   };
 
+  const applyGeneratedGoalInstructions = (
+    proposal: StarterProposal,
+    answers: Record<string, string>,
+  ): StarterProposal => {
+    if (!generatedGoalSystemPrompt.trim()) return proposal;
+
+    const channelSummary = answers.channel?.trim();
+    return {
+      ...proposal,
+      instructions: `${generatedGoalSystemPrompt.trim()}${channelSummary
+        ? `\n\n## Channel configuration\n- Support customers through: ${channelSummary}.`
+        : ''}`,
+    };
+  };
+
   const beginFamilyIntake = (
     family: AgentFamily,
     answers: Record<string, string>,
@@ -2861,7 +2920,10 @@ export default function EvaChatExperience({
       return true;
     }
 
-    const proposal = buildStarterProposal(selectedAgentFamily, nextAnswers);
+    const proposal = applyGeneratedGoalInstructions(
+      buildStarterProposal(selectedAgentFamily, nextAnswers),
+      nextAnswers,
+    );
     setFamilyProposal(proposal);
     setInternalAudience(nextAnswers.audience ?? '');
     setMessages(previous => [
