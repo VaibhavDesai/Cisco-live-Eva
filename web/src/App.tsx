@@ -1,5 +1,6 @@
 import { BrowserRouter, Routes, Route, Navigate, useParams } from 'react-router-dom';
 import { AppProvider } from './contexts/AppContext';
+import { DesignVariationProvider } from './contexts/DesignVariationContext';
 import { MainLayout } from './components/layout';
 import { ReviewProvider } from './features/review';
 import { ProjectProvider } from './projects/ProjectContext';
@@ -37,11 +38,12 @@ function App() {
     <div className="app-shell-root">
       <AppProvider>
         <ProjectProvider>
-          <AgentHomeScenarioProvider>
-            <BrowserRouter basename={import.meta.env.BASE_URL}>
-              <ToastProvider>
-                <ReviewProvider>
-                  <Routes>
+          <DesignVariationProvider>
+            <AgentHomeScenarioProvider>
+              <BrowserRouter basename={import.meta.env.BASE_URL}>
+                <ToastProvider>
+                  <ReviewProvider>
+                    <Routes>
                     <Route path="/policy-studio-v2" element={<PolicyStudioV2 />} />
                     <Route index element={<ControlHubLanding />} />
                     <Route element={<MainLayout />}>
@@ -69,11 +71,12 @@ function App() {
                       <Route path="settings" element={<Settings />} />
                       <Route path="settings/organization" element={<OrganizationSettings />} />
                     </Route>
-                  </Routes>
-                </ReviewProvider>
-              </ToastProvider>
-            </BrowserRouter>
-          </AgentHomeScenarioProvider>
+                    </Routes>
+                  </ReviewProvider>
+                </ToastProvider>
+              </BrowserRouter>
+            </AgentHomeScenarioProvider>
+          </DesignVariationProvider>
         </ProjectProvider>
       </AppProvider>
     </div>

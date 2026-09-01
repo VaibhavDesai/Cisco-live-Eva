@@ -1,6 +1,9 @@
-import { useMemo } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useEffect, useMemo, useState } from 'react';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { useApp } from '../contexts/AppContext';
+import Button from '../components/shared/Button';
+import { Icon } from '../icons';
+import EvaChatExperience from '../features/eva/EvaChatExperience';
 import AgentHomeDashboard from '../features/agent-home/AgentHomeDashboard';
 import { useAgentHomeScenario } from '../features/agent-home/AgentHomeScenarioContext';
 import {
@@ -11,6 +14,7 @@ import {
 } from '../features/agent-home/agentHomeModel';
 import type {
   AgentHomeDemoMessage,
+  AgentHomeFirstTimeFlow,
   AgentHomeTemplateSetup,
 } from '../features/agent-home/AgentHomeFirstTimeFlows';
 import {
@@ -19,6 +23,8 @@ import {
   type AgentHomeTemplateId,
 } from '../features/agent-home/agentHomeTemplateCatalog';
 import '../features/agent-home/agent-home.css';
+
+type DashboardSurface = 'home' | 'guided';
 
 const buildDemoReply = (templateId: AgentHomeTemplateId, text: string): string => {
   const request = text.toLowerCase();
@@ -76,6 +82,7 @@ const buildDemoReply = (templateId: AgentHomeTemplateId, text: string): string =
 };
 
 export default function Dashboard() {
+  const location = useLocation();
   const navigate = useNavigate();
   const {
     agents,
@@ -87,6 +94,15 @@ export default function Dashboard() {
     setIsQuickCreateModalOpen,
   } = useApp();
   const { mode } = useAgentHomeScenario();
+  const [surface, setSurface] = useState<DashboardSurface>('home');
+  const [agentHomeFlow, setAgentHomeFlow] = useState<AgentHomeFirstTimeFlow>('home');
+  const [guidedPrompt, setGuidedPrompt] = useState('');
+
+  useEffect(() => {
+    setSurface('home');
+    setAgentHomeFlow('home');
+    setGuidedPrompt('');
+  }, [mode]);
   const resumableDraft = useMemo(
     () => Object.values(agentDrafts).find(draft => draft.lifecycle === 'draft') ?? null,
     [agentDrafts],
@@ -99,6 +115,11 @@ export default function Dashboard() {
     }),
     [mode, permissionGranted, resumableDraft],
   );
+  const openGuidedIntake = (prompt = '') => {
+    setAgentHomeFlow('home');
+    setGuidedPrompt(prompt.trim());
+    setSurface('guided');
+  };
   const existingAgents = useMemo(
     () => Object.values(agents).map(agent => ({
       id: agent.id,
@@ -116,7 +137,7 @@ export default function Dashboard() {
       return;
     }
     if (action.intent === 'start-intake') {
-      setIsQuickCreateModalOpen(true);
+      openGuidedIntake();
       return;
     }
     if (action.intent === 'ask') {
@@ -165,27 +186,54 @@ export default function Dashboard() {
     if (activity.href) navigate(activity.href);
   };
 
+  if (location.pathname.endsWith('/eva-canvas')) {
+    return <EvaChatExperience />;
+  }
+
+  if (surface === 'guided') {
+    return (
+      <div className="new-mvo-home new-mvo-home--guided">
+        <div className="new-mvo-home__guided-toolbar">
+          <Button variant="tertiary" size="sm" onClick={() => setSurface('home')}>
+            <Icon name="arrow-left" weight="bold" size="sm" />
+            Back to agent home
+          </Button>
+        </div>
+        <EvaChatExperience
+          key={`guided-${mode}-${guidedPrompt}`}
+          resetSessionOnInitialMount
+          choiceOnlyGuidedFlow
+          initialGuidedPrompt={guidedPrompt}
+        />
+      </div>
+    );
+  }
+
   return (
-    <div className="new-mvo-home new-mvo-home--landing primary-content eva-agents-landing eva-agents-landing--flush">
+    <div className={`new-mvo-home new-mvo-home--landing${agentHomeFlow !== 'home' ? ' new-mvo-home--subflow' : ''} primary-content eva-agents-landing eva-agents-landing--flush`}>
       <div className="eva-first-interface eva-first-interface--landing eva-landing-shell new-mvo-home__landing-shell">
-        <section
-          className={`eva-first-interface__hero new-mvo-home__hero${mode === 'recurring' ? ' new-mvo-home__hero--recurring' : ''}`}
-          aria-labelledby="agent-home-title"
-        >
-          <div className="eva-landing-hero-brand">
-            <h1 id="agent-home-title">{mode === 'recurring' ? 'Hi Jackie' : 'AI Agent Studio'}</h1>
-          </div>
-          {mode === 'first-time' && (
-            <h2>Build, deploy, and manage AI agents for every interaction.</h2>
-          )}
-        </section>
+        {agentHomeFlow === 'home' && (
+          <section
+            className={`eva-first-interface__hero new-mvo-home__hero${mode === 'recurring' ? ' new-mvo-home__hero--recurring' : ''}`}
+            aria-labelledby="agent-home-title"
+          >
+            <div className="eva-landing-hero-brand">
+              <h1 id="agent-home-title">{mode === 'recurring' ? 'Hi Jackie' : 'AI Agent Studio'}</h1>
+            </div>
+            {mode === 'first-time' && (
+              <h2>Build, deploy, and manage AI agents for every interaction.</h2>
+            )}
+          </section>
+        )}
         <div className="new-mvo-home__dashboard">
           <AgentHomeDashboard
             mode={mode}
             creationAudience={mode}
             showGreeting={false}
+            onFirstTimeFlowChange={setAgentHomeFlow}
             snapshot={snapshot}
             onAction={handleAction}
+            onGuidedComposerSend={openGuidedIntake}
             onStartFromScratch={() => setIsQuickCreateModalOpen(true)}
             onUseTemplate={handleUseTemplate}
             onSendDemoMessage={handleDemoMessage}

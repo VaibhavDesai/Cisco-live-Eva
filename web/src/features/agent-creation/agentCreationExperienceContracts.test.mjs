@@ -1901,7 +1901,7 @@ test('selected guardrail activity opens its original event banner', () => {
   );
 });
 
-test('Agent Home and start-from-scratch remove free composers without dead-ending intake', () => {
+test('Agent Home sends prompts to the conversational builder while preserving direct scratch creation', () => {
   const dashboardSource = readSource('../../pages/Dashboard.tsx');
   const homeSource = readSource('../agent-home/AgentHomeDashboard.tsx');
   const firstTimeFlowsSource = readSource('../agent-home/AgentHomeFirstTimeFlows.tsx');
@@ -1911,6 +1911,7 @@ test('Agent Home and start-from-scratch remove free composers without dead-endin
   const formBuilderSource = readSource('../eva/EvaFormBuilder.tsx');
   const modelSource = readSource('./agentCreationModel.ts');
   const appContextSource = readSource('../../contexts/AppContext.tsx');
+  const appSource = readSource('../../App.tsx');
   const layoutSource = readSource('../../components/layout/MainLayout.tsx');
   const quickCreateSource = readSource('../../components/agents/QuickCreateAgentModal.tsx');
   const studioStyles = readSource('../../products/ai-agent-studio/components.css');
@@ -1926,10 +1927,15 @@ test('Agent Home and start-from-scratch remove free composers without dead-endin
     /<section[\s\S]*?new-mvo-home__hero[\s\S]*?mode === 'first-time' && \([\s\S]*?Build, deploy, and manage AI agents for every interaction\./,
     'the canonical Home shell should always own the landing hero',
   );
-  assert.doesNotMatch(
+  assert.match(
     dashboardSource,
-    /agentHomeFlow|openGuidedIntake|onFirstTimeFlowChange|guidedPrompt|surface === ['"]guided['"]|EvaChatExperience/,
-    'Home should not switch into a legacy guided or generated configuration view',
+    /openGuidedIntake[\s\S]*?setGuidedPrompt\(prompt\.trim\(\)\)[\s\S]*?setSurface\('guided'\)[\s\S]*?surface === 'guided'[\s\S]*?<EvaChatExperience[\s\S]*?choiceOnlyGuidedFlow[\s\S]*?initialGuidedPrompt=\{guidedPrompt\}/,
+    'sending a home prompt should open the conversational builder with the submitted intent',
+  );
+  assert.match(
+    appSource,
+    /DesignVariationProvider[\s\S]*?<AgentHomeScenarioProvider[\s\S]*?<Route path="new-agent" element=\{<Dashboard \/>\}/,
+    'the conversational builder should retain the shared design-variation provider it requires',
   );
   assert.match(
     dashboardSource,
@@ -1948,8 +1954,8 @@ test('Agent Home and start-from-scratch remove free composers without dead-endin
   );
   assert.match(
     dashboardSource,
-    /action\.intent === ['"]start-intake['"][\s\S]*?setIsQuickCreateModalOpen\(true\)/,
-    'the primary creation entry should open the canonical quick-create flow',
+    /action\.intent === ['"]start-intake['"][\s\S]*?openGuidedIntake\(\)/,
+    'the primary creation entry should open the conversational builder',
   );
   assert.match(
     homeSource,
@@ -2334,15 +2340,15 @@ test('Agent Home and start-from-scratch remove free composers without dead-endin
     /\.agent-home__focus-card\.card,[\s\S]*?rgba\(7, 10, 18, 0\.2\)[^}]*--mds-color-theme-background-glass-normal[^}]*backdrop-filter:\s*blur\(24px\) saturate\(125%\)/,
     'the recurring dashboard cards should use a translucent glass surface',
   );
-  assert.doesNotMatch(
+  assert.match(
     dashboardSource,
-    /EvaChatExperience|choiceOnlyGuidedFlow|resetSessionOnInitialMount/,
-    'Home should not enter the legacy conversational configuration view',
+    /onGuidedComposerSend=\{openGuidedIntake\}[\s\S]*?onStartFromScratch=\{\(\) => setIsQuickCreateModalOpen\(true\)\}/,
+    'Home should send prompts to conversational setup while keeping direct scratch creation separate',
   );
   assert.match(
     dashboardSource,
-    /action\.intent === ['"]start-intake['"][\s\S]*?setIsQuickCreateModalOpen\(true\)/,
-    'starting a new agent should open the canonical create flow',
+    /action\.intent === ['"]start-intake['"][\s\S]*?openGuidedIntake\(\)/,
+    'starting a new agent should open the conversational builder',
   );
   assert.match(
     evaSource,
@@ -3457,7 +3463,11 @@ test('Control Hub landing routes AI Agent Studio into the adaptive Home experien
   const controlHubSource = readSource('../../pages/ControlHubLanding.tsx');
 
   assert.match(dashboardSource, /<AgentHomeDashboard[\s\S]*?mode=\{mode\}[\s\S]*?snapshot=\{snapshot\}/);
-  assert.doesNotMatch(dashboardSource, /EvaChatExperience|choiceOnlyGuidedFlow|resetSessionOnInitialMount/);
+  assert.match(
+    dashboardSource,
+    /<EvaChatExperience[\s\S]*?choiceOnlyGuidedFlow[\s\S]*?initialGuidedPrompt=\{guidedPrompt\}/,
+    'the adaptive Home composer should preserve the submitted intent when it opens guided setup',
+  );
   assert.match(appSource, /<Route index element=\{<ControlHubLanding \/>\} \/>/);
   assert.match(appSource, /<Route path="new-agent" element=\{<Dashboard \/>\} \/>/);
   assert.match(controlHubSource, /label="AI Agent Studio"[\s\S]*?navigate\('\/new-agent'\)/);
