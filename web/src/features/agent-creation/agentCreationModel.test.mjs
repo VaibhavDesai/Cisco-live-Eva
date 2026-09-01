@@ -63,24 +63,23 @@ test('reveals each family preset in its exact order as answers arrive', () => {
   const scenarios = [
     {
       family: 'calling',
-      keys: ['voice_destination', 'outcome', 'name', 'greeting', 'knowledge'],
+      keys: ['voice_destination', 'name', 'greeting', 'knowledge', 'actions'],
       answers: {
         voice_destination: encodeVoiceDestinationAnswer({
           location: 'San Francisco headquarters',
           phoneNumber: '+1 (415) 555-0142',
         }),
-        outcome: 'Answer common questions and schedule appointments',
         name: 'Front Desk Receptionist',
         greeting: 'Thanks for calling. How can I help?',
         knowledge: 'Visitor information',
+        actions: 'Play a message and end the call',
       },
     },
     {
       family: 'contact_center',
-      keys: ['channel', 'outcome', 'name', 'greeting', 'knowledge', 'actions'],
+      keys: ['channel', 'name', 'greeting', 'knowledge', 'actions'],
       answers: {
         channel: 'Voice, Digital',
-        outcome: 'Resolve customer questions and route complex requests',
         name: 'Customer Service Agent',
         greeting: 'Hi. How can I help today?',
         knowledge: SKIPPED_INTAKE_ANSWER,
@@ -89,9 +88,8 @@ test('reveals each family preset in its exact order as answers arrive', () => {
     },
     {
       family: 'internal_assistant',
-      keys: ['outcome', 'name', 'knowledge'],
+      keys: ['name', 'knowledge'],
       answers: {
-        outcome: 'Help employees find approved policies',
         name: 'Employee Assistant',
         knowledge: 'Employee handbook',
       },
@@ -114,8 +112,10 @@ test('reveals each family preset in its exact order as answers arrive', () => {
 
   const calling = getAdaptiveIntakeQuestions('calling', scenarios[0].answers);
   assert.equal(calling[0].prompt, 'Select a location and phone number');
-  assert.equal(calling[1].prompt, "What's your agent goal?");
-  assert.equal(calling.every(question => question.required), true);
+  assert.equal(calling[1].prompt, 'What should this agent be called?');
+  assert.equal(calling[2].prompt, 'Review the welcome message');
+  assert.equal(calling.find(question => question.answerKey === 'knowledge').required, false);
+  assert.equal(calling.find(question => question.answerKey === 'actions').required, false);
 
   const contactCenter = getAdaptiveIntakeQuestions('contact_center', scenarios[1].answers);
   assert.deepEqual(contactCenter[0].options, ['Voice', 'Digital', 'Video']);
@@ -134,15 +134,15 @@ test('exposes each complete family intake sequence for progress UI', () => {
   );
   assert.deepEqual(
     getFamilyIntakeSequence('calling').map(question => question.answerKey),
-    ['voice_destination', 'outcome', 'name', 'greeting', 'knowledge'],
+    ['voice_destination', 'name', 'greeting', 'knowledge', 'actions'],
   );
   assert.deepEqual(
     getFamilyIntakeSequence('contact_center').map(question => question.answerKey),
-    ['channel', 'outcome', 'name', 'greeting', 'knowledge', 'actions'],
+    ['channel', 'name', 'greeting', 'knowledge', 'actions'],
   );
   assert.deepEqual(
     getFamilyIntakeSequence('internal_assistant').map(question => question.answerKey),
-    ['outcome', 'name', 'knowledge'],
+    ['name', 'knowledge'],
   );
 });
 

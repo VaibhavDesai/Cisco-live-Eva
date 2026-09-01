@@ -4,7 +4,6 @@ import SideNav from '../../../components/shared/SideNav';
 import { KnowledgeBookIcon } from '../../../components/shared/ConfigurationCategoryIcon';
 import { Icon } from '../../../icons/Icon';
 import { useApp } from '../../../contexts/AppContext';
-import { useDesignVariation } from '../../../contexts/DesignVariationContext';
 import { type AgentFamily } from '../../../features/agent-creation/agentCreationModel';
 
 interface NavItem {
@@ -31,15 +30,16 @@ interface ConfigureItem {
   label: string;
   icon: string | ReactNode;
   families?: AgentFamily[];
+  familyLabels?: Partial<Record<AgentFamily, string>>;
 }
 
 const CONFIGURE_ITEMS: ConfigureItem[] = [
   { section: 'Profile', label: 'Profile', icon: 'contact-card-bold' },
   { section: 'Instructions', label: 'Instructions', icon: 'document-bold' },
-  { section: 'Knowledge', label: 'Knowledge & Memory', icon: <KnowledgeBookIcon size={24} /> },
-  { section: 'Action', label: 'Actions', icon: 'tools-bold', families: ['contact_center', 'internal_assistant'] },
+  { section: 'Knowledge', label: 'Knowledge & Memory', icon: <KnowledgeBookIcon size={24} />, familyLabels: { calling: 'Knowledge' } },
+  { section: 'Action', label: 'Actions', icon: 'tools-bold', families: ['calling', 'contact_center', 'internal_assistant'] },
   { section: 'Security', label: 'Security', icon: 'shield-bold', families: ['contact_center', 'internal_assistant'] },
-  { section: 'Conversation', label: 'Conversation', icon: 'chat-bold' },
+  { section: 'Conversation', label: 'Conversation', icon: 'chat-bold', families: ['contact_center', 'internal_assistant'] },
 ];
 
 const DEPLOY_ITEMS: ConfigureItem[] = [
@@ -85,7 +85,6 @@ export default function Sidebar({
   const location = useLocation();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
-  const { variation, setVariation } = useDesignVariation();
   const { agents, agentDrafts, selectAgent } = useApp();
 
   const agentId = parseAgentId(location.pathname);
@@ -176,6 +175,7 @@ export default function Sidebar({
             onClick={() => onAgentPanelOpenChange?.(false)}
           >
             <Icon name="arrow-left" weight="bold" size="xs" />
+            <Icon name="home-bold" weight="bold" size="xs" />
             <span>Back to AI Agents</span>
           </Link>
           <SideNav aria-label="Agent navigation" className="sidebar-agent-nav">
@@ -195,7 +195,7 @@ export default function Sidebar({
                   <SideNav.Item
                     key={item.section}
                     icon={item.icon}
-                    label={item.label}
+                    label={item.familyLabels?.[family ?? 'contact_center'] ?? item.label}
                     active={onConfigureRoute && activeSection === item.section}
                     onClick={() => {
                       selectAgent(agentId);
@@ -203,15 +203,17 @@ export default function Sidebar({
                     }}
                   />
                 ))}
-                <SideNav.Item
-                  icon={TESTING_ITEM.icon}
-                  label={TESTING_ITEM.label}
-                  active={activeRoutePath === TESTING_ITEM.path}
-                  onClick={() => {
-                    selectAgent(agentId);
-                    navigate(`/agents/${agentId}/${TESTING_ITEM.path}`);
-                  }}
-                />
+                {family !== 'calling' && (
+                  <SideNav.Item
+                    icon={TESTING_ITEM.icon}
+                    label={TESTING_ITEM.label}
+                    active={activeRoutePath === TESTING_ITEM.path}
+                    onClick={() => {
+                      selectAgent(agentId);
+                      navigate(`/agents/${agentId}/${TESTING_ITEM.path}`);
+                    }}
+                  />
+                )}
               </SideNav.Section>
 
               <SideNav.Section header="Deploy">
@@ -256,20 +258,7 @@ export default function Sidebar({
     return location.pathname === path || location.pathname.startsWith(path + '/');
   };
 
-  /* Highlight the experience the route is actually rendering. The agent
-     builder can appear at the root, on either canvas route, or at /agents
-     before a family agent exists. Those states all remain under Home;
-     AI Agents becomes active only when /agents is showing the agent list. */
-  const agentsRouteShowsBuildingExperience =
-    location.pathname === '/agents/eva-canvas' ||
-    (
-      location.pathname === '/agents' &&
-      variation !== 'dashboard'
-    );
-  const isNewAgentActive =
-    location.pathname === '/new-agent' ||
-    location.pathname === '/new-agent/eva-canvas' ||
-    agentsRouteShowsBuildingExperience;
+  const isNewAgentActive = location.pathname === '/new-agent';
 
   return (
     <aside className={`sidebar${collapsed ? ' sidebar--collapsed' : ''}`}>
@@ -287,9 +276,7 @@ export default function Sidebar({
                         location.pathname.endsWith('/kpi-dashboard')
                     : item.path === '/new-agent'
                       ? isNewAgentActive
-                    : item.path === '/agents'
-                      ? !agentsRouteShowsBuildingExperience && isActive(item.path)
-                      : isActive(item.path, item.path === '/');
+                    : isActive(item.path, item.path === '/');
 
                 return (
                   <SideNav.Item
@@ -298,9 +285,6 @@ export default function Sidebar({
                     label={item.label}
                     active={itemActive}
                     onClick={() => {
-                      if (item.path === '/new-agent' || item.path === '/agents') {
-                        setVariation('dashboard');
-                      }
                       navigate(item.path);
                     }}
                   />

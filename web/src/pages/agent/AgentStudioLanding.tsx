@@ -39,7 +39,6 @@ import ConfigurationCategoryIcon, {
 } from '../../components/shared/ConfigurationCategoryIcon';
 import { UpliftMomentumButton } from '../../components/shared/UpliftMomentumButton';
 import { useApp, type Agent } from '../../contexts/AppContext';
-import { useDesignVariation } from '../../contexts/DesignVariationContext';
 import { getElevenLabsConversationSignedUrl, getVoicePreviewErrorMessage, sendEvaChat } from '../../api/ciscoAi';
 import {
   CISCO_LIVE_AGENTS,
@@ -55,17 +54,6 @@ import {
   getCiscoLiveSessions,
   summarizeCiscoLiveActionControlDecisions,
 } from '../../demo/ciscoLiveDemo';
-import {
-  buildInstructionPrompt,
-  buildWelcomeMessage,
-  EVA_ADVANCED_GUARDRAIL_GROUPS,
-  EVA_AUTO_START_VOICE_PREVIEW_KEY,
-  EVA_SESSION_STORAGE_KEY,
-  EVA_STANDARD_GUARDRAILS,
-  readEvaSessionState,
-  type EvaConversationStep,
-} from '../../features/eva/evaFormConfig';
-import { EVA_TEMPLATES } from '../../features/eva/evaTemplates';
 import {
   type AgentDraft,
   type AgentFamily,
@@ -449,7 +437,6 @@ export default function AgentStudioLanding() {
     showToast,
     toggleAgentPublish,
   } = useApp();
-  const { setVariation } = useDesignVariation();
   const agent = agentId ? agents[agentId] : null;
   const currentAgentRevision = agentId
     ? agentDrafts[agentId]?.updatedAt ?? agents[agentId]?.updatedAt ?? ''
@@ -565,10 +552,6 @@ export default function AgentStudioLanding() {
   const previewDigitalGreeting = typeof previewGreetings.digital === 'string'
     ? previewGreetings.digital.trim()
     : '';
-  const existingEvaSession = readEvaSessionState();
-  const phoneNumberDeferred = Boolean(
-    existingEvaSession?.phoneNumberDeferred && existingEvaSession.agentName === agent.name,
-  );
   const goToSection = (section: string) => {
     selectAgent(agent.id);
     navigate(`/agents/${agent.id}/configure?section=${section}`);
@@ -672,134 +655,6 @@ export default function AgentStudioLanding() {
   const handleOverviewTileDragEnd = () => {
     setDraggedOverviewTile(null);
     setOverviewDropTarget(null);
-  };
-
-  const openGuidedSetup = (targetStep?: EvaConversationStep, options: { autoStartPreview?: boolean } = {}) => {
-    const baseDraft = EVA_TEMPLATES.find(template => template.id === 'customer-support')?.draft ?? EVA_TEMPLATES[0].draft;
-    const nextDraft = {
-      ...baseDraft,
-      name: agent.name,
-      description: agent.description,
-      goals: [agent.description || `Help customers with ${agent.name.toLowerCase()}`],
-    };
-    const existing = readEvaSessionState();
-    const sessionMatchesAgent = existing?.agentName === agent.name;
-    const channelValues = agentDraft?.familyConfiguration.channels?.values
-      ?? (family === 'calling' ? agentDraft?.familyConfiguration.voice?.values : undefined);
-    const storedChannels = Array.isArray(channelValues?.selectedChannels)
-      ? channelValues.selectedChannels.filter(
-          (channel): channel is 'voice' | 'digital' | 'video' =>
-            channel === 'voice' || channel === 'digital' || channel === 'video',
-        )
-      : [];
-    const configuredChannels = storedChannels.length > 0
-      ? storedChannels
-      : sessionMatchesAgent && existing?.selectedChannels?.length
-        ? existing.selectedChannels
-        : ['voice'];
-    const primaryChannel = configuredChannels.includes('voice') ? 'voice' : 'digital';
-    const storedGreetings = channelValues?.greetings && typeof channelValues.greetings === 'object'
-      ? channelValues.greetings as Record<string, unknown>
-      : {};
-    const configuredGreeting = typeof storedGreetings[primaryChannel] === 'string'
-      ? storedGreetings[primaryChannel]
-      : typeof storedGreetings.voice === 'string'
-        ? storedGreetings.voice
-        : typeof storedGreetings.digital === 'string'
-          ? storedGreetings.digital
-          : '';
-    const restoredWelcomeMessage = sessionMatchesAgent
-      ? existing?.welcomeMessage
-      : configuredGreeting || buildWelcomeMessage(nextDraft);
-    const restoredInstructions = sessionMatchesAgent
-      ? existing?.instructionPrompt
-      : agentDraft?.instructions.content || buildInstructionPrompt(nextDraft);
-    const restoredDigitalChannels = Array.isArray(channelValues?.digitalChannels)
-      ? channelValues.digitalChannels.filter((channel): channel is 'chat' | 'email' | 'messaging' =>
-          channel === 'chat' || channel === 'email' || channel === 'messaging')
-      : [];
-
-    try {
-      window.sessionStorage.setItem(EVA_SESSION_STORAGE_KEY, JSON.stringify({
-        ...existing,
-        configurationMode: 'edit',
-        landingMode: 'build',
-        selectedTemplateId: existing?.selectedTemplateId ?? 'customer-support',
-        draft: existing?.draft?.name === agent.name ? existing.draft : nextDraft,
-        messages: existing?.messages ?? [],
-        guidanceVisible: true,
-        orchestrationSuggested: false,
-        freeChatActive: false,
-        conversationalOnboardingStep: 'idle',
-        evaStep: targetStep ?? (sessionMatchesAgent ? existing?.evaStep : 'instructions'),
-        agentName: agent.name,
-        agentDescription: agent.description,
-        avatarUrl: existing?.avatarUrl ?? 'https://us.webexbotbuilder.com/static/assets/i...',
-        timezone: existing?.timezone ?? 'America/Los_Angeles',
-        aiEngine: existing?.aiEngine ?? 'Webex AI Pro 1.0',
-        welcomeMessage: restoredWelcomeMessage,
-        instructionPrompt: restoredInstructions,
-        selectedKnowledgeBases: sessionMatchesAgent
-          ? existing?.selectedKnowledgeBases ?? agent.knowledgeBases ?? []
-          : agent.knowledgeBases ?? [],
-        selectedActions: sessionMatchesAgent
-          ? existing?.selectedActions ?? getConfiguredSummary(agent, agentDraft).actions
-          : getConfiguredSummary(agent, agentDraft).actions,
-        optimizeAccepted: existing?.optimizeAccepted ?? false,
-        preOptimizeText: existing?.preOptimizeText ?? '',
-        optimizeSummary: existing?.optimizeSummary ?? { changes: [], reasoning: [] },
-        securityTier: existing?.securityTier ?? 'standard',
-        channelType: sessionMatchesAgent ? existing?.channelType ?? primaryChannel : primaryChannel,
-        selectedChannels: configuredChannels,
-        digitalChannel: sessionMatchesAgent
-          ? existing?.digitalChannel ?? restoredDigitalChannels[0] ?? 'chat'
-          : restoredDigitalChannels[0] ?? 'chat',
-        selectedDigitalChannels: sessionMatchesAgent
-          ? existing?.selectedDigitalChannels ?? restoredDigitalChannels
-          : restoredDigitalChannels,
-        digitalChannelAddress: existing?.digitalChannelAddress ?? '',
-        channelPhoneNumber: sessionMatchesAgent
-          ? existing?.channelPhoneNumber ?? getConfiguredSummary(agent, agentDraft).endpoint ?? ''
-          : getConfiguredSummary(agent, agentDraft).endpoint ?? '',
-        phoneNumberDeferred,
-        standardGuardrails: existing?.standardGuardrails ?? EVA_STANDARD_GUARDRAILS,
-        advancedGuardrailGroups: existing?.advancedGuardrailGroups ?? EVA_ADVANCED_GUARDRAIL_GROUPS,
-        expandedAdvancedGroups: existing?.expandedAdvancedGroups ?? EVA_ADVANCED_GUARDRAIL_GROUPS.map(group => group.id),
-        personality: existing?.personality ?? {
-          llm: 'Webex AI Pro 1.0',
-          voice: 'ava',
-          language: 'en-US',
-          gender: 'neutral',
-        },
-        customRules: existing?.customRules ?? [],
-        selectedAgentFamily: family ?? existing?.selectedAgentFamily ?? null,
-        familyIntakeAnswers: existing?.familyIntakeAnswers ?? {},
-        familyProposal: agentDraft ? {
-          name: agentDraft.basics.name,
-          purpose: agentDraft.basics.purpose,
-          description: agentDraft.basics.description,
-          language: agentDraft.language.defaultLanguage,
-          instructions: agentDraft.instructions.content,
-          selectedChannels: configuredChannels,
-          greeting: restoredWelcomeMessage,
-          greetings: {
-            voice: typeof storedGreetings.voice === 'string' ? storedGreetings.voice : restoredWelcomeMessage,
-            digital: typeof storedGreetings.digital === 'string' ? storedGreetings.digital : restoredWelcomeMessage,
-          },
-        } : existing?.familyProposal ?? null,
-        familyProposalApplied: Boolean(agentDraft) || existing?.familyProposalApplied,
-        activeDraftAgentId: agentDraft?.id ?? existing?.activeDraftAgentId ?? null,
-      }));
-      if (options.autoStartPreview) {
-        window.sessionStorage.setItem(EVA_AUTO_START_VOICE_PREVIEW_KEY, '1');
-      }
-    } catch {
-      /* If storage is unavailable, still navigate to the guided setup shell. */
-    }
-
-    selectAgent(agent.id);
-    setVariation('landing');
-    navigate('/agents');
   };
 
   const handlePublishVersion = () => {
@@ -1391,7 +1246,47 @@ Simulation rules:
       ? `${configuredOrchestration.length} connected action${configuredOrchestration.length === 1 ? '' : 's'}`
       : null,
   ].filter(Boolean).join(' and ');
-  const unusedAgentNextStepCandidates: Array<OverviewNextStep | null> = [
+  const phoneReceptionistNextSteps: OverviewNextStep[] = family === 'calling' ? [
+    configuredKnowledge.length === 0 ? {
+      id: 'connect-knowledge',
+      title: 'Connect approved knowledge',
+      description: 'Add a trusted source so the receptionist can answer callers with current information.',
+      actionLabel: 'Add knowledge',
+      path: `/agents/${encodeURIComponent(agent.id)}/configure?section=Knowledge`,
+      icon: 'knowledge',
+    } : {
+      id: 'review-knowledge',
+      title: 'Review knowledge coverage',
+      description: 'Confirm the connected sources give callers accurate answers to their common questions.',
+      actionLabel: 'Review knowledge',
+      path: `/agents/${encodeURIComponent(agent.id)}/configure?section=Knowledge`,
+      icon: 'knowledge',
+    },
+    configuredActions.length === 0 ? {
+      id: 'connect-action',
+      title: 'Configure agent actions',
+      description: 'Add the routing, handoff, or other actions the receptionist needs to complete calls.',
+      actionLabel: 'Add action',
+      path: `/agents/${encodeURIComponent(agent.id)}/configure?section=Action`,
+      icon: 'action',
+    } : {
+      id: 'review-actions',
+      title: 'Review agent actions',
+      description: 'Confirm the receptionist can route calls, take messages, and hand off requests as intended.',
+      actionLabel: 'Review actions',
+      path: `/agents/${encodeURIComponent(agent.id)}/configure?section=Action`,
+      icon: 'action',
+    },
+    {
+      id: 'preview-call',
+      title: 'Preview a realistic call',
+      description: 'Use Preview to check the greeting, call flow, and responses before publishing.',
+      actionLabel: 'Preview agent',
+      path: `/agents/${encodeURIComponent(agent.id)}?preview=1`,
+      icon: 'testing',
+    },
+  ] : [];
+  const standardAgentNextStepCandidates: Array<OverviewNextStep | null> = [
     configuredKnowledge.length === 0 ? {
       id: 'connect-knowledge',
       title: 'Connect approved knowledge',
@@ -1461,7 +1356,9 @@ Simulation rules:
       icon: 'testing',
     },
   ];
-  const unusedAgentNextSteps = unusedAgentNextStepCandidates
+  const unusedAgentNextSteps = family === 'calling'
+    ? phoneReceptionistNextSteps
+    : standardAgentNextStepCandidates
     .filter((step): step is OverviewNextStep => Boolean(step))
     .slice(0, 3);
   const operationalTimeRangeHours = OPERATIONAL_TIME_RANGE_HOURS[operationalTimeRange] ?? 6;
@@ -2320,7 +2217,11 @@ Simulation rules:
               <CardHeader className="agent-studio-unused-next__header">
                 <div>
                   <h2 id="agent-studio-unused-next-title">Recommended next steps</h2>
-                  <p>Prepare this agent for its first customer interaction.</p>
+                  <p>
+                    {family === 'calling'
+                      ? 'Complete knowledge, actions, a preview call, and the remaining settings before publishing.'
+                      : 'Prepare this agent for its first customer interaction.'}
+                  </p>
                 </div>
               </CardHeader>
               <CardBody>

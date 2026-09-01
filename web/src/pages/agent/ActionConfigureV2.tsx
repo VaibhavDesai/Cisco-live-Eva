@@ -354,14 +354,14 @@ type ConfigurationSection = 'Profile' | 'Channels' | 'Flow' | 'Instructions' | '
 const ACTION_SECTIONS: ConfigurationSection[] = ['Profile', 'Channels', 'Flow', 'Instructions', 'Knowledge', 'Action', 'Security', 'Conversation', 'Language'];
 
 const FAMILY_SECTIONS: Record<AgentFamily, ConfigurationSection[]> = {
-  calling: ['Profile', 'Channels', 'Instructions', 'Knowledge', 'Conversation', 'Language'],
+  calling: ['Profile', 'Channels', 'Instructions', 'Knowledge', 'Action', 'Language'],
   contact_center: ACTION_SECTIONS,
   internal_assistant: ['Profile', 'Instructions', 'Knowledge', 'Action', 'Security', 'Conversation', 'Language'],
 };
 
 const FAMILY_SECTION_LABELS: Record<AgentFamily, Partial<Record<ConfigurationSection, string>>> = {
   calling: {
-    Knowledge: 'Basic knowledge',
+    Knowledge: 'Knowledge',
   },
   contact_center: {
     Action: 'Actions / MCP',
@@ -647,6 +647,7 @@ export default function ActionConfigureV2() {
   // explorations names instead of the generic defaults.
   const ciscoLiveAgent = CISCO_LIVE_AGENTS.find(candidate => candidate.id === agentId) ?? CISCO_LIVE_AGENTS[0];
   const agentFamily = agentDraft?.family;
+  const supportsActionControls = agentFamily !== 'calling';
   const availableSections = useMemo(
     () => agentFamily ? FAMILY_SECTIONS[agentFamily] : ACTION_SECTIONS,
     [agentFamily],
@@ -685,7 +686,9 @@ export default function ActionConfigureV2() {
     }
   }, [agentId, availableSections, navigate, searchParams]);
   const activeSection = availableSections.includes(selectedSection) ? selectedSection : 'Profile';
-  const pageTitle = CONFIGURATION_PAGE_TITLES[activeSection];
+  const pageTitle = agentFamily
+    ? FAMILY_SECTION_LABELS[agentFamily][activeSection] ?? CONFIGURATION_PAGE_TITLES[activeSection]
+    : CONFIGURATION_PAGE_TITLES[activeSection];
   const configuredChannelValues = agentDraft?.familyConfiguration.channels?.values
     ?? (agentDraft?.family === 'calling' ? agentDraft?.familyConfiguration.voice?.values : undefined);
   const configuredGreetings = configuredChannelValues?.greetings
@@ -957,12 +960,12 @@ export default function ActionConfigureV2() {
   const handledActionControlDeepLinkRef = useRef<string | null>(null);
   useEffect(() => {
     const actionId = searchParams.get('actionId');
-    if (activeSection !== 'Action' || !actionId) return;
+    if (!supportsActionControls || activeSection !== 'Action' || !actionId) return;
     const requestKey = `${agentId ?? ''}:${actionId}:${searchParams.get('controlId') ?? ''}`;
     if (handledActionControlDeepLinkRef.current === requestKey) return;
     handledActionControlDeepLinkRef.current = requestKey;
     openGalileoActionControls(actionId);
-  }, [activeSection, agentId, searchParams]);
+  }, [activeSection, agentId, searchParams, supportsActionControls]);
 
   // Reflect the Actions table into the shared agent draft so the overview's
   // "Connections" card stays in sync with what is enabled here. Guarded so it
@@ -1843,18 +1846,20 @@ export default function ActionConfigureV2() {
 
   const actionPageActions = activeSection === 'Action' ? (
     <div className="action-config-v2-action-actions">
-      <Button
-        type="button"
-        variant="secondary"
-        size="sm"
-        className="action-config-v2-recommended-btn"
-        aria-haspopup="dialog"
-        aria-expanded={showRecommendedControls}
-        onClick={openRecommendedControls}
-      >
-        <Icon name="sparkle" weight="bold" size={18} />
-        Recommend Controls
-      </Button>
+      {supportsActionControls && (
+        <Button
+          type="button"
+          variant="secondary"
+          size="sm"
+          className="action-config-v2-recommended-btn"
+          aria-haspopup="dialog"
+          aria-expanded={showRecommendedControls}
+          onClick={openRecommendedControls}
+        >
+          <Icon name="sparkle" weight="bold" size={18} />
+          Recommend Controls
+        </Button>
+      )}
       <div className="add-action-menu-wrapper" ref={addMenuRef}>
         <button
           type="button"
@@ -1943,37 +1948,41 @@ export default function ActionConfigureV2() {
 
           {activeSection === 'Channels' && (
             <div className="v2-channels">
-              <div className="v2-channels__intro">
-                <p className="v2-channels__desc">Choose the customer channels this agent supports.</p>
-              </div>
-              <div className="v2-channels__grid">
-                {EVA_CHANNEL_SELECTION_OPTIONS.map((option) => {
-                  const active = selectedChannels.includes(option.value);
-                  return (
-                    <button
-                      key={option.value}
-                      type="button"
-                      className={`v2-channel-card${active ? ' v2-channel-card--active' : ''}`}
-                      onClick={() => toggleChannel(option.value)}
-                      aria-pressed={active}
-                    >
-                      {active && (
-                        <span className="v2-channel-card__check" aria-hidden>
-                          <Icon name="check" weight="bold" size={18} />
-                        </span>
-                      )}
-                      <span className="v2-channel-card__icon">
-                        <Icon name={option.icon} weight="bold" size={24} />
-                      </span>
-                      <span className="v2-channel-card__title">{option.title}</span>
-                      <span className="v2-channel-card__desc">{option.description}</span>
-                    </button>
-                  );
-                })}
-              </div>
-              {selectedChannels.includes('voice') && (
+              {agentFamily !== 'calling' && (
+                <>
+                  <div className="v2-channels__intro">
+                    <p className="v2-channels__desc">Choose the customer channels this agent supports.</p>
+                  </div>
+                  <div className="v2-channels__grid">
+                    {EVA_CHANNEL_SELECTION_OPTIONS.map((option) => {
+                      const active = selectedChannels.includes(option.value);
+                      return (
+                        <button
+                          key={option.value}
+                          type="button"
+                          className={`v2-channel-card${active ? ' v2-channel-card--active' : ''}`}
+                          onClick={() => toggleChannel(option.value)}
+                          aria-pressed={active}
+                        >
+                          {active && (
+                            <span className="v2-channel-card__check" aria-hidden>
+                              <Icon name="check" weight="bold" size={18} />
+                            </span>
+                          )}
+                          <span className="v2-channel-card__icon">
+                            <Icon name={option.icon} weight="bold" size={24} />
+                          </span>
+                          <span className="v2-channel-card__title">{option.title}</span>
+                          <span className="v2-channel-card__desc">{option.description}</span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </>
+              )}
+              {(agentFamily === 'calling' || selectedChannels.includes('voice')) && (
                 <fieldset className="v2-voice-channel-fields">
-                  <legend>Voice details</legend>
+                  <legend>{agentFamily === 'calling' ? 'Phone number' : 'Voice details'}</legend>
                   <p className="v2-voice-channel-fields__description">
                     Choose the location and phone number callers use to reach this agent.
                   </p>
@@ -2647,7 +2656,7 @@ export default function ActionConfigureV2() {
               <div className="knowledge-config-section">
                 <div className="knowledge-config-heading">
                   <div>
-                    <h3>Knowledge bases</h3>
+                    {agentFamily !== 'calling' && <h3>Knowledge bases</h3>}
                     <p>Sources your agent can search to answer questions.</p>
                   </div>
                   <button type="button" className="action-config-v2-add-btn">
@@ -2695,50 +2704,52 @@ export default function ActionConfigureV2() {
                 </div>
               </div>
 
-              <div className="knowledge-config-section">
-                <div className="knowledge-config-heading">
-                  <div>
-                    <h3>AI memory</h3>
-                    <p>What your agent remembers across conversations to personalize responses.</p>
+              {agentFamily !== 'calling' && (
+                <div className="knowledge-config-section">
+                  <div className="knowledge-config-heading">
+                    <div>
+                      <h3>AI memory</h3>
+                      <p>What your agent remembers across conversations to personalize responses.</p>
+                    </div>
+                  </div>
+                  <div className="action-config-v2-table-wrap">
+                    <table className="action-config-v2-table knowledge-config-table">
+                      <thead>
+                        <tr>
+                          <th className="col-knowledge-toggle" aria-label="Enabled" />
+                          <th className="col-knowledge-name">Name</th>
+                          <th className="col-knowledge-description">Description</th>
+                          <th className="col-knowledge-status">Status</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {memorySources.map((source) => (
+                          <tr key={source.name}>
+                            <td className="col-knowledge-toggle">
+                              <Toggle
+                                checked={!disabledKnowledge[source.name]}
+                                onChange={() => toggleKnowledge(source.name)}
+                                size="compact"
+                                aria-label={`Toggle ${source.name}`}
+                              />
+                            </td>
+                            <td className="col-knowledge-name">
+                              <div className="knowledge-config-name">
+                                <Icon name="mind-map" weight="bold" size={18} />
+                                <span>{source.name}</span>
+                              </div>
+                            </td>
+                            <td className="col-knowledge-description">{source.description}</td>
+                            <td className="col-knowledge-status">
+                              <Badge variant="success">Active</Badge>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
                   </div>
                 </div>
-                <div className="action-config-v2-table-wrap">
-                  <table className="action-config-v2-table knowledge-config-table">
-                    <thead>
-                      <tr>
-                        <th className="col-knowledge-toggle" aria-label="Enabled" />
-                        <th className="col-knowledge-name">Name</th>
-                        <th className="col-knowledge-description">Description</th>
-                        <th className="col-knowledge-status">Status</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {memorySources.map((source) => (
-                        <tr key={source.name}>
-                          <td className="col-knowledge-toggle">
-                            <Toggle
-                              checked={!disabledKnowledge[source.name]}
-                              onChange={() => toggleKnowledge(source.name)}
-                              size="compact"
-                              aria-label={`Toggle ${source.name}`}
-                            />
-                          </td>
-                          <td className="col-knowledge-name">
-                            <div className="knowledge-config-name">
-                              <Icon name="mind-map" weight="bold" size={18} />
-                              <span>{source.name}</span>
-                            </div>
-                          </td>
-                          <td className="col-knowledge-description">{source.description}</td>
-                          <td className="col-knowledge-status">
-                            <Badge variant="success">Active</Badge>
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              </div>
+              )}
             </div>
           )}
 
@@ -2782,7 +2793,7 @@ export default function ActionConfigureV2() {
                   <th className="col-description">Description</th>
                   <th className="col-last-updated">Last updated</th>
                   <th className="col-action-type">Action type</th>
-                  <th className="col-galileo">Controls</th>
+                  {supportsActionControls && <th className="col-galileo">Controls</th>}
                   <th className="col-row-actions" aria-label="Row actions" />
                 </tr>
               </thead>
@@ -2795,10 +2806,12 @@ export default function ActionConfigureV2() {
                   const hasUpdate =
                     versionMeta.updateStatus === 'updateAvailable' ||
                     versionMeta.updateStatus === 'incompatible';
-                  const galileoStatus = getGalileoActionStatus(row.actionId, galileoActionControls);
-                  const galileoButtonColor: 'default' | 'positive' | 'accent' = galileoStatus.tone === 'active'
+                  const galileoStatus = supportsActionControls
+                    ? getGalileoActionStatus(row.actionId, galileoActionControls)
+                    : null;
+                  const galileoButtonColor: 'default' | 'positive' | 'accent' = galileoStatus?.tone === 'active'
                     ? 'positive'
-                    : galileoStatus.tone === 'gated' || galileoStatus.tone === 'draft'
+                    : galileoStatus?.tone === 'gated' || galileoStatus?.tone === 'draft'
                       ? 'accent'
                       : 'default';
                   return (
@@ -2832,23 +2845,25 @@ export default function ActionConfigureV2() {
                       <td className="col-description">{row.description}</td>
                       <td className="col-last-updated">{row.lastUpdated}</td>
                       <td className="col-action-type">{row.actionType}</td>
-                      <td className="col-galileo">
-                        <Button
-                          type="button"
-                          variant="secondary"
-                          color={galileoButtonColor}
-                          size="sm"
-                          className={`galileo-action-control-button is-${galileoStatus.tone}`}
-                          aria-label={`${row.name}: Galileo ${galileoStatus.label}`}
-                          aria-haspopup="dialog"
-                          onClick={() => openGalileoActionControls(row.actionId)}
-                        >
-                          <Icon name="automation" weight="bold" size={16} />
-                          <span className="galileo-action-control-button__label">
-                            {galileoStatus.label}
-                          </span>
-                        </Button>
-                      </td>
+                      {supportsActionControls && galileoStatus && (
+                        <td className="col-galileo">
+                          <Button
+                            type="button"
+                            variant="secondary"
+                            color={galileoButtonColor}
+                            size="sm"
+                            className={`galileo-action-control-button is-${galileoStatus.tone}`}
+                            aria-label={`${row.name}: Galileo ${galileoStatus.label}`}
+                            aria-haspopup="dialog"
+                            onClick={() => openGalileoActionControls(row.actionId)}
+                          >
+                            <Icon name="automation" weight="bold" size={16} />
+                            <span className="galileo-action-control-button__label">
+                              {galileoStatus.label}
+                            </span>
+                          </Button>
+                        </td>
+                      )}
                       <td className="col-row-actions">
                         <ActionRowMenu
                           name={row.name}
@@ -2869,7 +2884,7 @@ export default function ActionConfigureV2() {
         </div>
       </div>
 
-      {showRecommendedControls && (
+      {supportsActionControls && showRecommendedControls && (
         <RecommendedActionControlsDialog
           actions={galileoActionOptions}
           state={galileoActionControls}
@@ -2881,7 +2896,7 @@ export default function ActionConfigureV2() {
         />
       )}
 
-      {galileoDialogActionId && (
+      {supportsActionControls && galileoDialogActionId && (
         <ActionControlManagerDialog
           actionId={galileoDialogActionId}
           actions={galileoActionOptions}

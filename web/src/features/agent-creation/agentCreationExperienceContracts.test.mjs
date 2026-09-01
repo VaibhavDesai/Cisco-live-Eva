@@ -1382,8 +1382,8 @@ test('agent navigation uses the floating Uplift rail with collapse and expand ha
   );
   assert.match(
     styles,
-    /\.uplift-agent-panel\s*\{[^}]*position:\s*absolute\s*!important;[^}]*width:\s*232px\s*!important;[^}]*border-radius:\s*12px\s*!important;/,
-    'the rail should use the Uplift floating glass-card contract',
+    /\.uplift-agent-panel\s*\{[^}]*position:\s*absolute\s*!important;[^}]*width:\s*fit-content\s*!important;[^}]*border-radius:\s*12px\s*!important;/,
+    'the rail should use a content-hugging Uplift floating glass-card contract',
   );
   assert.match(
     styles,
@@ -1423,13 +1423,33 @@ test('agent navigation groups deployment destinations under Deploy and renders F
   );
   assert.match(
     configureSource,
-    /calling:\s*\[['"]Profile['"][\s\S]*?['"]Channels['"][\s\S]*?['"]Instructions['"][\s\S]*?\][\s\S]*?contact_center:\s*ACTION_SECTIONS[\s\S]*?internal_assistant:\s*\[['"]Profile['"][\s\S]*?['"]Instructions['"][\s\S]*?\]/,
-    'Phone Receptionist and Employee Assistant should omit Flow from their available configuration sections',
+    /calling:\s*\[['"]Profile['"][\s\S]*?['"]Channels['"][\s\S]*?['"]Instructions['"][\s\S]*?['"]Knowledge['"][\s\S]*?['"]Action['"][\s\S]*?['"]Language['"][\s\S]*?\][\s\S]*?contact_center:\s*ACTION_SECTIONS[\s\S]*?internal_assistant:\s*\[['"]Profile['"][\s\S]*?['"]Instructions['"][\s\S]*?\]/,
+    'Phone Receptionist should expose Actions but omit Flow and Conversation from configuration',
   );
   assert.match(
     sidebarSource,
-    /const TESTING_ITEM:[\s\S]*?path:\s*['"]analytics['"][\s\S]*?<SideNav\.Section header="Configure">[\s\S]*?configureItems\.map[\s\S]*?label=\{TESTING_ITEM\.label\}[\s\S]*?<\/SideNav\.Section>[\s\S]*?<SideNav\.Section header="Deploy">/,
-    'Testing should be the final destination in Configure while preserving its analytics route',
+    /const TESTING_ITEM:[\s\S]*?path:\s*['"]analytics['"][\s\S]*?<SideNav\.Section header="Configure">[\s\S]*?configureItems\.map[\s\S]*?family !== ['"]calling['"][\s\S]*?label=\{TESTING_ITEM\.label\}[\s\S]*?<\/SideNav\.Section>[\s\S]*?<SideNav\.Section header="Deploy">/,
+    'Testing should stay available for non-phone agents while Phone Receptionist omits it',
+  );
+  assert.match(
+    sidebarSource,
+    /section:\s*['"]Knowledge['"][\s\S]*?familyLabels:\s*\{[\s\S]*?calling:\s*['"]Knowledge['"][\s\S]*?section:\s*['"]Action['"][\s\S]*?families:\s*\[['"]calling['"]/,
+    'Phone Receptionist should call the page Knowledge and retain Actions in its configuration navigation',
+  );
+  assert.match(
+    configureSource,
+    /agentFamily !== ['"]calling['"] && \([\s\S]*?<h3>AI memory<\/h3>/,
+    'Phone Receptionist should not expose cross-conversation AI memory settings',
+  );
+  assert.match(
+    configureSource,
+    /agentFamily !== ['"]calling['"] && \([\s\S]*?v2-channels__grid[\s\S]*?agentFamily === ['"]calling['"] \|\| selectedChannels\.includes\(['"]voice['"]\)[\s\S]*?<legend>\{agentFamily === ['"]calling['"] \? ['"]Phone number['"] : ['"]Voice details['"]\}<\/legend>/,
+    'Phone Receptionist should show only phone-number fields instead of channel selection',
+  );
+  assert.match(
+    configureSource,
+    /const supportsActionControls = agentFamily !== ['"]calling['"][\s\S]*?\{supportsActionControls && \([\s\S]*?Recommend Controls[\s\S]*?\{supportsActionControls && <th className="col-galileo">Controls<\/th>\}[\s\S]*?\{supportsActionControls && galileoStatus && \(/,
+    'Phone Receptionist should not expose recommended controls or per-action control columns',
   );
   assert.doesNotMatch(
     sidebarSource,
@@ -1903,8 +1923,13 @@ test('Agent Home and start-from-scratch remove free composers without dead-endin
   );
   assert.match(
     dashboardSource,
-    /agentHomeFlow === 'home' && \([\s\S]*?new-mvo-home__hero[\s\S]*?onFirstTimeFlowChange=\{setAgentHomeFlow\}/,
-    'the large landing hero should only render on Agent Home, not inside template or demo flows',
+    /<section[\s\S]*?new-mvo-home__hero[\s\S]*?mode === 'first-time' && \([\s\S]*?Build, deploy, and manage AI agents for every interaction\./,
+    'the canonical Home shell should always own the landing hero',
+  );
+  assert.doesNotMatch(
+    dashboardSource,
+    /agentHomeFlow|openGuidedIntake|onFirstTimeFlowChange|guidedPrompt|surface === ['"]guided['"]|EvaChatExperience/,
+    'Home should not switch into a legacy guided or generated configuration view',
   );
   assert.match(
     dashboardSource,
@@ -1923,8 +1948,8 @@ test('Agent Home and start-from-scratch remove free composers without dead-endin
   );
   assert.match(
     dashboardSource,
-    /const openGuidedIntake = \(prompt = ''\) => \{[\s\S]*?setAgentHomeFlow\('home'\);[\s\S]*?setGuidedPrompt\(prompt\.trim\(\)\);[\s\S]*?setSurface\('guided'\);[\s\S]*?action\.intent === 'start-intake'[\s\S]*?openGuidedIntake\(\)/,
-    'guided entry should preserve the existing clean intake path and carry the composer prompt into it',
+    /action\.intent === ['"]start-intake['"][\s\S]*?setIsQuickCreateModalOpen\(true\)/,
+    'the primary creation entry should open the canonical quick-create flow',
   );
   assert.match(
     homeSource,
@@ -2309,10 +2334,15 @@ test('Agent Home and start-from-scratch remove free composers without dead-endin
     /\.agent-home__focus-card\.card,[\s\S]*?rgba\(7, 10, 18, 0\.2\)[^}]*--mds-color-theme-background-glass-normal[^}]*backdrop-filter:\s*blur\(24px\) saturate\(125%\)/,
     'the recurring dashboard cards should use a translucent glass surface',
   );
+  assert.doesNotMatch(
+    dashboardSource,
+    /EvaChatExperience|choiceOnlyGuidedFlow|resetSessionOnInitialMount/,
+    'Home should not enter the legacy conversational configuration view',
+  );
   assert.match(
     dashboardSource,
-    /<EvaChatExperience[\s\S]*?resetSessionOnInitialMount[\s\S]*?choiceOnlyGuidedFlow/,
-    'Create my own should preserve the choice-only conversational flow',
+    /action\.intent === ['"]start-intake['"][\s\S]*?setIsQuickCreateModalOpen\(true\)/,
+    'starting a new agent should open the canonical create flow',
   );
   assert.match(
     evaSource,
@@ -2456,18 +2486,28 @@ test('Agent Home and start-from-scratch remove free composers without dead-endin
   );
   assert.match(
     modelSource,
-    /calling:\s*\[[\s\S]*?answerKey:\s*['"]voice_destination['"][\s\S]*?answerKey:\s*['"]outcome['"][\s\S]*?answerKey:\s*['"]name['"][\s\S]*?answerKey:\s*['"]greeting['"][\s\S]*?answerKey:\s*['"]knowledge['"]/,
-    'Phone receptionist should use the fixed five-question preset sequence',
+    /calling:\s*\[[\s\S]*?answerKey:\s*['"]voice_destination['"][\s\S]*?answerKey:\s*['"]name['"][\s\S]*?answerKey:\s*['"]greeting['"][\s\S]*?answerKey:\s*['"]knowledge['"][\s\S]*?required:\s*false[\s\S]*?answerKey:\s*['"]actions['"][\s\S]*?required:\s*false/,
+    'Phone receptionist should collect name and welcome message, then offer optional knowledge and action steps',
+  );
+  assert.match(
+    evaSource,
+    /DEFAULT_CALLING_ACTION_NAME = ['"]Play a message and end the call['"][\s\S]*?setFamilyActionSelection\(current => current \|\| DEFAULT_CALLING_ACTION_NAME\)/,
+    'Phone Receptionist should show Play a message and end the call as the default action',
+  );
+  assert.match(
+    evaSource,
+    /familyRecommendedActions = selectedAgentFamily === ['"]calling['"][\s\S]*?DEFAULT_CALLING_ACTION[\s\S]*?isFamilyActionPrompt[\s\S]*?selectedAgentFamily === ['"]calling['"][\s\S]*?familyIntakeQuestion\?\.answerKey === ['"]actions['"]/,
+    'Phone Receptionist should render the optional Add action selection panel',
   );
   assert.match(
     modelSource,
-    /contact_center:\s*\[[\s\S]*?answerKey:\s*['"]channel['"][\s\S]*?answerKey:\s*['"]outcome['"][\s\S]*?answerKey:\s*['"]name['"][\s\S]*?answerKey:\s*['"]greeting['"][\s\S]*?answerKey:\s*['"]knowledge['"][\s\S]*?required:\s*false[\s\S]*?answerKey:\s*['"]actions['"][\s\S]*?required:\s*false/,
-    'Customer service should use the fixed six-question sequence with two optional steps',
+    /contact_center:\s*\[[\s\S]*?answerKey:\s*['"]channel['"][\s\S]*?answerKey:\s*['"]name['"][\s\S]*?answerKey:\s*['"]greeting['"][\s\S]*?answerKey:\s*['"]knowledge['"][\s\S]*?required:\s*false[\s\S]*?answerKey:\s*['"]actions['"][\s\S]*?required:\s*false/,
+    'Customer service should skip the prefilled goal and keep two optional steps',
   );
   assert.match(
     modelSource,
-    /internal_assistant:\s*\[[\s\S]*?answerKey:\s*['"]outcome['"][\s\S]*?answerKey:\s*['"]name['"][\s\S]*?answerKey:\s*['"]knowledge['"]/,
-    'Employee assistant should use the fixed three-question preset sequence',
+    new RegExp(String.raw`internal_assistant:\s*\[[\s\S]*?answerKey:\s*['"]name['"][\s\S]*?answerKey:\s*['"]knowledge['"]`),
+    'Employee assistant should skip the prefilled goal in its intake sequence',
   );
 });
 
@@ -2909,8 +2949,8 @@ test('starter proposal actions edit the plan or create a draft on its overview',
   assert.doesNotMatch(handlerSource, /handleCreateFamilyAgent|handleContinueFamilyConfiguration/);
   assert.match(
     proposalSource,
-    /className="eva-family-proposal__next"[\s\S]*?>What’s next<[\s\S]*?Continue configuring knowledge, actions, and guardrails so your agent can answer[\s\S]*?accurately, complete tasks, and stay within policy\./,
-    'the proposal should explain the next configuration areas below a dedicated section',
+    /className="eva-family-proposal__next"[\s\S]*?selectedAgentFamily === ['"]calling['"][\s\S]*?Continue configuring knowledge and actions, preview the agent with realistic calls,[\s\S]*?review the remaining settings before you publish\.[\s\S]*?Continue configuring knowledge, actions, and guardrails so your agent can answer[\s\S]*?accurately, complete tasks, and stay within policy\./,
+    'the proposal should describe realistic phone-receptionist next steps without guardrails while preserving the full configuration guidance for other agents',
   );
   assert.doesNotMatch(proposalSource, /AI suggestions do not change the configuration until you apply them\./);
   assert.doesNotMatch(proposalSource, />\s*(Apply draft|Ask for changes|Configure more)\s*</);
@@ -2976,6 +3016,25 @@ test('Recommended next steps owns a dynamic Next action that opens the first unr
     channelsSource,
     /evaStep === ['"]channels['"]\s*&&\s*!shouldRenderRankedNextStepsAfter\(['"]channels['"]\)[\s\S]*?Continue to instructions/,
     'the fixed channel continuation should disappear whenever the recommendation navigator is visible',
+  );
+});
+
+test('Phone Receptionist overview recommendations align with the creation plan', () => {
+  const source = readSource('../../pages/agent/AgentStudioLanding.tsx');
+  const phoneNextStepsStart = source.indexOf('const phoneReceptionistNextSteps');
+  const phoneNextStepsEnd = source.indexOf('const standardAgentNextStepCandidates', phoneNextStepsStart);
+  const phoneNextSteps = source.slice(phoneNextStepsStart, phoneNextStepsEnd);
+
+  assert.match(
+    phoneNextSteps,
+    /family === ['"]calling['"][\s\S]*?Review knowledge coverage[\s\S]*?Review agent actions[\s\S]*?Preview a realistic call[\s\S]*?actionLabel: ['"]Preview agent['"][\s\S]*?path: `\/agents\/\$\{encodeURIComponent\(agent\.id\)\}\?preview=1`/,
+    'Phone Receptionist should guide knowledge, actions, and a realistic preview call in that order',
+  );
+  assert.doesNotMatch(phoneNextSteps, /guardrail|Security/);
+  assert.match(
+    source,
+    /family === ['"]calling['"][\s\S]*?Complete knowledge, actions, a preview call, and the remaining settings before publishing\./,
+    'the Phone Receptionist overview should reinforce the same completion plan in its summary',
   );
 });
 
@@ -3220,17 +3279,12 @@ test('create versus edit mode keeps both primary configuration actions synchroni
   );
   assert.match(source, /const \[configurationMode, setConfigurationMode\] = useState<['"]create['"] \| ['"]edit['"]>/);
   assert.match(source, /configurationMode,\s*landingMode/);
-  assert.match(landingSource, /configurationMode: ['"]edit['"]/);
-  assert.match(listSource, /configurationMode: ['"]edit['"]/);
+  assert.doesNotMatch(landingSource, /EVA_SESSION_STORAGE_KEY|readEvaSessionState|openGuidedSetup|setVariation/);
+  assert.doesNotMatch(listSource, /EVA_SESSION_STORAGE_KEY|buildPreviewSession|setVariation/);
   assert.match(
     listSource,
-    /family === ['"]calling['"] \? agentDraft\?\.familyConfiguration\.voice\?\.values[\s\S]*?channelPhoneNumber:\s*savedPhoneNumber[\s\S]*?phoneNumberDeferred:\s*!savedPhoneNumber/,
-    'reopening a Phone receptionist should restore its saved voice endpoint',
-  );
-  assert.match(
-    landingSource,
-    /selectedKnowledgeBases:\s*sessionMatchesAgent[\s\S]*?selectedActions:\s*sessionMatchesAgent[\s\S]*?channelPhoneNumber:\s*sessionMatchesAgent/,
-    'an unrelated stale session must not replace selections from the opened Draft',
+    /navigate\([\s\S]*?preview=1/,
+    'preview should use the canonical agent overview route',
   );
 
   const saveHandlerStart = source.indexOf('const handleSaveConfigurations');
@@ -3313,7 +3367,7 @@ test('AI agent list cards use the native Uplift card with a stable hover surface
   );
   assert.match(
     tableSource,
-    /className="ai-agents-agent-footer"[\s\S]*?aria-label=\{`Preview \$\{tile\.name\}`\}[\s\S]*?onClick=\{\(event\) => \{[\s\S]*?handleAgentClick\(tile\);[\s\S]*?>\s*Preview\s*<\/Button>/,
+    /className="ai-agents-agent-footer"[\s\S]*?aria-label=\{`Preview \$\{tile\.name\}`\}[\s\S]*?onClick=\{\(event\) => \{[\s\S]*?handlePreviewClick\(tile\);[\s\S]*?>\s*Preview\s*<\/Button>/,
     'Preview should open the same agent overview as the full-card hit area',
   );
   assert.doesNotMatch(
@@ -3374,14 +3428,11 @@ test('agent overview header omits the family tag and keeps lifecycle status', ()
   );
 });
 
-test('AI agent list imports the design-variation hook it invokes', () => {
+test('AI agent list uses the canonical overview preview route', () => {
   const source = readSource('../eva/EvaAgentsTable.tsx');
 
-  assert.match(
-    source,
-    /import \{ useDesignVariation \} from ['"]\.\.\/\.\.\/contexts\/DesignVariationContext['"];?/,
-  );
-  assert.match(source, /const \{ setVariation \} = useDesignVariation\(\);/);
+  assert.doesNotMatch(source, /useDesignVariation|setVariation/);
+  assert.match(source, /navigate\(`\/agents\/\$\{encodeURIComponent\(tile\.id\)\}\?preview=1`\)/);
   assert.doesNotMatch(
     source,
     /previewTile|previewCallActive|previewCloseRef|closePreview/,
@@ -3406,38 +3457,20 @@ test('Control Hub landing routes AI Agent Studio into the adaptive Home experien
   const controlHubSource = readSource('../../pages/ControlHubLanding.tsx');
 
   assert.match(dashboardSource, /<AgentHomeDashboard[\s\S]*?mode=\{mode\}[\s\S]*?snapshot=\{snapshot\}/);
-  assert.match(dashboardSource, /<EvaChatExperience[\s\S]*?resetSessionOnInitialMount[\s\S]*?choiceOnlyGuidedFlow/);
+  assert.doesNotMatch(dashboardSource, /EvaChatExperience|choiceOnlyGuidedFlow|resetSessionOnInitialMount/);
   assert.match(appSource, /<Route index element=\{<ControlHubLanding \/>\} \/>/);
   assert.match(appSource, /<Route path="new-agent" element=\{<Dashboard \/>\} \/>/);
   assert.match(controlHubSource, /label="AI Agent Studio"[\s\S]*?navigate\('\/new-agent'\)/);
   assert.match(sidebarSource, /\{\s*path:\s*['"]\/new-agent['"],\s*label:\s*['"]Home['"]/);
   assert.doesNotMatch(sidebarSource, /\{\s*path:\s*['"]\/['"],\s*label:\s*['"](?:Dashboard|Home)['"]/);
-  assert.match(sidebarSource, /item\.path === ['"]\/new-agent['"][\s\S]*?setVariation\(['"]dashboard['"]\)/);
-  assert.match(
-    sidebarSource,
-    /item\.path === ['"]\/new-agent['"] \|\| item\.path === ['"]\/agents['"][\s\S]*?setVariation\(['"]dashboard['"]\)/,
-    'AI Agents should explicitly select the current dashboard list instead of reusing a legacy variation',
-  );
+  assert.doesNotMatch(sidebarSource, /useDesignVariation|setVariation|agentsRouteShowsBuildingExperience/);
+  assert.match(sidebarSource, /const isNewAgentActive = location\.pathname === ['"]\/new-agent['"];/);
   assert.match(sidebarSource, /navigate\(item\.path\)/);
-  assert.match(
-    sidebarSource,
-    /agentsRouteShowsBuildingExperience[\s\S]*?location\.pathname === '\/agents\/eva-canvas'[\s\S]*?location\.pathname === '\/agents'[\s\S]*?variation !== 'dashboard'/,
-    'creation experiences rendered under an agents route should still belong to Home navigation',
-  );
-  assert.match(
-    sidebarSource,
-    /item\.path === '\/new-agent'[\s\S]*?isNewAgentActive[\s\S]*?item\.path === '\/agents'[\s\S]*?!agentsRouteShowsBuildingExperience && isActive\(item\.path\)/,
-    'Home and AI Agents should never both be selected while the builder is active',
-  );
   const agentsSource = readSource('../../pages/Agents.tsx');
-  assert.match(
-    agentsSource,
-    /if \(variation === ['"]dashboard['"]\) \{\s*variationView = <EvaAgentsTable \/>;/,
-    'the current dashboard variation should always render the AI Agents list, including its empty state',
-  );
+  assert.match(agentsSource, /return <EvaAgentsTable \/>/);
   assert.doesNotMatch(
     agentsSource,
-    /hasFamilyAgents[\s\S]*?<EvaChatExperience/,
-    'the AI Agents list should not fall back to the legacy creation landing when it is empty',
+    /EvaChatExperience|EvaFormBuilder|EvaCanvasOverlay|useDesignVariation/,
+    'the AI Agents route should not render legacy creation views',
   );
 });

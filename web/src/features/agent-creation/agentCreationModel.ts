@@ -321,14 +321,6 @@ const FAMILY_INTAKE: Record<AgentFamily, AdaptiveIntakeQuestion[]> = {
       inputKind: 'select',
     },
     {
-      id: 'calling-outcome',
-      answerKey: 'outcome',
-      prompt: "What's your agent goal?",
-      helperText: 'Describe why people call and what the agent should help them do.',
-      required: true,
-      inputKind: 'textarea',
-    },
-    {
       id: 'calling-name',
       answerKey: 'name',
       prompt: 'What should this agent be called?',
@@ -348,8 +340,16 @@ const FAMILY_INTAKE: Record<AgentFamily, AdaptiveIntakeQuestion[]> = {
       id: 'calling-knowledge',
       answerKey: 'knowledge',
       prompt: 'Select a knowledge base',
-      helperText: 'Choose the approved information this agent can use to answer callers.',
-      required: true,
+      helperText: 'Choose the approved information this agent can use to answer callers, or skip this step.',
+      required: false,
+      inputKind: 'select',
+    },
+    {
+      id: 'calling-actions',
+      answerKey: 'actions',
+      prompt: 'Add an action',
+      helperText: 'Choose what the agent should do when the call is complete, or skip this step.',
+      required: false,
       inputKind: 'select',
     },
   ],
@@ -362,14 +362,6 @@ const FAMILY_INTAKE: Record<AgentFamily, AdaptiveIntakeQuestion[]> = {
       required: true,
       inputKind: 'select',
       options: ['Voice', 'Digital', 'Video'],
-    },
-    {
-      id: 'contact-center-outcome',
-      answerKey: 'outcome',
-      prompt: "What's your agent goal?",
-      helperText: 'Describe what customers need and what the agent should help them do.',
-      required: true,
-      inputKind: 'textarea',
     },
     {
       id: 'contact-center-name',
@@ -405,14 +397,6 @@ const FAMILY_INTAKE: Record<AgentFamily, AdaptiveIntakeQuestion[]> = {
     },
   ],
   internal_assistant: [
-    {
-      id: 'internal-outcome',
-      answerKey: 'outcome',
-      prompt: "What's your agent goal?",
-      helperText: 'Describe what employees need and what this assistant should help them do.',
-      required: true,
-      inputKind: 'textarea',
-    },
     {
       id: 'internal-name',
       answerKey: 'name',

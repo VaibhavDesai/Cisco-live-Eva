@@ -1,6 +1,5 @@
 import { BrowserRouter, Routes, Route, Navigate, useParams } from 'react-router-dom';
 import { AppProvider } from './contexts/AppContext';
-import { DesignVariationProvider } from './contexts/DesignVariationContext';
 import { MainLayout } from './components/layout';
 import { ReviewProvider } from './features/review';
 import { ProjectProvider } from './projects/ProjectContext';
@@ -38,33 +37,22 @@ function App() {
     <div className="app-shell-root">
       <AppProvider>
         <ProjectProvider>
-          <DesignVariationProvider>
-            <AgentHomeScenarioProvider>
-              <BrowserRouter basename={import.meta.env.BASE_URL}>
-                <ToastProvider>
-                  <ReviewProvider>
+          <AgentHomeScenarioProvider>
+            <BrowserRouter basename={import.meta.env.BASE_URL}>
+              <ToastProvider>
+                <ReviewProvider>
                   <Routes>
                     <Route path="/policy-studio-v2" element={<PolicyStudioV2 />} />
                     <Route index element={<ControlHubLanding />} />
                     <Route element={<MainLayout />}>
                       <Route path="new-agent" element={<Dashboard />} />
-                      {/* Sibling canvas route under the Dashboard root.
-                          When the user is on /new-agent under the "Chat-based in
-                          Dashboard" variation, opening the canvas
-                          navigates to /new-agent/eva-canvas instead of /agents/eva-canvas
-                          so the Dashboard sidebar item stays highlighted
-                          and Dashboard.tsx (which also renders the canvas
-                          overlay for that variation) stays mounted. */}
-                      <Route path="new-agent/eva-canvas" element={<Dashboard />} />
-                      <Route path="eva-canvas" element={<Navigate to="/new-agent/eva-canvas" replace />} />
+                      {/* The legacy canvas/chat entry points are no longer part
+                          of New-MVO. Keep old links recoverable by returning to
+                          the canonical Home or AI Agents surface. */}
+                      <Route path="new-agent/eva-canvas" element={<Navigate to="/new-agent" replace />} />
+                      <Route path="eva-canvas" element={<Navigate to="/new-agent" replace />} />
                       <Route path="agents" element={<Agents />} />
-                      {/* The canvas slides in as an overlay over the chat/form
-                          view at /agents (see EvaCanvasOverlay). Pointing
-                          /agents/eva-canvas at the same Agents element keeps
-                          the chat/form mounted underneath so the open/close
-                          animation has both panels available simultaneously,
-                          while still preserving deep-linkability of the URL. */}
-                      <Route path="agents/eva-canvas" element={<Agents />} />
+                      <Route path="agents/eva-canvas" element={<Navigate to="/agents" replace />} />
                       <Route path="assistant-skills" element={<AssistantSkills />} />
                       <Route path="agents/:agentId" element={<AgentStudioLanding />} />
                       <Route path="agents/:agentId/studio" element={<AgentStudioRedirect />} />
@@ -82,11 +70,10 @@ function App() {
                       <Route path="settings/organization" element={<OrganizationSettings />} />
                     </Route>
                   </Routes>
-                  </ReviewProvider>
-                </ToastProvider>
-              </BrowserRouter>
-            </AgentHomeScenarioProvider>
-          </DesignVariationProvider>
+                </ReviewProvider>
+              </ToastProvider>
+            </BrowserRouter>
+          </AgentHomeScenarioProvider>
         </ProjectProvider>
       </AppProvider>
     </div>

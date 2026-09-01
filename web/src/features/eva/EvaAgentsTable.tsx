@@ -2,7 +2,6 @@ import { useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Card as MomentumCard } from '@momentum-design/components/react';
 import { useApp, type Agent } from '../../contexts/AppContext';
-import { useDesignVariation } from '../../contexts/DesignVariationContext';
 import { useAgentHomeScenario } from '../agent-home/AgentHomeScenarioContext';
 import Button from '../../components/shared/Button';
 import {
@@ -14,18 +13,6 @@ import {
   useMenu,
 } from '../../components/shared';
 import { Icon } from '../../icons';
-import {
-  buildInstructionPrompt,
-  buildWelcomeMessage,
-  EVA_ADVANCED_GUARDRAIL_GROUPS,
-  EVA_AUTO_START_VOICE_PREVIEW_KEY,
-  PROFILE_LANGUAGE_OPTIONS,
-  EVA_SESSION_STORAGE_KEY,
-  EVA_STANDARD_GUARDRAILS,
-  type EvaSessionState,
-} from './evaFormConfig';
-import { EVA_TEMPLATES } from './evaTemplates';
-import type { EvaAgentDraft } from './types';
 import {
   FAMILY_METADATA,
   type AgentDraft,
@@ -75,13 +62,6 @@ const LIFECYCLE_STATUS_LABELS: Record<AgentLifecycle, string> = {
 const isAgentFamily = (value: unknown): value is AgentFamily =>
   value === 'calling' || value === 'contact_center' || value === 'internal_assistant';
 
-const getSelections = (draft: AgentDraft | undefined, capabilityId: string) => {
-  const selections = draft?.familyConfiguration[capabilityId]?.values?.selections;
-  return Array.isArray(selections)
-    ? selections.filter((selection): selection is string => typeof selection === 'string')
-    : [];
-};
-
 const formatUpdatedOn = (value?: string) => {
   const date = value ? new Date(value) : new Date();
   if (Number.isNaN(date.getTime())) return 'Recently';
@@ -92,123 +72,9 @@ const formatUpdatedOn = (value?: string) => {
   }).format(date);
 };
 
-function buildPreviewDraft(agent: Agent, agentDraft?: AgentDraft): EvaAgentDraft {
-  const baseDraft = EVA_TEMPLATES.find(template => template.id === 'customer-support')?.draft ?? EVA_TEMPLATES[0].draft;
-  const knowledgeBases = getSelections(agentDraft, 'knowledge').map(name => ({
-    name,
-    description: 'Knowledge selected for this agent.',
-    sources: 0,
-    usedBy: 1,
-    lastUpdatedAt: agentDraft?.updatedAt ?? new Date().toISOString(),
-  }));
-
-  return {
-    ...baseDraft,
-    name: agent.name,
-    description: agentDraft?.basics.purpose || agent.description,
-    goals: agentDraft?.basics.purpose ? [agentDraft.basics.purpose] : baseDraft.goals,
-    knowledgeBases,
-    actions: getSelections(agentDraft, 'actions'),
-    language: agentDraft?.language.defaultLanguage || 'English (US)',
-    voiceName: 'Ava',
-  };
-}
-
-function buildPreviewSession(agent: Agent, agentDraft?: AgentDraft): EvaSessionState {
-  const draft = buildPreviewDraft(agent, agentDraft);
-  const family = agentDraft?.family ?? agent.family;
-  const savedChannelValues = agentDraft?.familyConfiguration.channels?.values
-    ?? (family === 'calling' ? agentDraft?.familyConfiguration.voice?.values : undefined);
-  const savedChannels = Array.isArray(savedChannelValues?.selectedChannels)
-    ? savedChannelValues.selectedChannels.filter(
-        (channel): channel is 'voice' | 'digital' | 'video' => (
-          channel === 'voice' || channel === 'digital' || channel === 'video'
-        ),
-      )
-    : [];
-  const selectedChannels = savedChannels.length > 0
-    ? savedChannels
-    : [family === 'internal_assistant' ? 'digital' : 'voice'];
-  const primaryChannel = selectedChannels.includes('voice') ? 'voice' : 'digital';
-  const savedGreetings = savedChannelValues?.greetings && typeof savedChannelValues.greetings === 'object'
-    ? savedChannelValues.greetings as Partial<Record<'voice' | 'digital', string>>
-    : {};
-  const isVoicePreview = primaryChannel === 'voice';
-  const welcomeMessage = savedGreetings[primaryChannel] || buildWelcomeMessage(draft);
-  const connectedPhone = agentDraft?.deploymentReferences.find(
-    reference => reference.kind === 'phone_number' && reference.status === 'connected',
-  );
-  const savedPhoneNumber = typeof savedChannelValues?.voicePhoneNumber === 'string'
-    ? savedChannelValues.voicePhoneNumber
-    : connectedPhone?.label ?? '';
-  const languageValue = PROFILE_LANGUAGE_OPTIONS.find(option =>
-    option.value === draft.language || option.label === draft.language,
-  )?.value ?? 'en-US';
-
-  return {
-    configurationMode: 'edit',
-    landingMode: 'build',
-    selectedTemplateId: 'customer-support',
-    draft,
-    messages: [
-      {
-        role: 'assistant',
-        text: isVoicePreview
-          ? `I opened the voice preview for ${agent.name}. Start a representative call when you're ready.`
-          : `I opened the chat preview for ${agent.name}. Try a representative employee request when you're ready.`,
-        originStep: 'preview',
-      },
-    ],
-    guidanceVisible: true,
-    orchestrationSuggested: false,
-    freeChatActive: false,
-    conversationalOnboardingStep: 'idle',
-    evaStep: 'preview',
-    agentName: draft.name,
-    agentDescription: draft.description,
-    avatarUrl: 'https://us.webexbotbuilder.com/static/assets/images/agent-avatar-eva.png',
-    timezone: 'America/Los_Angeles',
-    aiEngine: 'Webex AI Pro 1.0',
-    welcomeMessage,
-    instructionPrompt: agentDraft?.instructions.content || buildInstructionPrompt(draft),
-    selectedKnowledgeBases: draft.knowledgeBases.map(kb => kb.name),
-    selectedActions: draft.actions,
-    optimizeAccepted: true,
-    preOptimizeText: '',
-    optimizeSummary: {
-      changes: ['Preview session loaded from the selected agent card.'],
-      reasoning: ['This reuses the same generated preview panel and voice runtime used in AI Assistant Studio.'],
-    },
-    securityTier: 'standard',
-    channelType: primaryChannel,
-    selectedChannels,
-    digitalChannel: 'chat',
-    selectedDigitalChannels: ['chat'],
-    digitalChannelAddress: '',
-    channelPhoneNumber: savedPhoneNumber,
-    phoneNumberDeferred: !savedPhoneNumber,
-    standardGuardrails: EVA_STANDARD_GUARDRAILS,
-    advancedGuardrailGroups: EVA_ADVANCED_GUARDRAIL_GROUPS,
-    expandedAdvancedGroups: [],
-    personality: {
-      llm: 'Webex AI Pro 1.0',
-      voice: 'ava',
-      language: languageValue,
-      gender: 'neutral',
-    },
-    customRules: [],
-    selectedAgentFamily: family,
-    familyIntakeAnswers: {},
-    familyProposal: null,
-    familyProposalApplied: Boolean(agentDraft?.instructions.applied),
-    activeDraftAgentId: agentDraft?.id ?? null,
-  };
-}
-
 export default function EvaAgentsTable() {
   const navigate = useNavigate();
   const { agents, agentDrafts, selectAgent, showToast } = useApp();
-  const { setVariation } = useDesignVariation();
   const { setMode: setAgentHomeMode } = useAgentHomeScenario();
   const [searchQuery, setSearchQuery] = useState('');
   const [familyFilter, setFamilyFilter] = useState<FamilyFilter>('all');
@@ -297,34 +163,11 @@ export default function EvaAgentsTable() {
   };
 
   const handlePreviewClick = (tile: AgentTile) => {
-    if (agents[tile.id]) selectAgent(tile.id);
-
-    try {
-      window.sessionStorage.setItem(
-        EVA_SESSION_STORAGE_KEY,
-        JSON.stringify(buildPreviewSession(tile.agent, tile.draft)),
-      );
-      if (tile.family === 'internal_assistant') {
-        window.sessionStorage.removeItem(EVA_AUTO_START_VOICE_PREVIEW_KEY);
-      } else {
-        window.sessionStorage.setItem(EVA_AUTO_START_VOICE_PREVIEW_KEY, '1');
-      }
-    } catch {
-      /* If storage is blocked, still switch the user into Eva's preview surface. */
-    }
-
-    setVariation('landing');
-    navigate('/agents');
+    selectAgent(tile.id);
+    navigate(`/agents/${encodeURIComponent(tile.id)}?preview=1`);
   };
 
   const handleCreateAgent = () => {
-    try {
-      window.sessionStorage.removeItem(EVA_SESSION_STORAGE_KEY);
-      window.sessionStorage.removeItem(EVA_AUTO_START_VOICE_PREVIEW_KEY);
-    } catch {
-      /* If storage is blocked, the canonical chat still opens. */
-    }
-    setVariation('landing');
     setAgentHomeMode('first-time');
     navigate('/new-agent');
   };
@@ -479,7 +322,7 @@ export default function EvaAgentsTable() {
                       aria-label={`Preview ${tile.name}`}
                       onClick={(event) => {
                         event.stopPropagation();
-                        handleAgentClick(tile);
+                        handlePreviewClick(tile);
                       }}
                     >
                       Preview

@@ -110,6 +110,16 @@ const GENERATED_CHAT_PANEL_DEFAULT_WIDTH = 304;
 const GENERATED_CHAT_PANEL_MIN_WIDTH = 248;
 const GENERATED_CHAT_PANEL_MAX_WIDTH = 480;
 const FAMILY_INTAKE_COMPACT_WIDTH = 1040;
+const DEFAULT_CALLING_ACTION_NAME = 'Play a message and end the call';
+const DEFAULT_CALLING_ACTION = {
+  id: 'calling-play-message-end-call',
+  name: DEFAULT_CALLING_ACTION_NAME,
+  description: 'Play a closing message to the caller, then end the call.',
+  actionType: 'Action',
+  providerType: 'System',
+  createdBy: 'System',
+  lastUpdated: '09/01/26, at 12:00 AM',
+} as const;
 
 const FAMILY_INTAKE_STEPPER_LABELS: Record<string, string> = {
   voice_destination: 'Location and phone number',
@@ -118,7 +128,7 @@ const FAMILY_INTAKE_STEPPER_LABELS: Record<string, string> = {
   name: 'Agent name',
   greeting: 'Welcome message',
   knowledge: 'Knowledge base',
-  actions: 'Action',
+  actions: 'Add action',
 };
 
 const getProposalAnswerOverrides = (proposal: StarterProposal): Record<string, string> => {
@@ -1736,6 +1746,11 @@ export default function EvaChatExperience({
     ? getAdaptiveIntakeQuestions(selectedAgentFamily, familyIntakeAnswers)
       .find(question => !familyIntakeAnswers[question.answerKey]?.trim())
     : undefined);
+
+  useEffect(() => {
+    if (selectedAgentFamily !== 'calling' || familyIntakeQuestion?.answerKey !== 'actions') return;
+    setFamilyActionSelection(current => current || DEFAULT_CALLING_ACTION_NAME);
+  }, [selectedAgentFamily, familyIntakeQuestion?.answerKey]);
   const familyIntakeStepCount = familyIntakeSequence.length + 1;
   const familyIntakeCurrentStepIndex = familyIntakeEditingQuestion
     ? Math.max(0, familyIntakeSequence.findIndex(question => question.id === familyIntakeEditingQuestion.id))
@@ -5843,9 +5858,14 @@ ${previewTranscript}`,
   const familyRecommendedKnowledgeBases = knowledgeBaseOptions.length > 0
     ? knowledgeBaseOptions
     : fallbackKnowledgeBases;
-  const familyRecommendedActions = Array.from(
-    new Map(EVA_ACTION_ROWS.map(action => [action.name, action])).values(),
-  );
+  const familyRecommendedActions = selectedAgentFamily === 'calling'
+    ? [
+        DEFAULT_CALLING_ACTION,
+        ...EVA_ACTION_ROWS.filter(action => action.name !== DEFAULT_CALLING_ACTION_NAME),
+      ]
+    : Array.from(
+        new Map(EVA_ACTION_ROWS.map(action => [action.name, action])).values(),
+      );
   const presetVoiceDestination = decodeVoiceDestinationAnswer(familyIntakeAnswers.voice_destination);
   const presetVoiceLocationLabel = VOICE_LOCATION_OPTIONS.find(
     option => option.value === presetVoiceDestination?.location,
@@ -7121,7 +7141,7 @@ ${previewTranscript}`,
                 && familyIntakeQuestion?.answerKey === 'knowledge';
               const isFamilyActionPrompt =
                 isLatestFamilyIntakePrompt
-                && selectedAgentFamily === 'contact_center'
+                && (selectedAgentFamily === 'calling' || selectedAgentFamily === 'contact_center')
                 && familyIntakeQuestion?.answerKey === 'actions';
               const isChoiceOnlyFreeformIntake =
                 choiceOnlyGuidedFlow
@@ -7720,7 +7740,7 @@ ${previewTranscript}`,
                           {presetKnowledgeSummary && (
                             <div><dt>Knowledge base</dt><dd>{presetKnowledgeSummary}</dd></div>
                           )}
-                          {selectedAgentFamily === 'contact_center' && presetActionSummary && (
+                          {(selectedAgentFamily === 'calling' || selectedAgentFamily === 'contact_center') && presetActionSummary && (
                             <div><dt>Action</dt><dd>{presetActionSummary}</dd></div>
                           )}
                           <div><dt>Default language</dt><dd>{familyProposal.language}</dd></div>
@@ -7729,10 +7749,17 @@ ${previewTranscript}`,
                       )}
                       <section className="eva-family-proposal__next" aria-labelledby="eva-family-proposal-next-title">
                         <h4 id="eva-family-proposal-next-title">What’s next</h4>
-                        <p>
-                          Continue configuring knowledge, actions, and guardrails so your agent can answer
-                          accurately, complete tasks, and stay within policy.
-                        </p>
+                        {selectedAgentFamily === 'calling' ? (
+                          <p>
+                            Continue configuring knowledge and actions, preview the agent with realistic calls,
+                            and review the remaining settings before you publish.
+                          </p>
+                        ) : (
+                          <p>
+                            Continue configuring knowledge, actions, and guardrails so your agent can answer
+                            accurately, complete tasks, and stay within policy.
+                          </p>
+                        )}
                       </section>
                       <div className="eva-family-proposal__actions">
                         {familyProposalEditing ? (
