@@ -6,7 +6,7 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 WEB_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
 REPO_DIR="$(cd "$WEB_DIR/.." && pwd)"
 PAGES_REPO="${PAGES_REPO:-git@sqbu-github-cisco:CBABU/Cisco-live-Eva.git}"
-PAGES_ROOT="/pages/CBABU/Cisco-live-Eva"
+PAGES_ROOT="${PAGES_ROOT:-/pages/CBABU/Cisco-live-Eva}"
 CHAT_API_URL="${VITE_CHAT_API_URL:-https://cisco-live-eva-llm-proxy.sisun-ai.workers.dev}"
 MAX_PUSH_ATTEMPTS=3
 
