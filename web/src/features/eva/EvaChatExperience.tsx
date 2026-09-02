@@ -4078,17 +4078,18 @@ export default function EvaChatExperience({
       { role: 'user', content: text },
     ]);
     const parsed = parseJsonObject(reply);
-    if (parsed?.shouldStartWorkflow !== true) return buildFallbackVoiceAgentWorkflowIntent(text);
+    if (parsed?.shouldStartWorkflow !== true) return null;
 
+    const fallback = buildFallbackVoiceAgentWorkflowIntent(text);
     const targetDescription =
       typeof parsed.targetDescription === 'string' && parsed.targetDescription.trim()
         ? parsed.targetDescription.trim()
-        : buildFallbackVoiceAgentWorkflowIntent(text).targetDescription;
+        : fallback.targetDescription;
     const acknowledgement =
       typeof parsed.acknowledgement === 'string' && parsed.acknowledgement.trim()
         ? parsed.acknowledgement.trim()
         : getVoiceAgentWorkflowIntent(`create a voice receptionist for ${targetDescription}`)?.acknowledgement ??
-          `I understand that you want to create a voice receptionist for ${targetDescription}. I’ll start the guided voice-agent workflow and use the connected business context to shape the first draft.`;
+          fallback.acknowledgement;
 
     return { targetDescription, acknowledgement };
   };
@@ -4104,12 +4105,12 @@ export default function EvaChatExperience({
       }
     } catch {
       setEvaThinking(false);
-      beginRetailReceptionistStory(buildFallbackVoiceAgentWorkflowIntent(text));
+      void runLlmReply(text);
       return;
     }
 
     setEvaThinking(false);
-    beginRetailReceptionistStory(buildFallbackVoiceAgentWorkflowIntent(text));
+    void runLlmReply(text);
   };
 
   /* Label and sentinel for the extra chip we append after Eva's
