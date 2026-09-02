@@ -161,6 +161,8 @@
 .new-mvo-home--guided {
   flex-direction: column;
   background: rgba(0, 0, 0, 0.68);
+  border-top-left-radius: 16px;
+  overflow: hidden;
   backdrop-filter: blur(28px);
   -webkit-backdrop-filter: blur(28px);
 }
