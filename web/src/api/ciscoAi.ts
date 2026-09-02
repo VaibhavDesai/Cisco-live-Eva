@@ -245,11 +245,14 @@ export async function sendEvaChat(messages: ChatMessage[]): Promise<string> {
  * the model credential stays on the server side.
  */
 export async function generateAgentGoalDraft(goal: string): Promise<AgentGoalDraft> {
-  try {
-    const reply = await sendEvaChat([
-      {
-        role: 'system',
-        content: `You are helping an admin create an AI agent. Turn the user's initial goal into a realistic first draft of the agent's system instructions.
+  // Do not turn one transient browser or edge-network failure into a static
+  // setup. The conversational creator gets one retry before continuity UI.
+  for (let attempt = 0; attempt < 2; attempt += 1) {
+    try {
+      const reply = await sendEvaChat([
+        {
+          role: 'system',
+          content: `You are helping an admin create an AI agent. Turn the user's initial goal into a realistic first draft of the agent's system instructions.
 
 Return ONLY a fenced JSON object in exactly this shape:
 \`\`\`json
@@ -260,36 +263,35 @@ Return ONLY a fenced JSON object in exactly this shape:
 \`\`\`
 
 The system prompt is for the agent being created, not for the setup assistant. Keep it practical, specific, and under 500 words.`,
-      },
-      { role: 'user', content: goal },
-    ]);
+        },
+        { role: 'user', content: goal },
+      ]);
 
-    const fencedJson = reply.match(/```json\s*([\s\S]*?)```/i);
-    const rawJson = reply.match(/\{[\s\S]*\}/);
-    const jsonText = fencedJson?.[1] ?? rawJson?.[0];
-    if (!jsonText) throw new Error('The model did not return a structured agent draft.');
+      const fencedJson = reply.match(/```json\s*([\s\S]*?)```/i);
+      const rawJson = reply.match(/\{[\s\S]*\}/);
+      const jsonText = fencedJson?.[1] ?? rawJson?.[0];
+      if (!jsonText) throw new Error('The model did not return a structured agent draft.');
 
-    const parsed = JSON.parse(jsonText.trim()) as Partial<AgentGoalDraft>;
-    if (
-      typeof parsed.acknowledgement !== 'string' ||
-      !parsed.acknowledgement.trim() ||
-      typeof parsed.systemPrompt !== 'string' ||
-      !parsed.systemPrompt.trim()
-    ) {
-      throw new Error('The model returned an incomplete agent draft.');
+      const parsed = JSON.parse(jsonText.trim()) as Partial<AgentGoalDraft>;
+      if (
+        typeof parsed.acknowledgement !== 'string' ||
+        !parsed.acknowledgement.trim() ||
+        typeof parsed.systemPrompt !== 'string' ||
+        !parsed.systemPrompt.trim()
+      ) {
+        throw new Error('The model returned an incomplete agent draft.');
+      }
+
+      return {
+        acknowledgement: parsed.acknowledgement.trim(),
+        systemPrompt: parsed.systemPrompt.trim(),
+      };
+    } catch {
+      // Retry once against the Cisco Worker before using continuity UI.
     }
-
-    return {
-      acknowledgement: parsed.acknowledgement.trim(),
-      systemPrompt: parsed.systemPrompt.trim(),
-    };
-  } catch {
-    // Keep the guided setup moving when the hosted model is temporarily
-    // unavailable. The Cisco LLM remains the primary path whenever it
-    // responds, while this local continuity draft avoids exposing backend
-    // details to the person configuring the agent.
-    return buildContinuityAgentGoalDraft(goal);
   }
+
+  return buildContinuityAgentGoalDraft(goal);
 }
 
 export async function getElevenLabsConversationSignedUrl(): Promise<string> {
