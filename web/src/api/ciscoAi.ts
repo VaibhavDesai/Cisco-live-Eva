@@ -286,7 +286,10 @@ The system prompt is for the agent being created, not for the setup assistant. K
         acknowledgement: parsed.acknowledgement.trim(),
         systemPrompt: parsed.systemPrompt.trim(),
       };
-    } catch {
+    } catch (error) {
+      // Keep the failure inspectable in browser diagnostics without exposing
+      // backend details in the guided creation UI.
+      console.warn('[Cisco LLM] Agent draft request failed', error);
       // Retry once against the Cisco Worker before using continuity UI.
     }
   }
