@@ -177,6 +177,7 @@
   align-items: center;
   flex: 0 0 auto;
   padding: 12px 24px 0;
+  border-top-left-radius: 16px;
 }
 
 @media (max-height: 760px) {

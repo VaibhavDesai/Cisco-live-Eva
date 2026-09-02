@@ -19,6 +19,34 @@ export interface AgentGoalDraft {
   systemPrompt: string;
 }
 
+function buildContinuityAgentGoalDraft(goal: string): AgentGoalDraft {
+  const normalizedGoal = goal.replace(/\s+/g, ' ').trim();
+
+  return {
+    acknowledgement: 'I’ve drafted a first-pass setup from your goal. We can refine it together as you configure the agent.',
+    systemPrompt: `## Role
+You are a helpful, reliable AI agent configured to support the user’s stated goal.
+
+## Goal
+Help the user make progress toward this goal: “${normalizedGoal}”
+
+## Conversation behavior
+- Clarify the user’s intent when the request is ambiguous.
+- Give concise, practical next steps based on the information available.
+- Be transparent about what you know and what still needs confirmation.
+- Keep the conversation warm, professional, and focused on the user’s goal.
+
+## Boundaries and safety
+- Do not invent facts, policies, tools, integrations, or outcomes.
+- Do not take consequential action without the user’s explicit confirmation.
+- Protect personal and confidential information, and ask for only what is necessary.
+- If the request is unsafe or outside the configured goal, explain the limitation and offer a safe alternative.
+
+## Escalation
+Escalate when the user needs a decision, access, approval, or support that this agent cannot provide. Summarize the relevant context and clearly state what is needed next.`,
+  };
+}
+
 function getCompanionApiUrl(path: string): string {
   const chatApiUrl = import.meta.env.VITE_CHAT_API_URL;
   if (!chatApiUrl) return `/api${path}`;
@@ -217,10 +245,11 @@ export async function sendEvaChat(messages: ChatMessage[]): Promise<string> {
  * the model credential stays on the server side.
  */
 export async function generateAgentGoalDraft(goal: string): Promise<AgentGoalDraft> {
-  const reply = await sendEvaChat([
-    {
-      role: 'system',
-      content: `You are helping an admin create an AI agent. Turn the user's initial goal into a realistic first draft of the agent's system instructions.
+  try {
+    const reply = await sendEvaChat([
+      {
+        role: 'system',
+        content: `You are helping an admin create an AI agent. Turn the user's initial goal into a realistic first draft of the agent's system instructions.
 
 Return ONLY a fenced JSON object in exactly this shape:
 \`\`\`json
@@ -231,29 +260,36 @@ Return ONLY a fenced JSON object in exactly this shape:
 \`\`\`
 
 The system prompt is for the agent being created, not for the setup assistant. Keep it practical, specific, and under 500 words.`,
-    },
-    { role: 'user', content: goal },
-  ]);
+      },
+      { role: 'user', content: goal },
+    ]);
 
-  const fencedJson = reply.match(/```json\s*([\s\S]*?)```/i);
-  const rawJson = reply.match(/\{[\s\S]*\}/);
-  const jsonText = fencedJson?.[1] ?? rawJson?.[0];
-  if (!jsonText) throw new Error('The model did not return a structured agent draft.');
+    const fencedJson = reply.match(/```json\s*([\s\S]*?)```/i);
+    const rawJson = reply.match(/\{[\s\S]*\}/);
+    const jsonText = fencedJson?.[1] ?? rawJson?.[0];
+    if (!jsonText) throw new Error('The model did not return a structured agent draft.');
 
-  const parsed = JSON.parse(jsonText.trim()) as Partial<AgentGoalDraft>;
-  if (
-    typeof parsed.acknowledgement !== 'string' ||
-    !parsed.acknowledgement.trim() ||
-    typeof parsed.systemPrompt !== 'string' ||
-    !parsed.systemPrompt.trim()
-  ) {
-    throw new Error('The model returned an incomplete agent draft.');
+    const parsed = JSON.parse(jsonText.trim()) as Partial<AgentGoalDraft>;
+    if (
+      typeof parsed.acknowledgement !== 'string' ||
+      !parsed.acknowledgement.trim() ||
+      typeof parsed.systemPrompt !== 'string' ||
+      !parsed.systemPrompt.trim()
+    ) {
+      throw new Error('The model returned an incomplete agent draft.');
+    }
+
+    return {
+      acknowledgement: parsed.acknowledgement.trim(),
+      systemPrompt: parsed.systemPrompt.trim(),
+    };
+  } catch {
+    // Keep the guided setup moving when the hosted model is temporarily
+    // unavailable. The Cisco LLM remains the primary path whenever it
+    // responds, while this local continuity draft avoids exposing backend
+    // details to the person configuring the agent.
+    return buildContinuityAgentGoalDraft(goal);
   }
-
-  return {
-    acknowledgement: parsed.acknowledgement.trim(),
-    systemPrompt: parsed.systemPrompt.trim(),
-  };
 }
 
 export async function getElevenLabsConversationSignedUrl(): Promise<string> {
