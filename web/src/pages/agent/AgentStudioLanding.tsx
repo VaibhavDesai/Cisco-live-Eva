@@ -61,6 +61,11 @@ import {
 } from '../../features/agent-creation/agentCreationModel';
 import { Icon } from '../../icons';
 import actionControlArrow from '../../assets/action-control-arrow.svg';
+import {
+  readAgentReleaseState,
+  persistAgentReleaseState,
+  type AgentReleaseState,
+} from './agentReleaseState';
 
 type PreviewCallStatus = 'idle' | 'connecting' | 'listening' | 'speaking' | 'paused' | 'ended' | 'error';
 type OverviewIntervention = 'action_control' | 'guardrail';
@@ -69,10 +74,7 @@ type OverviewCardId = 'capability' | 'operational';
 type OverviewSummaryTileId = 'knowledge' | 'memory' | 'actions' | 'actionControl' | 'guardrails';
 type OverviewChartTileId = 'signals' | 'actions' | 'guardrails';
 type OverviewConfigurationSection = 'Knowledge' | 'Action' | 'Security';
-type OverviewReleaseState = {
-  savedRevision: string;
-  pendingPublishRevision: string | null;
-};
+type OverviewReleaseState = AgentReleaseState;
 type OverviewNextStep = {
   id: string;
   title: string;
@@ -113,43 +115,8 @@ function overviewLayoutStorageKey(agentId: string, group: OverviewTileGroup) {
   return `eva-agent-overview-layout-v1:${agentId}:${group}`;
 }
 
-function overviewReleaseStorageKey(agentId: string) {
-  return `eva-agent-overview-release-v1:${agentId}`;
-}
-
-function readOverviewReleaseState(
-  agentId: string | undefined,
-  currentRevision: string,
-): OverviewReleaseState {
-  const fallback = {
-    savedRevision: currentRevision,
-    pendingPublishRevision: null,
-  };
-  if (!agentId || typeof window === 'undefined') return fallback;
-
-  try {
-    const stored = JSON.parse(window.localStorage.getItem(overviewReleaseStorageKey(agentId)) || 'null');
-    if (
-      stored
-      && typeof stored.savedRevision === 'string'
-      && (stored.pendingPublishRevision === null || typeof stored.pendingPublishRevision === 'string')
-    ) {
-      return stored as OverviewReleaseState;
-    }
-  } catch {
-    // Ignore unavailable or invalid browser storage and use the current revision.
-  }
-
-  return fallback;
-}
-
-function persistOverviewReleaseState(agentId: string, state: OverviewReleaseState) {
-  try {
-    window.localStorage.setItem(overviewReleaseStorageKey(agentId), JSON.stringify(state));
-  } catch {
-    // The release control still works for this session when storage is unavailable.
-  }
-}
+const readOverviewReleaseState = readAgentReleaseState;
+const persistOverviewReleaseState = persistAgentReleaseState;
 
 function readOverviewTileOrder<T extends string>(
   agentId: string | undefined,

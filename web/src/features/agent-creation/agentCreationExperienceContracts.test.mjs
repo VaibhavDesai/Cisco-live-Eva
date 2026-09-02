@@ -512,6 +512,21 @@ test('all Agent Studio pages share the Preview, release, and overflow action gro
   [overviewSource, configureSource, sessionsSource, historySource, testingSource].forEach(source => {
     assert.match(source, /<AgentHeaderActions\s+agent=\{agent\}/);
   });
+  assert.match(
+    configureSource,
+    /readAgentReleaseState\(agentId,\s*currentAgentRevision\)[\s\S]*?persistAgentReleaseState\(agentId,\s*nextState\)/,
+    'Configure should use the same per-agent release state as Overview',
+  );
+  assert.match(
+    configureSource,
+    /const releaseActionLabel = agent.status === ['"]Published['"][\s\S]*?['"]Publish['"][\s\S]*?['"]Save['"]/,
+    'Configure should progress from Save to Publish using the shared release state',
+  );
+  assert.match(
+    configureSource,
+    /const handleReleaseAction = \(\) => \{[\s\S]*?handleSaveConfiguration\(\)[\s\S]*?publishAgentVersion\(agent.id\)/,
+    'Configure should save first and publish only after the saved state is ready',
+  );
   assert.match(styles, /\.agent-studio-header-more-button\s*\{[^}]*width:\s*32px;[^}]*height:\s*32px;[^}]*border-radius:\s*50%;/);
   assert.match(
     styles,

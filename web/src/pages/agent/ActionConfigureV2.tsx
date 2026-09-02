@@ -74,6 +74,7 @@ import {
   readGalileoActionControlState,
   type GalileoActionControlState,
 } from './ActionControls';
+import { persistAgentReleaseState, readAgentReleaseState } from './agentReleaseState';
 
 const CUSTOM_GUARDRAIL_DIRECTION_HELP =
   'Prompt checks customer requests. Response checks agent output. Both checks customer prompts and agent responses.';
@@ -636,6 +637,7 @@ export default function ActionConfigureV2() {
     currentAgent,
     selectAgent,
     updateAgentDraft,
+    publishAgentVersion,
     showToast,
     toggleAgentPublish,
     aiEngines,
@@ -1450,18 +1452,29 @@ export default function ActionConfigureV2() {
       conversationConfiguration,
     ],
   );
+  const currentAgentRevision = agentDraft?.updatedAt ?? agents[agentId ?? '']?.updatedAt ?? '';
   const [savedConfigurationFingerprint, setSavedConfigurationFingerprint] = useState(configurationFingerprint);
   const savedAgentIdRef = useRef(agentId);
+  const [releaseState, setReleaseState] = useState(() => readAgentReleaseState(agentId, currentAgentRevision));
 
   useEffect(() => {
     if (savedAgentIdRef.current === agentId) return;
     savedAgentIdRef.current = agentId;
     setSavedConfigurationFingerprint(configurationFingerprint);
-  }, [agentId, configurationFingerprint]);
+    setReleaseState(readAgentReleaseState(agentId, currentAgentRevision));
+  }, [agentId, configurationFingerprint, currentAgentRevision]);
 
   const hasUnsavedChanges = configurationFingerprint !== savedConfigurationFingerprint;
   const handleSaveConfiguration = () => {
     setSavedConfigurationFingerprint(configurationFingerprint);
+    if (agentId && currentAgentRevision) {
+      const nextState = {
+        savedRevision: currentAgentRevision,
+        pendingPublishRevision: currentAgentRevision,
+      };
+      setReleaseState(nextState);
+      persistAgentReleaseState(agentId, nextState);
+    }
     showToast('Configuration saved', 'success');
   };
 
@@ -1478,6 +1491,51 @@ export default function ActionConfigureV2() {
 
   const agent = currentAgent?.id === agentId ? currentAgent : requestedAgent;
   if (!agent) return <Navigate to="/agents" replace />;
+
+  const hasSavedConfigurationReadyToPublish =
+    !hasUnsavedChanges
+    && Boolean(currentAgentRevision)
+    && releaseState.pendingPublishRevision === currentAgentRevision;
+  const releaseActionLabel = agent.status === 'Published'
+    ? 'Unpublish'
+    : hasSavedConfigurationReadyToPublish
+      ? 'Publish'
+      : 'Save';
+  const releaseActionDisabled =
+    agent.status !== 'Published'
+    && !hasUnsavedChanges
+    && !hasSavedConfigurationReadyToPublish;
+
+  const handleReleaseAction = () => {
+    if (agent.status === 'Published') {
+      toggleAgentPublish(agent.id);
+      showToast('Agent unpublished successfully', 'success');
+      return;
+    }
+
+    if (hasUnsavedChanges) {
+      handleSaveConfiguration();
+      return;
+    }
+
+    if (!hasSavedConfigurationReadyToPublish) return;
+    const publishedDraft = publishAgentVersion(agent.id);
+    if (!publishedDraft) {
+      showToast('Complete the required profile fields before publishing.', 'error');
+      return;
+    }
+
+    const nextState = {
+      savedRevision: publishedDraft.updatedAt,
+      pendingPublishRevision: null,
+    };
+    setReleaseState(nextState);
+    persistAgentReleaseState(agent.id, nextState);
+    showToast(
+      `Published version ${publishedDraft.version}. Deployment and live traffic remain separate.`,
+      'success',
+    );
+  };
 
   const knowledgeDemoAgent = CISCO_LIVE_AGENTS.find((candidate) => candidate.id === agent.id) ?? CISCO_LIVE_AGENTS[0];
   const knowledgeBases = knowledgeDemoAgent.knowledgeSources;
@@ -1830,17 +1888,10 @@ export default function ActionConfigureV2() {
   const headerActions = (
     <AgentHeaderActions
       agent={agent}
-      releaseLabel={agent.status === 'Published' ? 'Unpublish' : 'Save'}
-      releaseDisabled={agent.status !== 'Published' && !hasUnsavedChanges}
+      releaseLabel={releaseActionLabel}
+      releaseDisabled={releaseActionDisabled}
       releaseVariant={agent.status === 'Published' ? 'secondary' : 'primary'}
-      onRelease={() => {
-        if (agent.status === 'Published') {
-          toggleAgentPublish(agent.id);
-          showToast('Agent unpublished successfully', 'success');
-          return;
-        }
-        handleSaveConfiguration();
-      }}
+      onRelease={handleReleaseAction}
     />
   );
 
