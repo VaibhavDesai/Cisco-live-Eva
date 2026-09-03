@@ -15,15 +15,80 @@ export interface ChatMessage {
 }
 
 export interface AgentGoalDraft {
-  acknowledgement: string;
   systemPrompt: string;
+  suggestedName: string;
+  welcomeMessage: string;
+  knowledgeBases: AgentGoalRecommendation[];
+  actions: AgentGoalRecommendation[];
+  adaptiveGuardrail: AgentGoalRecommendation;
 }
 
-function buildContinuityAgentGoalDraft(goal: string): AgentGoalDraft {
+export interface AgentGoalRecommendation {
+  name: string;
+  description: string;
+}
+
+function titleCase(value: string): string {
+  return value
+    .split(/\s+/)
+    .filter(Boolean)
+    .map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
+    .join(' ');
+}
+
+function buildGoalLabel(goal: string): string {
+  const normalized = goal
+    .replace(/\s+/g, ' ')
+    .trim()
+    .replace(/^(?:please\s+)?(?:create|build|make|set up|design)\s+(?:an?\s+)?/i, '')
+    .replace(/^(?:an?\s+)/i, '')
+    .replace(/[.!?]+$/, '')
+    .trim();
+  const concise = normalized.split(/\b(?:that|which|who|to help|for customers|for users)\b/i)[0].trim();
+  const label = titleCase(concise || 'Helpful AI Agent');
+  return /\bagent\b/i.test(label) ? label : `${label} Agent`;
+}
+
+export function buildContinuityAgentGoalDraft(goal: string): AgentGoalDraft {
   const normalizedGoal = goal.replace(/\s+/g, ' ').trim();
+  const suggestedName = buildGoalLabel(normalizedGoal);
+  const subject = suggestedName.replace(/\s+Agent$/i, '').trim() || 'Customer Support';
 
   return {
-    acknowledgement: 'I’ve drafted a first-pass setup from your goal. We can refine it together as you configure the agent.',
+    suggestedName,
+    welcomeMessage: `Hi, I’m the ${suggestedName}. How can I help you with ${subject.toLowerCase()} today?`,
+    knowledgeBases: [
+      {
+        name: `${subject} Policies and Guidance`,
+        description: `Approved policies, requirements, and guidance for ${subject.toLowerCase()}.`,
+      },
+      {
+        name: `${subject} FAQs`,
+        description: `Common questions and answers related to ${subject.toLowerCase()}.`,
+      },
+      {
+        name: `${subject} Support Playbook`,
+        description: `Troubleshooting, escalation, and support procedures for ${subject.toLowerCase()}.`,
+      },
+    ],
+    actions: [
+      {
+        name: `Start ${subject} Request`,
+        description: `Collect the required details and begin a ${subject.toLowerCase()} request.`,
+      },
+      {
+        name: `Check ${subject} Status`,
+        description: `Look up the current status of a ${subject.toLowerCase()} request.`,
+      },
+      {
+        name: `Escalate ${subject} Support`,
+        description: `Transfer the conversation with context when specialist help is needed.`,
+      },
+    ],
+    adaptiveGuardrail: {
+      name: `${subject} Safety and Accuracy`,
+      description: `Steer conversations back to approved ${subject.toLowerCase()} guidance and escalate sensitive or unsupported requests.`,
+    },
     systemPrompt: `## Role
 You are a helpful, reliable AI agent configured to support the user’s stated goal.
 
@@ -245,6 +310,7 @@ export async function sendEvaChat(messages: ChatMessage[]): Promise<string> {
  * the model credential stays on the server side.
  */
 export async function generateAgentGoalDraft(goal: string): Promise<AgentGoalDraft> {
+  const continuityDraft = buildContinuityAgentGoalDraft(goal);
   // Do not turn one transient browser or edge-network failure into a static
   // setup. The conversational creator gets one retry before continuity UI.
   for (let attempt = 0; attempt < 2; attempt += 1) {
@@ -257,12 +323,27 @@ export async function generateAgentGoalDraft(goal: string): Promise<AgentGoalDra
 Return ONLY a fenced JSON object in exactly this shape:
 \`\`\`json
 {
-  "acknowledgement": "One concise, natural sentence confirming the goal and saying you will refine the setup with the user.",
-  "systemPrompt": "A complete agent system prompt in Markdown. Include ## Role, ## Goal, ## Conversation behavior, ## Boundaries and safety, and ## Escalation. Make it specific to the user's goal. Do not invent company facts, policies, tools, or integrations."
+  "systemPrompt": "A complete agent system prompt in Markdown. Include ## Role, ## Goal, ## Conversation behavior, ## Boundaries and safety, and ## Escalation. Make it specific to the user's goal. Do not invent company facts, policies, tools, or integrations.",
+  "suggestedName": "A short, specific name for this agent",
+  "welcomeMessage": "A natural first-person welcome message specific to the goal",
+  "knowledgeBases": [
+    { "name": "A relevant knowledge base name", "description": "What this knowledge base contains" },
+    { "name": "A second relevant knowledge base name", "description": "What this knowledge base contains" },
+    { "name": "A third relevant knowledge base name", "description": "What this knowledge base contains" }
+  ],
+  "actions": [
+    { "name": "A concrete action name", "description": "What the action does" },
+    { "name": "A second concrete action name", "description": "What the action does" },
+    { "name": "A third concrete action name", "description": "What the action does" }
+  ],
+  "adaptiveGuardrail": {
+    "name": "A short guardrail name specific to this goal",
+    "description": "What risky or unsupported behavior this guardrail prevents and how it safely redirects the conversation"
+  }
 }
 \`\`\`
 
-The system prompt is for the agent being created, not for the setup assistant. Keep it practical, specific, and under 500 words.`,
+The system prompt is for the agent being created, not for the setup assistant. Keep it practical, specific, and under 250 words.`,
         },
         { role: 'user', content: goal },
       ]);
@@ -274,17 +355,48 @@ The system prompt is for the agent being created, not for the setup assistant. K
 
       const parsed = JSON.parse(jsonText.trim()) as Partial<AgentGoalDraft>;
       if (
-        typeof parsed.acknowledgement !== 'string' ||
-        !parsed.acknowledgement.trim() ||
         typeof parsed.systemPrompt !== 'string' ||
         !parsed.systemPrompt.trim()
       ) {
         throw new Error('The model returned an incomplete agent draft.');
       }
 
+      const normalizeRecommendations = (
+        value: unknown,
+        fallback: AgentGoalRecommendation[],
+      ): AgentGoalRecommendation[] => {
+        if (!Array.isArray(value)) return fallback;
+        const recommendations = value
+          .filter((item): item is Record<string, unknown> => Boolean(item) && typeof item === 'object')
+          .map(item => ({
+            name: typeof item.name === 'string' ? item.name.trim() : '',
+            description: typeof item.description === 'string' ? item.description.trim() : '',
+          }))
+          .filter(item => item.name && item.description)
+          .slice(0, 3);
+        return recommendations.length > 0 ? recommendations : fallback;
+      };
+
       return {
-        acknowledgement: parsed.acknowledgement.trim(),
         systemPrompt: parsed.systemPrompt.trim(),
+        suggestedName: typeof parsed.suggestedName === 'string' && parsed.suggestedName.trim()
+          ? parsed.suggestedName.trim()
+          : continuityDraft.suggestedName,
+        welcomeMessage: typeof parsed.welcomeMessage === 'string' && parsed.welcomeMessage.trim()
+          ? parsed.welcomeMessage.trim()
+          : continuityDraft.welcomeMessage,
+        knowledgeBases: normalizeRecommendations(parsed.knowledgeBases, continuityDraft.knowledgeBases),
+        actions: normalizeRecommendations(parsed.actions, continuityDraft.actions),
+        adaptiveGuardrail: parsed.adaptiveGuardrail
+          && typeof parsed.adaptiveGuardrail.name === 'string'
+          && parsed.adaptiveGuardrail.name.trim()
+          && typeof parsed.adaptiveGuardrail.description === 'string'
+          && parsed.adaptiveGuardrail.description.trim()
+          ? {
+              name: parsed.adaptiveGuardrail.name.trim(),
+              description: parsed.adaptiveGuardrail.description.trim(),
+            }
+          : continuityDraft.adaptiveGuardrail,
       };
     } catch (error) {
       // Keep the failure inspectable in browser diagnostics without exposing
@@ -294,7 +406,7 @@ The system prompt is for the agent being created, not for the setup assistant. K
     }
   }
 
-  return buildContinuityAgentGoalDraft(goal);
+  return continuityDraft;
 }
 
 export async function getElevenLabsConversationSignedUrl(): Promise<string> {

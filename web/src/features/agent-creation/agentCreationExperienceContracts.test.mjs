@@ -2437,7 +2437,7 @@ test('Agent Home sends prompts to the conversational builder while preserving di
   );
   assert.match(
     evaSource,
-    /const handleActivateFamilyIntakeQuestion[\s\S]*?question\.id === familyIntakeQuestion\?\.id[\s\S]*?setPendingFamilyIntakeFocusKey\(question\.answerKey\)[\s\S]*?setFamilyIntakeEditingAnswerKey\(question\.answerKey\)[\s\S]*?setContactCenterSelectedChannels[\s\S]*?setFamilyAgentNameInput\(savedAnswer\)[\s\S]*?setFamilyGreetingInput\(savedAnswer\)[\s\S]*?setFamilyKnowledgeSelection[\s\S]*?setFamilyActionSelection[\s\S]*?originStep:\s*FAMILY_INTAKE_ORIGIN/,
+    /const handleActivateFamilyIntakeQuestion[\s\S]*?question\.id === familyIntakeQuestion\?\.id[\s\S]*?setPendingFamilyIntakeFocusKey\(question\.answerKey\)[\s\S]*?setFamilyIntakeEditingAnswerKey\(question\.answerKey\)[\s\S]*?setContactCenterSelectedChannels[\s\S]*?setFamilyAgentNameInput\(savedAnswer\)[\s\S]*?setFamilyGreetingInput\(savedAnswer\)[\s\S]*?setFamilyKnowledgeSelections[\s\S]*?setFamilyActionSelections[\s\S]*?originStep:\s*FAMILY_INTAKE_ORIGIN/,
     'reopening a completed step should restore its saved control value and add the matching intake prompt',
   );
   assert.match(
@@ -2517,7 +2517,7 @@ test('Agent Home sends prompts to the conversational builder while preserving di
   );
   assert.match(
     evaSource,
-    /DEFAULT_CALLING_ACTION_NAME = ['"]Play a message and end the call['"][\s\S]*?setFamilyActionSelection\(current => current \|\| DEFAULT_CALLING_ACTION_NAME\)/,
+    /DEFAULT_CALLING_ACTION_NAME = ['"]Play a message and end the call['"][\s\S]*?setFamilyActionSelections\(current => current\.length > 0 \? current : \[DEFAULT_CALLING_ACTION_NAME\]\)/,
     'Phone Receptionist should show Play a message and end the call as the default action',
   );
   assert.match(
@@ -2993,6 +2993,37 @@ test('starter proposal actions edit the plan or create a draft on its overview',
     source,
     /onClick=\{\(\)\s*=>\s*openRecommendationSection\(recommendation\.targetSection,\s*recommendation\.id\)\}[\s\S]*?\{getRecommendationActionLabel\(recommendation\)\}/,
     'the recommendation-specific action should open the section named by the recommendation',
+  );
+});
+
+test('goal-aware intake waits for the background LLM and preserves builder choices', () => {
+  const source = readSource('../eva/EvaChatExperience.tsx');
+  const configureSource = readSource('../../pages/agent/ActionConfigureV2.tsx');
+
+  assert.match(
+    source,
+    /goalDraftStatus === ['"]loading['"][\s\S]*?setEvaThinking\(true\)[\s\S]*?setPendingGoalAwareIntake\(/,
+    'fast channel selection should wait for the in-flight LLM draft instead of exposing continuity content',
+  );
+  assert.match(
+    source,
+    /familyKnowledgeSelections\.includes\(option\.name\)[\s\S]*?current\.includes\(option\.name\)[\s\S]*?familyKnowledgeSelections\.join\(['"]\\n['"]\)/,
+    'knowledge recommendations should toggle and confirm multiple selections',
+  );
+  assert.match(
+    source,
+    /familyActionSelections\.includes\(option\.name\)[\s\S]*?current\.includes\(option\.name\)[\s\S]*?familyActionSelections\.join\(['"]\\n['"]\)/,
+    'action recommendations should toggle and confirm multiple selections',
+  );
+  assert.match(
+    source,
+    /Recommended adaptive guardrail[\s\S]*?adaptiveGuardrail\.name[\s\S]*?Enable guardrail/,
+    'Customer Service intake should offer the goal-aware adaptive guardrail after Actions',
+  );
+  assert.match(
+    configureSource,
+    /configuredKnowledgeSources\([\s\S]*?agentDraft,[\s\S]*?['"]knowledge['"][\s\S]*?configuredKnowledgeSources\([\s\S]*?agentDraft,[\s\S]*?['"]memory['"]/,
+    'configuration pages should use the created agent builder selections instead of the demo fixtures',
   );
 });
 

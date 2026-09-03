@@ -77,13 +77,14 @@ test('reveals each family preset in its exact order as answers arrive', () => {
     },
     {
       family: 'contact_center',
-      keys: ['channel', 'name', 'greeting', 'knowledge', 'actions'],
+      keys: ['channel', 'name', 'greeting', 'knowledge', 'actions', 'guardrail'],
       answers: {
         channel: 'Voice, Digital',
         name: 'Customer Service Agent',
         greeting: 'Hi. How can I help today?',
         knowledge: SKIPPED_INTAKE_ANSWER,
         actions: SKIPPED_INTAKE_ANSWER,
+        guardrail: SKIPPED_INTAKE_ANSWER,
       },
     },
     {
@@ -121,6 +122,7 @@ test('reveals each family preset in its exact order as answers arrive', () => {
   assert.deepEqual(contactCenter[0].options, ['Voice', 'Digital', 'Video']);
   assert.equal(contactCenter.find(question => question.answerKey === 'knowledge').required, false);
   assert.equal(contactCenter.find(question => question.answerKey === 'actions').required, false);
+  assert.equal(contactCenter.find(question => question.answerKey === 'guardrail').required, false);
 
   const employee = getAdaptiveIntakeQuestions('internal_assistant', scenarios[2].answers);
   assert.equal(employee.every(question => question.required), true);
@@ -138,7 +140,7 @@ test('exposes each complete family intake sequence for progress UI', () => {
   );
   assert.deepEqual(
     getFamilyIntakeSequence('contact_center').map(question => question.answerKey),
-    ['channel', 'name', 'greeting', 'knowledge', 'actions'],
+    ['channel', 'name', 'greeting', 'knowledge', 'actions', 'guardrail'],
   );
   assert.deepEqual(
     getFamilyIntakeSequence('internal_assistant').map(question => question.answerKey),
@@ -338,6 +340,36 @@ test('persists Customer Service optional skips and actions, and Employee Assista
   assert.deepEqual(employeeDraft.familyConfiguration.knowledge.values, {
     selections: ['Employee handbook'],
   });
+});
+
+test('persists every knowledge and action selected in the conversational builder', () => {
+  const answers = {
+    channel: 'Digital',
+    outcome: 'Help customers manage bank transfers',
+    name: 'Transfer Support',
+    greeting: 'Hi. How can I help with your transfer?',
+    knowledge: 'Transfer policies\nTransfer troubleshooting',
+    actions: 'Check transfer status\nEscalate blocked transfer',
+    guardrail: 'Safe transfer guidance',
+  };
+  const proposal = buildStarterProposal('contact_center', answers);
+  const applied = applyPresetAnswersToDraft(
+    createDraftFromProposal('contact_center', proposal),
+    proposal,
+    answers,
+  );
+
+  assert.deepEqual(applied.familyConfiguration.knowledge.values.selections, [
+    'Transfer policies',
+    'Transfer troubleshooting',
+  ]);
+  assert.deepEqual(applied.familyConfiguration.actions.values.selections, [
+    'Check transfer status',
+    'Escalate blocked transfer',
+  ]);
+  assert.deepEqual(applied.familyConfiguration.security.values.selections, [
+    'Safe transfer guidance',
+  ]);
 });
 
 test('keeps Knowledge setup actionable from the Contact Center ranked next steps', () => {

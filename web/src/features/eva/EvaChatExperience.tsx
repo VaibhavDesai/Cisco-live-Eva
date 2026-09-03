@@ -26,7 +26,7 @@ import { EVA_TEMPLATES } from './evaTemplates';
 import type { EvaAgentDraft, EvaFieldSuggestion, EvaKnowledgeRecommendation, EvaMessage, EvaTemplateId } from './types';
 import { formatRelative } from '../../pages/knowledge/utils';
 import { listReadyCollections } from '../../services/knowledgeService';
-import { generateAgentGoalDraft, getElevenLabsConversationSignedUrl, getVoicePreviewErrorMessage, optimizeInstructions, sendEvaChat } from '../../api/ciscoAi';
+import { buildContinuityAgentGoalDraft, generateAgentGoalDraft, getElevenLabsConversationSignedUrl, getVoicePreviewErrorMessage, optimizeInstructions, sendEvaChat, type AgentGoalDraft } from '../../api/ciscoAi';
 import {
   FIELD_SUGGESTION_RESPONSE_RULES,
   extractFieldSuggestionAndProse,
@@ -1518,7 +1518,20 @@ export default function EvaChatExperience({
       .filter(Boolean) ?? []
   ));
   const [unifiedAgentGoal, setUnifiedAgentGoal] = useState('');
+  const continuityGoalDraft = choiceOnlyGuidedFlow && initialGuidedPrompt.trim()
+    ? buildContinuityAgentGoalDraft(initialGuidedPrompt)
+    : null;
   const [generatedGoalSystemPrompt, setGeneratedGoalSystemPrompt] = useState('');
+  const [generatedGoalDraft, setGeneratedGoalDraft] = useState<AgentGoalDraft | null>(null);
+  const [goalDraftStatus, setGoalDraftStatus] = useState<'loading' | 'ready'>(
+    continuityGoalDraft ? 'loading' : 'ready',
+  );
+  const [pendingGoalAwareIntake, setPendingGoalAwareIntake] = useState<{
+    family: AgentFamily;
+    answers: Record<string, string>;
+    initialRequest: string;
+    priorMessages: EvaMessage[];
+  } | null>(null);
   const generatedGoalRequestRef = useRef<string | null>(null);
   const [familyProposal, setFamilyProposal] = useState<StarterProposal | null>(
     restoredEvaSession?.familyProposal ?? null,
@@ -1546,15 +1559,17 @@ export default function EvaChatExperience({
   );
   const [familyVoiceLocation, setFamilyVoiceLocation] = useState(restoredVoiceDestination?.location ?? '');
   const [familyVoicePhoneNumber, setFamilyVoicePhoneNumber] = useState(restoredVoiceDestination?.phoneNumber ?? '');
-  const [familyKnowledgeSelection, setFamilyKnowledgeSelection] = useState(
-    restoredEvaSession?.familyIntakeAnswers?.knowledge === SKIPPED_INTAKE_ANSWER
-      ? ''
-      : restoredEvaSession?.familyIntakeAnswers?.knowledge ?? '',
-  );
-  const [familyActionSelection, setFamilyActionSelection] = useState(
-    restoredEvaSession?.familyIntakeAnswers?.actions === SKIPPED_INTAKE_ANSWER
-      ? ''
-      : restoredEvaSession?.familyIntakeAnswers?.actions ?? '',
+  const [familyKnowledgeSelections, setFamilyKnowledgeSelections] = useState<string[]>(() => {
+    const saved = restoredEvaSession?.familyIntakeAnswers?.knowledge;
+    return !saved || saved === SKIPPED_INTAKE_ANSWER ? [] : saved.split('\n').filter(Boolean);
+  });
+  const [familyActionSelections, setFamilyActionSelections] = useState<string[]>(() => {
+    const saved = restoredEvaSession?.familyIntakeAnswers?.actions;
+    return !saved || saved === SKIPPED_INTAKE_ANSWER ? [] : saved.split('\n').filter(Boolean);
+  });
+  const [familyGuardrailEnabled, setFamilyGuardrailEnabled] = useState(
+    Boolean(restoredEvaSession?.familyIntakeAnswers?.guardrail
+      && restoredEvaSession.familyIntakeAnswers.guardrail !== SKIPPED_INTAKE_ANSWER),
   );
 
   useEffect(() => {
@@ -1563,35 +1578,25 @@ export default function EvaChatExperience({
 
     generatedGoalRequestRef.current = goal;
     let cancelled = false;
-    setEvaThinking(true);
+    setGoalDraftStatus('loading');
 
     void generateAgentGoalDraft(goal)
-      .then(({ acknowledgement, systemPrompt }) => {
+      .then(goalDraft => {
         if (cancelled) return;
+        const { systemPrompt } = goalDraft;
+        setGeneratedGoalDraft(goalDraft);
         setGeneratedGoalSystemPrompt(systemPrompt);
         setInstructionPrompt(systemPrompt);
-        setMessages(previous => previous.map(message => (
-          message.role === 'assistant' && message.originStep === UNIFIED_CHANNEL_CHOICE_ORIGIN
-            ? {
-                ...message,
-                text: `${acknowledgement}\n\nWhich channels should this agent support?`,
-              }
-            : message
-        )));
+        setGoalDraftStatus('ready');
       })
       .catch(() => {
         if (cancelled) return;
-        setMessages(previous => previous.map(message => (
-          message.role === 'assistant' && message.originStep === UNIFIED_CHANNEL_CHOICE_ORIGIN
-            ? {
-                ...message,
-                text: 'Your goal is saved, but I could not generate the first instruction draft. Check the local model connection, then start a new draft to try again.\n\nWhich channels should this agent support?',
-              }
-            : message
-        )));
-      })
-      .finally(() => {
-        if (!cancelled) setEvaThinking(false);
+        if (continuityGoalDraft) {
+          setGeneratedGoalDraft(continuityGoalDraft);
+          setGeneratedGoalSystemPrompt(continuityGoalDraft.systemPrompt);
+          setInstructionPrompt(continuityGoalDraft.systemPrompt);
+        }
+        setGoalDraftStatus('ready');
       });
 
     return () => {
@@ -1662,7 +1667,9 @@ export default function EvaChatExperience({
   const [timezone, setTimezone] = useState(restoredEvaSession?.timezone ?? 'Europe/London');
   const [aiEngine, setAiEngine] = useState(restoredEvaSession?.aiEngine ?? 'Webex AI Pro 1.0');
   const [welcomeMessage, setWelcomeMessage] = useState(restoredEvaSession?.welcomeMessage ?? 'Hi, I am AI Assistant. I can help answer questions, guide next steps, and connect you with the right support path.');
-  const [instructionPrompt, setInstructionPrompt] = useState(restoredEvaSession?.instructionPrompt ?? '');
+  const [instructionPrompt, setInstructionPrompt] = useState(
+    restoredEvaSession?.instructionPrompt ?? '',
+  );
   const [selectedKnowledgeBases, setSelectedKnowledgeBases] = useState<string[]>(restoredEvaSession?.selectedKnowledgeBases ?? EVA_TEMPLATES[0].draft.knowledgeBases.slice(0, 2).map(kb => kb.name));
   const [availableKnowledgeBases, setAvailableKnowledgeBases] = useState<EvaKnowledgeRecommendation[] | null>(null);
   const [knowledgeInventoryError, setKnowledgeInventoryError] = useState(false);
@@ -1747,9 +1754,43 @@ export default function EvaChatExperience({
       .find(question => !familyIntakeAnswers[question.answerKey]?.trim())
     : undefined);
 
+  /* The first channel question is intentionally instant. Goal-specific content
+     is generated in the background; later steps wait for that request rather
+     than exposing continuity content while the Cisco LLM is still connected. */
+  useEffect(() => {
+    if (!generatedGoalDraft || !selectedAgentFamily || !familyIntakeQuestion) return;
+
+    if (familyIntakeQuestion.answerKey === 'name' && !familyIntakeAnswers.name?.trim()) {
+      setFamilyAgentNameInput(generatedGoalDraft.suggestedName);
+      setMessages(previous => {
+        const promptIndex = previous.findLastIndex(message => (
+          message.role === 'assistant' && message.originStep === FAMILY_INTAKE_ORIGIN
+        ));
+        if (promptIndex < 0) return previous;
+        return previous.map((message, index) => index === promptIndex
+          ? {
+              ...message,
+              text: `I suggest ${generatedGoalDraft.suggestedName} based on the experience you described.\nUse this name or enter a different one.`,
+              followups: [generatedGoalDraft.suggestedName],
+            }
+          : message);
+      });
+    }
+
+    if (familyIntakeQuestion.answerKey === 'greeting' && !familyIntakeAnswers.greeting?.trim()) {
+      setFamilyGreetingInput(generatedGoalDraft.welcomeMessage);
+    }
+  }, [
+    familyIntakeAnswers.greeting,
+    familyIntakeAnswers.name,
+    familyIntakeQuestion?.answerKey,
+    generatedGoalDraft,
+    selectedAgentFamily,
+  ]);
+
   useEffect(() => {
     if (selectedAgentFamily !== 'calling' || familyIntakeQuestion?.answerKey !== 'actions') return;
-    setFamilyActionSelection(current => current || DEFAULT_CALLING_ACTION_NAME);
+    setFamilyActionSelections(current => current.length > 0 ? current : [DEFAULT_CALLING_ACTION_NAME]);
   }, [selectedAgentFamily, familyIntakeQuestion?.answerKey]);
   const familyIntakeStepCount = familyIntakeSequence.length + 1;
   const familyIntakeCurrentStepIndex = familyIntakeEditingQuestion
@@ -2371,14 +2412,10 @@ export default function EvaChatExperience({
     const baseDraft = EVA_TEMPLATES[0].draft;
     const selectedKnowledge = familyIntakeAnswers.knowledge === SKIPPED_INTAKE_ANSWER
       ? []
-      : familyIntakeAnswers.knowledge
-        ? [familyIntakeAnswers.knowledge]
-        : [];
+      : familyIntakeAnswers.knowledge?.split('\n').filter(Boolean) ?? [];
     const selectedPresetActions = familyIntakeAnswers.actions === SKIPPED_INTAKE_ANSWER
       ? []
-      : familyIntakeAnswers.actions
-        ? [familyIntakeAnswers.actions]
-        : [];
+      : familyIntakeAnswers.actions?.split('\n').filter(Boolean) ?? [];
     const knowledgeByName = new Map((availableKnowledgeBases ?? []).map(item => [item.name, item]));
     const nextDraft: EvaAgentDraft = {
       ...baseDraft,
@@ -2523,8 +2560,9 @@ export default function EvaChatExperience({
     setFamilyGreetingInputVisible(false);
     setFamilyVoiceLocation('');
     setFamilyVoicePhoneNumber('');
-    setFamilyKnowledgeSelection('');
-    setFamilyActionSelection('');
+    setFamilyKnowledgeSelections([]);
+    setFamilyActionSelections([]);
+    setFamilyGuardrailEnabled(false);
     setSelectedKnowledgeBases([]);
     setSelectedActions([]);
     setFamilyHelpVisible(false);
@@ -2572,23 +2610,35 @@ export default function EvaChatExperience({
       originStep: UNIFIED_CHANNEL_CHOICE_ORIGIN,
     };
 
-    if (hasVoiceAndDigital) {
+    const savedGoal = initialGuidedPrompt.trim();
+    if (savedGoal) {
+      const family = resolveUnifiedAgentFamily(contactCenterSelectedChannels, savedGoal);
+      if (goalDraftStatus === 'loading') {
+        const priorMessages = [...messages, channelMessage];
+        setMessages(priorMessages);
+        setEvaThinking(true);
+        setPendingGoalAwareIntake({
+          family,
+          answers: { channel: channelAnswer, outcome: savedGoal },
+          initialRequest: savedGoal,
+          priorMessages,
+        });
+        return;
+      }
       beginFamilyIntake(
-        'contact_center',
-        { channel: channelAnswer },
-        channelAnswer,
+        family,
+        { channel: channelAnswer, outcome: savedGoal },
+        savedGoal,
         [...messages, channelMessage],
       );
       return;
     }
 
-    const savedGoal = initialGuidedPrompt.trim();
-    if (savedGoal) {
-      const family = resolveUnifiedAgentFamily(contactCenterSelectedChannels, savedGoal);
+    if (hasVoiceAndDigital) {
       beginFamilyIntake(
-        family,
-        { channel: channelAnswer, outcome: savedGoal },
-        savedGoal,
+        'contact_center',
+        { channel: channelAnswer },
+        channelAnswer,
         [...messages, channelMessage],
       );
       return;
@@ -2605,6 +2655,18 @@ export default function EvaChatExperience({
       },
     ]);
   };
+
+  useEffect(() => {
+    if (goalDraftStatus !== 'ready' || !pendingGoalAwareIntake) return;
+    const pending = pendingGoalAwareIntake;
+    setPendingGoalAwareIntake(null);
+    beginFamilyIntake(
+      pending.family,
+      pending.answers,
+      pending.initialRequest,
+      pending.priorMessages,
+    );
+  }, [goalDraftStatus, pendingGoalAwareIntake]);
 
   const handleUnifiedGoalSubmit = () => {
     const goal = unifiedAgentGoal.trim();
@@ -2803,9 +2865,11 @@ export default function EvaChatExperience({
       setFamilyGreetingInput(savedAnswer);
       setFamilyGreetingInputVisible(true);
     } else if (question.answerKey === 'knowledge') {
-      setFamilyKnowledgeSelection(savedAnswer === SKIPPED_INTAKE_ANSWER ? '' : savedAnswer);
+      setFamilyKnowledgeSelections(savedAnswer === SKIPPED_INTAKE_ANSWER ? [] : savedAnswer.split('\n').filter(Boolean));
     } else if (question.answerKey === 'actions') {
-      setFamilyActionSelection(savedAnswer === SKIPPED_INTAKE_ANSWER ? '' : savedAnswer);
+      setFamilyActionSelections(savedAnswer === SKIPPED_INTAKE_ANSWER ? [] : savedAnswer.split('\n').filter(Boolean));
+    } else if (question.answerKey === 'guardrail') {
+      setFamilyGuardrailEnabled(savedAnswer !== SKIPPED_INTAKE_ANSWER);
     }
 
     const editMessage = getFamilyIntakeMessage(selectedAgentFamily, question, syncedAnswers);
@@ -2916,8 +2980,9 @@ export default function EvaChatExperience({
         setFamilyGreetingInput(buildStarterProposal(selectedAgentFamily, nextAnswers).greeting ?? '');
         setFamilyGreetingInputVisible(false);
       }
-      if (nextQuestion.answerKey === 'knowledge') setFamilyKnowledgeSelection('');
-      if (nextQuestion.answerKey === 'actions') setFamilyActionSelection('');
+      if (nextQuestion.answerKey === 'knowledge') setFamilyKnowledgeSelections([]);
+      if (nextQuestion.answerKey === 'actions') setFamilyActionSelections([]);
+      if (nextQuestion.answerKey === 'guardrail') setFamilyGuardrailEnabled(false);
       setMessages(previous => [
         ...previous,
         {
@@ -2983,6 +3048,45 @@ export default function EvaChatExperience({
       })),
     );
     const nextDraft = applyPresetAnswersToDraft(baseDraft, familyProposal, familyIntakeAnswers);
+    const addRecommendationCatalog = (
+      capabilityId: 'knowledge' | 'actions',
+      recommendations: AgentGoalDraft['knowledgeBases'],
+    ) => {
+      const capability = nextDraft.familyConfiguration[capabilityId];
+      if (!capability) return;
+      const selections = Array.isArray(capability.values?.selections)
+        ? capability.values.selections.filter((name): name is string => typeof name === 'string')
+        : [];
+      capability.values = {
+        ...(capability.values ?? {}),
+        catalog: recommendations.filter(item => selections.includes(item.name)),
+      };
+    };
+    addRecommendationCatalog('knowledge', generatedGoalDraft?.knowledgeBases ?? []);
+    addRecommendationCatalog('actions', generatedGoalDraft?.actions ?? []);
+    const guardrail = generatedGoalDraft?.adaptiveGuardrail;
+    const securityCapability = nextDraft.familyConfiguration.security;
+    if (securityCapability && familyIntakeAnswers.guardrail !== SKIPPED_INTAKE_ANSWER && guardrail) {
+      const createdAt = new Date().toISOString();
+      securityCapability.progress = 'configured';
+      securityCapability.values = {
+        ...(securityCapability.values ?? {}),
+        selections: [guardrail.name],
+        customGuardrails: [{
+          id: `builder-${guardrail.name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '')}`,
+          name: guardrail.name,
+          description: guardrail.description,
+          enabled: true,
+          action: 'steer',
+          direction: 'both',
+          createdBy: 'AI Assistant',
+          createdAt,
+          overview: { blocked: [], allowed: [], edgeCases: [] },
+          versions: [],
+        }],
+      };
+      securityCapability.updatedAt = createdAt;
+    }
     if (nextDraft.familyConfiguration.audience) {
       const audience = internalAudience || familyIntakeAnswers.audience || '';
       nextDraft.familyConfiguration.audience = {
@@ -5876,10 +5980,10 @@ ${previewTranscript}`,
   )?.label ?? presetVoiceDestination?.phoneNumber;
   const presetKnowledgeSummary = familyIntakeAnswers.knowledge === SKIPPED_INTAKE_ANSWER
     ? 'Skipped for now'
-    : familyIntakeAnswers.knowledge;
+    : familyIntakeAnswers.knowledge?.split('\n').filter(Boolean).join(', ');
   const presetActionSummary = familyIntakeAnswers.actions === SKIPPED_INTAKE_ANSWER
     ? 'Skipped for now'
-    : familyIntakeAnswers.actions;
+    : familyIntakeAnswers.actions?.split('\n').filter(Boolean).join(', ');
 
   useEffect(() => {
     if (!activeDraftAgentId || !selectedAgentFamily || !familyProposalApplied) return;
@@ -7144,6 +7248,10 @@ ${previewTranscript}`,
                 isLatestFamilyIntakePrompt
                 && (selectedAgentFamily === 'calling' || selectedAgentFamily === 'contact_center')
                 && familyIntakeQuestion?.answerKey === 'actions';
+              const isFamilyGuardrailPrompt =
+                isLatestFamilyIntakePrompt
+                && selectedAgentFamily === 'contact_center'
+                && familyIntakeQuestion?.answerKey === 'guardrail';
               const isChoiceOnlyFreeformIntake =
                 choiceOnlyGuidedFlow
                 && isLatestFamilyIntakePrompt
@@ -7154,7 +7262,8 @@ ${previewTranscript}`,
                 && !isFamilyGreetingPrompt
                 && !isCallingDestinationPrompt
                 && !isFamilyKnowledgePrompt
-                && !isFamilyActionPrompt;
+                && !isFamilyActionPrompt
+                && !isFamilyGuardrailPrompt;
               const familyIntakeDraft = selectedAgentFamily
                 ? buildStarterProposal(selectedAgentFamily, familyIntakeAnswers)
                 : null;
@@ -7232,7 +7341,7 @@ ${previewTranscript}`,
                       </div>
                     </div>
                   ) : message.text}
-                  followups={isRetailChannelChoice || isRetailPhonePrompt || isRetailAgentNamePrompt || isRetailWelcomePrompt || isRetailKnowledgePrompt || isRetailActionsPrompt || isRetailFinalActions || isRetailCompleteActions || isRetailInlinePreview || isFamilyChoicePrompt || isUnifiedChannelPrompt || isUnifiedGoalPrompt || isFamilyProposalPrompt || isContactCenterChannelPrompt || isFamilyNamePrompt || isFamilyGreetingPrompt || isCallingDestinationPrompt || isFamilyKnowledgePrompt || isFamilyActionPrompt || (isFamilyIntakePrompt && (!isLatestFamilyIntakePrompt || evaThinking)) ? [] : followups}
+                  followups={isRetailChannelChoice || isRetailPhonePrompt || isRetailAgentNamePrompt || isRetailWelcomePrompt || isRetailKnowledgePrompt || isRetailActionsPrompt || isRetailFinalActions || isRetailCompleteActions || isRetailInlinePreview || isFamilyChoicePrompt || isUnifiedChannelPrompt || isUnifiedGoalPrompt || isFamilyProposalPrompt || isContactCenterChannelPrompt || isFamilyNamePrompt || isFamilyGreetingPrompt || isCallingDestinationPrompt || isFamilyKnowledgePrompt || isFamilyActionPrompt || isFamilyGuardrailPrompt || (isFamilyIntakePrompt && (!isLatestFamilyIntakePrompt || evaThinking)) ? [] : followups}
                   onFollowup={handleLlmFollowupClick}
                 >
                   {isLatestFamilyIntakePrompt
@@ -7480,25 +7589,27 @@ ${previewTranscript}`,
                           dismissable={false}
                         />
                       )}
-                      {familyKnowledgeSelection && (
+                      {familyKnowledgeSelections.length > 0 && (
                         <div className="eva-retail-recommendation-section">
                           <span className="eva-retail-recommendation-eyebrow">
                             <Icon name="sparkle" weight="bold" size={14} />
                             Connected knowledge bases
                           </span>
                           <div className="eva-retail-connected-list">
-                            <span className="eva-retail-connected-chip">
-                              <Icon className="eva-retail-connected-chip__status" name="check-circle-filled" weight="bold" size="sm" />
-                              {familyKnowledgeSelection}
-                              <button
-                                type="button"
-                                className="eva-retail-connected-chip__close"
-                                aria-label={`Remove ${familyKnowledgeSelection}`}
-                                onClick={() => setFamilyKnowledgeSelection('')}
-                              >
-                                <Icon name="cancel" weight="regular" size="sm" />
-                              </button>
-                            </span>
+                            {familyKnowledgeSelections.map(name => (
+                              <span key={name} className="eva-retail-connected-chip">
+                                <Icon className="eva-retail-connected-chip__status" name="check-circle-filled" weight="bold" size="sm" />
+                                {name}
+                                <button
+                                  type="button"
+                                  className="eva-retail-connected-chip__close"
+                                  aria-label={`Remove ${name}`}
+                                  onClick={() => setFamilyKnowledgeSelections(current => current.filter(item => item !== name))}
+                                >
+                                  <Icon name="cancel" weight="regular" size="sm" />
+                                </button>
+                              </span>
+                            ))}
                           </div>
                         </div>
                       )}
@@ -7506,7 +7617,7 @@ ${previewTranscript}`,
                         <span className="eva-retail-recommendation-eyebrow">Recommended knowledge bases</span>
                         <div className="eva-retail-recommendation-list">
                           {familyRecommendedKnowledgeBases.slice(0, 3).map(option => {
-                            const isSelected = familyKnowledgeSelection === option.name;
+                            const isSelected = familyKnowledgeSelections.includes(option.name);
                             return (
                               <Card
                                 key={option.name}
@@ -7515,7 +7626,11 @@ ${previewTranscript}`,
                                 className="eva-retail-recommendation-card card-selectable"
                                 aria-label={`${option.name}. ${option.description}`}
                                 aria-pressed={isSelected}
-                                onClick={() => setFamilyKnowledgeSelection(option.name)}
+                                onClick={() => setFamilyKnowledgeSelections(current => (
+                                  current.includes(option.name)
+                                    ? current.filter(item => item !== option.name)
+                                    : [...current, option.name]
+                                ))}
                               >
                                 <span className="card-select-icon eva-retail-recommendation-card__select" aria-hidden="true">
                                   <Icon name={isSelected ? 'check-circle-filled' : 'check-circle'} weight="bold" size={20} />
@@ -7542,8 +7657,11 @@ ${previewTranscript}`,
                         )}
                         <Button
                           size="sm"
-                          disabled={!familyKnowledgeSelection}
-                          onClick={() => handleFamilyIntakeAnswer(familyKnowledgeSelection)}
+                          disabled={familyKnowledgeSelections.length === 0}
+                          onClick={() => handleFamilyIntakeAnswer(
+                            familyKnowledgeSelections.join('\n'),
+                            familyKnowledgeSelections.join(', '),
+                          )}
                         >
                           Confirm knowledge bases
                         </Button>
@@ -7552,25 +7670,27 @@ ${previewTranscript}`,
                   )}
                   {isFamilyActionPrompt && !evaThinking && familyIntakeQuestion && (
                     <div className="eva-retail-recommendation-panel eva-family-recommendation-panel" role="group" aria-label="Select an action">
-                      {familyActionSelection && (
+                      {familyActionSelections.length > 0 && (
                         <div className="eva-retail-recommendation-section">
                           <span className="eva-retail-recommendation-eyebrow">
                             <Icon name="sparkle" weight="bold" size={14} />
                             Connected actions
                           </span>
                           <div className="eva-retail-connected-list">
-                            <span className="eva-retail-connected-chip">
-                              <Icon className="eva-retail-connected-chip__status" name="check-circle-filled" weight="bold" size="sm" />
-                              {familyActionSelection}
-                              <button
-                                type="button"
-                                className="eva-retail-connected-chip__close"
-                                aria-label={`Remove ${familyActionSelection}`}
-                                onClick={() => setFamilyActionSelection('')}
-                              >
-                                <Icon name="cancel" weight="regular" size="sm" />
-                              </button>
-                            </span>
+                            {familyActionSelections.map(name => (
+                              <span key={name} className="eva-retail-connected-chip">
+                                <Icon className="eva-retail-connected-chip__status" name="check-circle-filled" weight="bold" size="sm" />
+                                {name}
+                                <button
+                                  type="button"
+                                  className="eva-retail-connected-chip__close"
+                                  aria-label={`Remove ${name}`}
+                                  onClick={() => setFamilyActionSelections(current => current.filter(item => item !== name))}
+                                >
+                                  <Icon name="cancel" weight="regular" size="sm" />
+                                </button>
+                              </span>
+                            ))}
                           </div>
                         </div>
                       )}
@@ -7578,7 +7698,7 @@ ${previewTranscript}`,
                         <span className="eva-retail-recommendation-eyebrow">Recommended actions</span>
                         <div className="eva-retail-recommendation-list">
                           {familyRecommendedActions.slice(0, 3).map(option => {
-                            const isSelected = familyActionSelection === option.name;
+                            const isSelected = familyActionSelections.includes(option.name);
                             return (
                               <Card
                                 key={option.id}
@@ -7587,7 +7707,11 @@ ${previewTranscript}`,
                                 className="eva-retail-recommendation-card card-selectable"
                                 aria-label={`${option.name}. ${option.providerType}. ${option.description}`}
                                 aria-pressed={isSelected}
-                                onClick={() => setFamilyActionSelection(option.name)}
+                                onClick={() => setFamilyActionSelections(current => (
+                                  current.includes(option.name)
+                                    ? current.filter(item => item !== option.name)
+                                    : [...current, option.name]
+                                ))}
                               >
                                 <span className="card-select-icon eva-retail-recommendation-card__select" aria-hidden="true">
                                   <Icon name={isSelected ? 'check-circle-filled' : 'check-circle'} weight="bold" size={20} />
@@ -7614,10 +7738,60 @@ ${previewTranscript}`,
                         </Button>
                         <Button
                           size="sm"
-                          disabled={!familyActionSelection}
-                          onClick={() => handleFamilyIntakeAnswer(familyActionSelection)}
+                          disabled={familyActionSelections.length === 0}
+                          onClick={() => handleFamilyIntakeAnswer(
+                            familyActionSelections.join('\n'),
+                            familyActionSelections.join(', '),
+                          )}
                         >
                           Confirm actions
+                        </Button>
+                      </div>
+                    </div>
+                  )}
+                  {isFamilyGuardrailPrompt && !evaThinking && familyIntakeQuestion && generatedGoalDraft && (
+                    <div className="eva-retail-recommendation-panel eva-family-recommendation-panel" role="group" aria-label="Adaptive guardrail recommendation">
+                      <div className="eva-retail-recommendation-section">
+                        <span className="eva-retail-recommendation-eyebrow">
+                          <Icon name="sparkle" weight="bold" size={14} />
+                          Recommended adaptive guardrail
+                        </span>
+                        <div className="eva-retail-recommendation-list">
+                          <Card
+                            clickable
+                            selected={familyGuardrailEnabled}
+                            className="eva-retail-recommendation-card card-selectable"
+                            aria-label={`${generatedGoalDraft.adaptiveGuardrail.name}. ${generatedGoalDraft.adaptiveGuardrail.description}`}
+                            aria-pressed={familyGuardrailEnabled}
+                            onClick={() => setFamilyGuardrailEnabled(current => !current)}
+                          >
+                            <span className="card-select-icon eva-retail-recommendation-card__select" aria-hidden="true">
+                              <Icon name={familyGuardrailEnabled ? 'check-circle-filled' : 'check-circle'} weight="bold" size={20} />
+                            </span>
+                            <span className="eva-retail-recommendation-card__icon" aria-hidden="true">
+                              <Icon name="shield" weight="regular" size={24} />
+                            </span>
+                            <strong>{generatedGoalDraft.adaptiveGuardrail.name}</strong>
+                            <span className="eva-retail-recommendation-card__description">
+                              {generatedGoalDraft.adaptiveGuardrail.description}
+                            </span>
+                          </Card>
+                        </div>
+                      </div>
+                      <div className="eva-retail-recommendation-actions">
+                        <Button
+                          size="sm"
+                          variant="secondary"
+                          onClick={() => handleFamilyIntakeAnswer(SKIPPED_INTAKE_ANSWER, 'Not enabled')}
+                        >
+                          Not now
+                        </Button>
+                        <Button
+                          size="sm"
+                          disabled={!familyGuardrailEnabled}
+                          onClick={() => handleFamilyIntakeAnswer(generatedGoalDraft.adaptiveGuardrail.name)}
+                        >
+                          Enable guardrail
                         </Button>
                       </div>
                     </div>

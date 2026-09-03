@@ -395,6 +395,14 @@ const FAMILY_INTAKE: Record<AgentFamily, AdaptiveIntakeQuestion[]> = {
       required: false,
       inputKind: 'select',
     },
+    {
+      id: 'contact-center-guardrail',
+      answerKey: 'guardrail',
+      prompt: 'Review a recommended adaptive guardrail',
+      helperText: 'Enable the goal-aware protection for this agent, or skip it for now.',
+      required: false,
+      inputKind: 'select',
+    },
   ],
   internal_assistant: [
     {
@@ -1176,17 +1184,30 @@ export const applyPresetAnswersToDraft = (
     const capabilityState = familyConfiguration[capabilityId];
     if (!capabilityState || capabilityState.progress === 'blocked') return;
     const skipped = answer === SKIPPED_INTAKE_ANSWER;
-    const selection = skipped ? '' : normalize(answer);
+    const selections = skipped
+      ? []
+      : normalize(answer).split('\n').map(value => value.trim()).filter(Boolean);
     familyConfiguration[capabilityId] = {
       ...capabilityState,
-      progress: skipped ? 'skipped' : selection ? 'configured' : 'not_started',
-      values: { selections: selection ? [selection] : [] },
+      progress: skipped ? 'skipped' : selections.length > 0 ? 'configured' : 'not_started',
+      values: { selections },
       updatedAt: now,
     };
   };
 
   applySelection('knowledge', answers.knowledge);
   applySelection('actions', answers.actions);
+
+  const securityCapability = familyConfiguration.security;
+  if (securityCapability && securityCapability.progress !== 'blocked' && answers.guardrail) {
+    const skipped = answers.guardrail === SKIPPED_INTAKE_ANSWER;
+    familyConfiguration.security = {
+      ...securityCapability,
+      progress: skipped ? 'skipped' : 'configured',
+      values: { ...(securityCapability.values ?? {}), selections: skipped ? [] : [answers.guardrail] },
+      updatedAt: now,
+    };
+  }
 
   let deploymentReferences = draft.deploymentReferences.map(reference => ({ ...reference }));
   if (draft.family === 'calling') {

@@ -362,6 +362,22 @@ type MemorySource = {
   description: string;
 };
 
+type BuilderRecommendation = {
+  name: string;
+  description: string;
+};
+
+const readBuilderCatalog = (capability: CapabilityState | undefined): BuilderRecommendation[] => {
+  const catalog = capability?.values?.catalog;
+  if (!Array.isArray(catalog)) return [];
+  return catalog.filter((entry): entry is BuilderRecommendation => (
+    Boolean(entry)
+    && typeof entry === 'object'
+    && typeof (entry as BuilderRecommendation).name === 'string'
+    && typeof (entry as BuilderRecommendation).description === 'string'
+  ));
+};
+
 const selectedCapabilityNames = (
   draft: AgentDraft | undefined,
   capabilityId: 'knowledge' | 'memory' | 'actions',
@@ -382,10 +398,13 @@ const configuredKnowledgeSources = (
   if (selections === null) return demoSources;
 
   const sourcesByName = new Map(demoSources.map(source => [source.name, source]));
-  return selections.map(name => sourcesByName.get(name) ?? (
+  const catalogByName = new Map(
+    readBuilderCatalog(draft?.familyConfiguration[capabilityId]).map(item => [item.name, item.description]),
+  );
+  return selections.map((name, index) => sourcesByName.get(name) ?? (
     capabilityId === 'knowledge'
-      ? { name, description: 'Selected during the conversational build.', sources: 0 }
-      : { name, description: 'Selected during the conversational build.' }
+      ? { name, description: catalogByName.get(name) ?? 'Selected during the conversational build.', sources: 8 + index * 4 }
+      : { name, description: catalogByName.get(name) ?? 'Selected during the conversational build.' }
   ));
 };
 
@@ -395,12 +414,16 @@ const configuredActionCapabilities = (
 ): CapabilityRecord[] => {
   const selections = selectedCapabilityNames(draft, 'actions');
   const actionNames = selections ?? demoActions;
+  const catalogByName = new Map(
+    readBuilderCatalog(draft?.familyConfiguration.actions).map(item => [item.name, item.description]),
+  );
   return actionNames.map((name, index) => ({
     id: 100 + index,
-    name: getGalileoActionDisplayName(name),
-    type: /^(Transfer|Handover)/i.test(name) ? 'Handoff' : 'MCP',
+    sourceActionId: getGalileoActionId(undefined, name),
+    name: draft ? name : getGalileoActionDisplayName(name),
+    type: /^(Transfer|Handover|Escalate)/i.test(name) ? 'Handoff' : 'MCP',
     enabled: true,
-    description: CISCO_LIVE_ACTION_CATALOG[name] ?? 'Selected during the conversational build.',
+    description: catalogByName.get(name) ?? CISCO_LIVE_ACTION_CATALOG[name] ?? 'Selected during the conversational build.',
   }));
 };
 
@@ -417,7 +440,6 @@ const actionRowsFromCapabilities = (
   createdBy,
   lastUpdated: '07/13/26, at 9:30 AM',
 }));
-
 type ConfigurationSection = 'Profile' | 'Channels' | 'Flow' | 'Instructions' | 'Knowledge' | 'Action' | 'Security' | 'Conversation' | 'Language';
 
 const ACTION_SECTIONS: ConfigurationSection[] = ['Profile', 'Channels', 'Flow', 'Instructions', 'Knowledge', 'Action', 'Security', 'Conversation', 'Language'];
@@ -876,7 +898,7 @@ export default function ActionConfigureV2() {
       ...group,
       items: group.items.map(guardrail => ({
         ...guardrail,
-        enabled: ciscoLiveAgent.prebuiltGuardrailIds.includes(guardrail.id),
+        enabled: agentDraft ? false : ciscoLiveAgent.prebuiltGuardrailIds.includes(guardrail.id),
       })),
     })),
   );
@@ -894,7 +916,7 @@ export default function ActionConfigureV2() {
       versions: [],
     }));
     const storedItems = agentDraft?.familyConfiguration.security?.values?.customGuardrails;
-    if (!Array.isArray(storedItems)) return seededItems;
+    if (!Array.isArray(storedItems)) return agentDraft ? [] : seededItems;
 
     const validItems = storedItems.filter((item): item is CustomGuardrailItem => {
       if (!item || typeof item !== 'object' || Array.isArray(item)) return false;
@@ -908,16 +930,16 @@ export default function ActionConfigureV2() {
         && Boolean(candidate.overview)
         && Array.isArray(candidate.versions);
     });
-    return validItems.length > 0 ? structuredClone(validItems) : seededItems;
+    return validItems.length > 0 ? structuredClone(validItems) : agentDraft ? [] : seededItems;
   });
   const [pendingAdvancedEnable, setPendingAdvancedEnable] = useState<{ groupId: string; itemIds: string[]; label: string } | null>(null);
   const [hasAcknowledgedAdvancedPricing, setHasAcknowledgedAdvancedPricing] = useState(false);
   const [expandedRails, setExpandedRails] = useState<Set<string>>(() => {
     const initial = new Set<string>();
     DEFAULT_ADVANCED_GROUPS.forEach(gp => gp.items.forEach(it => {
-      if (ciscoLiveAgent.prebuiltGuardrailIds.includes(it.id)) initial.add(it.id);
+      if (!agentDraft && ciscoLiveAgent.prebuiltGuardrailIds.includes(it.id)) initial.add(it.id);
     }));
-    ciscoLiveAgent.customGuardrails.forEach(g => initial.add(g.id));
+    if (!agentDraft) ciscoLiveAgent.customGuardrails.forEach(g => initial.add(g.id));
     return initial;
   });
   const [expandedPrebuiltGroups, setExpandedPrebuiltGroups] = useState<Set<AdvancedGroupId>>(new Set());
@@ -2936,6 +2958,11 @@ export default function ActionConfigureV2() {
                 </tr>
               </thead>
               <tbody>
+                {rows.length === 0 && (
+                  <tr>
+                    <td colSpan={supportsActionControls ? 8 : 7}>No actions were selected in the builder.</td>
+                  </tr>
+                )}
                 {rows.map((row) => {
                   const cap = capabilities.find((c) => c.id === row.id);
                   const versionMeta = cap
