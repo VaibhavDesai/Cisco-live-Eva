@@ -2770,7 +2770,7 @@ test('guided prompts from greeting onward keep a stable centered stop position',
 test('preset proposal review shows the verified setup choices and preserves them for the Draft', () => {
   const source = readSource('../eva/EvaChatExperience.tsx');
   const styles = readSource('../../products/ai-agent-studio/components.css');
-  const proposalStart = source.indexOf('className="eva-family-proposal"');
+  const proposalStart = source.indexOf('ref={familyProposalRef}');
   const proposalEnd = source.indexOf('className="eva-family-proposal__actions"', proposalStart);
 
   assert.ok(proposalStart >= 0 && proposalEnd > proposalStart, 'the family proposal card should be present');
@@ -2778,7 +2778,7 @@ test('preset proposal review shows the verified setup choices and preserves them
   assert.doesNotMatch(proposalSource, /Recommended setup/, 'the redundant setup chip should be removed');
   assert.match(
     proposalSource,
-    /className="eva-family-proposal__header"[\s\S]*?<h3 className="eva-family-proposal__title">Draft proposal<\/h3>/,
+    /className="eva-family-proposal__header"[\s\S]*?<h3 className="eva-family-proposal__title">[\s\S]*?Draft proposal[\s\S]*?<\/h3>/,
     'the proposal should use a plain left-aligned title instead of a status chip',
   );
   for (const label of ['Channel', 'Location', 'Phone number', 'Name', 'Welcome message', 'Knowledge base', 'Action', 'Instructions']) {
@@ -2965,6 +2965,21 @@ test('starter proposal actions edit the plan or create a draft on its overview',
   assert.match(
     proposalSource,
     /onClick=\{handleCreateFamilyDraft\}[\s\S]*?>\s*Create draft\s*<\/Button>/,
+  );
+  assert.match(
+    proposalSource,
+    /onClick=\{handleOpenFamilyProposalPreview\}[\s\S]*?>[\s\S]*?Preview\s*<\/Button>[\s\S]*?onClick=\{handleCreateFamilyDraft\}/,
+    'Preview should appear before Create draft in the final proposal actions',
+  );
+  assert.match(
+    proposalSource,
+    /familyProposalPreviewing[\s\S]*?Preview agent[\s\S]*?handleFamilyProposalPreviewSend[\s\S]*?Back to proposal/,
+    'the proposal card should switch to an interactive preview and provide a return action',
+  );
+  assert.match(
+    source,
+    /getBoundingClientRect\(\)\.height[\s\S]*?setFamilyProposalPreviewHeight\(currentHeight\)/,
+    'opening Preview should preserve the proposal card height',
   );
   assert.match(
     handlerSource,

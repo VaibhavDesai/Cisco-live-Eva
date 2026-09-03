@@ -1541,6 +1541,11 @@ export default function EvaChatExperience({
     restoredEvaSession?.familyProposalApplied ?? false,
   );
   const [familyProposalEditing, setFamilyProposalEditing] = useState(false);
+  const [familyProposalPreviewing, setFamilyProposalPreviewing] = useState(false);
+  const [familyProposalPreviewHeight, setFamilyProposalPreviewHeight] = useState<number | null>(null);
+  const [familyProposalPreviewMessages, setFamilyProposalPreviewMessages] = useState<EvaMessage[]>([]);
+  const [familyProposalPreviewThinking, setFamilyProposalPreviewThinking] = useState(false);
+  const familyProposalRef = useRef<HTMLElement | null>(null);
   const [familyProposalChangeRequested, setFamilyProposalChangeRequested] = useState(false);
   const [familyIntakeStepperExpanded, setFamilyIntakeStepperExpanded] = useState(true);
   const [familyAgentNameInput, setFamilyAgentNameInput] = useState(
@@ -3134,6 +3139,12 @@ export default function EvaChatExperience({
     const agent = saveFamilyProposalDraft();
     if (!agent) return;
     navigate(`/agents/${agent.id}`);
+  };
+
+  const handleOpenFamilyProposalPreview = () => {
+    const currentHeight = familyProposalRef.current?.getBoundingClientRect().height;
+    if (currentHeight) setFamilyProposalPreviewHeight(currentHeight);
+    setFamilyProposalPreviewing(true);
   };
 
   const handleCreateAgent = () => {
@@ -4912,6 +4923,55 @@ Simulation rules:
         ]);
       } finally {
         setPreviewThinking(false);
+      }
+    })();
+  };
+
+  const buildFamilyProposalPreviewSystemPrompt = () => `You are simulating this proposed agent before its draft is created. Reply as the proposed agent, not as AI Assistant.
+
+Proposed agent:
+- Name: ${familyProposal?.name ?? 'Preview agent'}
+- Purpose: ${familyProposal?.purpose ?? '(not set)'}
+- Welcome message: ${familyProposal?.greeting ?? '(not set)'}
+- Channel: ${familyProposal?.channel ?? familyProposal?.selectedChannels?.join(', ') ?? '(not set)'}
+- Language: ${familyProposal?.language ?? 'English (US)'}
+- Knowledge bases: ${presetKnowledgeSummary || '(none selected)'}
+- Actions: ${presetActionSummary || '(none selected)'}
+- Guardrail: ${presetGuardrailSummary || '(none enabled)'}
+- Instructions: ${familyProposal?.instructions ?? '(not set)'}
+
+Simulation rules:
+- Answer as the proposed agent would answer an end user.
+- Stay within its purpose, instructions, selected knowledge, actions, and guardrail.
+- If an action would be needed, explain what information is required and what the action would do.
+- Keep responses concise and realistic for a preview session.`;
+
+  const handleFamilyProposalPreviewSend = (text: string) => {
+    const trimmed = text.trim();
+    if (!trimmed || familyProposalPreviewThinking) return;
+
+    const historySnapshot = familyProposalPreviewMessages;
+    setFamilyProposalPreviewMessages(current => [...current, { role: 'user', text: trimmed }]);
+    setFamilyProposalPreviewThinking(true);
+
+    void (async () => {
+      try {
+        const reply = await sendEvaChat([
+          { role: 'system', content: buildFamilyProposalPreviewSystemPrompt() },
+          ...historySnapshot.map(message => ({ role: message.role, content: message.text })),
+          { role: 'user', content: trimmed },
+        ]);
+        setFamilyProposalPreviewMessages(current => [
+          ...current,
+          { role: 'assistant', text: reply.trim() || 'Could you share a little more detail?' },
+        ]);
+      } catch {
+        setFamilyProposalPreviewMessages(current => [
+          ...current,
+          { role: 'assistant', text: 'I need a little more detail to test that scenario.' },
+        ]);
+      } finally {
+        setFamilyProposalPreviewThinking(false);
       }
     })();
   };
@@ -7810,11 +7870,68 @@ ${previewTranscript}`,
                     />
                   )}
                   {isLatestFamilyProposalPrompt && familyProposal && !familyProposalApplied && !familyIntakeEditingQuestion && !evaThinking && (
-                    <section className="eva-family-proposal" aria-label="Recommended starter configuration">
+                    <section
+                      ref={familyProposalRef}
+                      className={`eva-family-proposal${familyProposalPreviewing ? ' eva-family-proposal--preview' : ''}`}
+                      style={familyProposalPreviewing && familyProposalPreviewHeight
+                        ? { height: `${familyProposalPreviewHeight}px` }
+                        : undefined}
+                      aria-label={familyProposalPreviewing ? 'Preview proposed agent' : 'Recommended starter configuration'}
+                    >
                       <div className="eva-family-proposal__header">
-                        <h3 className="eva-family-proposal__title">Draft proposal</h3>
+                        <h3 className="eva-family-proposal__title">
+                          {familyProposalPreviewing ? 'Preview agent' : 'Draft proposal'}
+                        </h3>
                       </div>
-                      {familyProposalEditing ? (
+                      {familyProposalPreviewing ? (
+                        <div className="eva-family-proposal__preview">
+                          <div className="eva-family-proposal__preview-meta">
+                            <Badge variant="info">Simulation</Badge>
+                            <span>Test the proposal before creating the draft.</span>
+                          </div>
+                          <div className="eva-family-proposal__preview-thread" aria-live="polite">
+                            {familyProposalPreviewMessages.length === 0 && !familyProposalPreviewThinking && (
+                              <AiResponseMessage
+                                className="eva-ai-response"
+                                showActions={false}
+                                assistantName={familyProposal.name}
+                                content={familyProposal.greeting || `Hi, I’m ${familyProposal.name}. How can I help?`}
+                              />
+                            )}
+                            {familyProposalPreviewMessages.map((message, index) => (
+                              message.role === 'user' ? (
+                                <AiUserMessage key={`proposal-preview-${index}`} text={message.text} />
+                              ) : (
+                                <AiResponseMessage
+                                  key={`proposal-preview-${index}`}
+                                  className="eva-ai-response"
+                                  showActions={false}
+                                  assistantName={familyProposal.name}
+                                  content={message.text}
+                                />
+                              )
+                            ))}
+                            {familyProposalPreviewThinking && (
+                              <AiResponseMessage
+                                className="eva-ai-response"
+                                showActions={false}
+                                assistantName={`${familyProposal.name} is responding...`}
+                                assistantState="processing"
+                                content={null}
+                              />
+                            )}
+                          </div>
+                          <AiFooter
+                            className="eva-family-proposal__preview-footer"
+                            fillContainer
+                            onSend={handleFamilyProposalPreviewSend}
+                            processing={familyProposalPreviewThinking}
+                            disabled={familyProposalPreviewThinking}
+                            placeholder="Test the agent with a customer request..."
+                            suggestions={[]}
+                          />
+                        </div>
+                      ) : familyProposalEditing ? (
                         <div className="eva-family-proposal__editor">
                           {selectedAgentFamily === 'contact_center' && (
                             <Dropdown
@@ -7929,7 +8046,7 @@ ${previewTranscript}`,
                           <div><dt>Instructions</dt><dd><pre>{familyProposal.instructions}</pre></dd></div>
                         </dl>
                       )}
-                      <section className="eva-family-proposal__next" aria-labelledby="eva-family-proposal-next-title">
+                      {!familyProposalPreviewing && <section className="eva-family-proposal__next" aria-labelledby="eva-family-proposal-next-title">
                         <h4 id="eva-family-proposal-next-title">What’s next</h4>
                         {selectedAgentFamily === 'calling' ? (
                           <p>
@@ -7942,9 +8059,26 @@ ${previewTranscript}`,
                             accurately, complete tasks, and stay within policy.
                           </p>
                         )}
-                      </section>
+                      </section>}
                       <div className="eva-family-proposal__actions">
-                        {familyProposalEditing ? (
+                        {familyProposalPreviewing ? (
+                          <>
+                            <Button size="sm" variant="secondary" onClick={() => setFamilyProposalPreviewing(false)}>
+                              Back to proposal
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="secondary"
+                              disabled={familyProposalPreviewMessages.length === 0 || familyProposalPreviewThinking}
+                              onClick={() => setFamilyProposalPreviewMessages([])}
+                            >
+                              Reset preview
+                            </Button>
+                            <Button size="sm" onClick={handleCreateFamilyDraft}>
+                              Create draft
+                            </Button>
+                          </>
+                        ) : familyProposalEditing ? (
                           <Button
                             size="sm"
                             disabled={
@@ -7968,6 +8102,10 @@ ${previewTranscript}`,
                           <>
                             <Button size="sm" variant="secondary" onClick={() => setFamilyProposalEditing(true)}>
                               Edit plan
+                            </Button>
+                            <Button size="sm" variant="secondary" onClick={handleOpenFamilyProposalPreview}>
+                              <Icon name="play" weight="bold" size="sm" />
+                              Preview
                             </Button>
                             <Button size="sm" onClick={handleCreateFamilyDraft}>
                               Create draft

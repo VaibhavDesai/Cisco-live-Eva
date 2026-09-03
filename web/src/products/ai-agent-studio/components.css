@@ -7434,6 +7434,43 @@ button.agent-studio-guardrail-chart__plot.is-selected .agent-studio-guardrail-ch
     0 16px 36px rgba(0, 0, 0, 0.2);
   backdrop-filter: blur(24px) saturate(125%);
   -webkit-backdrop-filter: blur(24px) saturate(125%);
+  box-sizing: border-box;
+}
+
+.eva-family-proposal--preview {
+  grid-template-rows: auto minmax(0, 1fr) auto;
+  overflow: hidden;
+}
+
+.eva-family-proposal__preview {
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr) auto;
+  gap: 12px;
+  min-height: 0;
+}
+
+.eva-family-proposal__preview-meta {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--text-secondary);
+  font-size: 13px;
+}
+
+.eva-family-proposal__preview-thread {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  min-height: 0;
+  padding: 8px;
+  overflow: auto;
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  background: var(--bg-glass-light);
+}
+
+.eva-family-proposal__preview-footer {
+  margin-top: 0;
 }
 
 .eva-family-proposal__header,
