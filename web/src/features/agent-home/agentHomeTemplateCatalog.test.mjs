@@ -36,6 +36,10 @@ test('every ready-made customer-service row has distinct functional detail conte
     'contact_center:product-discovery',
     'contact_center:patient-care',
     'contact_center:clinical-intake',
+    'contact_center:banking-service',
+    'contact_center:funds-transfer',
+    'contact_center:airline-support',
+    'contact_center:travel-booking',
   ];
   const templates = readyMadeIds.map(templateId => {
     const template = getAgentHomeTemplate(templateId);
@@ -52,6 +56,30 @@ test('every ready-made customer-service row has distinct functional detail conte
     new Set(templates.map(template => template.proposal.instructions)).size,
     readyMadeIds.length,
   );
+});
+
+test('banking and air-travel templates produce governed, ready-to-configure drafts', () => {
+  const banking = getAgentHomeTemplate('contact_center:banking-service');
+  const transfer = getAgentHomeTemplate('contact_center:funds-transfer');
+  const airline = getAgentHomeTemplate('contact_center:airline-support');
+  const booking = getAgentHomeTemplate('contact_center:travel-booking');
+
+  for (const template of [banking, transfer, airline, booking]) {
+    assert.ok(template, 'each new industry template should resolve');
+    assert.match(template.proposal.instructions, /Domain-specific rules/);
+
+    const draft = createDraftFromHomeTemplate(template.id);
+    for (const section of ['knowledge', 'actions', 'identity', 'handoff', 'security']) {
+      assert.equal(draft.familyConfiguration[section].progress, 'configured');
+    }
+    assert.ok(Object.keys(draft.familyConfiguration.knowledge.values).length > 0);
+    assert.ok(Object.keys(draft.familyConfiguration.actions.values).length > 0);
+  }
+
+  assert.match(banking.proposal.instructions, /Never request or repeat a full card number/);
+  assert.match(transfer.proposal.instructions, /require explicit confirmation before submitting a transfer/);
+  assert.match(airline.proposal.instructions, /Never promise a seat, upgrade, voucher, compensation/);
+  assert.match(booking.proposal.instructions, /then obtain explicit confirmation/);
 });
 
 test('every agent type offers multiple templates in each industry group', () => {

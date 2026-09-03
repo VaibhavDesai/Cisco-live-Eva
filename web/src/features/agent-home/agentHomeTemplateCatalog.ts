@@ -28,6 +28,10 @@ export type AgentHomeTemplateId =
   | 'contact_center:resident-support'
   | 'contact_center:patient-care'
   | 'contact_center:clinical-intake'
+  | 'contact_center:banking-service'
+  | 'contact_center:funds-transfer'
+  | 'contact_center:airline-support'
+  | 'contact_center:travel-booking'
   | 'internal_assistant:it-help-desk'
   | 'internal_assistant:employee-policy'
   | 'internal_assistant:candidate-feedback'
@@ -135,6 +139,14 @@ const KNOWLEDGE_DESCRIPTIONS: Record<string, string> = {
   'Webex help center': 'Approved guidance for meetings, messaging, calling, devices, and common Webex tasks.',
   'Workspace directory': 'Rooms, devices, support contacts, and workplace resources available to employees.',
   'Meeting policies': 'Approved meeting settings, security requirements, recording rules, and participation guidance.',
+  'Account servicing guide': 'Approved account servicing, card support, authentication, and escalation procedures.',
+  'Card and payment policy': 'Card controls, payment posting, dispute timing, and approved customer communications.',
+  'Fraud response playbook': 'Verified fraud-reporting, card-security, and urgent escalation procedures.',
+  'Transfer policy': 'Transfer eligibility, limits, recipient verification, review requirements, and confirmation rules.',
+  'Flight schedule and disruption status': 'Current flight status, schedule changes, disruption guidance, and rebooking eligibility.',
+  'Fare and baggage policy': 'Published fare rules, baggage allowances, change conditions, and fee guidance.',
+  'Loyalty program guide': 'Approved loyalty-tier benefits, redemption rules, and account servicing guidance.',
+  'Airport service directory': 'Airport contacts, accessibility support, check-in guidance, and local service information.',
 };
 
 const knowledgeSource = (name: string): EvaKnowledgeRecommendation => ({
@@ -165,6 +177,7 @@ const selectionsPreset = (
 interface TemplateBlueprint extends Omit<AgentHomeTemplateDefinition, 'draft' | 'proposal'> {
   starterId: string;
   proposalOverrides?: Partial<StarterProposal>;
+  domainRules?: readonly string[];
 }
 
 const buildOperationalInstructions = ({
@@ -177,6 +190,7 @@ const buildOperationalInstructions = ({
   identityChecks,
   handoff,
   guardrails,
+  domainRules = [],
 }: {
   name: string;
   purpose: string;
@@ -187,6 +201,7 @@ const buildOperationalInstructions = ({
   identityChecks: readonly string[];
   handoff: readonly string[];
   guardrails: readonly string[];
+  domainRules?: readonly string[];
 }) => {
   const approvedKnowledge = knowledge.length > 0 ? knowledge.join(', ') : 'the approved knowledge sources available to you';
   const availableActions = actions.length > 0 ? actions.join(', ') : 'the approved workflow actions available to you';
@@ -205,13 +220,17 @@ const buildOperationalInstructions = ({
     `Before sharing account-specific, appointment-specific, or sensitive details, ${verification}. When the request is outside your scope, information is missing, or a specialist is required, ${escalation}. Include the request, facts already confirmed, actions taken, and the unresolved question in the handoff.`,
     '#### Privacy and safety',
     `Follow these guardrails: ${safety}. Minimize personal data in the conversation, do not expose private records or internal-only information, and pause for confirmation before any consequential action.`,
+    ...(domainRules.length > 0 ? [
+      '#### Domain-specific rules',
+      domainRules.map((rule, index) => `${index + 1}. ${rule}`).join('\n'),
+    ] : []),
     '#### Response format',
     `Use a ${responseStyle.toLowerCase()} tone. Ask one focused follow-up question at a time when context is missing. Give clear, ordered next steps, distinguish verified information from suggestions, and close with a brief summary of the outcome or handoff.`,
   ].join('\n\n');
 };
 
 const defineTemplate = (blueprint: TemplateBlueprint): AgentHomeTemplateDefinition => {
-  const { starterId, proposalOverrides, ...definition } = blueprint;
+  const { starterId, proposalOverrides, domainRules, ...definition } = blueprint;
   const baseProposal = {
     ...starterProposal(definition.family, starterId),
     ...proposalOverrides,
@@ -240,6 +259,7 @@ const defineTemplate = (blueprint: TemplateBlueprint): AgentHomeTemplateDefiniti
           identityChecks,
           handoff,
           guardrails: security,
+          domainRules,
         }),
         channel: definition.previewChannel === 'both'
           ? 'Both'
@@ -262,6 +282,7 @@ const defineTemplate = (blueprint: TemplateBlueprint): AgentHomeTemplateDefiniti
           identityChecks,
           handoff,
           guardrails: security,
+          domainRules,
         }),
       };
 
@@ -381,6 +402,11 @@ export const AGENT_HOME_TEMPLATE_OPTIONS: readonly AgentHomeTemplateDefinition[]
     previewChannel: 'voice',
     responseStyleLabel: 'Voice',
     responseStyle: 'Warm professional',
+    domainRules: [
+      'Treat inventory as a point-in-time signal: share the approved result, but never promise that an item is reserved, held, or available until the store confirms it.',
+      'Give factual product and return-policy guidance only. Do not invent compatibility, price-match, warranty, or promotion terms.',
+      'For order, payment, fraud, or account-specific requests, verify only the minimum required information and route exceptions to the store or specialist team.',
+    ],
     presets: [
       { capabilityId: 'voice', label: 'Voice experience', items: ['Warm professional'], values: { voiceName: 'Warm professional' } },
       selectionsPreset('knowledge', 'Knowledge', ['Store FAQ', 'Inventory system', 'Product catalog']),
@@ -494,6 +520,11 @@ export const AGENT_HOME_TEMPLATE_OPTIONS: readonly AgentHomeTemplateDefinition[]
     previewChannel: 'both',
     responseStyleLabel: 'Response style',
     responseStyle: 'Warm and organized',
+    domainRules: [
+      'Repeat the service, date, time, location, and attendee details before creating or changing a reservation.',
+      'Use live availability and published policies as the source of truth. Never create an exception, waive a fee, or promise an upgrade without an approved action and confirmation.',
+      'Route accessibility, safety, group, or policy-exception requests with the collected details so the customer does not need to repeat them.',
+    ],
     proposalOverrides: {
       name: 'Reservation Book and Schedule Agent',
       purpose: 'Help customers book, change, and confirm reservations using current availability.',
@@ -636,6 +667,11 @@ export const AGENT_HOME_TEMPLATE_OPTIONS: readonly AgentHomeTemplateDefinition[]
     previewChannel: 'both',
     responseStyleLabel: 'Response style',
     responseStyle: 'Compassionate and clear',
+    domainRules: [
+      'Provide administrative and scheduling support only. Do not diagnose conditions, interpret symptoms, recommend treatment, or assess whether care can wait.',
+      'If someone describes a possible emergency or asks for urgent clinical advice, state the safety boundary clearly and direct them to local emergency services or the approved clinical escalation path.',
+      'Keep health information to the minimum needed for the request, and never disclose a patient record until the required identity verification is complete.',
+    ],
     proposalOverrides: {
       name: 'Patient Care Navigator',
       purpose: 'Help patients coordinate appointments, benefits questions, and approved next steps.',
@@ -661,6 +697,11 @@ export const AGENT_HOME_TEMPLATE_OPTIONS: readonly AgentHomeTemplateDefinition[]
     previewChannel: 'both',
     responseStyleLabel: 'Response style',
     responseStyle: 'Calm and precise',
+    domainRules: [
+      'Collect only the approved intake fields and record the patient’s words accurately; do not interpret, rank, or diagnose symptoms.',
+      'If the conversation indicates a possible emergency, stop routine intake and direct the patient to emergency services or the designated clinical escalation path.',
+      'Explain that a clinician, not this agent, makes treatment, diagnosis, and care-priority decisions.',
+    ],
     proposalOverrides: {
       name: 'Clinical Intake Assistant',
       purpose: 'Collect structured intake information and route patients to the appropriate provider workflow.',
@@ -672,6 +713,146 @@ export const AGENT_HOME_TEMPLATE_OPTIONS: readonly AgentHomeTemplateDefinition[]
       selectionsPreset('actions', 'Actions', ['Create intake summary', 'Check authorization status', 'Prepare provider handoff']),
       selectionsPreset('handoff', 'Handoff', ['Escalate emergency and clinical decisions']),
       selectionsPreset('security', 'Guardrails', ['Verify patient identity', 'Protect patient information', 'Do not diagnose or recommend treatment']),
+    ],
+  }),
+  defineTemplate({
+    id: 'contact_center:banking-service',
+    family: 'contact_center',
+    starterId: 'cx-concierge',
+    name: 'Banking service agent',
+    industry: 'Banking',
+    useCase: 'Account service, card support, and dispute guidance',
+    icon: 'shield',
+    workflow: [
+      'Understand the service request without collecting sensitive credentials',
+      'Complete the required identity verification before opening account-specific details',
+      'Use approved account, card, and policy information to explain the available next step',
+      'Prepare the permitted service action or specialist handoff and summarize what happens next',
+    ],
+    previewChannel: 'both',
+    responseStyleLabel: 'Response style',
+    responseStyle: 'Calm and reassuring',
+    domainRules: [
+      'Never request or repeat a full card number, PIN, password, one-time code, or security-answer value. Direct the customer to an approved secure channel when it is needed.',
+      'Do not provide investment, tax, legal, credit, or personalized financial advice. Explain published account terms and route advice requests to a qualified specialist.',
+      'For suspected fraud, lost cards, or account compromise, use the approved urgent path immediately and do not disclose additional account details before verification.',
+    ],
+    proposalOverrides: {
+      name: 'Banking Service Agent',
+      purpose: 'Help customers complete approved account and card-service tasks while protecting sensitive financial information.',
+      description: 'A banking service agent for verified account help, card support, dispute guidance, and secure specialist handoff.',
+    },
+    presets: [
+      selectionsPreset('knowledge', 'Knowledge', ['Account servicing guide', 'Card and payment policy', 'Fraud response playbook']),
+      selectionsPreset('actions', 'Actions', ['Check account status', 'Lock or replace card', 'Prepare dispute case']),
+      selectionsPreset('identity', 'Identity verification', ['Verify customer before account-specific service']),
+      selectionsPreset('handoff', 'Handoff', ['Escalate fraud, disputes, and financial-advice requests with context']),
+      selectionsPreset('security', 'Guardrails', ['Protect financial information', 'Never request credentials', 'Confirm consequential actions before applying them']),
+    ],
+  }),
+  defineTemplate({
+    id: 'contact_center:funds-transfer',
+    family: 'contact_center',
+    starterId: 'cx-concierge',
+    name: 'Funds transfer specialist',
+    industry: 'Banking',
+    useCase: 'Transfer setup, status, limits, and secure exception routing',
+    icon: 'automation',
+    workflow: [
+      'Verify the customer and identify the transfer type',
+      'Check approved transfer eligibility, status, limits, and review requirements',
+      'Confirm the source, destination, amount, timing, and any disclosed fees before preparing a transfer',
+      'Submit only the approved action after the customer confirms, or route the exception with a structured summary',
+    ],
+    previewChannel: 'digital',
+    responseStyleLabel: 'Response style',
+    responseStyle: 'Precise and transparent',
+    domainRules: [
+      'Never accept sensitive banking credentials or use unverified recipient details. If required information is missing, explain the secure next step instead of guessing.',
+      'Read back the transfer details and require explicit confirmation before submitting a transfer, changing a recipient, or cancelling a pending instruction.',
+      'Do not promise funds availability, waive a limit, or override a review. Explain the published status and escalate sanctions, fraud, or policy-review cases.',
+    ],
+    proposalOverrides: {
+      name: 'Funds Transfer Specialist',
+      purpose: 'Help customers complete approved money-transfer requests with clear verification, confirmation, and exception handling.',
+      description: 'A banking operations agent for transfer status, setup, limits, confirmations, and secure escalation.',
+    },
+    presets: [
+      selectionsPreset('knowledge', 'Knowledge', ['Transfer policy', 'Account servicing guide', 'Fraud response playbook']),
+      selectionsPreset('actions', 'Actions', ['Check transfer status', 'Prepare transfer', 'Cancel pending transfer']),
+      selectionsPreset('identity', 'Identity verification', ['Verify customer and recipient details before transfer actions']),
+      selectionsPreset('handoff', 'Handoff', ['Escalate fraud, sanctions, limits, and transfer-review exceptions']),
+      selectionsPreset('security', 'Guardrails', ['Protect financial information', 'Require transfer confirmation', 'Never override compliance review']),
+    ],
+  }),
+  defineTemplate({
+    id: 'contact_center:airline-support',
+    family: 'contact_center',
+    starterId: 'cx-concierge',
+    name: 'Airline guest support agent',
+    industry: 'Air travel',
+    useCase: 'Flight status, disruptions, baggage, and traveler support',
+    icon: 'headset',
+    workflow: [
+      'Identify the traveler request and verify the booking before sharing itinerary-specific details',
+      'Check current flight, disruption, baggage, loyalty, and airport-service information',
+      'Explain the published options, eligibility, and next action in plain language',
+      'Prepare the approved update or hand off complex, safety, or exception cases with the full context',
+    ],
+    previewChannel: 'both',
+    responseStyleLabel: 'Response style',
+    responseStyle: 'Warm and composed',
+    domainRules: [
+      'Use current operational status and published policy as the source of truth. Never promise a seat, upgrade, voucher, compensation, connection, or baggage outcome before the approved action confirms it.',
+      'For safety, security, medical, immigration, unaccompanied-minor, or accessibility situations that need a specialist, provide the approved immediate direction and hand off without delay.',
+      'Keep passports, payment details, loyalty records, and booking information private; collect only what the approved workflow requires.',
+    ],
+    proposalOverrides: {
+      name: 'Airline Guest Support Agent',
+      purpose: 'Help travelers find verified flight information, understand their available options, and reach the right support path during disruptions.',
+      description: 'An airline service agent for flight status, disruption support, baggage guidance, loyalty questions, and contextual handoff.',
+    },
+    presets: [
+      selectionsPreset('knowledge', 'Knowledge', ['Flight schedule and disruption status', 'Fare and baggage policy', 'Loyalty program guide']),
+      selectionsPreset('actions', 'Actions', ['Check flight status', 'Prepare rebooking options', 'Open baggage case']),
+      selectionsPreset('identity', 'Identity verification', ['Verify traveler before itinerary-specific service']),
+      selectionsPreset('handoff', 'Handoff', ['Escalate safety, accessibility, and policy exceptions with traveler context']),
+      selectionsPreset('security', 'Guardrails', ['Protect traveler information', 'Use live operational status only', 'Confirm changes before applying them']),
+    ],
+  }),
+  defineTemplate({
+    id: 'contact_center:travel-booking',
+    family: 'contact_center',
+    starterId: 'cx-concierge',
+    name: 'Travel booking concierge',
+    industry: 'Air travel',
+    useCase: 'Flight search, booking changes, and travel confirmation',
+    icon: 'calendar-month',
+    workflow: [
+      'Collect the travel request, including dates, route, passengers, and constraints',
+      'Check current availability, published fare conditions, and applicable baggage or service rules',
+      'Present approved options with the material differences and ask one clear decision question',
+      'Read back the final itinerary and cost details, then complete the approved booking action only after confirmation',
+    ],
+    previewChannel: 'digital',
+    responseStyleLabel: 'Response style',
+    responseStyle: 'Organized and helpful',
+    domainRules: [
+      'Do not infer travel-document eligibility, immigration requirements, medical fitness to travel, or visa status. Direct travelers to the authoritative source or specialist.',
+      'Use only confirmed availability and published fare rules. Never state that a booking, hold, refund, or change is complete until the system action returns a confirmation.',
+      'Before any purchase or itinerary change, read back the complete itinerary, traveler count, fare or fee, and any important restrictions, then obtain explicit confirmation.',
+    ],
+    proposalOverrides: {
+      name: 'Travel Booking Concierge',
+      purpose: 'Help travelers compare approved flight options and complete confirmed booking or change requests accurately.',
+      description: 'An air-travel booking agent for flight options, itinerary changes, fare conditions, confirmations, and exception routing.',
+    },
+    presets: [
+      selectionsPreset('knowledge', 'Knowledge', ['Flight schedule and disruption status', 'Fare and baggage policy', 'Airport service directory']),
+      selectionsPreset('actions', 'Actions', ['Search flight options', 'Prepare itinerary change', 'Send itinerary confirmation']),
+      selectionsPreset('identity', 'Identity verification', ['Verify traveler before booking-specific service']),
+      selectionsPreset('handoff', 'Handoff', ['Escalate complex fares, accessibility, and travel-document questions']),
+      selectionsPreset('security', 'Guardrails', ['Protect traveler information', 'Require booking confirmation', 'Use published fare rules only']),
     ],
   }),
   defineTemplate({

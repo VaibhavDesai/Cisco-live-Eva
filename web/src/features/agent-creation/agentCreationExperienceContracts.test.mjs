@@ -3276,6 +3276,36 @@ test('Knowledge setup lists every ready collection from the shared knowledge inv
   assert.match(serviceSource, /name: ['"]Technical Support['"]/);
 });
 
+test('Configure preserves the conversational builder knowledge and action choices', () => {
+  const configureSource = readSource('../../pages/agent/ActionConfigureV2.tsx');
+
+  assert.match(
+    configureSource,
+    /const selectedCapabilityNames[\s\S]*?draft\.familyConfiguration\[capabilityId\]\?\.values\?\.selections/,
+    'the Configure view should read selections from the created agent draft',
+  );
+  assert.match(
+    configureSource,
+    /const configuredActionCapabilities[\s\S]*?const actionNames = selections \?\? demoActions/,
+    'new agents should show only actions chosen during the conversational build',
+  );
+  assert.match(
+    configureSource,
+    /title="No knowledge configured"[\s\S]*?No knowledge base was enabled during the conversational build\./,
+    'skipped knowledge should remain visibly empty in Configure',
+  );
+  assert.match(
+    configureSource,
+    /title="No actions configured"[\s\S]*?No action was enabled during the conversational build\./,
+    'skipped actions should remain visibly empty in Configure',
+  );
+  assert.doesNotMatch(
+    configureSource,
+    /const enabledNames = demoAgent\.knowledgeSources/,
+    'the Configure view must not write demo knowledge back over builder selections',
+  );
+});
+
 test('final creation actions publish once and return to the existing-agent list', () => {
   const source = readSource('../eva/EvaChatExperience.tsx');
   const handlerStart = source.indexOf('const handleCreateAgent');

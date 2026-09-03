@@ -34,6 +34,7 @@ import { optimizeInstructions } from '../../api/ciscoAi';
 import { Icon } from '../../icons';
 import {
   type AgentFamily,
+  type AgentDraft,
   type CapabilityState,
   type CustomerChannel,
 } from '../../features/agent-creation/agentCreationModel';
@@ -350,6 +351,73 @@ type ActionRow = {
   lastUpdated: string;
 };
 
+type KnowledgeSource = {
+  name: string;
+  description: string;
+  sources: number;
+};
+
+type MemorySource = {
+  name: string;
+  description: string;
+};
+
+const selectedCapabilityNames = (
+  draft: AgentDraft | undefined,
+  capabilityId: 'knowledge' | 'memory' | 'actions',
+): string[] | null => {
+  if (!draft) return null;
+  const selections = draft.familyConfiguration[capabilityId]?.values?.selections;
+  return Array.isArray(selections)
+    ? selections.filter((selection): selection is string => typeof selection === 'string')
+    : [];
+};
+
+const configuredKnowledgeSources = (
+  draft: AgentDraft | undefined,
+  capabilityId: 'knowledge' | 'memory',
+  demoSources: KnowledgeSource[] | MemorySource[],
+) => {
+  const selections = selectedCapabilityNames(draft, capabilityId);
+  if (selections === null) return demoSources;
+
+  const sourcesByName = new Map(demoSources.map(source => [source.name, source]));
+  return selections.map(name => sourcesByName.get(name) ?? (
+    capabilityId === 'knowledge'
+      ? { name, description: 'Selected during the conversational build.', sources: 0 }
+      : { name, description: 'Selected during the conversational build.' }
+  ));
+};
+
+const configuredActionCapabilities = (
+  draft: AgentDraft | undefined,
+  demoActions: string[],
+): CapabilityRecord[] => {
+  const selections = selectedCapabilityNames(draft, 'actions');
+  const actionNames = selections ?? demoActions;
+  return actionNames.map((name, index) => ({
+    id: 100 + index,
+    name: getGalileoActionDisplayName(name),
+    type: /^(Transfer|Handover)/i.test(name) ? 'Handoff' : 'MCP',
+    enabled: true,
+    description: CISCO_LIVE_ACTION_CATALOG[name] ?? 'Selected during the conversational build.',
+  }));
+};
+
+const actionRowsFromCapabilities = (
+  capabilities: CapabilityRecord[],
+  createdBy: string,
+): ActionRow[] => capabilities.map(capability => ({
+  id: capability.id,
+  actionId: getGalileoActionId(capability.sourceActionId, capability.name),
+  name: capability.name,
+  description: capability.description || 'Selected during the conversational build.',
+  enabled: capability.enabled,
+  actionType: capability.type === 'Handoff' ? 'Transfer' : capability.type,
+  createdBy,
+  lastUpdated: '07/13/26, at 9:30 AM',
+}));
+
 type ConfigurationSection = 'Profile' | 'Channels' | 'Flow' | 'Instructions' | 'Knowledge' | 'Action' | 'Security' | 'Conversation' | 'Language';
 
 const ACTION_SECTIONS: ConfigurationSection[] = ['Profile', 'Channels', 'Flow', 'Instructions', 'Knowledge', 'Action', 'Security', 'Conversation', 'Language'];
@@ -648,6 +716,16 @@ export default function ActionConfigureV2() {
   // primary demo agent) so every configuration screen shows real design-
   // explorations names instead of the generic defaults.
   const ciscoLiveAgent = CISCO_LIVE_AGENTS.find(candidate => candidate.id === agentId) ?? CISCO_LIVE_AGENTS[0];
+  const knowledgeBases = configuredKnowledgeSources(
+    agentDraft,
+    'knowledge',
+    ciscoLiveAgent.knowledgeSources,
+  );
+  const memorySources = configuredKnowledgeSources(
+    agentDraft,
+    'memory',
+    ciscoLiveAgent.memorySources,
+  );
   const agentFamily = agentDraft?.family;
   const supportsActionControls = agentFamily !== 'calling';
   const availableSections = useMemo(
@@ -893,29 +971,13 @@ export default function ActionConfigureV2() {
     }
   }, [profileForm.instructions, showToast]);
 
-  const ciscoLiveCapabilities: CapabilityRecord[] = ciscoLiveAgent.actions.map((name, index) => ({
-    id: 100 + index,
-    sourceActionId: getGalileoActionId(undefined, name),
-    name: getGalileoActionDisplayName(name),
-    type: /^(Transfer|Handover)/i.test(name) ? 'Handoff' : 'MCP',
-    enabled: true,
-    description: CISCO_LIVE_ACTION_CATALOG[name] ?? '',
-  }));
-  const [capabilities, setCapabilities] = useState<CapabilityRecord[]>(ciscoLiveCapabilities);
+  const initialActionCapabilities = () => configuredActionCapabilities(agentDraft, ciscoLiveAgent.actions);
+  const [capabilities, setCapabilities] = useState<CapabilityRecord[]>(initialActionCapabilities);
   const [disabledKnowledge, setDisabledKnowledge] = useState<Record<string, boolean>>({});
   const toggleKnowledge = (name: string) =>
     setDisabledKnowledge((prev) => ({ ...prev, [name]: !prev[name] }));
   const [rows, setRows] = useState<ActionRow[]>(
-    ciscoLiveCapabilities.map((cap) => ({
-      id: cap.id,
-      actionId: getGalileoActionId(cap.sourceActionId, cap.name),
-      name: cap.name,
-      description: cap.description || 'Escalate the conversation to a human agent based on general rules and conditions',
-      enabled: true,
-      actionType: cap.type === 'Handoff' ? 'Transfer' : cap.type,
-      createdBy: ciscoLiveAgent.updatedBy,
-      lastUpdated: '07/13/26, at 9:30 AM',
-    })),
+    () => actionRowsFromCapabilities(initialActionCapabilities(), ciscoLiveAgent.updatedBy),
   );
   const [galileoActionControls, setGalileoActionControls] = useState<GalileoActionControlState>(() => (
     readGalileoActionControlState(agentDraft?.familyConfiguration.actions?.values)
@@ -930,9 +992,13 @@ export default function ActionConfigureV2() {
     if (galileoAgentIdRef.current === agentId) return;
     galileoAgentIdRef.current = agentId;
     setGalileoActionControls(readGalileoActionControlState(agentDraft?.familyConfiguration.actions?.values));
+    const nextCapabilities = configuredActionCapabilities(agentDraft, ciscoLiveAgent.actions);
+    setCapabilities(nextCapabilities);
+    setRows(actionRowsFromCapabilities(nextCapabilities, ciscoLiveAgent.updatedBy));
+    setDisabledKnowledge({});
     setGalileoDialogActionId(null);
     setShowRecommendedControls(false);
-  }, [agentDraft, agentId]);
+  }, [agentDraft, agentId, ciscoLiveAgent.actions, ciscoLiveAgent.updatedBy]);
 
   const openGalileoActionControls = (actionId: string) => {
     galileoReturnFocusRef.current = document.activeElement as HTMLElement | null;
@@ -980,7 +1046,9 @@ export default function ActionConfigureV2() {
     const currentSelections = Array.isArray(rawSelections)
       ? rawSelections.filter((s): s is string => typeof s === 'string')
       : [];
-    const desiredProgress = enabledNames.length > 0 ? 'configured' : 'not_started';
+    const desiredProgress = enabledNames.length > 0
+      ? 'configured'
+      : cap?.progress === 'skipped' ? 'skipped' : 'not_started';
     const rawControlsByActionId = cap?.values?.controlsByActionId;
     const rawGatesByActionId = cap?.values?.gatesByActionId;
     const controlsUnchanged = JSON.stringify(rawControlsByActionId ?? {})
@@ -1064,8 +1132,7 @@ export default function ActionConfigureV2() {
   // Reflect the enabled knowledge bases into the shared agent draft (knowledge row).
   useEffect(() => {
     if (!agentId) return;
-    const demoAgent = CISCO_LIVE_AGENTS.find((candidate) => candidate.id === agentId) ?? CISCO_LIVE_AGENTS[0];
-    const enabledNames = demoAgent.knowledgeSources
+    const enabledNames = knowledgeBases
       .filter((source) => !disabledKnowledge[source.name])
       .map((source) => source.name);
     const cap = agentDraft?.familyConfiguration.knowledge;
@@ -1073,7 +1140,9 @@ export default function ActionConfigureV2() {
     const currentSelections = Array.isArray(rawSelections)
       ? rawSelections.filter((s): s is string => typeof s === 'string')
       : [];
-    const desiredProgress = enabledNames.length > 0 ? 'configured' : 'not_started';
+    const desiredProgress = enabledNames.length > 0
+      ? 'configured'
+      : cap?.progress === 'skipped' ? 'skipped' : 'not_started';
     const unchanged =
       cap?.progress === desiredProgress &&
       currentSelections.length === enabledNames.length &&
@@ -1094,13 +1163,12 @@ export default function ActionConfigureV2() {
         },
       };
     });
-  }, [disabledKnowledge, agentId, agentDraft, updateAgentDraft]);
+  }, [disabledKnowledge, knowledgeBases, agentId, agentDraft, updateAgentDraft]);
 
   // Reflect the enabled AI memory sources into the shared agent draft (memory row).
   useEffect(() => {
     if (!agentId) return;
-    const demoAgent = CISCO_LIVE_AGENTS.find((candidate) => candidate.id === agentId) ?? CISCO_LIVE_AGENTS[0];
-    const enabledNames = demoAgent.memorySources
+    const enabledNames = memorySources
       .filter((source) => !disabledKnowledge[source.name])
       .map((source) => source.name);
     const cap = agentDraft?.familyConfiguration.memory;
@@ -1129,7 +1197,7 @@ export default function ActionConfigureV2() {
         },
       };
     });
-  }, [disabledKnowledge, agentId, agentDraft, updateAgentDraft]);
+  }, [disabledKnowledge, memorySources, agentId, agentDraft, updateAgentDraft]);
 
   const [actionVersionCache] = useState<Record<string, VersionMeta>>(
     () => buildSeededVersionCache(new Date().toISOString()),
@@ -1536,10 +1604,6 @@ export default function ActionConfigureV2() {
       'success',
     );
   };
-
-  const knowledgeDemoAgent = CISCO_LIVE_AGENTS.find((candidate) => candidate.id === agent.id) ?? CISCO_LIVE_AGENTS[0];
-  const knowledgeBases = knowledgeDemoAgent.knowledgeSources;
-  const memorySources = knowledgeDemoAgent.memorySources;
 
   const toggleAction = (id: number) => {
     setRows((prev) => prev.map((row) => (row.id === id ? { ...row, enabled: !row.enabled } : row)));
@@ -2710,59 +2774,15 @@ export default function ActionConfigureV2() {
                     {agentFamily !== 'calling' && <h3>Knowledge bases</h3>}
                     <p>Sources your agent can search to answer questions.</p>
                   </div>
-                  <button type="button" className="action-config-v2-add-btn">
-                    <Icon name="plus" weight="bold" size={20} />
-                    Add knowledge
-                  </button>
                 </div>
-                <div className="action-config-v2-table-wrap">
-                  <table className="action-config-v2-table knowledge-config-table">
-                    <thead>
-                      <tr>
-                        <th className="col-knowledge-toggle" aria-label="Enabled" />
-                        <th className="col-knowledge-name">Name</th>
-                        <th className="col-knowledge-description">Description</th>
-                        <th className="col-knowledge-sources">Sources</th>
-                        <th className="col-knowledge-status">Status</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {knowledgeBases.map((source) => (
-                        <tr key={source.name}>
-                          <td className="col-knowledge-toggle">
-                            <Toggle
-                              checked={!disabledKnowledge[source.name]}
-                              onChange={() => toggleKnowledge(source.name)}
-                              size="compact"
-                              aria-label={`Toggle ${source.name}`}
-                            />
-                          </td>
-                          <td className="col-knowledge-name">
-                            <div className="knowledge-config-name">
-                              <Icon name="document" weight="bold" size={18} />
-                              <span>{source.name}</span>
-                            </div>
-                          </td>
-                          <td className="col-knowledge-description">{source.description}</td>
-                          <td className="col-knowledge-sources">{source.sources}</td>
-                          <td className="col-knowledge-status">
-                            <Badge variant="success">Connected</Badge>
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              </div>
-
-              {agentFamily !== 'calling' && (
-                <div className="knowledge-config-section">
-                  <div className="knowledge-config-heading">
-                    <div>
-                      <h3>AI memory</h3>
-                      <p>What your agent remembers across conversations to personalize responses.</p>
-                    </div>
-                  </div>
+                {knowledgeBases.length === 0 ? (
+                  <EmptyState
+                    global
+                    illustration="desert-open-results"
+                    title="No knowledge configured"
+                    description="No knowledge base was enabled during the conversational build."
+                  />
+                ) : (
                   <div className="action-config-v2-table-wrap">
                     <table className="action-config-v2-table knowledge-config-table">
                       <thead>
@@ -2770,11 +2790,12 @@ export default function ActionConfigureV2() {
                           <th className="col-knowledge-toggle" aria-label="Enabled" />
                           <th className="col-knowledge-name">Name</th>
                           <th className="col-knowledge-description">Description</th>
+                          <th className="col-knowledge-sources">Sources</th>
                           <th className="col-knowledge-status">Status</th>
                         </tr>
                       </thead>
                       <tbody>
-                        {memorySources.map((source) => (
+                        {knowledgeBases.map((source) => (
                           <tr key={source.name}>
                             <td className="col-knowledge-toggle">
                               <Toggle
@@ -2786,19 +2807,76 @@ export default function ActionConfigureV2() {
                             </td>
                             <td className="col-knowledge-name">
                               <div className="knowledge-config-name">
-                                <Icon name="mind-map" weight="bold" size={18} />
+                                <Icon name="document" weight="bold" size={18} />
                                 <span>{source.name}</span>
                               </div>
                             </td>
                             <td className="col-knowledge-description">{source.description}</td>
+                            <td className="col-knowledge-sources">{source.sources}</td>
                             <td className="col-knowledge-status">
-                              <Badge variant="success">Active</Badge>
+                              <Badge variant="success">Connected</Badge>
                             </td>
                           </tr>
                         ))}
                       </tbody>
                     </table>
                   </div>
+                )}
+              </div>
+
+              {agentFamily !== 'calling' && (
+                <div className="knowledge-config-section">
+                  <div className="knowledge-config-heading">
+                    <div>
+                      <h3>AI memory</h3>
+                      <p>What your agent remembers across conversations to personalize responses.</p>
+                    </div>
+                  </div>
+                  {memorySources.length === 0 ? (
+                    <EmptyState
+                      global
+                      illustration="desert-open-results"
+                      title="No AI memory configured"
+                      description="AI memory was not enabled during the conversational build."
+                    />
+                  ) : (
+                    <div className="action-config-v2-table-wrap">
+                      <table className="action-config-v2-table knowledge-config-table">
+                        <thead>
+                          <tr>
+                            <th className="col-knowledge-toggle" aria-label="Enabled" />
+                            <th className="col-knowledge-name">Name</th>
+                            <th className="col-knowledge-description">Description</th>
+                            <th className="col-knowledge-status">Status</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {memorySources.map((source) => (
+                            <tr key={source.name}>
+                              <td className="col-knowledge-toggle">
+                                <Toggle
+                                  checked={!disabledKnowledge[source.name]}
+                                  onChange={() => toggleKnowledge(source.name)}
+                                  size="compact"
+                                  aria-label={`Toggle ${source.name}`}
+                                />
+                              </td>
+                              <td className="col-knowledge-name">
+                                <div className="knowledge-config-name">
+                                  <Icon name="mind-map" weight="bold" size={18} />
+                                  <span>{source.name}</span>
+                                </div>
+                              </td>
+                              <td className="col-knowledge-description">{source.description}</td>
+                              <td className="col-knowledge-status">
+                                <Badge variant="success">Active</Badge>
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  )}
                 </div>
               )}
             </div>
@@ -2833,7 +2911,16 @@ export default function ActionConfigureV2() {
             />
           )}
 
-          {activeSection === 'Action' && (
+          {activeSection === 'Action' && rows.length === 0 && (
+            <EmptyState
+              global
+              illustration="desert-open-results"
+              title="No actions configured"
+              description="No action was enabled during the conversational build."
+            />
+          )}
+
+          {activeSection === 'Action' && rows.length > 0 && (
           <div className="action-config-v2-table-wrap action-config-v2-table-wrap--actions">
             <table className="action-config-v2-table action-config-v2-table--actions">
               <thead>
