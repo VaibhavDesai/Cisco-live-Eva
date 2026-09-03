@@ -129,6 +129,7 @@ const FAMILY_INTAKE_STEPPER_LABELS: Record<string, string> = {
   greeting: 'Welcome message',
   knowledge: 'Knowledge base',
   actions: 'Add action',
+  guardrail: 'Add guardrail',
 };
 
 const getProposalAnswerOverrides = (proposal: StarterProposal): Record<string, string> => {
@@ -5984,6 +5985,9 @@ ${previewTranscript}`,
   const presetActionSummary = familyIntakeAnswers.actions === SKIPPED_INTAKE_ANSWER
     ? 'Skipped for now'
     : familyIntakeAnswers.actions?.split('\n').filter(Boolean).join(', ');
+  const presetGuardrailSummary = familyIntakeAnswers.guardrail === SKIPPED_INTAKE_ANSWER
+    ? ''
+    : familyIntakeAnswers.guardrail?.trim();
 
   useEffect(() => {
     if (!activeDraftAgentId || !selectedAgentFamily || !familyProposalApplied) return;
@@ -7918,6 +7922,9 @@ ${previewTranscript}`,
                           {(selectedAgentFamily === 'calling' || selectedAgentFamily === 'contact_center') && presetActionSummary && (
                             <div><dt>Action</dt><dd>{presetActionSummary}</dd></div>
                           )}
+                          {selectedAgentFamily === 'contact_center' && presetGuardrailSummary && (
+                            <div><dt>Guardrail</dt><dd>{presetGuardrailSummary}</dd></div>
+                          )}
                           <div><dt>Default language</dt><dd>{familyProposal.language}</dd></div>
                           <div><dt>Instructions</dt><dd><pre>{familyProposal.instructions}</pre></dd></div>
                         </dl>
@@ -8464,7 +8471,9 @@ ${previewTranscript}`,
                           ? 'completed'
                           : 'future';
                     const baseLabel = FAMILY_INTAKE_STEPPER_LABELS[question.answerKey] ?? question.prompt;
-                    const label = question.required ? baseLabel : `${baseLabel} (optional)`;
+                    const label = question.required || question.answerKey === 'guardrail'
+                      ? baseLabel
+                      : `${baseLabel} (optional)`;
                     const stateLabel = isCurrent
                       ? isComplete ? 'Editing' : 'Current · Open'
                       : isSkipped

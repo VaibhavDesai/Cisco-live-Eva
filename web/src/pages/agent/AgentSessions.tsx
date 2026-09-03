@@ -3,6 +3,7 @@ import { Navigate, useNavigate, useParams, useSearchParams } from 'react-router-
 import { useApp } from '../../contexts/AppContext';
 import { AgentHeader, AgentHeaderActions, AgentWorkspacePageHeading } from '../../components/agents';
 import { Card } from '../../components/shared/Card';
+import { EmptyState } from '../../components/shared/EmptyState';
 import Badge from '../../components/shared/Badge';
 import Button from '../../components/shared/Button';
 import { Table, TableHead, TableBody, TableRow, TableHeader, TableCell } from '../../components/shared/Table';
@@ -439,9 +440,15 @@ export default function AgentSessions() {
     );
   }
 
-  const actionValues = agentDrafts[agent.id]?.familyConfiguration.actions?.values;
+  const agentDraft = agentDrafts[agent.id];
+  const isUnpublishedDraft = agentDraft?.lifecycle === 'draft';
+  const actionValues = agentDraft?.familyConfiguration.actions?.values;
   const agentSessions = getCiscoLiveSessions(agent.id, actionValues);
-  const sessions = agentSessions.length > 0 ? agentSessions : getCiscoLiveSessions(CISCO_LIVE_PRIMARY_AGENT_ID);
+  const sessions = isUnpublishedDraft
+    ? []
+    : agentSessions.length > 0
+      ? agentSessions
+      : getCiscoLiveSessions(CISCO_LIVE_PRIMARY_AGENT_ID);
   const activeSession = canonicalSessionId
     ? sessions.find((session) => session.id.toLowerCase() === canonicalSessionId.toLowerCase())
     : undefined;
@@ -510,6 +517,13 @@ export default function AgentSessions() {
             onReviewActionControl={() => navigate(
               `/agents/${agent.id}/configure?section=Action`,
             )}
+          />
+        ) : isUnpublishedDraft ? (
+          <EmptyState
+            global
+            illustration="desert-open-results"
+            title="No sessions yet"
+            description="Publish this agent to start collecting live interactions."
           />
         ) : (
           <>

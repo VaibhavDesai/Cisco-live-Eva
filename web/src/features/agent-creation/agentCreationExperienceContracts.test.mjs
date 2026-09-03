@@ -1397,8 +1397,8 @@ test('agent navigation uses the floating Uplift rail with collapse and expand ha
   );
   assert.match(
     styles,
-    /\.uplift-agent-panel\s*\{[^}]*position:\s*absolute\s*!important;[^}]*width:\s*fit-content\s*!important;[^}]*border-radius:\s*12px\s*!important;/,
-    'the rail should use a content-hugging Uplift floating glass-card contract',
+    /\.uplift-agent-panel\s*\{[^}]*position:\s*absolute\s*!important;[^}]*width:\s*244px\s*!important;[^}]*border-radius:\s*12px\s*!important;[\s\S]*?\.uplift-agent-panel \.sidebar-agent-nav \.sidenav__item\s*\{[^}]*width:\s*100%;[\s\S]*?\.uplift-agent-panel \.sidebar-agent-nav \.sidenav__tab\s*\{[^}]*flex:\s*1 1 auto;/,
+    'the rail should use one consistent full-width selected surface for every navigation item',
   );
   assert.match(
     styles,
@@ -3024,6 +3024,23 @@ test('goal-aware intake waits for the background LLM and preserves builder choic
     configureSource,
     /configuredKnowledgeSources\([\s\S]*?agentDraft,[\s\S]*?['"]knowledge['"][\s\S]*?configuredKnowledgeSources\([\s\S]*?agentDraft,[\s\S]*?['"]memory['"]/,
     'configuration pages should use the created agent builder selections instead of the demo fixtures',
+  );
+});
+
+test('guardrail review copy, proposal summary, and draft session state stay aligned', () => {
+  const source = readSource('../eva/EvaChatExperience.tsx');
+  const sessionsSource = readSource('../../pages/agent/AgentSessions.tsx');
+
+  assert.match(source, /guardrail:\s*['"]Add guardrail['"]/);
+  assert.match(
+    source,
+    /presetGuardrailSummary[\s\S]*?SKIPPED_INTAKE_ANSWER[\s\S]*?<dt>Guardrail<\/dt><dd>\{presetGuardrailSummary\}<\/dd>/,
+    'enabled guardrails should appear in the Draft proposal while skipped guardrails stay hidden',
+  );
+  assert.match(
+    sessionsSource,
+    /isUnpublishedDraft = agentDraft\?\.lifecycle === ['"]draft['"][\s\S]*?const sessions = isUnpublishedDraft[\s\S]*?title="No sessions yet"/,
+    'a newly created unpublished agent should not inherit demo sessions',
   );
 });
 

@@ -398,7 +398,7 @@ const FAMILY_INTAKE: Record<AgentFamily, AdaptiveIntakeQuestion[]> = {
     {
       id: 'contact-center-guardrail',
       answerKey: 'guardrail',
-      prompt: 'Review a recommended adaptive guardrail',
+      prompt: 'Add guardrail',
       helperText: 'Enable the goal-aware protection for this agent, or skip it for now.',
       required: false,
       inputKind: 'select',

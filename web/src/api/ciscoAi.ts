@@ -28,6 +28,10 @@ export interface AgentGoalRecommendation {
   description: string;
 }
 
+export function normalizeModelMultilineText(value: string): string {
+  return value.replace(/\\r\\n|\\n|\\r/g, '\n');
+}
+
 function titleCase(value: string): string {
   return value
     .split(/\s+/)
@@ -378,7 +382,7 @@ The system prompt is for the agent being created, not for the setup assistant. K
       };
 
       return {
-        systemPrompt: parsed.systemPrompt.trim(),
+        systemPrompt: normalizeModelMultilineText(parsed.systemPrompt).trim(),
         suggestedName: typeof parsed.suggestedName === 'string' && parsed.suggestedName.trim()
           ? parsed.suggestedName.trim()
           : continuityDraft.suggestedName,

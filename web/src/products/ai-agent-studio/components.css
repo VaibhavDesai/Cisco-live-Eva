@@ -440,19 +440,21 @@ html[data-product='ai-agent-studio'] .app-header__menu-row-hint {
 }
 
 .app--ai--agent-panel-open .main > .primary-content {
-  padding-left: calc(244px + var(--spacing-small));
+  /* 244px panel + 12px left inset + 16px visual gap, adjusted for the
+     primary content's 1px leading border. */
+  padding-left: 271px;
 }
 
 .app--ai--agent-panel-open .main > .primary-content > .agent-header-sticky {
-  margin-left: calc(-244px - var(--spacing-small));
+  margin-left: -271px;
 }
 
 .uplift-agent-panel {
   position: absolute !important;
   inset: 172px auto auto 12px !important;
   z-index: 30 !important;
-  /* Let every agent family use only the width its visible navigation needs. */
-  width: fit-content !important;
+  /* Keep every navigation row and its selected surface on one shared width. */
+  width: 244px !important;
   min-width: 0 !important;
   max-width: calc(100vw - 72px) !important;
   height: calc(100% - 184px) !important;
@@ -527,7 +529,11 @@ html[data-product='ai-agent-studio'] .app-header__menu-row-hint {
 .uplift-agent-panel .sidebar-agent-nav .sidenav__nav {
   height: auto;
   flex: 0 0 auto;
-  width: max-content;
+  width: 100%;
+}
+
+.uplift-agent-panel .sidebar-agent-nav .sidenav__section {
+  width: 100%;
 }
 
 .sidebar-agent-back-link {
@@ -560,18 +566,18 @@ html[data-product='ai-agent-studio'] .app-header__menu-row-hint {
 
 .uplift-agent-panel .sidebar-agent-nav .sidenav__item {
   gap: 12px;
-  width: max-content;
+  width: 100%;
 }
 
 .uplift-agent-panel .sidebar-agent-nav .sidenav__tab {
-  flex: 0 0 auto;
+  flex: 1 1 auto;
   margin-right: 0;
   padding: 8px;
-  width: max-content;
+  width: auto;
 }
 
 .uplift-agent-panel .sidebar-agent-nav .sidenav__tab-label {
-  flex: 0 0 auto;
+  flex: 1 1 auto;
 }
 
 .uplift-agent-panel-handle {
