@@ -16,7 +16,6 @@ import { Card, CardBody } from '../../components/shared/Card';
 import { Radio, RadioGroup } from '../../components/shared/Radio';
 import { Input, Textarea } from '../../components/shared/FormInput';
 import { EmptyState } from '../../components/shared/EmptyState';
-import { Illustration } from '../../assets/illustrations';
 import { Tooltip } from '../../components/shared/Tooltip';
 import { Banner } from '../../components/shared/Banner';
 import { Modal, ModalHeader, ModalBody, ModalFooter } from '../../components/shared/Modal';
@@ -882,7 +881,6 @@ export default function ActionConfigureV2() {
   const [optimizeSummary, setOptimizeSummary] = useState<{ changes: string[]; reasoning: string[] }>({ changes: [], reasoning: [] });
   const [originalTextSnapshot, setOriginalTextSnapshot] = useState('');
   const [optimizeAccepted, setOptimizeAccepted] = useState(false);
-  const [acceptedSummary, setAcceptedSummary] = useState<{ changes: string[]; reasoning: string[] }>({ changes: [], reasoning: [] });
   const [preOptimizeText, setPreOptimizeText] = useState('');
 
   // Conversation tab state mirrors the builder Conversation configuration
@@ -2413,22 +2411,6 @@ export default function ActionConfigureV2() {
                   </div>
                 )}
               </div>
-              <aside className="instructions-optimize-card">
-                <div className="instructions-optimize-header"><Icon name="sparkle" weight="bold" size={20} /><h3 className="instructions-optimize-title">Optimize summary</h3></div>
-                {optimizeAccepted ? (
-                  <div className="instructions-optimize-results">
-                    <div className="optimize-results-section"><h4>What's been changed:</h4><ul>{acceptedSummary.changes.map((c, i) => <li key={i}>{c}</li>)}</ul></div>
-                    <div className="optimize-results-section"><h4>Reasoning behind changes:</h4><ul>{acceptedSummary.reasoning.map((r, i) => <li key={i}>{r}</li>)}</ul></div>
-                    <Button variant="secondary" size="sm" onClick={() => { updateProfileField('instructions', preOptimizeText); setOptimizeAccepted(false); showToast('Reverted to original instructions', 'success'); }}><Icon name="undo" weight="bold" size={16} />Undo</Button>
-                  </div>
-                ) : (
-                  <div className="instructions-optimize-empty">
-                    <Illustration name="cliff-open" size={140} />
-                    <p className="instructions-optimize-hint">Improve your instructions with AI.</p>
-                    <Button variant="secondary" size="sm" onClick={handleOptimize} disabled={!profileForm.instructions.trim()}>Optimize instructions</Button>
-                  </div>
-                )}
-              </aside>
             </div>
 
             <div className="instructions-welcome">
@@ -3736,7 +3718,7 @@ export default function ActionConfigureV2() {
                 <><Button variant="secondary" onClick={() => setShowOptimizeModal(false)}>Cancel</Button><Button disabled>Save change</Button></>
               ) : (
                 <><Button variant="secondary" onClick={() => setShowOptimizeModal(false)}>Discard</Button><Button onClick={() => {
-                  setPreOptimizeText(originalTextSnapshot); updateProfileField('instructions', optimizedText); setAcceptedSummary({ ...optimizeSummary }); setOptimizeAccepted(true); setShowOptimizeModal(false); showToast('Optimized instructions applied', 'success');
+                  setPreOptimizeText(originalTextSnapshot); updateProfileField('instructions', optimizedText); setOptimizeAccepted(true); setShowOptimizeModal(false); showToast('Optimized instructions applied', 'success');
                 }}>Accept</Button></>
               )}
             </div>

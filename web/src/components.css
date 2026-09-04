@@ -13081,18 +13081,14 @@ img.app-header__wordmark-logo {
   flex-shrink: 0;
 }
 
-/* ── V2 Instructions tab (configure — guidelines + editor + optimize panel) ── */
+/* ── V2 Instructions tab (configure — guidelines + editor) ── */
 
 .instructions-layout {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 320px;
+  grid-template-columns: 320px minmax(0, 1fr);
   gap: var(--spacing-small);
   align-items: stretch;
   width: 100%;
-}
-
-.instructions-sidebar {
-  grid-column: 1 / -1;
 }
 
 @media (max-width: 920px) {
@@ -13282,16 +13278,6 @@ img.app-header__wordmark-logo {
   min-height: 0;
   border: none;
   border-radius: 0 0 var(--border-radius-medium) var(--border-radius-medium);
-}
-
-.instructions-optimize-card {
-  display: flex;
-  flex-direction: column;
-  border-radius: var(--border-radius-medium);
-  border: var(--border-width-small) solid rgba(255, 255, 255, 0.11);
-  background: var(--bg-glass, rgba(255, 255, 255, 0.05));
-  padding: var(--spacing-small);
-  gap: 16px;
 }
 
 .instructions-optimize-header {

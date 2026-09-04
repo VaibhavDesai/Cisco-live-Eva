@@ -7310,7 +7310,11 @@ ${previewTranscript}`,
                 && familyIntakeQuestion?.answerKey === 'knowledge';
               const isFamilyActionPrompt =
                 isLatestFamilyIntakePrompt
-                && (selectedAgentFamily === 'calling' || selectedAgentFamily === 'contact_center')
+                && (
+                  selectedAgentFamily === 'calling'
+                  || selectedAgentFamily === 'contact_center'
+                  || selectedAgentFamily === 'internal_assistant'
+                )
                 && familyIntakeQuestion?.answerKey === 'actions';
               const isFamilyGuardrailPrompt =
                 isLatestFamilyIntakePrompt
@@ -8608,7 +8612,9 @@ ${previewTranscript}`,
                         : isComplete
                           ? 'completed'
                           : 'future';
-                    const baseLabel = FAMILY_INTAKE_STEPPER_LABELS[question.answerKey] ?? question.prompt;
+                    const baseLabel = question.answerKey === 'actions' && selectedAgentFamily === 'internal_assistant'
+                      ? 'Action'
+                      : FAMILY_INTAKE_STEPPER_LABELS[question.answerKey] ?? question.prompt;
                     const label = question.required || question.answerKey === 'guardrail'
                       ? baseLabel
                       : `${baseLabel} (optional)`;

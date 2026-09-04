@@ -89,10 +89,11 @@ test('reveals each family preset in its exact order as answers arrive', () => {
     },
     {
       family: 'internal_assistant',
-      keys: ['name', 'knowledge'],
+      keys: ['name', 'knowledge', 'actions'],
       answers: {
         name: 'Employee Assistant',
         knowledge: 'Employee handbook',
+        actions: 'Create administrator task',
       },
     },
   ];
@@ -125,7 +126,8 @@ test('reveals each family preset in its exact order as answers arrive', () => {
   assert.equal(contactCenter.find(question => question.answerKey === 'guardrail').required, false);
 
   const employee = getAdaptiveIntakeQuestions('internal_assistant', scenarios[2].answers);
-  assert.equal(employee.every(question => question.required), true);
+  assert.equal(employee.find(question => question.answerKey === 'knowledge').required, false);
+  assert.equal(employee.find(question => question.answerKey === 'actions').required, false);
 });
 
 test('exposes each complete family intake sequence for progress UI', () => {
@@ -144,7 +146,7 @@ test('exposes each complete family intake sequence for progress UI', () => {
   );
   assert.deepEqual(
     getFamilyIntakeSequence('internal_assistant').map(question => question.answerKey),
-    ['name', 'knowledge'],
+    ['name', 'knowledge', 'actions'],
   );
 });
 

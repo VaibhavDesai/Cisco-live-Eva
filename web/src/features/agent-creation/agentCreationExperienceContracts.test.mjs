@@ -2532,8 +2532,13 @@ test('Agent Home sends prompts to the conversational builder while preserving di
   );
   assert.match(
     modelSource,
-    new RegExp(String.raw`internal_assistant:\s*\[[\s\S]*?answerKey:\s*['"]name['"][\s\S]*?answerKey:\s*['"]knowledge['"]`),
-    'Employee assistant should skip the prefilled goal in its intake sequence',
+    new RegExp(String.raw`internal_assistant:\s*\[[\s\S]*?answerKey:\s*['"]name['"][\s\S]*?answerKey:\s*['"]knowledge['"][\s\S]*?required:\s*false[\s\S]*?answerKey:\s*['"]actions['"][\s\S]*?required:\s*false`),
+    'Employee assistant should use name, optional knowledge, and optional action steps before review',
+  );
+  assert.match(
+    evaSource,
+    /isFamilyActionPrompt[\s\S]*?selectedAgentFamily === ['"]internal_assistant['"][\s\S]*?familyIntakeQuestion\?\.answerKey === ['"]actions['"]/,
+    'Employee assistant should render the optional action selection panel',
   );
 });
 
@@ -2811,6 +2816,27 @@ test('preset proposal review shows the verified setup choices and preserves them
     applySource,
     /setWelcomeMessage\(proposal\.greeting\)/,
     'applying the reviewed proposal should preserve its greeting instead of regenerating one',
+  );
+});
+
+test('Instructions places guidance beside the editor without a duplicate summary card', () => {
+  const configureSource = readSource('../../pages/agent/ActionConfigureV2.tsx');
+  const styles = readSource('../../components.css');
+
+  assert.doesNotMatch(
+    configureSource,
+    /className="instructions-optimize-card"/,
+    'the Instructions page should not render a separate optimize summary card',
+  );
+  assert.match(
+    styles,
+    /\.instructions-layout\s*\{[^}]*grid-template-columns:\s*320px\s+minmax\(0,\s*1fr\);/s,
+    'the guidance column should sit beside the full-width editor',
+  );
+  assert.doesNotMatch(
+    styles,
+    /\.instructions-sidebar\s*\{\s*grid-column:/s,
+    'the guidance should not span above the editor',
   );
 });
 
