@@ -1,0 +1,756 @@
+/* Dialog OS first-time landing. Shell rules apply only while this view is open. */
+html[data-product='ai-agent-studio']:has(.new-mvo-home--dialog-landing) {
+  --studio-header-height: 44px;
+  --studio-rail-expanded-width: 232px;
+  --studio-rail-collapsed-width: 60px;
+  --studio-shell-gutter: 8px;
+}
+
+html[data-product='ai-agent-studio']:has(.new-mvo-home--dialog-landing) .app-header {
+  height: var(--studio-header-height);
+  padding: 2px var(--studio-shell-gutter);
+}
+
+html[data-product='ai-agent-studio']:has(.new-mvo-home--dialog-landing) .app-header__leading {
+  gap: 0;
+}
+
+html[data-product='ai-agent-studio']:has(.new-mvo-home--dialog-landing) .app-header__wordmark {
+  height: 25px;
+  padding-left: 12px;
+}
+
+html[data-product='ai-agent-studio']:has(.new-mvo-home--dialog-landing)
+  .app-header--agent-studio-brand .app-header__wordmark-logo {
+  width: 131px;
+  height: 25px;
+  aspect-ratio: 131 / 25;
+  -webkit-mask-size: auto 25px;
+  mask-size: auto 25px;
+  -webkit-mask-position: right center;
+  mask-position: right center;
+}
+
+html[data-product='ai-agent-studio']:has(.new-mvo-home--dialog-landing)
+  :is(.app-header__trailing, .app-header__btn-group) {
+  gap: 8px;
+}
+
+.app--ai:has(.new-mvo-home--dialog-landing) .main {
+  height: calc(100dvh - var(--studio-header-height));
+  margin-top: var(--studio-header-height);
+  margin-left: calc(var(--studio-rail-expanded-width) + var(--studio-shell-gutter));
+}
+
+.app--ai:has(.new-mvo-home--dialog-landing).app--ai--sidebar-collapsed .main {
+  margin-left: calc(var(--studio-rail-collapsed-width) + var(--studio-shell-gutter));
+}
+
+.app--ai:has(.new-mvo-home--dialog-landing).app--ai--studio-aurora:not(.app--ai--agent-context) > .sidebar {
+  top: var(--studio-header-height);
+  bottom: var(--studio-shell-gutter);
+  left: var(--studio-shell-gutter);
+  width: var(--studio-rail-expanded-width);
+  overflow: hidden;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.app--ai:has(.new-mvo-home--dialog-landing).app--ai--studio-aurora:not(.app--ai--agent-context) > .sidebar--collapsed {
+  width: var(--studio-rail-collapsed-width);
+}
+
+.new-mvo-home--dialog-landing {
+  --studio-header-height: 44px;
+}
+
+.app--ai .new-mvo-home.new-mvo-home--landing.new-mvo-home--dialog-landing.primary-content:not(.new-mvo-home--subflow) {
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+}
+
+.new-mvo-home--dialog-landing .new-mvo-home__hero.eva-first-interface__hero .eva-landing-hero-brand {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+/* First-time landing */
+.new-mvo-home.new-mvo-home--dialog-landing > .new-mvo-home__landing-shell {
+  position: relative;
+  display: flex;
+  height: calc(100dvh - var(--studio-header-height));
+  min-height: calc(100dvh - var(--studio-header-height));
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  padding: 0 !important;
+  overflow: hidden;
+}
+
+.new-mvo-home.new-mvo-home--dialog-landing > .new-mvo-home__landing-shell > .new-mvo-home__hero.eva-first-interface__hero {
+  position: static;
+  transform: translateY(-30px);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  width: 100% !important;
+  max-width: none !important;
+  margin: 0;
+  text-align: center;
+}
+
+.new-mvo-home--dialog-landing .new-mvo-home__hero.eva-first-interface__hero .eva-landing-hero-brand h1 {
+  margin: 0;
+  background: linear-gradient(90deg, #1a75f5 0%, #669ec7 55%, #e0ad59 100%);
+  background-clip: text;
+  color: transparent;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  font-family: CiscoSansTT, -apple-system, system-ui, 'Segoe UI', Roboto, sans-serif;
+  font-size: 40px !important;
+  font-weight: 600;
+  line-height: 48px !important;
+}
+
+.new-mvo-home--dialog-landing .new-mvo-home__final-content > h2 {
+  margin: 0;
+  color: rgba(255, 255, 255, 0.95);
+  font-family: var(--mds-font-family-primary, 'CiscoSansTT', sans-serif);
+  font-size: 20px;
+  font-weight: 500;
+  line-height: 24px;
+}
+
+.new-mvo-home--dialog-landing:not(.new-mvo-home--subflow) .new-mvo-home__final-content {
+  display: flex;
+  flex: 0 0 auto;
+  flex-direction: column;
+  align-items: center;
+  gap: 32px;
+  width: 100%;
+  transform: translateY(-30px);
+}
+
+.new-mvo-home--dialog-landing:not(.new-mvo-home--subflow) .new-mvo-home__dashboard {
+  position: static;
+  transform: none;
+  display: block;
+  width: 100%;
+  flex: 0 0 auto;
+  height: auto;
+  min-height: 0;
+  margin-top: 16px;
+}
+
+.new-mvo-home--dialog-landing .new-mvo-home__dashboard > .agent-home {
+  height: auto;
+}
+
+.new-mvo-home--dialog-landing .agent-home--first-time:not(.agent-home--flow) .agent-home__scroll-region {
+  display: block;
+  padding: 0;
+  overflow: visible;
+}
+
+.new-mvo-home--dialog-landing .agent-home--first-time:not(.agent-home--flow) .agent-home__scroll-region > *,
+.new-mvo-home--dialog-landing .agent-home--first-time:not(.agent-home--flow) .agent-home__first-time-summary:has(.agent-home__first-actions--composer) {
+  width: 100%;
+  max-width: none;
+  padding: 0;
+}
+
+.new-mvo-home--dialog-landing .agent-home--first-time:not(.agent-home--flow) .agent-home__first-actions--composer {
+  width: min(764px, calc(100% - 32px)) !important;
+}
+
+.new-mvo-home--dialog-landing .agent-home__landing-composer {
+  width: calc(100% - 4px) !important;
+  padding: 0;
+}
+
+.new-mvo-home--dialog-landing .agent-home--first-time:not(.agent-home--flow)
+  .agent-home__landing-composer.eva-landing-composer {
+  margin-inline: auto;
+}
+
+.app--ai .new-mvo-home.new-mvo-home--dialog-landing .agent-home--first-time .agent-home__landing-composer > .ai-footer.eva-ai-footer {
+  width: 100% !important;
+  max-width: none !important;
+  padding: 0 !important;
+}
+
+.new-mvo-home--dialog-landing .agent-home__landing-composer .ai-footer__group,
+.new-mvo-home--dialog-landing .agent-home__landing-composer .ai-footer__group:hover,
+.new-mvo-home--dialog-landing .agent-home__landing-composer .ai-footer__group:active {
+  height: 134px;
+  min-height: 134px;
+  max-height: 134px;
+  flex: 0 0 134px;
+  padding: 12px !important;
+  border: 1px solid rgba(255, 255, 255, 0.22) !important;
+  border-radius: 16px !important;
+  background: rgba(0, 0, 0, 0.4) !important;
+  box-shadow: none !important;
+}
+
+.new-mvo-home--dialog-landing .agent-home__landing-composer .ai-footer__input-row {
+  height: 108px !important;
+  min-height: 108px !important;
+  max-height: 108px !important;
+  flex: 0 0 108px !important;
+  padding: 0 !important;
+  border: 0 !important;
+  box-shadow: none !important;
+}
+
+.new-mvo-home--dialog-landing .agent-home__landing-composer .ai-footer__type-area {
+  height: 66px !important;
+  min-height: 66px !important;
+  flex: 0 0 66px !important;
+  padding: 0 6px !important;
+}
+
+.new-mvo-home--dialog-landing .agent-home__landing-composer .ai-footer__textarea {
+  height: 60px !important;
+  min-height: 60px !important;
+  padding: 0 !important;
+  overflow: hidden;
+  color: rgba(255, 255, 255, 0.95);
+  font-size: 14px;
+  line-height: 20px;
+}
+
+.new-mvo-home--dialog-landing .agent-home__landing-composer .ai-footer__textarea::placeholder {
+  color: rgba(255, 255, 255, 0.64);
+  opacity: 1;
+}
+
+.new-mvo-home--dialog-landing .agent-home__landing-composer .ai-footer__action-bar {
+  width: 100%;
+  height: 30px;
+  min-height: 30px !important;
+  flex: 0 0 30px !important;
+  padding: 0 !important;
+  align-items: center;
+}
+
+.new-mvo-home--dialog-landing .agent-home__landing-composer .ai-footer__sources-btn {
+  margin: 0 0 0 auto !important;
+  color: rgba(255, 255, 255, 0.95);
+  font-size: 12px;
+  font-weight: 500;
+  gap: 4px;
+  padding: 0 4px;
+}
+
+.new-mvo-home--dialog-landing .agent-home__landing-composer .ai-footer__footer-left,
+.new-mvo-home--dialog-landing .agent-home__landing-composer .ai-footer__footer-right {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.new-mvo-home--dialog-landing .agent-home__landing-composer .ai-footer__footer-right {
+  margin-left: 8px;
+}
+
+.new-mvo-home--dialog-landing .agent-home__landing-composer .ai-footer__send-btn {
+  width: 32px;
+  height: 32px;
+  padding: 8px;
+  color: rgba(255, 255, 255, 0.95);
+  background: #1676d2 !important;
+  box-shadow: inset 0 -4px 5px rgba(255, 255, 255, 0.2);
+  opacity: 1;
+}
+
+/* Keep the Dialog OS animated gradient on the composer outline. */
+.new-mvo-home--dialog-landing .agent-home__landing-composer
+  .ai-footer--compact-upload-actions.ai-footer--upload-prompt .ai-footer__group,
+.new-mvo-home--dialog-landing .agent-home__landing-composer
+  .ai-footer--compact-upload-actions.ai-footer--upload-prompt .ai-footer__group:hover,
+.new-mvo-home--dialog-landing .agent-home__landing-composer
+  .ai-footer--compact-upload-actions.ai-footer--upload-prompt .ai-footer__group:active {
+  position: relative;
+  height: 164px !important;
+  min-height: 164px !important;
+  max-height: 164px !important;
+  flex: 0 0 164px !important;
+  gap: 0;
+  padding: 12px !important;
+  overflow: hidden;
+  border: 0 !important;
+  border-radius: 14px !important;
+  background: var(--bg-glass) !important;
+  box-shadow: none !important;
+  isolation: isolate;
+}
+
+.new-mvo-home--dialog-landing .agent-home__landing-composer
+  .ai-footer--compact-upload-actions.ai-footer--upload-prompt .ai-footer__group::before {
+  position: absolute;
+  z-index: 0;
+  inset: 0;
+  padding: 1px;
+  border-radius: inherit;
+  background: linear-gradient(119.8deg, #f68d4f 26.373%, #d9616d 42.602%, #4d3a94 104.05%);
+  background-size: 220% 220%;
+  animation: evaAiSpecialBorderLoop 4.5s linear infinite;
+  content: '';
+  pointer-events: none;
+  -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+  mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .new-mvo-home--dialog-landing .agent-home__landing-composer
+    .ai-footer--compact-upload-actions.ai-footer--upload-prompt .ai-footer__group::before {
+    animation: none;
+  }
+}
+
+.new-mvo-home--dialog-landing .agent-home__landing-composer
+  .ai-footer--compact-upload-actions.ai-footer--upload-prompt .ai-footer__input-row {
+  height: 140px !important;
+  min-height: 140px !important;
+  max-height: 140px !important;
+  flex: 0 0 140px !important;
+}
+
+.new-mvo-home--dialog-landing .agent-home__landing-composer
+  .ai-footer--compact-upload-actions.ai-footer--upload-prompt .ai-footer__type-area {
+  height: 108px !important;
+  min-height: 108px !important;
+  flex: 0 0 108px !important;
+  padding: 0 !important;
+}
+
+.new-mvo-home--dialog-landing .agent-home__landing-composer
+  .ai-footer--compact-upload-actions.ai-footer--upload-prompt .ai-footer__textarea {
+  height: 108px !important;
+  min-height: 108px !important;
+  padding: 4px 8px !important;
+  font-size: 14px;
+  font-weight: 400;
+  line-height: 20px;
+}
+
+.new-mvo-home--dialog-landing .agent-home__landing-composer
+  .ai-footer--compact-upload-actions.ai-footer--upload-prompt .ai-footer__action-bar {
+  height: 32px;
+  min-height: 32px !important;
+  flex: 0 0 32px !important;
+}
+
+.new-mvo-home--dialog-landing .agent-home__landing-composer
+  .ai-footer--compact-upload-actions.ai-footer--upload-prompt .ai-footer__footer-left {
+  gap: 8px;
+}
+
+.new-mvo-home--dialog-landing .agent-home__landing-composer .ai-footer__landing-action {
+  width: auto;
+  height: 24px;
+  min-height: 24px;
+  gap: 4px;
+  padding: 2px 9px;
+  border: 1px solid rgba(255, 255, 255, 0.5);
+  border-radius: 100px;
+  color: rgba(255, 255, 255, 0.95);
+  font-size: 12px;
+  font-weight: 500;
+  line-height: 18px;
+  white-space: nowrap;
+}
+
+.new-mvo-home--dialog-landing .agent-home__landing-composer .ai-footer__landing-action:hover {
+  border-color: rgba(255, 255, 255, 0.7);
+}
+
+@keyframes evaAiSpecialBorderLoop {
+  0% {
+    background-position: 50% 50%;
+  }
+
+  25% {
+    background-position: 36% 50%;
+  }
+
+  50% {
+    background-position: 50% 36%;
+  }
+
+  75% {
+    background-position: 64% 50%;
+  }
+
+  100% {
+    background-position: 50% 50%;
+  }
+}
+
+/* The empty upload state and uploaded-file state use their own composer
+   heights, matching the two Figma variants without letting the input overflow. */
+.new-mvo-home--dialog-landing .agent-home--first-time:not(.agent-home--flow) .agent-home__landing-composer .ai-footer--upload-prompt .ai-footer__group,
+.new-mvo-home--dialog-landing .agent-home--first-time:not(.agent-home--flow) .agent-home__landing-composer .ai-footer--attachments .ai-footer__group {
+  gap: 6px;
+  box-sizing: border-box;
+  padding: 12px !important;
+  border-radius: 14px !important;
+  overflow: hidden;
+}
+
+.new-mvo-home--dialog-landing .agent-home--first-time:not(.agent-home--flow) .agent-home__landing-composer .ai-footer--attachments.ai-footer {
+  width: min(100%, 764px) !important;
+  max-width: 764px !important;
+}
+
+.new-mvo-home--dialog-landing .agent-home--first-time:not(.agent-home--flow) .ai-footer--upload-prompt .ai-footer__group {
+  height: 190px;
+  min-height: 190px;
+}
+
+.new-mvo-home--dialog-landing .agent-home--first-time:not(.agent-home--flow) .ai-footer--attachments .ai-footer__group {
+  height: 168px;
+  min-height: 168px;
+}
+
+.new-mvo-home--dialog-landing .agent-home--first-time:not(.agent-home--flow) .ai-footer--upload-prompt .ai-footer__upload-prompt {
+  display: inline-flex;
+  flex: 0 0 46px;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  width: 100%;
+  height: 46px;
+  padding: 0 12px;
+  border: 1px dashed rgba(255, 255, 255, 0.25);
+  border-radius: 8px;
+  background: transparent;
+  color: rgba(255, 255, 255, 0.58);
+  font: inherit;
+  font-size: 14px;
+  line-height: 20px;
+  cursor: pointer;
+}
+
+.new-mvo-home--dialog-landing .agent-home--first-time:not(.agent-home--flow) .ai-footer--upload-prompt .ai-footer__upload-prompt:hover {
+  border-color: rgba(255, 255, 255, 0.46);
+  color: rgba(255, 255, 255, 0.82);
+}
+
+.new-mvo-home--dialog-landing .agent-home--first-time:not(.agent-home--flow) .ai-footer--attachments .ai-footer__attachments {
+  display: flex;
+  align-items: center;
+  position: relative;
+  z-index: 2;
+  align-self: stretch;
+  flex: 0 0 24px;
+  height: 24px;
+  min-width: 0;
+  gap: 4px;
+  overflow: hidden;
+  white-space: nowrap;
+}
+
+.new-mvo-home--dialog-landing .agent-home--first-time:not(.agent-home--flow) .ai-footer--attachments .ai-footer__file-attachments,
+.new-mvo-home--dialog-landing .agent-home--first-time:not(.agent-home--flow) .ai-footer--attachments .ai-footer__connected-resources {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  min-width: 0;
+}
+
+.new-mvo-home--dialog-landing .agent-home--first-time:not(.agent-home--flow) .ai-footer--attachments .ai-footer__file-attachments {
+  flex: 1 1 auto;
+  overflow: hidden;
+}
+
+.new-mvo-home--dialog-landing .agent-home--first-time:not(.agent-home--flow) .ai-footer--attachments .ai-footer__connected-resources {
+  flex: 0 0 auto;
+  margin-left: 2px;
+  padding-left: 7px;
+  border-left: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.new-mvo-home--dialog-landing .agent-home--first-time:not(.agent-home--flow) .ai-footer--attachments .ai-footer__resource-pill {
+  display: inline-flex;
+  position: relative;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 24px;
+  width: 24px;
+  height: 24px;
+  overflow: visible;
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.1);
+  color: rgba(255, 255, 255, 0.92);
+  box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.12);
+}
+
+.new-mvo-home--dialog-landing .agent-home--first-time:not(.agent-home--flow) .ai-footer--attachments .ai-footer__resource-pill::after {
+  content: '';
+  position: absolute;
+  right: -1px;
+  bottom: -1px;
+  width: 6px;
+  height: 6px;
+  border: 1px solid #080b18;
+  border-radius: 50%;
+  background: #46d68c;
+}
+
+.new-mvo-home--dialog-landing .agent-home--first-time:not(.agent-home--flow) .ai-footer--attachments .ai-footer__resource-pill img,
+.new-mvo-home--dialog-landing .agent-home--first-time:not(.agent-home--flow) .ai-footer--attachments .ai-footer__resource-pill svg {
+  width: 16px;
+  height: 16px;
+}
+
+.new-mvo-home--dialog-landing .agent-home--first-time:not(.agent-home--flow) .ai-footer--attachments .ai-footer__resource-pill img {
+  object-fit: contain;
+}
+
+.new-mvo-home--dialog-landing .agent-home--first-time:not(.agent-home--flow) .ai-footer--attachments .ai-footer__resource-pill svg {
+  fill: none;
+  stroke: currentColor;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: 1.35;
+}
+
+.new-mvo-home--dialog-landing .agent-home--first-time:not(.agent-home--flow) .ai-footer--attachments .ai-footer__sharepoint-mark {
+  display: inline-flex;
+  position: relative;
+  align-items: center;
+  justify-content: center;
+  width: 16px;
+  height: 16px;
+  border-radius: 4px;
+  background: currentColor;
+}
+
+.new-mvo-home--dialog-landing .agent-home--first-time:not(.agent-home--flow) .ai-footer--attachments .ai-footer__sharepoint-mark > span {
+  position: relative;
+  z-index: 1;
+  color: #fff;
+  font-size: 9px;
+  font-weight: 800;
+  line-height: 1;
+}
+
+.new-mvo-home--dialog-landing .agent-home--first-time:not(.agent-home--flow) .ai-footer--attachments .ai-footer__sharepoint-mark > i {
+  position: absolute;
+  right: -2px;
+  width: 7px;
+  height: 10px;
+  border-radius: 0 5px 5px 0;
+  background: #5fc6aa;
+}
+
+.new-mvo-home--dialog-landing .agent-home--first-time:not(.agent-home--flow) .ai-footer--attachments .ai-footer__resource-letter {
+  color: currentColor;
+  font-size: 10px;
+  font-weight: 700;
+  line-height: 1;
+}
+
+.new-mvo-home--dialog-landing .agent-home--first-time:not(.agent-home--flow) .ai-footer--attachments .ai-footer__resource-pill--snowflake {
+  color: #55c7ef;
+}
+
+.new-mvo-home--dialog-landing .agent-home--first-time:not(.agent-home--flow) .ai-footer--attachments .ai-footer__resource-pill--sharepoint {
+  color: #2f8e78;
+}
+.new-mvo-home--dialog-landing .agent-home--first-time:not(.agent-home--flow) .ai-footer--attachments .ai-footer__attachment {
+  display: inline-flex;
+  flex: 0 0 auto;
+  align-items: center;
+  gap: 4px;
+  max-width: 190px;
+  height: 24px;
+  padding: 0 5px 0 7px;
+  overflow: hidden;
+  border: 1px solid rgba(255, 255, 255, 0.34);
+  border-radius: 999px;
+  color: rgba(255, 255, 255, 0.9);
+  font-size: 12px;
+  line-height: 16px;
+}
+
+/* File chips are mounted together after the Home upload action. In Motion
+   System V1, reveal the stable chip surfaces in reading order while leaving
+   the shared composer and legacy route unchanged. */
+.app--ai[data-motion-system='v1']
+  .new-mvo-home--dialog-landing .agent-home--first-time:not(.agent-home--flow)
+  .ai-footer--attachments
+  .ai-footer__file-attachments
+  > .ai-footer__attachment {
+  animation: agentStudioAttachmentPillEnter var(--motion-duration-fast)
+    var(--motion-easing-entrance) both;
+}
+
+.app--ai[data-motion-system='v1']
+  .new-mvo-home--dialog-landing .agent-home--first-time:not(.agent-home--flow)
+  .ai-footer__file-attachments
+  > .ai-footer__attachment:nth-child(2) {
+  animation-delay: var(--motion-duration-feedback);
+}
+
+.app--ai[data-motion-system='v1']
+  .new-mvo-home--dialog-landing .agent-home--first-time:not(.agent-home--flow)
+  .ai-footer__file-attachments
+  > .ai-footer__attachment:nth-child(3) {
+  animation-delay: var(--motion-duration-fast);
+}
+
+.app--ai[data-motion-system='v1']
+  .new-mvo-home--dialog-landing .agent-home--first-time:not(.agent-home--flow)
+  .ai-footer__file-attachments
+  > .ai-footer__attachment:nth-child(4) {
+  animation-delay: var(--motion-duration-standard);
+}
+
+.app--ai[data-motion-system='v1']
+  .new-mvo-home--dialog-landing .agent-home--first-time:not(.agent-home--flow)
+  .ai-footer__file-attachments
+  > .ai-footer__attachment:nth-child(n + 5) {
+  animation-delay: var(--motion-duration-relaxed);
+}
+
+@keyframes agentStudioAttachmentPillEnter {
+  from {
+    opacity: 0;
+    transform: translate3d(0, var(--motion-recipe-popover-enter-distance), 0);
+  }
+  to {
+    opacity: 1;
+    transform: translate3d(0, 0, 0);
+  }
+}
+
+.new-mvo-home--dialog-landing .agent-home--first-time:not(.agent-home--flow) .ai-footer--attachments .ai-footer__attachment > span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.new-mvo-home--dialog-landing .agent-home--first-time:not(.agent-home--flow) .ai-footer--attachments .ai-footer__attachment button {
+  display: inline-flex;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: center;
+  width: 16px;
+  height: 16px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: rgba(255, 255, 255, 0.76);
+  cursor: pointer;
+}
+
+.new-mvo-home--dialog-landing .agent-home--first-time:not(.agent-home--flow) .ai-footer--attachments .ai-footer__attachment--count {
+  min-width: 42px;
+  padding-inline: 6px 4px;
+}
+
+.new-mvo-home--dialog-landing .agent-home--first-time:not(.agent-home--flow) .ai-footer--attachments .ai-footer__attachment--context {
+  flex: 0 0 auto !important;
+  width: fit-content;
+  border-color: var(--mds-color-theme-outline-label-violet, #c7a5fa);
+  background: var(--mds-color-theme-background-label-violet-normal, #29223d);
+  color: var(--mds-color-theme-text-primary-normal, rgba(255, 255, 255, 0.95));
+  font-size: 14px;
+  line-height: 20px;
+}
+
+.new-mvo-home--dialog-landing .agent-home--first-time:not(.agent-home--flow) .ai-footer--attachments
+  .ai-footer__file-attachments:has(.ai-footer__attachment--context)
+  .ai-footer__attachment:not(.ai-footer__attachment--count):not(.ai-footer__attachment--context) {
+  flex: 1 1 0;
+  min-width: 0;
+}
+
+.new-mvo-home--dialog-landing .agent-home--first-time:not(.agent-home--flow) .ai-footer--attachments .ai-footer__attachment-input,
+.new-mvo-home--dialog-landing .agent-home--first-time:not(.agent-home--flow) .ai-footer--upload-prompt .ai-footer__attachment-input {
+  display: none;
+}
+
+.new-mvo-home--dialog-landing .agent-home--first-time:not(.agent-home--flow) .ai-footer--attachments .ai-footer__input-row,
+.new-mvo-home--dialog-landing .agent-home--first-time:not(.agent-home--flow) .ai-footer--upload-prompt .ai-footer__input-row {
+  flex: 1 1 auto;
+  min-height: 0;
+}
+
+.new-mvo-home--dialog-landing .dialog-provenance-label {
+  display: inline-flex;
+  width: fit-content;
+  flex: 0 0 auto;
+  align-items: center;
+  gap: 4px;
+  background: linear-gradient(119.8deg, #f68d4f 26.373%, #d9616d 42.602%, #4d3a94 104.05%);
+  background-clip: text;
+  color: transparent;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  font-size: 12px;
+  font-weight: 400;
+  line-height: 18px;
+  white-space: nowrap;
+}
+
+.new-mvo-home--dialog-landing .dialog-provenance-label__icon {
+  width: 14px;
+  height: 14px;
+  flex: 0 0 14px;
+}
+
+.new-mvo-home--dialog-landing .agent-home__landing-divider {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100% !important;
+  height: 20px;
+  margin-top: 64px !important;
+  gap: 20px;
+}
+
+.new-mvo-home--dialog-landing .agent-home__landing-divider .eva-landing-divider-line {
+  display: block;
+  height: 1px;
+  flex: 1 1 0;
+  background: rgba(255, 255, 255, 0.22);
+}
+
+.new-mvo-home--dialog-landing .agent-home__landing-divider .eva-landing-divider-text {
+  color: rgba(255, 255, 255, 0.62);
+  font-size: 12px;
+  line-height: 18px;
+}
+
+.new-mvo-home--dialog-landing .agent-home__landing-actions {
+  display: flex;
+  justify-content: center;
+  height: 28px;
+  margin-top: 21px !important;
+  gap: 16px;
+}
+
+.new-mvo-home--dialog-landing .agent-home__landing-actions .btn {
+  height: 28px;
+  min-height: 28px;
+  padding: 2px 12px;
+  font-size: 14px;
+  line-height: 20px;
+}
+
+.new-mvo-home--dialog-landing .agent-home__landing-actions .btn-primary {
+  background: #0353a8;
+  box-shadow: inset 0 -4px 5px rgba(255, 255, 255, 0.2);
+}

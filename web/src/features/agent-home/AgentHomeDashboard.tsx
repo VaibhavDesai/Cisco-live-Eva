@@ -7,6 +7,7 @@ import Spinner from '../../components/shared/Spinner';
 import { AiFooter, AiSymbol } from '../../components/shared';
 import { Icon, type IconName } from '../../icons';
 import EvaHeroAnimation from '../eva/EvaHeroAnimation';
+import AgentStudioInputBorderBeam from '../../motion/AgentStudioInputBorderBeam';
 import AgentHomeFirstTimeFlows, {
   type AgentHomeDemoMessage,
   type AgentHomeFirstTimeFlow,
@@ -54,6 +55,14 @@ const RECURRING_SESSION_ROWS = [
 ] as const;
 
 const RECURRING_TOTAL_USAGE_COLOR = '#643abd';
+
+const FIRST_TIME_PROMPT_FILES = [
+  'Company playbook.pdf',
+  'Flight refund policy. pdf',
+  'VIP customer profile. md',
+] as const;
+
+const CONNECTED_RESOURCES = ['Snowflake', 'SharePoint', 'Salesforce', 'ServiceNow'] as const;
 
 const VIEW_KNOWLEDGE_ACTION: AgentHomeAction = {
   id: 'view-knowledge-sync',
@@ -138,6 +147,10 @@ function FirstTimeHome({
   const permissionMissing = snapshot.dataState.permission === 'missing';
   const isRecurringCreation = creationAudience === 'recurring';
   const [voiceActive, setVoiceActive] = useState(false);
+  const [promptFiles, setPromptFiles] = useState<string[]>([]);
+  const [promptContextAttachments, setPromptContextAttachments] = useState<string[]>([]);
+  const [additionalPromptFileCount, setAdditionalPromptFileCount] = useState(12);
+  const hasPromptAttachments = promptFiles.length > 0 || promptContextAttachments.length > 0;
   const startWithAssistant = snapshot.quickStarts.find(item => item.id === 'start-with-assistant');
   const chooseTemplate = snapshot.quickStarts.find(item => item.id === 'choose-template');
   const mostUsedAgents = [...existingAgents]
@@ -196,24 +209,38 @@ function FirstTimeHome({
             }}
             processing={false}
             disabled={!startWithAssistant}
-            placeholder={'Describe the agent you want to build.\ne.g. A friendly banking assistant that helps customers check their balance, dispute charges, and get account help — always calm and reassuring.'}
+            placeholder={hasPromptAttachments
+              ? 'Describe the agent you want to build.\ne.g A friendly banking assistant that help customers check their balance, dispute charges, and get account help - always calm and professional.'
+              : 'Describe or upload anything that the agent needs to know.\ne.g A friendly banking assistant that help customers check their balance, dispute charges, and get account help - always calm and professional.'}
             suggestions={[]}
             voiceActive={voiceActive}
             onVoiceToggle={setVoiceActive}
             showDisclaimer={false}
+            attachmentItems={promptFiles}
+            onAttachmentItemsChange={setPromptFiles}
+            contextAttachmentItems={promptContextAttachments}
+            onContextAttachmentItemsChange={setPromptContextAttachments}
+            attachmentOverflowCount={additionalPromptFileCount}
+            onAttachmentOverflowCountChange={setAdditionalPromptFileCount}
+            connectedResources={CONNECTED_RESOURCES}
+            uploadPrompt="Upload anything that the agent needs to know"
+            compactUploadActions
+            showSources={hasPromptAttachments}
+            onUploadPromptClick={() => setPromptFiles([...FIRST_TIME_PROMPT_FILES])}
           />
+          <AgentStudioInputBorderBeam />
         </div>
-        <div className="eva-landing-divider agent-home__landing-divider" role="separator" aria-label="Quick start with">
-          <span className="eva-landing-divider-line" aria-hidden="true" />
+        <div className="agent-home__landing-divider" aria-hidden="true">
+          <span className="eva-landing-divider-line" />
           <span className="eva-landing-divider-text">Quick start with</span>
-          <span className="eva-landing-divider-line" aria-hidden="true" />
+          <span className="eva-landing-divider-line" />
         </div>
-        <div className="eva-landing-secondary-actions agent-home__landing-actions" role="group" aria-label="Other ways to create an agent">
-          <Button variant="primary" onClick={() => chooseTemplate && onAction(chooseTemplate.action)} disabled={!chooseTemplate}>
-            Browse Templates
+        <div className="agent-home__landing-actions" role="group" aria-label="Quick start options">
+          <Button size="sm" variant="primary" onClick={() => chooseTemplate && onAction(chooseTemplate.action)} disabled={!chooseTemplate}>
+            View templates
           </Button>
-          <Button variant="secondary" onClick={onStartFromScratch}>
-            Start from Scratch
+          <Button size="sm" variant="secondary" onClick={onStartFromScratch}>
+            Start from scratch
           </Button>
         </div>
       </section>

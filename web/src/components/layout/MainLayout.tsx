@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, type CSSProperties } from 'react';
 import { Outlet, useLocation } from 'react-router-dom';
 import Header from '../../products/ai-agent-studio/components/Header';
 import Sidebar from '../../products/ai-agent-studio/components/Sidebar';
@@ -8,6 +8,16 @@ import CreateAgentModal from '../agents/CreateAgentModal';
 import QuickCreateAgentModal from '../agents/QuickCreateAgentModal';
 import { useApp } from '../../contexts/AppContext';
 import { ReviewOverlay } from '../../features/review';
+import { useAgentHomeScenario } from '../../features/agent-home/AgentHomeScenarioContext';
+import AgentStudioShaderBackground from '../../motion/AgentStudioShaderBackground';
+import {
+  AgentStudioWelcomeProvider,
+  agentStudioWelcomeDurationMs,
+  agentStudioWelcomeFinalStartMs,
+  agentStudioWelcomeTitleStartMs,
+  useAgentStudioWelcome,
+} from '../../motion/agentStudioWelcome';
+import '../../motion/agentStudioWelcome.css';
 
 /* Bridges the legacy `AppContext.toast` event bus onto the shared
    `ToastProvider` (now hoisted to App root). Lives inside the layout because
@@ -36,6 +46,7 @@ export default function MainLayout() {
   const [agentPanelOpen, setAgentPanelOpen] = useState(true);
   const [aiPanelOpen, setAiPanelOpen] = useState(false);
   const location = useLocation();
+  const { mode: homeScenarioMode } = useAgentHomeScenario();
 
   /* Agent pages use the floating Uplift progress rail. Open it when entering
      agent context, while preserving its manual collapsed state between the
@@ -52,6 +63,8 @@ export default function MainLayout() {
     isAgentContext && /^\/agents\/[^/]+\/analytics\/?$/.test(location.pathname);
   const isObservability = /^\/observability\/?$/.test(location.pathname);
   const isNewAgent = /^\/new-agent\/?$/.test(location.pathname);
+  const isDialogOsLanding = isNewAgent && homeScenarioMode === 'first-time';
+  const welcome = useAgentStudioWelcome(isDialogOsLanding);
   const usesStudioAurora =
     isAgentsList || isAgentOverview || isAgentConfigure || isAgentTesting || isObservability || isNewAgent;
 
@@ -62,12 +75,29 @@ export default function MainLayout() {
     }
   }, [isAgentContext]);
 
+  const welcomeStyle = isDialogOsLanding
+    ? ({
+        '--agent-studio-welcome-duration': `${agentStudioWelcomeDurationMs}ms`,
+        '--agent-studio-welcome-title-start': `${agentStudioWelcomeTitleStartMs}ms`,
+        '--agent-studio-welcome-final-start': `${agentStudioWelcomeFinalStartMs}ms`,
+      } as CSSProperties)
+    : undefined;
+
   return (
-    <>
+    <AgentStudioWelcomeProvider
+      value={{
+        enabled: isDialogOsLanding,
+        phase: welcome.phase,
+        reducedMotion: welcome.reducedMotion,
+      }}
+    >
       <div
         className={`app--ai__bg${usesStudioAurora ? ' app--ai__bg--studio-aurora' : ''}`}
+        data-motion-system={isDialogOsLanding ? 'v1' : undefined}
+        data-agent-studio-welcome={isDialogOsLanding ? welcome.phase : undefined}
         aria-hidden
       />
+      {isDialogOsLanding && <AgentStudioShaderBackground mode="home" />}
       <Header
         onMenuClick={() => {
           if (isAgentContext) {
@@ -80,6 +110,11 @@ export default function MainLayout() {
       />
       <div
         className={`app app--ai${sidebarCollapsed ? ' app--ai--sidebar-collapsed' : ''}${isAgentContext ? ' app--ai--agent-context' : ''}${usesStudioAurora ? ' app--ai--studio-aurora' : ''}${isAgentContext && agentPanelOpen ? ' app--ai--agent-panel-open' : ''}${aiPanelOpen ? ' app--ai--assistant-open' : ''}`}
+        data-motion-system={isDialogOsLanding ? 'v1' : undefined}
+        data-dialogos-landing={isDialogOsLanding ? 'true' : undefined}
+        data-agent-studio-welcome={isDialogOsLanding ? welcome.phase : undefined}
+        onAnimationEnd={isDialogOsLanding ? welcome.onAnimationEnd : undefined}
+        style={welcomeStyle}
       >
         <Sidebar
           collapsed={sidebarCollapsed}
@@ -99,6 +134,6 @@ export default function MainLayout() {
         <QuickCreateAgentModal onClose={() => setIsQuickCreateModalOpen(false)} />
       )}
       <ReviewOverlay />
-    </>
+    </AgentStudioWelcomeProvider>
   );
 }

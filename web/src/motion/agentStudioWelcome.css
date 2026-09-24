@@ -1,0 +1,188 @@
+/* DialogOS product choreography. The WX1 background renderer owns the Aurora
+   track; Agent Studio owns its hero and stable creation-surface timing. */
+.app--ai[data-motion-system='v1'] {
+  --motion-duration-slow: 600ms;
+  --motion-duration-sustained: 1200ms;
+  --motion-duration-extended: 2400ms;
+  --motion-easing-entrance: cubic-bezier(0, 0, 0.2, 1);
+  --motion-easing-standard: cubic-bezier(0.44, 0, 0, 1);
+  --motion-easing-linear: linear;
+  --motion-recipe-content-reveal-enter-distance: 20px;
+}
+
+html[data-product='ai-agent-studio']:has(.new-mvo-home--dialog-landing)
+  .app--ai__bg[data-motion-system='v1'][data-agent-studio-welcome] {
+  display: none;
+  background: #000 !important;
+}
+
+html[data-product='ai-agent-studio']:has(.new-mvo-home--dialog-landing)
+  .app--ai__bg[data-motion-system='v1']::before,
+html[data-product='ai-agent-studio']:has(.new-mvo-home--dialog-landing)
+  .app--ai__bg[data-motion-system='v1']::after {
+  display: none !important;
+  content: none !important;
+  animation: none !important;
+  transition: none !important;
+}
+
+/* The shader stays mounted while the route changes between home, templates,
+   and guided creation. Only the landing surface uses Dialog OS artwork. */
+html[data-product='ai-agent-studio'] .agent-studio-shader-background,
+html[data-product='ai-agent-studio'] .agent-studio-motion-background {
+  display: none;
+}
+
+html[data-product='ai-agent-studio']:has(.new-mvo-home--dialog-landing)
+  .agent-studio-shader-background,
+html[data-product='ai-agent-studio']:has(.new-mvo-home--dialog-landing)
+  .agent-studio-motion-background {
+  display: block;
+}
+
+/* The route-level primary-content surface defaults to overflow-y: auto.
+   Translating its full-height child during the welcome temporarily creates a
+   vertical scrollbar; when that scrollbar disappears, the centered column
+   shifts horizontally by half the gutter width. This view owns an inner
+   scroll region, so keep the outer route width stable for the whole V1 state. */
+.app--ai[data-motion-system='v1']
+  .new-mvo-home.new-mvo-home--dialog-landing {
+  overflow-y: hidden;
+}
+
+.app--ai[data-motion-system='v1'] .new-mvo-home--dialog-landing .new-mvo-home__landing-shell,
+.app--ai[data-motion-system='v1'] .new-mvo-home--dialog-landing .new-mvo-home__hero,
+.app--ai[data-motion-system='v1'] .new-mvo-home--dialog-landing .new-mvo-home__hero .eva-landing-hero-brand,
+.app--ai[data-motion-system='v1'] .new-mvo-home--dialog-landing .new-mvo-home__final-content,
+.app--ai[data-motion-system='v1'] .new-mvo-home--dialog-landing .agent-home__first-actions--composer,
+.app--ai[data-motion-system='v1'] .new-mvo-home--dialog-landing .agent-home__landing-composer,
+.app--ai[data-motion-system='v1'] .new-mvo-home--dialog-landing .agent-home__landing-divider,
+.app--ai[data-motion-system='v1'] .new-mvo-home--dialog-landing .agent-home__landing-actions {
+  animation: none !important;
+  opacity: 1;
+  transform: none;
+}
+
+.app--ai[data-motion-system='v1'] .new-mvo-home--dialog-landing .new-mvo-home__hero,
+.app--ai[data-motion-system='v1'] .new-mvo-home--dialog-landing .new-mvo-home__final-content {
+  transform: translate3d(0, -30px, 0);
+}
+
+.app--ai[data-motion-system='v1'][data-agent-studio-welcome='running']
+  .new-mvo-home--dialog-landing .new-mvo-home__landing-shell {
+  --agent-studio-welcome-title-spotlight-offset: clamp(168px, 21dvh, 230px);
+}
+
+.app--ai[data-motion-system='v1'][data-agent-studio-welcome='running']
+  .new-mvo-home--dialog-landing .new-mvo-home__hero {
+  animation: agentStudioWelcomeTitleMakeRoom var(--motion-duration-sustained)
+    var(--motion-easing-standard) var(--agent-studio-welcome-final-start) both !important;
+  will-change: transform;
+}
+
+.app--ai[data-motion-system='v1'][data-agent-studio-welcome='running']
+  .new-mvo-home--dialog-landing .new-mvo-home__hero
+  .eva-landing-hero-brand {
+  animation: agentStudioWelcomeElementEnter var(--motion-duration-slow)
+    var(--motion-easing-entrance)
+    var(--agent-studio-welcome-title-start) both !important;
+  will-change: opacity, transform;
+}
+
+.app--ai[data-motion-system='v1'][data-agent-studio-welcome='running']:has(.new-mvo-home--dialog-landing) {
+  animation: agentStudioWelcomeClock var(--agent-studio-welcome-duration)
+    var(--motion-easing-linear);
+}
+
+@keyframes agentStudioWelcomeClock {
+  from,
+  to {
+    outline-color: transparent;
+  }
+}
+
+.app--ai[data-motion-system='v1'][data-agent-studio-welcome='running']
+  .new-mvo-home--dialog-landing .new-mvo-home__final-content {
+  animation: agentStudioWelcomeFinalContentEnter var(--motion-duration-slow)
+    var(--motion-easing-entrance)
+    calc(var(--agent-studio-welcome-final-start) + var(--motion-duration-slow)) both !important;
+  will-change: opacity, transform;
+}
+
+@keyframes agentStudioWelcomeFinalContentEnter {
+  from {
+    opacity: 0;
+    transform: translate3d(
+      0,
+      calc(-30px + var(--motion-recipe-content-reveal-enter-distance)),
+      0
+    );
+  }
+  to {
+    opacity: 1;
+    transform: translate3d(0, -30px, 0);
+  }
+}
+
+@keyframes agentStudioWelcomeTitleMakeRoom {
+  from {
+    transform: translate3d(
+      0,
+      calc(-30px + var(--agent-studio-welcome-title-spotlight-offset)),
+      0
+    );
+  }
+  to {
+    transform: translate3d(0, -30px, 0);
+  }
+}
+
+@keyframes agentStudioWelcomeElementEnter {
+  from {
+    opacity: 0;
+    transform: translate3d(0, var(--motion-recipe-content-reveal-enter-distance), 0);
+  }
+  to {
+    opacity: 1;
+    transform: translate3d(0, 0, 0);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html[data-product='ai-agent-studio']:has(.new-mvo-home--dialog-landing)
+    .app--ai__bg[data-motion-system='v1'][data-agent-studio-welcome]::before,
+  html[data-product='ai-agent-studio']:has(.new-mvo-home--dialog-landing)
+    .app--ai__bg[data-motion-system='v1'][data-agent-studio-welcome]::after {
+    animation: none !important;
+  }
+
+  .app--ai[data-motion-system='v1'][data-agent-studio-welcome]:has(.new-mvo-home--dialog-landing),
+  .app--ai[data-motion-system='v1'][data-agent-studio-welcome]
+    .new-mvo-home--dialog-landing .new-mvo-home__landing-shell,
+  .app--ai[data-motion-system='v1'][data-agent-studio-welcome]
+    .new-mvo-home--dialog-landing .new-mvo-home__hero,
+  .app--ai[data-motion-system='v1'][data-agent-studio-welcome]
+    .new-mvo-home--dialog-landing .new-mvo-home__hero
+    .eva-landing-hero-brand,
+  .app--ai[data-motion-system='v1'][data-agent-studio-welcome]
+    .new-mvo-home--dialog-landing .new-mvo-home__final-content,
+  .app--ai[data-motion-system='v1'][data-agent-studio-welcome]
+    .new-mvo-home--dialog-landing .agent-home__first-actions--composer,
+  .app--ai[data-motion-system='v1'][data-agent-studio-welcome]
+    .new-mvo-home--dialog-landing .agent-home__landing-composer,
+  .app--ai[data-motion-system='v1'][data-agent-studio-welcome]
+    .new-mvo-home--dialog-landing .agent-home__landing-divider,
+  .app--ai[data-motion-system='v1'][data-agent-studio-welcome]
+    .new-mvo-home--dialog-landing .agent-home__landing-actions {
+    animation: none !important;
+    opacity: 1;
+    transform: none;
+  }
+
+  .app--ai[data-motion-system='v1'][data-agent-studio-welcome]
+    .new-mvo-home--dialog-landing .new-mvo-home__hero,
+  .app--ai[data-motion-system='v1'][data-agent-studio-welcome]
+    .new-mvo-home--dialog-landing .new-mvo-home__final-content {
+    transform: translate3d(0, -30px, 0);
+  }
+}

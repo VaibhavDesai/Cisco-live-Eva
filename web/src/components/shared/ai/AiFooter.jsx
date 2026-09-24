@@ -1,6 +1,9 @@
 import { useState, useRef, useCallback, useEffect } from 'react'
 import Icon from '../Icon'
 import AiSymbol from './AiSymbol'
+import salesforceLogo from '../../../assets/figma-ready-made/salesforce-color.svg'
+import serviceNowLogo from '../../../assets/provider-servicenow.png'
+import webexLogo from '../../../assets/figma-journey/webex-review-provider.png'
 
 /**
  * Chat composer strip with optional quick suggestions, send control, sources affordance, and privacy disclaimer.
@@ -24,11 +27,22 @@ import AiSymbol from './AiSymbol'
  * @param {function(boolean): void} [props.onVoiceToggle] - When provided, enables the mic button. Called with `true` when recording starts and `false` when it stops, so the parent can mirror state if needed.
  * @param {boolean} [props.fillContainer=false] - Removes composer width caps so the footer fills its parent.
  * @param {boolean} [props.showDisclaimer=true] - Shows the AI accuracy/privacy disclaimer below the composer.
+ * @param {boolean} [props.showSources=false] - Shows the source-scope selector in the action bar.
  * @param {string} [props.className=''] - Extra classes merged onto the root `ai-footer` container.
  * @param {import('react').ReactNode} [props.cornerAction] - Optional control rendered inside the composer group's top-right corner.
  * @param {string} [props.initialText] - Optional value pushed into the textarea whenever `prefillKey` changes. Use together with a parent-controlled key bump (e.g. an incrementing counter) to drop a fresh prompt into the composer without hijacking the user's in-progress edits.
  * @param {string|number} [props.prefillKey] - Sentinel that tells the composer to replace its current text with `initialText`. Each unique value triggers exactly one prefill, so parents can re-trigger the same prompt by bumping the key.
  * @param {string} [props.transcribePath='/transcribe'] - Companion API path used by the mic recorder. Local dev prefixes it with `/api`.
+ * @param {string[]} [props.attachmentItems=[]] - Files the user has added to this prompt. They appear inside the composer above the text area.
+ * @param {function(string[]): void} [props.onAttachmentItemsChange] - Receives the next file-name list after the user adds or removes a file.
+ * @param {string[]} [props.contextAttachmentItems=[]] - Connected data sources attached to the prompt. These render alongside files with a distinct treatment.
+ * @param {function(string[]): void} [props.onContextAttachmentItemsChange] - Receives the next connected-data list after the user removes a source.
+ * @param {number} [props.attachmentOverflowCount=0] - Count of additional uploaded files represented by a removable summary chip.
+ * @param {function(number): void} [props.onAttachmentOverflowCountChange] - Receives zero when the summary chip is removed.
+ * @param {string[]} [props.connectedResources=[]] - Connected integrations shown as compact icon-only pills after files are attached.
+ * @param {string} [props.uploadPrompt] - Optional upload-area label shown before any files are attached.
+ * @param {function(): void} [props.onUploadPromptClick] - Optional first-time upload action. When omitted, the upload area opens the native file picker.
+ * @param {boolean} [props.compactUploadActions=false] - Replaces the empty-state upload panel with compact Upload files and Connect resources actions while preserving the uploaded state.
  * @example
  * <AiFooter onSend={(msg) => console.log(msg)} suggestions={['Summarize', 'Next steps']} />
  */
@@ -42,14 +56,26 @@ function AiFooter({
   onVoiceToggle,
   fillContainer = false,
   showDisclaimer = true,
+  showSources = false,
   className = '',
   cornerAction,
   initialText = '',
   prefillKey,
   transcribePath = '/transcribe',
+  attachmentItems = [],
+  onAttachmentItemsChange,
+  contextAttachmentItems = [],
+  onContextAttachmentItemsChange,
+  attachmentOverflowCount = 0,
+  onAttachmentOverflowCountChange,
+  connectedResources = [],
+  uploadPrompt = '',
+  onUploadPromptClick,
+  compactUploadActions = false,
 }) {
   const [text, setText] = useState(initialText)
   const textareaRef = useRef(null)
+  const attachmentInputRef = useRef(null)
 
   /* Watch for parent-driven prefill triggers. A bumped `prefillKey`
      replaces whatever's in the textarea with the latest `initialText` so
@@ -151,9 +177,12 @@ function AiFooter({
   const handleSend = useCallback(() => {
     const trimmed = text.trim()
     if (!trimmed || disabled || processing) return
+    if (compactUploadActions) {
+      window.dispatchEvent(new CustomEvent('ai-agent-studio:first-message'))
+    }
     onSend?.(trimmed)
     setText('')
-  }, [text, disabled, processing, onSend])
+  }, [text, disabled, processing, onSend, compactUploadActions])
 
   const handleKeyDown = useCallback((e) => {
     if (e.key === 'Enter' && !e.shiftKey) {
@@ -161,6 +190,37 @@ function AiFooter({
       handleSend()
     }
   }, [handleSend])
+
+  const handleAttachmentPick = useCallback((event) => {
+    const nextNames = Array.from(event.target.files ?? [])
+      .map((file) => file.name)
+      .filter(Boolean)
+
+    if (nextNames.length > 0) {
+      onAttachmentItemsChange?.([...attachmentItems, ...nextNames])
+    }
+    event.target.value = ''
+  }, [attachmentItems, onAttachmentItemsChange])
+
+  const openAttachmentPicker = useCallback(() => {
+    attachmentInputRef.current?.click()
+  }, [])
+
+  const removeAttachment = useCallback((item) => {
+    onAttachmentItemsChange?.(attachmentItems.filter((attachment) => attachment !== item))
+  }, [attachmentItems, onAttachmentItemsChange])
+
+  const removeContextAttachment = useCallback((item) => {
+    onContextAttachmentItemsChange?.(contextAttachmentItems.filter((attachment) => attachment !== item))
+  }, [contextAttachmentItems, onContextAttachmentItemsChange])
+
+  const requestFirstAttachment = useCallback(() => {
+    if (onUploadPromptClick) {
+      onUploadPromptClick()
+      return
+    }
+    openAttachmentPicker()
+  }, [onUploadPromptClick, openAttachmentPicker])
 
   /* Pick a MediaRecorder mimeType the browser actually supports. Chrome
      prefers audio/webm with Opus; Safari needs audio/mp4. Defaulting to
@@ -589,8 +649,11 @@ function AiFooter({
     .filter(Boolean)
     .join(' ')
 
+  const hasAttachments = attachmentItems.length > 0 || contextAttachmentItems.length > 0
+  const showUploadPrompt = Boolean(uploadPrompt) && !hasAttachments
+
   return (
-    <div className={`ai-footer ${className}`} style={fillContainerStyle}>
+    <div className={`ai-footer${hasAttachments ? ' ai-footer--attachments' : ''}${showUploadPrompt ? ' ai-footer--upload-prompt' : ''}${compactUploadActions ? ' ai-footer--compact-upload-actions' : ''} ${className}`} style={fillContainerStyle}>
       {suggestions.length > 0 && !processing && (
         <div className="ai-footer__suggestions">
           {suggestions.map((s, i) => (
@@ -606,6 +669,109 @@ function AiFooter({
         </div>
       )}
       <div className="ai-footer__group" style={groupStyle}>
+        {showUploadPrompt && !compactUploadActions && (
+          <button
+            type="button"
+            className="ai-footer__upload-prompt"
+            onClick={requestFirstAttachment}
+          >
+            <Icon name="upload-bold" size={16} aria-hidden="true" />
+            <span>{uploadPrompt}</span>
+          </button>
+        )}
+        {hasAttachments && (
+          <div className="ai-footer__attachments" aria-label="Files, contact center data, and connected resources">
+            <div className="ai-footer__file-attachments">
+              {attachmentItems.map((item) => (
+                <span className="ai-footer__attachment" key={item}>
+                  <span>{item}</span>
+                  <button
+                    type="button"
+                    aria-label={`Remove ${item}`}
+                    onClick={() => removeAttachment(item)}
+                  >
+                    <Icon name="cancel-bold" size={14} aria-hidden="true" />
+                  </button>
+                </span>
+              ))}
+              {contextAttachmentItems.map((item) => (
+                <span
+                  className="ai-footer__attachment ai-footer__attachment--context"
+                  data-attachment-kind="connected-data"
+                  key={item}
+                  title={`${item} from contact center data`}
+                >
+                  <span>{item}</span>
+                  <button
+                    type="button"
+                    aria-label={`Remove ${item}`}
+                    onClick={() => removeContextAttachment(item)}
+                  >
+                    <Icon name="cancel-bold" size={14} aria-hidden="true" />
+                  </button>
+                </span>
+              ))}
+              {attachmentOverflowCount > 0 && (
+                <span className="ai-footer__attachment ai-footer__attachment--count">
+                  <span>+{attachmentOverflowCount}</span>
+                  <button
+                    type="button"
+                    aria-label={`Remove ${attachmentOverflowCount} additional files`}
+                    onClick={() => onAttachmentOverflowCountChange?.(0)}
+                  >
+                    <Icon name="cancel-bold" size={14} aria-hidden="true" />
+                  </button>
+                </span>
+              )}
+            </div>
+            {connectedResources.length > 0 && (
+              <div className="ai-footer__connected-resources" aria-label="Connected integrations">
+                {connectedResources.map((resource) => {
+                  const resourceSlug = resource.toLowerCase().replace(/[^a-z0-9]+/g, '-')
+                  return (
+                    <span
+                      className={`ai-footer__resource-pill ai-footer__resource-pill--${resourceSlug}`}
+                      data-connected-resource={resource}
+                      key={resource}
+                      title={`${resource} connected`}
+                      aria-label={`${resource} connected`}
+                      role="img"
+                    >
+                      {resource === 'Snowflake' ? (
+                        <svg viewBox="0 0 20 20" aria-hidden="true">
+                          <path d="M10 2v16M3.07 6l13.86 8M3.07 14 16.93 6M6.54 3.99 13.46 16M13.46 3.99 6.54 16" />
+                          <circle cx="10" cy="10" r="1.7" />
+                        </svg>
+                      ) : resource === 'SharePoint' ? (
+                        <span className="ai-footer__sharepoint-mark" aria-hidden="true">
+                          <span>S</span>
+                          <i />
+                        </span>
+                      ) : resource === 'Salesforce' ? (
+                        <img src={salesforceLogo} alt="" aria-hidden="true" />
+                      ) : resource === 'ServiceNow' ? (
+                        <img src={serviceNowLogo} alt="" aria-hidden="true" />
+                      ) : resource === 'Webex' ? (
+                        <img src={webexLogo} alt="" aria-hidden="true" />
+                      ) : (
+                        <span className="ai-footer__resource-letter" aria-hidden="true">{resource.slice(0, 1)}</span>
+                      )}
+                    </span>
+                  )
+                })}
+              </div>
+            )}
+          </div>
+        )}
+        {(hasAttachments || showUploadPrompt) && (
+          <input
+            ref={attachmentInputRef}
+            className="ai-footer__attachment-input"
+            type="file"
+            multiple
+            onChange={handleAttachmentPick}
+          />
+        )}
         {cornerAction && (
           <div className="ai-footer__corner-action">
             {cornerAction}
@@ -632,13 +798,48 @@ function AiFooter({
             </div>
             <div className="ai-footer__action-bar">
                 <div className="ai-footer__footer-left">
-                  <button type="button" className="ai-footer__utility-btn" aria-label="Attach file">
-                    <Icon name="plus-bold" size={16} />
-                  </button>
-                  <button type="button" className="ai-footer__utility-btn" aria-label="Adjust prompt settings">
-                    <Icon name="adjust-horizontal-bold" size={16} />
-                  </button>
+                  {compactUploadActions && showUploadPrompt ? (
+                    <>
+                      <button
+                        type="button"
+                        className="ai-footer__utility-btn ai-footer__landing-action"
+                        aria-label="Upload files"
+                        onClick={requestFirstAttachment}
+                      >
+                        <Icon name="upload-bold" size={16} />
+                        <span>Upload files</span>
+                      </button>
+                      <button
+                        type="button"
+                        className="ai-footer__utility-btn ai-footer__landing-action"
+                        aria-label="Connect resources"
+                      >
+                        <Icon name="integrations-regular" size={16} />
+                        <span>Connect resources</span>
+                      </button>
+                    </>
+                  ) : (
+                    <>
+                      <button
+                        type="button"
+                        className="ai-footer__utility-btn"
+                        aria-label={hasAttachments ? 'Upload a file for this agent' : 'Attach file'}
+                        onClick={hasAttachments ? openAttachmentPicker : requestFirstAttachment}
+                      >
+                        <Icon name="plus-bold" size={16} />
+                      </button>
+                      <button type="button" className="ai-footer__utility-btn" aria-label="Adjust prompt settings">
+                        <Icon name="adjust-horizontal-bold" size={16} />
+                      </button>
+                    </>
+                  )}
                 </div>
+                {showSources && (
+                  <button type="button" className="ai-footer__sources-btn" aria-label="Choose knowledge sources">
+                    <span>All sources</span>
+                    <Icon name="arrow-down-bold" size={16} />
+                  </button>
+                )}
                 <div className="ai-footer__footer-right">
                   {voiceError && (
                     /* Inline error sits immediately to the left of the mic

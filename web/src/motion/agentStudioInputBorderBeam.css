@@ -1,0 +1,129 @@
+.app--ai[data-motion-system='v1']
+  .new-mvo-home--dialog-landing .agent-home__landing-composer {
+  position: relative;
+}
+
+.app--ai[data-motion-system='v1']
+  .new-mvo-home--dialog-landing .agent-home__landing-composer
+  .ai-footer--compact-upload-actions.ai-footer--upload-prompt
+  .ai-footer__group::before {
+  display: none !important;
+}
+
+.app--ai[data-motion-system='v1']
+  .new-mvo-home--dialog-landing
+  .agent-home__landing-composer
+  .ai-footer--compact-upload-actions.ai-footer--upload-prompt
+  .ai-footer__group,
+.app--ai[data-motion-system='v1']
+  .new-mvo-home--dialog-landing
+  .agent-home__landing-composer
+  .ai-footer--compact-upload-actions.ai-footer--upload-prompt
+  .ai-footer__group:hover,
+.app--ai[data-motion-system='v1']
+  .new-mvo-home--dialog-landing
+  .agent-home__landing-composer
+  .ai-footer--compact-upload-actions.ai-footer--upload-prompt
+  .ai-footer__group:active {
+  border: 1px solid rgba(255, 255, 255, 0.22) !important;
+}
+
+.app--ai[data-motion-system='v1']
+  .new-mvo-home--dialog-landing
+  .agent-home__landing-composer
+  .ai-footer--compact-upload-actions.ai-footer--upload-prompt
+  .ai-footer__group:focus-within {
+  border-color: rgba(100, 180, 250, 0.7) !important;
+  box-shadow: 0 0 0 2px rgba(100, 180, 250, 0.18) !important;
+}
+
+.agent-studio-input-border-beam {
+  position: absolute;
+  z-index: 2;
+  inset: -2px;
+  opacity: 0;
+  pointer-events: none;
+  animation-name: agentStudioInputBorderBeamFade;
+  animation-duration: var(--agent-studio-input-border-beam-duration);
+  animation-timing-function: var(--motion-easing-linear);
+  animation-delay: var(--agent-studio-input-border-beam-delay);
+  animation-fill-mode: both;
+}
+
+.agent-studio-input-border-beam svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+  filter:
+    drop-shadow(0 0 2px rgba(2, 200, 255, 0.32))
+    drop-shadow(0 0 4px rgba(255, 0, 127, 0.16));
+}
+
+.agent-studio-input-border-beam__glow {
+  position: absolute;
+  inset: 0;
+  clip-path: inset(2px round 16px);
+  filter: blur(8px) saturate(1.15) brightness(1.08) !important;
+  opacity: 0.58;
+}
+
+.agent-studio-input-border-beam__segment {
+  width: calc(100% - 4px);
+  height: calc(100% - 4px);
+  x: 2px;
+  y: 2px;
+  rx: 14px;
+  fill: none;
+  stroke-dasharray: 0.454 99.546;
+  stroke-dashoffset: calc(
+    100px - var(--gradient-border-beam-segment-offset, 0px)
+  );
+  stroke-linecap: round;
+  stroke-width: 1.5px;
+  vector-effect: non-scaling-stroke;
+  animation-name: agentStudioInputBorderBeamTravel;
+  animation-duration: var(--agent-studio-input-border-beam-duration);
+  animation-timing-function: var(--motion-easing-linear);
+  animation-delay: var(--agent-studio-input-border-beam-delay);
+  animation-fill-mode: both;
+}
+
+.agent-studio-input-border-beam__glow
+  .agent-studio-input-border-beam__segment {
+  stroke-width: 6px;
+}
+
+@keyframes agentStudioInputBorderBeamFade {
+  0% {
+    opacity: 0;
+  }
+
+  50% {
+    opacity: 1;
+  }
+
+  100% {
+    opacity: 0;
+  }
+}
+
+@keyframes agentStudioInputBorderBeamTravel {
+  from {
+    stroke-dashoffset: calc(
+      100px - var(--gradient-border-beam-segment-offset, 0px)
+    );
+  }
+
+  to {
+    stroke-dashoffset: calc(
+      -100px - var(--gradient-border-beam-segment-offset, 0px)
+    );
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .agent-studio-input-border-beam {
+    display: none;
+  }
+}

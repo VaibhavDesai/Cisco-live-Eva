@@ -1,0 +1,218 @@
+.agent-studio-motion-background {
+  --motion-duration-sustained: 1200ms;
+  --motion-duration-extended: 2400ms;
+  --motion-easing-entrance: cubic-bezier(0, 0, 0.2, 1);
+  --motion-easing-standard: cubic-bezier(0.44, 0, 0, 1);
+  position: fixed;
+  z-index: 1;
+  inset: 0;
+  isolation: isolate;
+  width: 100dvw;
+  height: 100dvh;
+  overflow: hidden;
+  background: #000;
+  pointer-events: none;
+}
+
+.agent-studio-motion-background__stage {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 1280px;
+  height: 720px;
+  transform-origin: 0 0;
+}
+
+.agent-studio-motion-background__ellipse-group {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 1280px;
+  height: 720px;
+  overflow: visible;
+  will-change: transform;
+}
+
+.agent-studio-motion-background[data-motion='rise']
+  .agent-studio-motion-background__ellipse-group {
+  transition: transform var(--motion-duration-sustained)
+    var(--motion-easing-entrance);
+}
+
+.agent-studio-motion-background[data-motion='move']
+  .agent-studio-motion-background__ellipse-group {
+  transition: transform var(--motion-duration-extended)
+    var(--motion-easing-standard);
+}
+
+.agent-studio-motion-background[data-motion='route']
+  .agent-studio-motion-background__ellipse-group {
+  transition: transform var(--motion-duration-extended)
+    var(--motion-easing-standard);
+}
+
+.agent-studio-motion-background__right-accent {
+  opacity: 1;
+  transition:
+    opacity var(--motion-duration-extended) var(--motion-easing-standard),
+    transform var(--motion-duration-extended) var(--motion-easing-standard);
+}
+
+.agent-studio-motion-background__artwork {
+  position: absolute;
+  top: -24px;
+  left: -48px;
+  overflow: visible;
+}
+
+.agent-studio-motion-background__webkit-fallback {
+  position: absolute;
+  top: -120px;
+  left: -160px;
+  display: none;
+  width: 1760px;
+  height: 1080px;
+  will-change: transform;
+  background:
+    radial-gradient(
+      ellipse 72% 82% at 58% 92%,
+      rgba(171, 221, 255, 0.92) 0%,
+      rgba(97, 149, 255, 0.82) 22%,
+      rgba(12, 23, 91, 0.56) 52%,
+      transparent 76%
+    ),
+    radial-gradient(
+      ellipse 14% 54% at 18% 100%,
+      rgba(203, 239, 105, 0.58) 0%,
+      rgba(255, 124, 0, 0.54) 30%,
+      rgba(103, 0, 129, 0.58) 62%,
+      transparent 84%
+    );
+}
+
+.agent-studio-motion-background__webkit-right-accent {
+  position: absolute;
+  top: -120px;
+  left: -160px;
+  display: none;
+  width: 1760px;
+  height: 1080px;
+  opacity: 1;
+  will-change: transform, opacity;
+  background:
+    radial-gradient(
+      ellipse 34% 48% at 96% 94%,
+      rgba(203, 239, 105, 0.58) 0%,
+      rgba(255, 124, 0, 0.54) 26%,
+      rgba(103, 0, 129, 0.58) 58%,
+      transparent 82%
+    );
+}
+
+/* WebKit can cull large, filtered inline SVG roots while their transformed
+   ancestor crosses the viewport boundary. Keep the WX1 palette and the same
+   pose transform, but render the field as CSS gradients on that engine. */
+.agent-studio-motion-background[data-renderer='css']
+  .agent-studio-motion-background__webkit-fallback {
+  display: block;
+}
+
+.agent-studio-motion-background[data-renderer='css']
+  .agent-studio-motion-background__webkit-right-accent {
+  display: block;
+}
+
+.agent-studio-motion-background[data-renderer='css'][data-pose='hidden']
+  .agent-studio-motion-background__webkit-fallback {
+  transform: translate3d(-229.5702813720703px, 743.6270294189453px, 0);
+}
+
+.agent-studio-motion-background[data-renderer='css'][data-pose='hidden']
+  .agent-studio-motion-background__webkit-right-accent {
+  transform: translate3d(-229.5702813720703px, 823.6270294189453px, 0);
+}
+
+.agent-studio-motion-background[data-renderer='css'][data-pose='wake']
+  .agent-studio-motion-background__webkit-fallback {
+  transform: translate3d(-229.5702813720703px, -36.37297058105469px, 0);
+}
+
+.agent-studio-motion-background[data-renderer='css'][data-pose='wake']
+  .agent-studio-motion-background__webkit-right-accent {
+  transform: translate3d(-229.5702813720703px, 43.62702941894531px, 0);
+}
+
+.agent-studio-motion-background[data-renderer='css'][data-pose='settled']
+  .agent-studio-motion-background__webkit-fallback {
+  transform: translate3d(0, -40px, 0);
+}
+
+.agent-studio-motion-background[data-renderer='css'][data-pose='settled']
+  .agent-studio-motion-background__webkit-right-accent {
+  transform: translate3d(0, 40px, 0);
+}
+
+.agent-studio-motion-background[data-renderer='css'][data-pose='workspace']
+  .agent-studio-motion-background__webkit-fallback,
+.agent-studio-motion-background[data-renderer='css'][data-pose='workspace']
+  .agent-studio-motion-background__webkit-right-accent {
+  transform: translate3d(0, 40px, 0);
+}
+
+.agent-studio-motion-background[data-renderer='css'][data-motion='rise']
+  .agent-studio-motion-background__webkit-fallback,
+.agent-studio-motion-background[data-renderer='css'][data-motion='rise']
+  .agent-studio-motion-background__webkit-right-accent {
+  transition: transform var(--motion-duration-sustained)
+    var(--motion-easing-entrance);
+}
+
+.agent-studio-motion-background[data-renderer='css'][data-motion='move']
+  .agent-studio-motion-background__webkit-fallback,
+.agent-studio-motion-background[data-renderer='css'][data-motion='move']
+  .agent-studio-motion-background__webkit-right-accent {
+  transition: transform var(--motion-duration-extended)
+    var(--motion-easing-standard);
+}
+
+.agent-studio-motion-background[data-renderer='css'][data-motion='route']
+  .agent-studio-motion-background__webkit-fallback,
+.agent-studio-motion-background[data-renderer='css'][data-motion='route']
+  .agent-studio-motion-background__webkit-right-accent {
+  transition:
+    transform var(--motion-duration-extended) var(--motion-easing-standard),
+    opacity var(--motion-duration-extended) var(--motion-easing-standard);
+}
+
+.agent-studio-motion-background[data-renderer='css']
+  .agent-studio-motion-background__ellipse-group {
+  display: none;
+}
+
+.agent-studio-motion-background__grain {
+  position: absolute;
+  inset: 0;
+  background-repeat: repeat;
+  background-size: 160px 160px;
+  mix-blend-mode: overlay;
+  opacity: 0.08;
+  pointer-events: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .agent-studio-motion-background__ellipse-group {
+    transition: none !important;
+    will-change: auto;
+  }
+
+  .agent-studio-motion-background__webkit-fallback {
+    transition: none !important;
+    will-change: auto;
+  }
+
+  .agent-studio-motion-background__webkit-right-accent,
+  .agent-studio-motion-background__right-accent {
+    transition: none !important;
+    will-change: auto;
+  }
+}

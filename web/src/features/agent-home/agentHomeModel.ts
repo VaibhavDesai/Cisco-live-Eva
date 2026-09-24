@@ -207,7 +207,7 @@ export interface SessionStorageLike {
 
 export const DEMO_HOME_MODE_STORAGE_KEY = 'eva.agent-home.demo-mode';
 
-export const DEFAULT_DEMO_HOME_MODE: DemoHomeMode = 'recurring';
+export const DEFAULT_DEMO_HOME_MODE: DemoHomeMode = 'first-time';
 
 export const AGENT_HOME_REFERENCE_TIME = '2026-08-09T09:47:00-07:00';
 

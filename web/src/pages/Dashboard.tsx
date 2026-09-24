@@ -5,6 +5,7 @@ import Button from '../components/shared/Button';
 import { Icon } from '../icons';
 import EvaChatExperience from '../features/eva/EvaChatExperience';
 import AgentHomeDashboard from '../features/agent-home/AgentHomeDashboard';
+import DialogProvenanceLabel from '../features/agent-home/DialogProvenanceLabel';
 import { useAgentHomeScenario } from '../features/agent-home/AgentHomeScenarioContext';
 import {
   buildAgentHomeSnapshot,
@@ -23,6 +24,7 @@ import {
   type AgentHomeTemplateId,
 } from '../features/agent-home/agentHomeTemplateCatalog';
 import '../features/agent-home/agent-home.css';
+import '../features/agent-home/dialog-os-landing.css';
 
 type DashboardSurface = 'home' | 'guided';
 
@@ -209,8 +211,29 @@ export default function Dashboard() {
     );
   }
 
+  const firstTimeLanding = mode === 'first-time' && agentHomeFlow === 'home';
+  const homeDashboard = (
+    <div className="new-mvo-home__dashboard">
+      <AgentHomeDashboard
+        mode={mode}
+        creationAudience={mode}
+        showGreeting={false}
+        onFirstTimeFlowChange={setAgentHomeFlow}
+        snapshot={snapshot}
+        onAction={handleAction}
+        onGuidedComposerSend={openGuidedIntake}
+        onStartFromScratch={() => setIsQuickCreateModalOpen(true)}
+        onUseTemplate={handleUseTemplate}
+        onSendDemoMessage={handleDemoMessage}
+        onOpenFleetAgent={openFleetAgent}
+        onOpenWorkflowActivity={openWorkflowActivity}
+        existingAgents={existingAgents}
+      />
+    </div>
+  );
+
   return (
-    <div className={`new-mvo-home new-mvo-home--landing${agentHomeFlow !== 'home' ? ' new-mvo-home--subflow' : ''} primary-content eva-agents-landing eva-agents-landing--flush`}>
+    <div className={`new-mvo-home new-mvo-home--landing new-mvo-home--${mode}${agentHomeFlow !== 'home' ? ' new-mvo-home--subflow' : ''}${firstTimeLanding ? ' new-mvo-home--dialog-landing' : ''} primary-content eva-agents-landing eva-agents-landing--flush`}>
       <div className="eva-first-interface eva-first-interface--landing eva-landing-shell new-mvo-home__landing-shell">
         {agentHomeFlow === 'home' && (
           <section
@@ -219,28 +242,16 @@ export default function Dashboard() {
           >
             <div className="eva-landing-hero-brand">
               <h1 id="agent-home-title">{mode === 'recurring' ? 'Hi Jackie' : 'AI Agent Studio'}</h1>
+              {mode === 'first-time' && <DialogProvenanceLabel />}
             </div>
-            {mode === 'first-time' && (
-              <h2>Build, deploy, and manage AI agents for every interaction.</h2>
-            )}
           </section>
         )}
-        <div className="new-mvo-home__dashboard">
-          <AgentHomeDashboard
-            mode={mode}
-            creationAudience={mode}
-            showGreeting={false}
-            onFirstTimeFlowChange={setAgentHomeFlow}
-            snapshot={snapshot}
-            onAction={handleAction}
-            onGuidedComposerSend={openGuidedIntake}
-            onStartFromScratch={() => setIsQuickCreateModalOpen(true)}
-            onUseTemplate={handleUseTemplate}
-            onSendDemoMessage={handleDemoMessage}
-            onOpenFleetAgent={openFleetAgent}
-            onOpenWorkflowActivity={openWorkflowActivity}
-            existingAgents={existingAgents}
-          />
+        <div
+          className={firstTimeLanding ? 'new-mvo-home__final-content' : undefined}
+          style={firstTimeLanding ? undefined : { display: 'contents' }}
+        >
+          {firstTimeLanding && <h2>Build, deploy and manage AI agents for end-to-end journeys.</h2>}
+          {homeDashboard}
         </div>
       </div>
     </div>
