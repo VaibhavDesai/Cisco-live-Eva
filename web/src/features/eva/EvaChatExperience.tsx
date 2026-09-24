@@ -475,6 +475,8 @@ const buildChoiceOnlyGuidedStart = (initialPrompt = ''): EvaMessage[] => {
   const prompt = initialPrompt.trim();
   if (!prompt) return [CHOICE_ONLY_GUIDED_START];
 
+  if (is360FeedbackAgentPrompt(prompt)) return [{ role: 'user', text: prompt }];
+
   return [
     { role: 'user', text: prompt, originStep: FAMILY_CHOICE_ORIGIN },
     {
@@ -645,6 +647,13 @@ const CONNECT_RETAIL_PHONE_LATER_LABEL = 'Connect phone number later';
 const RETAIL_TRANSITION_PROMPT = 'transition';
 const STUDIO_TRANSITION_MS = 420;
 
+const is360FeedbackAgentPrompt = (prompt: string) => {
+  const text = prompt.normalize('NFKC').toLowerCase();
+  return /\b(?:360|three[\s-]*sixty)\b/.test(text)
+    && /\bfeedback\b/.test(text)
+    && /\b(?:agent|assistant)\b/.test(text);
+};
+
 const RETAIL_PHONE_NUMBER_OPTIONS = [
   {
     value: '+1 629 263 5773',
@@ -726,6 +735,7 @@ const RETAIL_RECOMMENDED_WELCOME_MESSAGES = [
 ];
 
 type RetailWorkflowContext = {
+  scenario?: 'feedback360';
   targetDescription: string;
   agentName: string;
   description: string;
@@ -762,6 +772,20 @@ const VIP_LOGISTICS_WORKFLOW_CONTEXT: RetailWorkflowContext = {
   discoveryAssistantName: 'AI Assistant is checking VIP operations context...',
   discoveryContent: 'I’m checking VIP reservation details and connected operations systems before choosing setup options.',
   discoveryCompleteText: 'I found the connected Eagle Green operations systems. Choose the channels this agent should support.',
+};
+
+const FEEDBACK360_WORKFLOW_CONTEXT: RetailWorkflowContext = {
+  scenario: 'feedback360',
+  targetDescription: '360 feedback for a leader',
+  agentName: '360 Feedback Agent',
+  description: 'Collect confidential 360 feedback from peers, direct reports, and a manager, then prepare an anonymized, themed development summary.',
+  welcomeMessage: "Hi, I'm collecting confidential feedback for [Leader]'s development review. Thank you for taking the time to complete this — Are you ready to get started?",
+  knowledgeBases: [],
+  customRule: 'Combine responses into de-identified themes. Escalate serious harassment, safety, or ethics concerns to a human HR owner.',
+  escalationSummary: 'HR escalation safeguards',
+  discoveryAssistantName: 'AI Assistant is reviewing 360 feedback sources...',
+  discoveryContent: 'Check the Following:',
+  discoveryCompleteText: 'I identified the sources to review for this 360 Feedback Agent. Include Voice, Digital and Video.',
 };
 
 const titleCaseShortBusinessName = (value: string) => value
@@ -813,6 +837,21 @@ const RETAIL_DISCOVERY_ROWS = [
   },
 ];
 
+const FEEDBACK360_DISCOVERY_ROWS = [
+  {
+    title: 'HR System / Org Chart (reporting structure)',
+    detail: 'Recommended for identifying the leader’s peers, direct reports, and manager.',
+  },
+  {
+    title: 'Employee Handbook',
+    detail: 'Recommended for confidentiality and employee policy guidance.',
+  },
+  {
+    title: 'Prior Review Cycle Summary',
+    detail: 'Recommended for development review context.',
+  },
+];
+
 const VIP_LOGISTICS_DISCOVERY_ROWS = [
   {
     title: 'Hours of operation',
@@ -847,6 +886,13 @@ const RETAIL_RECOMMENDED_KNOWLEDGE_BASES = [
   },
 ];
 
+const FEEDBACK360_RECOMMENDED_KNOWLEDGE_BASES = [
+  { name: 'Company Directory & Organizational Chart', description: 'Confirm approved reporting relationships and participant groups.' },
+  { name: 'Company Intranet / Review Cycle Policy', description: 'Use approved review cycle and confidentiality guidance.' },
+  { name: 'Leadership Competency Framework', description: 'Organize feedback around leadership behaviors and impact.' },
+  { name: 'HR System', description: 'Use approved employee and reporting information.' },
+];
+
 const VIP_LOGISTICS_RECOMMENDED_KNOWLEDGE_BASES = [
   {
     name: 'Internal Staffing & Scheduling System',
@@ -877,6 +923,14 @@ const RETAIL_RECOMMENDED_ACTIONS = [
     providerLogoSrc: providerStripeLogo,
     description: 'Check card charges, deposits, refunds, and receipt issues for store orders.',
   },
+];
+
+const FEEDBACK360_RECOMMENDED_ACTIONS = [
+  { name: 'Generate Anonymized Theme Summary', provider: '', providerLogoSrc: '', description: 'Combine feedback into de-identified themes for development review.' },
+  { name: 'Escalate to HR (if guardrails flagged)', provider: '', providerLogoSrc: '', description: 'Route serious harassment, safety, or ethics concerns to a human HR owner.' },
+  { name: 'Share Summary in Webex Space', provider: '', providerLogoSrc: '', description: 'Share an approved pooled summary in a Webex space.' },
+  { name: 'Share Summary via Email', provider: '', providerLogoSrc: '', description: 'Send an approved pooled summary by email.' },
+  { name: 'Send Reminder to Incomplete Respondents', provider: '', providerLogoSrc: '', description: 'Remind participants who have not completed their feedback.' },
 ];
 
 const VIP_LOGISTICS_CONNECTED_ACTIONS = ['Check Escalation Status'];
@@ -915,6 +969,12 @@ const RETAIL_CHANNEL_OPTIONS = [
     title: 'Video',
     description: 'Support video conversations with product guidance and store answers.',
   },
+];
+
+const FEEDBACK360_CHANNEL_OPTIONS = [
+  { label: RETAIL_VOICE_LABEL, icon: 'phone', title: 'Voice', description: 'Collect confidential feedback through a guided voice conversation.' },
+  { label: RETAIL_DIGITAL_LABEL, icon: 'chat', title: 'Digital', description: 'Collect feedback through chat and messaging.' },
+  { label: RETAIL_VIDEO_LABEL, icon: 'video', title: 'Video', description: 'Support a guided video feedback conversation.' },
 ];
 
 const CONTACT_CENTER_INTAKE_CHANNEL_OPTIONS = [
@@ -1519,7 +1579,7 @@ export default function EvaChatExperience({
       .filter(Boolean) ?? []
   ));
   const [unifiedAgentGoal, setUnifiedAgentGoal] = useState('');
-  const continuityGoalDraft = choiceOnlyGuidedFlow && initialGuidedPrompt.trim()
+  const continuityGoalDraft = choiceOnlyGuidedFlow && initialGuidedPrompt.trim() && !is360FeedbackAgentPrompt(initialGuidedPrompt)
     ? buildContinuityAgentGoalDraft(initialGuidedPrompt)
     : null;
   const [generatedGoalSystemPrompt, setGeneratedGoalSystemPrompt] = useState('');
@@ -1580,7 +1640,7 @@ export default function EvaChatExperience({
 
   useEffect(() => {
     const goal = initialGuidedPrompt.trim();
-    if (!choiceOnlyGuidedFlow || !goal || generatedGoalRequestRef.current === goal) return;
+    if (!choiceOnlyGuidedFlow || !goal || is360FeedbackAgentPrompt(goal) || generatedGoalRequestRef.current === goal) return;
 
     generatedGoalRequestRef.current = goal;
     let cancelled = false;
@@ -1620,22 +1680,41 @@ export default function EvaChatExperience({
   const [identityConfigured, setIdentityConfigured] = useState(false);
   const [memoryConfigured, setMemoryConfigured] = useState(false);
   const [handoffConfigured, setHandoffConfigured] = useState(false);
-  const [retailPrototypeStep, setRetailPrototypeStep] = useState<RetailPrototypeStep>('idle');
+  const [retailPrototypeStep, setRetailPrototypeStep] = useState<RetailPrototypeStep>(
+    choiceOnlyGuidedFlow && is360FeedbackAgentPrompt(initialGuidedPrompt) ? 'discovering' : 'idle',
+  );
   const [retailSelectedChannel, setRetailSelectedChannel] = useState<string | null>(null);
-  const [retailSelectedChannels, setRetailSelectedChannels] = useState<string[]>([RETAIL_VOICE_LABEL]);
+  const [retailSelectedChannels, setRetailSelectedChannels] = useState<string[]>(
+    choiceOnlyGuidedFlow && is360FeedbackAgentPrompt(initialGuidedPrompt)
+      ? [RETAIL_VOICE_LABEL, RETAIL_DIGITAL_LABEL, RETAIL_VIDEO_LABEL]
+      : [RETAIL_VOICE_LABEL],
+  );
   const [retailSelectedPhoneNumber, setRetailSelectedPhoneNumber] = useState<string | null>(null);
   const [phoneNumberDeferred, setPhoneNumberDeferred] = useState(restoredEvaSession?.phoneNumberDeferred ?? false);
   const [retailDiscoveryProgress, setRetailDiscoveryProgress] = useState(0);
   const [logisticsDiscoveryActive, setLogisticsDiscoveryActive] = useState(false);
   const [logisticsDiscoveryProgress, setLogisticsDiscoveryProgress] = useState(0);
-  const [retailWorkflowContext, setRetailWorkflowContext] = useState<RetailWorkflowContext>(DEFAULT_RETAIL_WORKFLOW_CONTEXT);
+  const [retailWorkflowContext, setRetailWorkflowContext] = useState<RetailWorkflowContext>(
+    choiceOnlyGuidedFlow && is360FeedbackAgentPrompt(initialGuidedPrompt)
+      ? FEEDBACK360_WORKFLOW_CONTEXT
+      : DEFAULT_RETAIL_WORKFLOW_CONTEXT,
+  );
+  const is360FeedbackWorkflow = retailWorkflowContext.scenario === 'feedback360';
   const isVipLogisticsWorkflow = retailWorkflowContext.targetDescription === VIP_LOGISTICS_WORKFLOW_CONTEXT.targetDescription;
-  const retailRecommendedKnowledgeBases = isVipLogisticsWorkflow
-    ? VIP_LOGISTICS_RECOMMENDED_KNOWLEDGE_BASES
-    : RETAIL_RECOMMENDED_KNOWLEDGE_BASES;
-  const retailRecommendedActions = isVipLogisticsWorkflow
-    ? VIP_LOGISTICS_RECOMMENDED_ACTIONS
-    : RETAIL_RECOMMENDED_ACTIONS;
+  const retailRecommendedKnowledgeBases = is360FeedbackWorkflow
+    ? FEEDBACK360_RECOMMENDED_KNOWLEDGE_BASES
+    : isVipLogisticsWorkflow
+      ? VIP_LOGISTICS_RECOMMENDED_KNOWLEDGE_BASES
+      : RETAIL_RECOMMENDED_KNOWLEDGE_BASES;
+  const retailRecommendedActions = is360FeedbackWorkflow
+    ? FEEDBACK360_RECOMMENDED_ACTIONS
+    : isVipLogisticsWorkflow
+      ? VIP_LOGISTICS_RECOMMENDED_ACTIONS
+      : RETAIL_RECOMMENDED_ACTIONS;
+  const retailChannelOptions = is360FeedbackWorkflow ? FEEDBACK360_CHANNEL_OPTIONS : RETAIL_CHANNEL_OPTIONS;
+  const retailDiscoveryRows = is360FeedbackWorkflow ? FEEDBACK360_DISCOVERY_ROWS : RETAIL_DISCOVERY_ROWS;
+  const retailPhoneLaterLabel = is360FeedbackWorkflow ? 'No Preference' : CONNECT_RETAIL_PHONE_LATER_LABEL;
+  const retailCreateAgentLabel = is360FeedbackWorkflow ? 'Create Agent' : COMPLETE_RETAIL_AGENT_LABEL;
   const [retailAgentNameInput, setRetailAgentNameInput] = useState(RETAIL_RECEPTIONIST_AGENT_NAME);
   const [retailAgentNameInputVisible, setRetailAgentNameInputVisible] = useState(false);
   const [retailWelcomeInput, setRetailWelcomeInput] = useState(RETAIL_RECOMMENDED_WELCOME_MESSAGES[0].text);
@@ -3238,14 +3317,21 @@ export default function EvaChatExperience({
     }));
   };
 
-  const seedRetailReceptionistDraft = (intent?: EvaVoiceAgentWorkflowIntent) => {
-    const context = buildRetailWorkflowContext(intent);
+  const seedRetailReceptionistDraft = (intent?: EvaVoiceAgentWorkflowIntent, feedback360 = false) => {
+    const context = feedback360 ? FEEDBACK360_WORKFLOW_CONTEXT : buildRetailWorkflowContext(intent);
     const baseDraft = EVA_TEMPLATES.find(template => template.id === 'customer-support')?.draft ?? EVA_TEMPLATES[0].draft;
     const nextDraft: EvaAgentDraft = {
       ...baseDraft,
       name: context.agentName,
       description: context.description,
-      goals: [
+      knowledgeBases: feedback360 ? [] : baseDraft.knowledgeBases,
+      actions: feedback360 ? [] : baseDraft.actions,
+      security: feedback360 ? [context.customRule] : baseDraft.security,
+      goals: feedback360 ? [
+        'Collect confidential feedback from a leader’s peers, direct reports, and manager',
+        'Produce an anonymized, themed summary for development review',
+        'Escalate serious harassment, safety, or ethics concerns to a human HR owner',
+      ] : [
         'Answer common questions with clear, approved business information',
         'Check product or service details from connected systems',
         'Escalate urgent, complex, or manager-level requests to the right person',
@@ -3254,7 +3340,7 @@ export default function EvaChatExperience({
 
     setRetailWorkflowContext(context);
     setLandingMode('build');
-    setSelectedTemplateId('customer-support');
+    setSelectedTemplateId(feedback360 ? null : 'customer-support');
     setDraft(nextDraft);
     setAgentName(context.agentName);
     setAgentDescription(context.description);
@@ -3269,32 +3355,37 @@ export default function EvaChatExperience({
       language: 'en-US',
     }));
     setChannelType('voice');
-    setSelectedChannels(['voice']);
+    setSelectedChannels(feedback360 ? ['voice', 'digital', 'video'] : ['voice']);
     setSelectedDigitalChannels(['chat']);
-    setChannelPhoneNumber(CHANNEL_PHONE_NUMBER_OPTIONS[0].value);
-    setPhoneNumberDeferred(false);
+    setChannelPhoneNumber(feedback360 ? '' : CHANNEL_PHONE_NUMBER_OPTIONS[0].value);
+    setPhoneNumberDeferred(feedback360);
     setSelectedKnowledgeBases(context.knowledgeBases);
-    setSelectedActions(['Inventory lookup', 'Create support case']);
+    setSelectedActions(feedback360 ? [] : ['Inventory lookup', 'Create support case']);
     setCustomRules([context.customRule]);
     setRetailAgentNameInput(context.agentName);
     setRetailAgentNameInputVisible(false);
     setRetailWelcomeInput(context.welcomeMessage);
     setRetailWelcomeInputVisible(false);
-    setRetailSelectedChannels([RETAIL_VOICE_LABEL]);
+    setRetailSelectedChannels(feedback360
+      ? [RETAIL_VOICE_LABEL, RETAIL_DIGITAL_LABEL, RETAIL_VIDEO_LABEL]
+      : [RETAIL_VOICE_LABEL]);
     return context;
   };
 
-  const beginRetailReceptionistStory = (intent?: EvaVoiceAgentWorkflowIntent) => {
-    const context = seedRetailReceptionistDraft(intent);
+  const beginRetailReceptionistStory = (intent?: EvaVoiceAgentWorkflowIntent, feedback360 = false) => {
+    const context = seedRetailReceptionistDraft(intent, feedback360);
+    const discoveryRows = feedback360 ? FEEDBACK360_DISCOVERY_ROWS : RETAIL_DISCOVERY_ROWS;
     setGuidanceVisible(false);
     setEvaThinking(false);
     setFreeChatActive(true);
     setShowOtherTemplates(false);
     setRetailPrototypeStep('discovering');
-    setRetailSelectedChannel(RETAIL_VOICE_LABEL);
-    setRetailSelectedChannels([RETAIL_VOICE_LABEL]);
+    setRetailSelectedChannel(feedback360 ? 'Voice + Digital + Video' : RETAIL_VOICE_LABEL);
+    setRetailSelectedChannels(feedback360
+      ? [RETAIL_VOICE_LABEL, RETAIL_DIGITAL_LABEL, RETAIL_VIDEO_LABEL]
+      : [RETAIL_VOICE_LABEL]);
     setRetailSelectedPhoneNumber(null);
-    setPhoneNumberDeferred(false);
+    setPhoneNumberDeferred(feedback360);
     setRetailDiscoveryProgress(0);
     setConversationalOnboardingStep('idle');
     if (retailDiscoveryTimerRef.current) {
@@ -3305,8 +3396,8 @@ export default function EvaChatExperience({
     }
     retailDiscoveryTimerRef.current = window.setInterval(() => {
       setRetailDiscoveryProgress(prev => {
-        const next = Math.min(prev + 1, RETAIL_DISCOVERY_ROWS.length);
-        if (next >= RETAIL_DISCOVERY_ROWS.length && retailDiscoveryTimerRef.current) {
+        const next = Math.min(prev + 1, discoveryRows.length);
+        if (next >= discoveryRows.length && retailDiscoveryTimerRef.current) {
           window.clearInterval(retailDiscoveryTimerRef.current);
           retailDiscoveryTimerRef.current = null;
           window.setTimeout(() => {
@@ -3322,6 +3413,13 @@ export default function EvaChatExperience({
       });
     }, 700);
   };
+
+  const feedback360AutoStartRef = useRef(false);
+  useEffect(() => {
+    if (!choiceOnlyGuidedFlow || !is360FeedbackAgentPrompt(initialGuidedPrompt) || feedback360AutoStartRef.current) return;
+    feedback360AutoStartRef.current = true;
+    beginRetailReceptionistStory(undefined, true);
+  }, [choiceOnlyGuidedFlow, initialGuidedPrompt]);
 
   const jumpToRetailActionReview = () => {
     if (retailDiscoveryTimerRef.current) {
@@ -3384,7 +3482,9 @@ export default function EvaChatExperience({
     setChannelType('voice');
     setRetailPrototypeStep('phone');
     addOnboardingAssistantMessage(
-      'Which connected phone number should this agent answer before we preview it?',
+      is360FeedbackWorkflow
+        ? 'Connected Phone Number: No Preference. Choose a connected number if needed, or continue with No Preference.'
+        : 'Which connected phone number should this agent answer before we preview it?',
       CHANNEL_PHONE_NUMBER_OPTIONS.map(option => option.label),
       'retail-phone-choice',
     );
@@ -3407,7 +3507,9 @@ export default function EvaChatExperience({
     setChannelType('voice');
     setRetailPrototypeStep('previewing');
     addOnboardingAssistantMessage(
-      'Here is a live preview of the receptionist agent. Start the call to simulate how callers will talk with the agent you are building.',
+      is360FeedbackWorkflow
+        ? 'Here is a preview of the 360 Feedback Agent. Start the conversation to see how a participant can share feedback.'
+        : 'Here is a live preview of the receptionist agent. Start the call to simulate how callers will talk with the agent you are building.',
       undefined,
       'retail-inline-preview',
     );
@@ -3448,10 +3550,10 @@ export default function EvaChatExperience({
     if (channels.includes(RETAIL_DIGITAL_LABEL)) {
       setSelectedDigitalChannels(['chat']);
       setDigitalChannel('chat');
-      setDigitalChannelAddress('acme-electronics-san-jose');
+      setDigitalChannelAddress(is360FeedbackWorkflow ? '360-feedback-agent' : 'acme-electronics-san-jose');
     }
     if (channels.includes(RETAIL_VIDEO_LABEL) && !channels.includes(RETAIL_DIGITAL_LABEL)) {
-      setDigitalChannelAddress('acme-electronics-video');
+      setDigitalChannelAddress(is360FeedbackWorkflow ? '360-feedback-video' : 'acme-electronics-video');
     }
     setRetailPrototypeStep('agent-name');
     if (appendUserMessage) {
@@ -3481,17 +3583,25 @@ export default function EvaChatExperience({
         return true;
       }
 
-      addOnboardingAssistantMessage('Voice is selected by default. Add Digital or Video too, then continue with the selected channels.', undefined, 'retail-channel-choice');
+      addOnboardingAssistantMessage(
+        is360FeedbackWorkflow
+          ? 'Voice, Digital and Video are selected. Continue with these channels or change the selection.'
+          : 'Voice is selected by default. Add Digital or Video too, then continue with the selected channels.',
+        undefined,
+        'retail-channel-choice',
+      );
       return true;
     }
 
     if (retailPrototypeStep === 'phone') {
-      if (answer.trim() === CONNECT_RETAIL_PHONE_LATER_LABEL) {
+      if (answer.trim() === retailPhoneLaterLabel) {
         setRetailSelectedPhoneNumber(null);
         setPhoneNumberDeferred(true);
         setRetailPrototypeStep('ready-to-preview');
         addOnboardingAssistantMessage(
-          `No problem. ${agentName} is ready with the connected knowledge bases, recommended actions, voice channel, ${retailWorkflowContext.escalationSummary}, and your selected greeting. I will flag the phone number connection as a go-live step. Preview the agent next or skip to creation.`,
+          is360FeedbackWorkflow
+            ? `${agentName} is ready with Voice, Digital and Video and your welcome message. No phone number is selected. Review the knowledge and action recommendations, then preview or create the agent.`
+            : `No problem. ${agentName} is ready with the connected knowledge bases, recommended actions, voice channel, ${retailWorkflowContext.escalationSummary}, and your selected greeting. I will flag the phone number connection as a go-live step. Preview the agent next or skip to creation.`,
           undefined,
           'retail-final-actions',
         );
@@ -3505,7 +3615,9 @@ export default function EvaChatExperience({
       setPhoneNumberDeferred(false);
       setRetailPrototypeStep('ready-to-preview');
       addOnboardingAssistantMessage(
-        `Perfect. ${agentName} is ready with the connected knowledge bases, recommended actions, voice channel, ${nextPhoneNumber}, ${retailWorkflowContext.escalationSummary}, and your selected greeting. Preview the agent next or skip to creation.`,
+        is360FeedbackWorkflow
+          ? `${agentName} is ready with Voice, Digital and Video, your welcome message, and ${nextPhoneNumber}. Review the knowledge and action recommendations, then preview or create the agent.`
+          : `Perfect. ${agentName} is ready with the connected knowledge bases, recommended actions, voice channel, ${nextPhoneNumber}, ${retailWorkflowContext.escalationSummary}, and your selected greeting. Preview the agent next or skip to creation.`,
         undefined,
         'retail-final-actions',
       );
@@ -3524,7 +3636,9 @@ export default function EvaChatExperience({
       setRetailWelcomeInput(retailWorkflowContext.welcomeMessage);
       setRetailWelcomeInputVisible(false);
       addOnboardingAssistantMessage(
-        'Here’s a suggested welcome message. Use it as is or edit it before continuing.',
+        is360FeedbackWorkflow
+          ? 'Suggested Welcome Message. Use it as is or edit it before continuing.'
+          : 'Here’s a suggested welcome message. Use it as is or edit it before continuing.',
         undefined,
         'retail-welcome-choice',
       );
@@ -3536,7 +3650,9 @@ export default function EvaChatExperience({
       setWelcomeMessage(nextWelcome);
       setRetailPrototypeStep('knowledge');
       addOnboardingAssistantMessage(
-        'Choose the knowledge sources this agent can use.',
+        is360FeedbackWorkflow
+          ? 'Connected/Recommended Knowledge Basis. Choose the sources to include in the plan.'
+          : 'Choose the knowledge sources this agent can use.',
         undefined,
         'retail-knowledge-choice',
       );
@@ -3552,7 +3668,9 @@ export default function EvaChatExperience({
             : [...prev, matchedKnowledge.name]
         ));
         addOnboardingAssistantMessage(
-          `Added ${matchedKnowledge.name}. You can enable another recommended knowledge base or continue to actions.`,
+          is360FeedbackWorkflow
+            ? `Selected ${matchedKnowledge.name}. Choose another recommended knowledge base or continue to actions.`
+            : `Added ${matchedKnowledge.name}. You can enable another recommended knowledge base or continue to actions.`,
           undefined,
           'retail-knowledge-choice',
         );
@@ -3562,7 +3680,9 @@ export default function EvaChatExperience({
       if (answer.trim() === RETAIL_CONTINUE_TO_ACTIONS_LABEL || normalized.includes('action')) {
         setRetailPrototypeStep('actions');
         addOnboardingAssistantMessage(
-          'Choose the actions this agent can run.',
+          is360FeedbackWorkflow
+            ? 'Connected/Recommended Actions. Choose the actions to include in the plan.'
+            : 'Choose the actions this agent can run.',
           undefined,
           'retail-actions-choice',
         );
@@ -3579,7 +3699,9 @@ export default function EvaChatExperience({
             : [...prev, matchedAction.name]
         ));
         addOnboardingAssistantMessage(
-          `Added ${matchedAction.name}. You can enable another integration or continue.`,
+          is360FeedbackWorkflow
+            ? `Selected ${matchedAction.name}. Choose another recommended action or continue.`
+            : `Added ${matchedAction.name}. You can enable another integration or continue.`,
           undefined,
           'retail-actions-choice',
         );
@@ -3600,7 +3722,9 @@ export default function EvaChatExperience({
       if (normalized.includes('skip')) {
         setRetailPrototypeStep('ready-to-create');
         addOnboardingAssistantMessage(
-          `No problem. ${agentName} is ready with the connected knowledge bases, recommended actions, voice channel, ${retailWorkflowContext.escalationSummary}, and your selected greeting. You can complete creation now or continue into AI Agent Studio for advanced configuration.`,
+          is360FeedbackWorkflow
+            ? `${agentName} is ready to create with the selected channels and welcome message. Review knowledge, actions, connections, and confidentiality settings before use.`
+            : `No problem. ${agentName} is ready with the connected knowledge bases, recommended actions, voice channel, ${retailWorkflowContext.escalationSummary}, and your selected greeting. You can complete creation now or continue into AI Agent Studio for advanced configuration.`,
           undefined,
           'retail-complete-actions',
         );
@@ -4127,6 +4251,11 @@ export default function EvaChatExperience({
       return;
     }
 
+    if (is360FeedbackAgentPrompt(text)) {
+      beginRetailReceptionistStory(undefined, true);
+      return;
+    }
+
     const promptFamily = matchNewMvoPromptFamily(text);
     if (promptFamily) {
       beginFamilyIntake(promptFamily, { outcome: text.trim() }, text);
@@ -4265,12 +4394,13 @@ export default function EvaChatExperience({
       (retailPrototypeStep === 'welcome' && (
         trimmed === RETAIL_WELCOME_CUSTOM_LABEL ||
         trimmed === retailWelcomeInput ||
+        trimmed === retailWorkflowContext.welcomeMessage ||
         RETAIL_RECOMMENDED_WELCOME_MESSAGES.some(welcome => welcome.text === trimmed)
       )) ||
       (retailPrototypeStep === 'knowledge' && trimmed === RETAIL_CONTINUE_TO_ACTIONS_LABEL) ||
       (retailPrototypeStep === 'actions' && trimmed === RETAIL_CONTINUE_TO_FINAL_LABEL) ||
       (retailPrototypeStep === 'phone' && (
-        trimmed === CONNECT_RETAIL_PHONE_LATER_LABEL ||
+        trimmed === retailPhoneLaterLabel ||
         CHANNEL_PHONE_NUMBER_OPTIONS.some(phone => phone.label === trimmed || phone.value === trimmed)
       ))
     );
@@ -4337,9 +4467,10 @@ export default function EvaChatExperience({
       trimmed === retailWorkflowContext.agentName ||
       trimmed === RETAIL_AGENT_NAME_CUSTOM_LABEL ||
       trimmed === RETAIL_WELCOME_CUSTOM_LABEL ||
-      trimmed === CONNECT_RETAIL_PHONE_LATER_LABEL ||
+      trimmed === retailPhoneLaterLabel ||
       CHANNEL_PHONE_NUMBER_OPTIONS.some(option => option.label === trimmed || option.value === trimmed) ||
       trimmed === retailWelcomeInput ||
+      trimmed === retailWorkflowContext.welcomeMessage ||
       RETAIL_RECOMMENDED_WELCOME_MESSAGES.some(option => option.text === trimmed)
     ) {
       const submittedText = trimmed === RETAIL_WELCOME_CUSTOM_LABEL ? retailWelcomeInput.trim() : trimmed;
@@ -4347,7 +4478,7 @@ export default function EvaChatExperience({
       void handleRetailReceptionistStoryAnswer(submittedText);
       return;
     }
-    if (trimmed === COMPLETE_RETAIL_AGENT_LABEL) {
+    if (trimmed === retailCreateAgentLabel) {
       setMessages(prev => [...prev, { role: 'user', text: trimmed }]);
       completeRetailReceptionistAgent();
       return;
@@ -5422,7 +5553,7 @@ Simulation rules:
                             {message.role === 'assistant' && (
                               <Icon name="sparkle" weight="bold" size="xs" />
                             )}
-                            {message.role === 'assistant' ? agentName || 'Agent' : 'Caller'}
+                            {message.role === 'assistant' ? agentName || 'Agent' : is360FeedbackWorkflow ? 'Respondent' : 'Caller'}
                           </span>
                           {timeLabel && <time dateTime={message.timestamp}>{timeLabel}</time>}
                         </div>
@@ -5517,7 +5648,7 @@ Simulation rules:
         disabled={previewThinking}
         placeholder={
           selectedChannels.includes('voice')
-            ? 'Speak with the mic or type a caller message...'
+            ? (is360FeedbackWorkflow ? 'Speak with the mic or type feedback...' : 'Speak with the mic or type a caller message...')
             : 'Test the agent. Try: I need help with my request...'
         }
         suggestions={[]}
@@ -6178,7 +6309,9 @@ ${previewTranscript}`,
       : 1;
   const testingScenarioCanSubmitCurrentStep = isTestingScenarioStepSubmittable();
   const previewLaunchInstruction = hasVoiceChannel
-    ? `Voice is selected for ${agentName}. Use the mic in this preview to speak as the caller and hear the connected voice agent respond.`
+    ? is360FeedbackWorkflow
+      ? `Voice is selected for ${agentName}. Use the mic to preview a participant's feedback conversation.`
+      : `Voice is selected for ${agentName}. Use the mic in this preview to speak as the caller and hear the connected voice agent respond.`
     : `Before creating ${agentName}, run a quick preview session. Type or speak as an end user, and I will simulate how the configured agent would respond.`;
   /* Right-rail Progress + Summary + Context panel ONLY appears once a
      starter template is selected (guidanceVisible / orchestration /
@@ -6591,7 +6724,7 @@ ${previewTranscript}`,
         {rows.map((row, index) => {
           const resolvedCount = Math.max(1, progress);
           const isPlaceholder = index >= resolvedCount;
-          const status = index === resolvedCount - 1 && resolvedCount < RETAIL_DISCOVERY_ROWS.length
+          const status = index === resolvedCount - 1 && resolvedCount < rows.length
             ? 'active'
             : 'done';
           if (isPlaceholder) {
@@ -6626,7 +6759,7 @@ ${previewTranscript}`,
   const renderRetailDiscoveryProcess = () => renderDiscoveryProcess(
     retailWorkflowContext.discoveryAssistantName,
     retailWorkflowContext.discoveryContent,
-    RETAIL_DISCOVERY_ROWS,
+    retailDiscoveryRows,
     retailDiscoveryProgress,
   );
 
@@ -6638,12 +6771,16 @@ ${previewTranscript}`,
   );
 
   const renderRetailDiscoveryTrace = (showVipLogisticsTrace: boolean) => {
-    const discoveryRows = showVipLogisticsTrace
-      ? VIP_LOGISTICS_DISCOVERY_ROWS
-      : RETAIL_DISCOVERY_ROWS;
-    const discoverySummary = showVipLogisticsTrace
-      ? 'Checked operating hours, food and beverage inventory, staffing, and facilities'
-      : 'Checked business website, inventory system, and organization profile';
+    const discoveryRows = is360FeedbackWorkflow
+      ? FEEDBACK360_DISCOVERY_ROWS
+      : showVipLogisticsTrace
+        ? VIP_LOGISTICS_DISCOVERY_ROWS
+        : RETAIL_DISCOVERY_ROWS;
+    const discoverySummary = is360FeedbackWorkflow
+      ? 'Sources to review: HR System / Org Chart, Employee Handbook, and Prior Review Cycle Summary'
+      : showVipLogisticsTrace
+        ? 'Checked operating hours, food and beverage inventory, staffing, and facilities'
+        : 'Checked business website, inventory system, and organization profile';
 
     return (
       <AccordionItem
@@ -6657,7 +6794,7 @@ ${previewTranscript}`,
         size="small"
         styleVariant="borderless"
       >
-        <div className="eva-waterfall-card eva-waterfall-status eva-waterfall-status--planning eva-waterfall-status--dynamic" aria-label="Completed AI Assistant discovery process">
+        <div className="eva-waterfall-card eva-waterfall-status eva-waterfall-status--planning eva-waterfall-status--dynamic" aria-label={is360FeedbackWorkflow ? 'Suggested source review' : 'Completed AI Assistant discovery process'}>
           {discoveryRows.map(row => (
             <div key={row.title} className="eva-waterfall-status__row eva-waterfall-status__row--done">
               <Icon name="check-circle-filled" weight="bold" size="sm" />
@@ -7351,17 +7488,17 @@ ${previewTranscript}`,
               });
               const selectedRetailPhoneOption =
                 RETAIL_PHONE_NUMBER_OPTIONS.find(option => option.value === channelPhoneNumber) ??
-                RETAIL_PHONE_NUMBER_OPTIONS[0];
+                (is360FeedbackWorkflow ? null : RETAIL_PHONE_NUMBER_OPTIONS[0]);
               const isControlledPrototypePrompt =
                 baseFollowups.includes(CONTINUE_TO_STUDIO_LABEL) ||
                 baseFollowups.includes(RETAIL_VOICE_LABEL) ||
                 baseFollowups.includes(RETAIL_VIDEO_LABEL) ||
                 baseFollowups.some(option => CHANNEL_PHONE_NUMBER_OPTIONS.some(phone => phone.label === option || phone.value === option)) ||
-                baseFollowups.includes(CONNECT_RETAIL_PHONE_LATER_LABEL) ||
+                baseFollowups.includes(retailPhoneLaterLabel) ||
                 baseFollowups.includes(retailWorkflowContext.agentName) ||
                 baseFollowups.includes(retailWelcomeInput) ||
                 baseFollowups.some(option => RETAIL_RECOMMENDED_WELCOME_MESSAGES.some(welcome => welcome.text === option)) ||
-                baseFollowups.includes(COMPLETE_RETAIL_AGENT_LABEL);
+                baseFollowups.includes(retailCreateAgentLabel);
               const followups = isFamilyChoicePrompt || isFamilyIntakePrompt
                 ? baseFollowups
                 : baseFollowups.length > 0 && !isControlledPrototypePrompt
@@ -7400,12 +7537,18 @@ ${previewTranscript}`,
                       <div className="eva-retail-final-heading__header">
                         <strong>{`Your ${agentName} draft is ready.`}</strong>
                         <span>
-                          I saved the voice channel, selected knowledge sources, selected actions, escalation rules, and greeting.
+                          {is360FeedbackWorkflow
+                            ? 'I saved Voice, Digital and Video and the welcome message. The knowledge and action recommendations are ready for review.'
+                            : 'I saved the voice channel, selected knowledge sources, selected actions, escalation rules, and greeting.'}
                         </span>
                       </div>
                       <div className="eva-retail-final-heading__body">
-                        <p>Review the agent, create it now, or configure advanced settings.</p>
-                        <p>To change anything, ask me or open advanced configuration.</p>
+                        <p>{is360FeedbackWorkflow
+                          ? 'Create Agent when ready. Review the connections and confidentiality settings before use.'
+                          : 'Review the agent, create it now, or configure advanced settings.'}</p>
+                        <p>{is360FeedbackWorkflow
+                          ? 'To change a recommendation, ask me or open advanced configuration.'
+                          : 'To change anything, ask me or open advanced configuration.'}</p>
                       </div>
                     </div>
                   ) : message.text}
@@ -8122,7 +8265,7 @@ ${previewTranscript}`,
                   {isRetailChannelChoice && (
                     <div className="eva-retail-channel-panel">
                       <div className="eva-retail-channel-options" role="group" aria-label="Channel options">
-                        {RETAIL_CHANNEL_OPTIONS.map(option => {
+                        {retailChannelOptions.map(option => {
                           const isSelected = retailSelectedChannels.includes(option.label);
                           return (
                             <Card
@@ -8170,13 +8313,19 @@ ${previewTranscript}`,
                         aria-expanded={retailPhoneDropdownOpen}
                         onClick={() => setRetailPhoneDropdownOpen(open => !open)}
                       >
-                        <span className="eva-phone-country-pill">
-                          <span aria-hidden="true">{selectedRetailPhoneOption.flag}</span>
-                          {selectedRetailPhoneOption.countryCode}
-                        </span>
-                        <span className="eva-retail-phone-selector__number">
-                          {selectedRetailPhoneOption.localNumber}
-                        </span>
+                        {selectedRetailPhoneOption ? (
+                          <>
+                            <span className="eva-phone-country-pill">
+                              <span aria-hidden="true">{selectedRetailPhoneOption.flag}</span>
+                              {selectedRetailPhoneOption.countryCode}
+                            </span>
+                            <span className="eva-retail-phone-selector__number">
+                              {selectedRetailPhoneOption.localNumber}
+                            </span>
+                          </>
+                        ) : (
+                          <span className="eva-retail-phone-selector__number">Choose a phone number</span>
+                        )}
                         <Icon name="arrow-down" weight="bold" size="sm" />
                       </button>
                       {retailPhoneDropdownOpen && (
@@ -8219,9 +8368,9 @@ ${previewTranscript}`,
                       <button
                         type="button"
                         className="ai-footer__suggestion eva-retail-phone-selector__later"
-                        onClick={() => handleLlmFollowupClick(CONNECT_RETAIL_PHONE_LATER_LABEL)}
+                        onClick={() => handleLlmFollowupClick(retailPhoneLaterLabel)}
                       >
-                        {CONNECT_RETAIL_PHONE_LATER_LABEL}
+                        {retailPhoneLaterLabel}
                       </button>
                     </div>
                   )}
@@ -8279,7 +8428,9 @@ ${previewTranscript}`,
                         )}
                         <span className="eva-retail-welcome-option__reason">
                           <Icon name="sparkle" weight="bold" size="sm" />
-                          {[RETAIL_RECOMMENDED_WELCOME_MESSAGES[0].tone, RETAIL_RECOMMENDED_WELCOME_MESSAGES[0].reason].filter(Boolean).join(' ')}
+                          {is360FeedbackWorkflow
+                            ? 'Sets a clear, confidential tone and invites the respondent to begin.'
+                            : [RETAIL_RECOMMENDED_WELCOME_MESSAGES[0].tone, RETAIL_RECOMMENDED_WELCOME_MESSAGES[0].reason].filter(Boolean).join(' ')}
                         </span>
                         {!isRetailWelcomeLocked && (
                           <div className="eva-retail-welcome-option__actions">
@@ -8300,7 +8451,7 @@ ${previewTranscript}`,
                       <div className="eva-retail-recommendation-section">
                         <span className="eva-retail-recommendation-eyebrow">
                           <Icon name="sparkle" weight="bold" size={14} />
-                          Connected knowledge bases
+                          {is360FeedbackWorkflow ? 'Selected knowledge bases' : 'Connected knowledge bases'}
                         </span>
                         <div className="eva-retail-connected-list">
                           {selectedKnowledgeBases.map(item => (
@@ -8366,7 +8517,7 @@ ${previewTranscript}`,
                       <div className="eva-retail-recommendation-section">
                         <span className="eva-retail-recommendation-eyebrow">
                           <Icon name="sparkle" weight="bold" size={14} />
-                          Connected actions
+                          {is360FeedbackWorkflow ? 'Selected actions' : 'Connected actions'}
                         </span>
                         <div className="eva-retail-connected-list">
                           {selectedActions.map(item => (
@@ -8398,7 +8549,7 @@ ${previewTranscript}`,
                                 selected={isSelected}
                                 disabled={isRetailActionsLocked}
                                 className="eva-retail-recommendation-card card-selectable"
-                                aria-label={`${option.name}. ${option.provider}. ${option.description}`}
+                                aria-label={`${option.name}. ${option.provider ? `${option.provider}. ` : ''}${option.description}`}
                                 aria-pressed={isSelected}
                                 onClick={() => handleLlmFollowupClick(option.name)}
                               >
@@ -8409,11 +8560,13 @@ ${previewTranscript}`,
                                   className="eva-retail-recommendation-card__icon eva-provider-chip__logo eva-provider-chip__logo--brand"
                                   aria-hidden="true"
                                 >
-                                  <img className="eva-provider-chip__logo-image" src={option.providerLogoSrc} alt="" />
+                                  {option.providerLogoSrc
+                                    ? <img className="eva-provider-chip__logo-image" src={option.providerLogoSrc} alt="" />
+                                    : <Icon name="automation" weight="regular" size={24} />}
                                 </span>
                                 <strong>{option.name}</strong>
                                 <span className="eva-retail-recommendation-card__description">
-                                  {`${option.provider}. ${option.description}`}
+                                  {option.provider ? `${option.provider}. ${option.description}` : option.description}
                                 </span>
                               </Card>
                             );
@@ -8470,9 +8623,9 @@ ${previewTranscript}`,
                         </button>
                       )}
                       <div className="eva-retail-final-actions">
-                      <Button onClick={() => handleLlmFollowupClick(COMPLETE_RETAIL_AGENT_LABEL)}>
+                      <Button onClick={() => handleLlmFollowupClick(retailCreateAgentLabel)}>
                         <Icon name="sparkle" weight="bold" size="sm" />
-                        {COMPLETE_RETAIL_AGENT_LABEL}
+                        {retailCreateAgentLabel}
                       </Button>
                       <Button variant="secondary" onClick={() => handleLlmFollowupClick(ENTER_AGENT_STUDIO_LABEL)}>
                         <Icon name="tools" weight="bold" size="sm" />
@@ -8484,9 +8637,9 @@ ${previewTranscript}`,
                   )}
                   {isRetailCompleteActions && retailPrototypeStep === 'ready-to-create' && (
                     <div className="eva-retail-final-actions">
-                      <Button onClick={() => handleLlmFollowupClick(COMPLETE_RETAIL_AGENT_LABEL)}>
+                      <Button onClick={() => handleLlmFollowupClick(retailCreateAgentLabel)}>
                         <Icon name="sparkle" weight="bold" size="sm" />
-                        {COMPLETE_RETAIL_AGENT_LABEL}
+                        {retailCreateAgentLabel}
                       </Button>
                       <Button variant="secondary" onClick={() => handleLlmFollowupClick(ENTER_AGENT_STUDIO_LABEL)}>
                         <Icon name="tools" weight="bold" size="sm" />
@@ -8502,7 +8655,7 @@ ${previewTranscript}`,
                           <Button
                             onClick={() => handleLlmFollowupClick(
                               retailSelectedPhoneNumber || phoneNumberDeferred
-                                ? COMPLETE_RETAIL_AGENT_LABEL
+                                ? retailCreateAgentLabel
                                 : CONNECT_RETAIL_PHONE_LABEL,
                             )}
                           >
@@ -8512,7 +8665,7 @@ ${previewTranscript}`,
                               size="sm"
                             />
                             {retailSelectedPhoneNumber || phoneNumberDeferred
-                              ? COMPLETE_RETAIL_AGENT_LABEL
+                              ? retailCreateAgentLabel
                               : CONNECT_RETAIL_PHONE_LABEL}
                           </Button>
                         </div>
