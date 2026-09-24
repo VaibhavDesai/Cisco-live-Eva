@@ -23,6 +23,16 @@ import {
   EVA_CANVAS_PATHS,
 } from './EvaCanvasOverlay';
 import { EVA_TEMPLATES } from './evaTemplates';
+import Feedback360ConversationCard from './Feedback360ConversationCard';
+import {
+  advance360FeedbackConversation,
+  create360FeedbackDraft,
+  createInitial360FeedbackAnswers,
+  get360FeedbackPrompt,
+  is360FeedbackAgentPrompt,
+  type Feedback360Answers,
+  type Feedback360ConversationStep,
+} from './feedback360Conversation';
 import type { EvaAgentDraft, EvaFieldSuggestion, EvaKnowledgeRecommendation, EvaMessage, EvaTemplateId } from './types';
 import { formatRelative } from '../../pages/knowledge/utils';
 import { listReadyCollections } from '../../services/knowledgeService';
@@ -110,6 +120,9 @@ const GENERATED_CHAT_PANEL_DEFAULT_WIDTH = 304;
 const GENERATED_CHAT_PANEL_MIN_WIDTH = 248;
 const GENERATED_CHAT_PANEL_MAX_WIDTH = 480;
 const FAMILY_INTAKE_COMPACT_WIDTH = 1040;
+const FEEDBACK360_CHAT_ORIGIN = 'feedback-360-conversation';
+const feedback360OriginForStep = (step: Feedback360ConversationStep) => `${FEEDBACK360_CHAT_ORIGIN}:${step}`;
+const isFeedback360Origin = (origin?: string) => origin?.startsWith(FEEDBACK360_CHAT_ORIGIN) ?? false;
 const DEFAULT_CALLING_ACTION_NAME = 'Play a message and end the call';
 const DEFAULT_CALLING_ACTION = {
   id: 'calling-play-message-end-call',
@@ -474,6 +487,14 @@ const CHOICE_ONLY_GUIDED_START: EvaMessage = {
 const buildChoiceOnlyGuidedStart = (initialPrompt = ''): EvaMessage[] => {
   const prompt = initialPrompt.trim();
   if (!prompt) return [CHOICE_ONLY_GUIDED_START];
+
+  if (is360FeedbackAgentPrompt(prompt)) {
+    const opening = get360FeedbackPrompt('sources', createInitial360FeedbackAnswers(prompt));
+    return [
+      { role: 'user', text: prompt, originStep: FEEDBACK360_CHAT_ORIGIN },
+      { role: 'assistant', text: opening.text, followups: opening.followups, originStep: feedback360OriginForStep('sources') },
+    ];
+  }
 
   return [
     { role: 'user', text: prompt, originStep: FAMILY_CHOICE_ORIGIN },
@@ -1502,6 +1523,13 @@ export default function EvaChatExperience({
   const [conversationalOnboardingStep, setConversationalOnboardingStep] = useState<EvaConversationalOnboardingStep>(
     restoredEvaSession?.conversationalOnboardingStep ?? 'idle',
   );
+  const [feedback360Step, setFeedback360Step] = useState<Feedback360ConversationStep>(
+    choiceOnlyGuidedFlow && is360FeedbackAgentPrompt(initialGuidedPrompt) ? 'sources' : 'complete',
+  );
+  const [feedback360Answers, setFeedback360Answers] = useState<Feedback360Answers>(
+    () => createInitial360FeedbackAnswers(initialGuidedPrompt),
+  );
+  const [feedback360InitialPrompt, setFeedback360InitialPrompt] = useState(initialGuidedPrompt);
   const [selectedAgentFamily, setSelectedAgentFamily] = useState<AgentFamily | null>(
     restoredEvaSession?.selectedAgentFamily ?? null,
   );
@@ -1519,7 +1547,7 @@ export default function EvaChatExperience({
       .filter(Boolean) ?? []
   ));
   const [unifiedAgentGoal, setUnifiedAgentGoal] = useState('');
-  const continuityGoalDraft = choiceOnlyGuidedFlow && initialGuidedPrompt.trim()
+  const continuityGoalDraft = choiceOnlyGuidedFlow && initialGuidedPrompt.trim() && !is360FeedbackAgentPrompt(initialGuidedPrompt)
     ? buildContinuityAgentGoalDraft(initialGuidedPrompt)
     : null;
   const [generatedGoalSystemPrompt, setGeneratedGoalSystemPrompt] = useState('');
@@ -1580,7 +1608,7 @@ export default function EvaChatExperience({
 
   useEffect(() => {
     const goal = initialGuidedPrompt.trim();
-    if (!choiceOnlyGuidedFlow || !goal || generatedGoalRequestRef.current === goal) return;
+    if (!choiceOnlyGuidedFlow || !goal || is360FeedbackAgentPrompt(goal) || generatedGoalRequestRef.current === goal) return;
 
     generatedGoalRequestRef.current = goal;
     let cancelled = false;
@@ -2376,6 +2404,9 @@ export default function EvaChatExperience({
   const handleBuildFromScratch = () => {
     setIsCreateModalOpen(false);
     setConfigurationMode('create');
+    setFeedback360Step('complete');
+    setFeedback360Answers(createInitial360FeedbackAnswers());
+    setFeedback360InitialPrompt('');
     setSelectedAgentFamily(null);
     setFamilyIntakeAnswers({});
     setFamilyIntakeEditingAnswerKey(null);
@@ -3891,6 +3922,9 @@ export default function EvaChatExperience({
     setOrchestrationSuggested(false);
     setFreeChatActive(false);
     setConversationalOnboardingStep('idle');
+    setFeedback360Step('complete');
+    setFeedback360Answers(createInitial360FeedbackAnswers());
+    setFeedback360InitialPrompt('');
     setSelectedAgentFamily(null);
     setFamilyIntakeAnswers({});
     setFamilyIntakeEditingAnswerKey(null);
@@ -4081,9 +4115,83 @@ export default function EvaChatExperience({
     normalized.includes('see template')
   );
 
+  const beginFeedback360Conversation = (prompt: string) => {
+    const answers = createInitial360FeedbackAnswers(prompt);
+    const opening = get360FeedbackPrompt('sources', answers);
+    setFeedback360Step('sources');
+    setFeedback360Answers(answers);
+    setFeedback360InitialPrompt(prompt);
+    setLandingMode('build');
+    setGuidanceVisible(false);
+    setFreeChatActive(true);
+    setOrchestrationSuggested(false);
+    setShowOtherTemplates(false);
+    setMessages([{ role: 'user', text: prompt, originStep: FEEDBACK360_CHAT_ORIGIN }]);
+    addOnboardingAssistantMessage(opening.text, opening.followups, feedback360OriginForStep('sources'));
+  };
+
+  const handleFeedback360Reply = (answer: string) => {
+    if (feedback360Step === 'complete') return false;
+    const response = advance360FeedbackConversation(feedback360Step, answer, feedback360Answers);
+    const userMessage: EvaMessage = { role: 'user', text: answer, originStep: FEEDBACK360_CHAT_ORIGIN };
+    const automaticSourceReview = feedback360Step === 'sources' && /^use recommended$/i.test(answer.trim());
+    if (!automaticSourceReview) setMessages(previous => [...previous, userMessage]);
+    setFeedback360Answers(response.answers);
+    setFeedback360Step(response.step);
+
+    if (response.shouldCreate) {
+      if (entitlements.contact_center !== 'licensed') {
+        setFeedback360Step('review');
+        addOnboardingAssistantMessage(
+          'This agent needs a Contact Center license to include voice, digital, and video channels.',
+          undefined,
+          feedback360OriginForStep('review'),
+        );
+        return true;
+      }
+      try {
+        const chatHistory = [...messages, userMessage]
+          .filter(message => isFeedback360Origin(message.originStep))
+          .map((message, index) => ({
+          id: `feedback-360-${Date.now()}-${index}`,
+          role: message.role,
+          text: message.text,
+          createdAt: message.timestamp ?? new Date().toISOString(),
+          }));
+        const draft = create360FeedbackDraft(feedback360InitialPrompt, response.answers, chatHistory);
+        const agent = createAgentDraft(draft);
+        selectAgent(agent.id);
+        showToast('360 Feedback Agent created as a draft. Review its connections and safeguards before use.', 'success');
+        navigate(`/agents/${agent.id}/configure?section=Profile`);
+      } catch (error) {
+        setFeedback360Step('review');
+        addOnboardingAssistantMessage(
+          error instanceof Error ? error.message : 'I could not create the draft. Please review your answers.',
+          undefined,
+          feedback360OriginForStep('review'),
+        );
+      }
+      return true;
+    }
+
+    addOnboardingAssistantMessage(response.message.text, response.message.followups, feedback360OriginForStep(response.step));
+    return true;
+  };
+
   const handleSend = (text: string) => {
     const normalized = text.trim().toLowerCase();
     if (!normalized) return;
+
+    if (handleFeedback360Reply(text)) return;
+    if (
+      !selectedAgentFamily
+      && !guidanceVisible
+      && conversationalOnboardingStep === 'idle'
+      && is360FeedbackAgentPrompt(text)
+    ) {
+      beginFeedback360Conversation(text);
+      return;
+    }
 
     if (handleFamilyIntakeAnswer(text)) {
       return;
@@ -4251,6 +4359,7 @@ export default function EvaChatExperience({
   const handleLlmFollowupClick = (option: string) => {
     const trimmed = option.trim();
     if (!trimmed) return;
+    if (handleFeedback360Reply(trimmed)) return;
     const selectedFamily = AGENT_FAMILIES.find(
       family => FAMILY_CHOICE_LABELS[family].toLowerCase() === trimmed.toLowerCase(),
     );
@@ -5918,9 +6027,11 @@ ${previewTranscript}`,
   const showLandingOptions = !guidanceVisible && !evaThinking && !orchestrationSuggested && !freeChatActive;
   const showBuildFlow = landingMode === 'build' || guidanceVisible || evaThinking || orchestrationSuggested || freeChatActive;
   const shouldShowEvaThreadPanel = showEvaThreadPanel && !showLandingOptions;
-  const conversationPlaceholder = familyProposalChangeRequested
-    ? 'Describe what you want to change in the proposal.'
-    : familyIntakeQuestion?.prompt ?? 'Ask any question during your configuration.';
+  const conversationPlaceholder = feedback360Step !== 'complete'
+    ? 'Reply to continue with the 360 Feedback Agent.'
+    : familyProposalChangeRequested
+      ? 'Describe what you want to change in the proposal.'
+      : familyIntakeQuestion?.prompt ?? 'Ask any question during your configuration.';
   const activeRetailFocusOrigin = RETAIL_CENTERED_ORIGIN_BY_STEP[retailPrototypeStep];
   const hasCenteredRetailPrompt = messages.some(message => (
     Object.values(RETAIL_CENTERED_ORIGIN_BY_STEP).includes(message.originStep)
@@ -7336,6 +7447,13 @@ ${previewTranscript}`,
                 ? buildStarterProposal(selectedAgentFamily, familyIntakeAnswers)
                 : null;
               const isFamilyProposalPrompt = message.originStep === FAMILY_PROPOSAL_ORIGIN;
+              const isFeedback360Prompt = message.role === 'assistant' && isFeedback360Origin(message.originStep);
+              const feedback360MessageStep = isFeedback360Prompt
+                ? message.originStep?.split(':')[1] as Feedback360ConversationStep
+                : null;
+              const isLatestFeedback360Prompt = isFeedback360Prompt && index === messages.findLastIndex(
+                candidate => candidate.role === 'assistant' && isFeedback360Origin(candidate.originStep),
+              );
               const isLatestFamilyProposalPrompt = isFamilyProposalPrompt && index === messages.findLastIndex(
                 candidate => candidate.role === 'assistant' && candidate.originStep === FAMILY_PROPOSAL_ORIGIN,
               );
@@ -7362,7 +7480,7 @@ ${previewTranscript}`,
                 baseFollowups.includes(retailWelcomeInput) ||
                 baseFollowups.some(option => RETAIL_RECOMMENDED_WELCOME_MESSAGES.some(welcome => welcome.text === option)) ||
                 baseFollowups.includes(COMPLETE_RETAIL_AGENT_LABEL);
-              const followups = isFamilyChoicePrompt || isFamilyIntakePrompt
+              const followups = isFamilyChoicePrompt || isFamilyIntakePrompt || isFeedback360Prompt
                 ? baseFollowups
                 : baseFollowups.length > 0 && !isControlledPrototypePrompt
                 ? [...baseFollowups, OTHER_TEMPLATES_LABEL]
@@ -7409,9 +7527,17 @@ ${previewTranscript}`,
                       </div>
                     </div>
                   ) : message.text}
-                  followups={isRetailChannelChoice || isRetailPhonePrompt || isRetailAgentNamePrompt || isRetailWelcomePrompt || isRetailKnowledgePrompt || isRetailActionsPrompt || isRetailFinalActions || isRetailCompleteActions || isRetailInlinePreview || isFamilyChoicePrompt || isUnifiedChannelPrompt || isUnifiedGoalPrompt || isFamilyProposalPrompt || isContactCenterChannelPrompt || isFamilyNamePrompt || isFamilyGreetingPrompt || isCallingDestinationPrompt || isFamilyKnowledgePrompt || isFamilyActionPrompt || isFamilyGuardrailPrompt || (isFamilyIntakePrompt && (!isLatestFamilyIntakePrompt || evaThinking)) ? [] : followups}
+                  followups={isRetailChannelChoice || isRetailPhonePrompt || isRetailAgentNamePrompt || isRetailWelcomePrompt || isRetailKnowledgePrompt || isRetailActionsPrompt || isRetailFinalActions || isRetailCompleteActions || isRetailInlinePreview || isFamilyChoicePrompt || isUnifiedChannelPrompt || isUnifiedGoalPrompt || isFamilyProposalPrompt || isContactCenterChannelPrompt || isFamilyNamePrompt || isFamilyGreetingPrompt || isCallingDestinationPrompt || isFamilyKnowledgePrompt || isFamilyActionPrompt || isFamilyGuardrailPrompt || isFeedback360Prompt || (isFamilyIntakePrompt && (!isLatestFamilyIntakePrompt || evaThinking)) ? [] : followups}
                   onFollowup={handleLlmFollowupClick}
                 >
+                  {isFeedback360Prompt && feedback360MessageStep && (
+                    <Feedback360ConversationCard
+                      step={feedback360MessageStep}
+                      answers={feedback360Answers}
+                      onReply={handleFeedback360Reply}
+                      isActive={isLatestFeedback360Prompt && feedback360Step === feedback360MessageStep && !evaThinking}
+                    />
+                  )}
                   {isLatestFamilyIntakePrompt
                     && familyIntakeEditingQuestion
                     && !isFamilyNamePrompt
