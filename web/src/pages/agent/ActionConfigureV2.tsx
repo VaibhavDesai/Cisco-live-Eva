@@ -413,7 +413,6 @@ const configuredActionCapabilities = (
 ): CapabilityRecord[] => {
   const selections = selectedCapabilityNames(draft, 'actions');
   const actionNames = selections ?? demoActions;
-  const recommendationsPending = draft?.familyConfiguration.actions?.values?.connectionStatus === 'pending';
   const catalogByName = new Map(
     readBuilderCatalog(draft?.familyConfiguration.actions).map(item => [item.name, item.description]),
   );
@@ -422,7 +421,7 @@ const configuredActionCapabilities = (
     sourceActionId: getGalileoActionId(undefined, name),
     name: draft ? name : getGalileoActionDisplayName(name),
     type: /^(Transfer|Handover|Escalate)/i.test(name) ? 'Handoff' : 'MCP',
-    enabled: !recommendationsPending,
+    enabled: true,
     description: catalogByName.get(name) ?? CISCO_LIVE_ACTION_CATALOG[name] ?? 'Selected during the conversational build.',
   }));
 };
@@ -430,16 +429,15 @@ const configuredActionCapabilities = (
 const actionRowsFromCapabilities = (
   capabilities: CapabilityRecord[],
   createdBy: string,
-  recommendationsPending = false,
 ): ActionRow[] => capabilities.map(capability => ({
   id: capability.id,
   actionId: getGalileoActionId(capability.sourceActionId, capability.name),
   name: capability.name,
   description: capability.description || 'Selected during the conversational build.',
   enabled: capability.enabled,
-  actionType: recommendationsPending ? '—' : capability.type === 'Handoff' ? 'Transfer' : capability.type,
-  createdBy: recommendationsPending ? '—' : createdBy,
-  lastUpdated: recommendationsPending ? '—' : '07/13/26, at 9:30 AM',
+  actionType: capability.type === 'Handoff' ? 'Transfer' : capability.type,
+  createdBy,
+  lastUpdated: '07/13/26, at 9:30 AM',
 }));
 type ConfigurationSection = 'Profile' | 'Channels' | 'Flow' | 'Instructions' | 'Knowledge' | 'Action' | 'Security' | 'Conversation' | 'Language';
 
@@ -735,7 +733,6 @@ export default function ActionConfigureV2() {
     addAiEngine,
   } = useApp();
   const agentDraft = agentId ? agentDrafts[agentId] : undefined;
-  const actionRecommendationsPending = agentDraft?.familyConfiguration.actions?.values?.connectionStatus === 'pending';
   // Resolve the Cisco Live demo definition for this agent (falling back to the
   // primary demo agent) so every configuration screen shows real design-
   // explorations names instead of the generic defaults.
@@ -745,7 +742,6 @@ export default function ActionConfigureV2() {
     'knowledge',
     ciscoLiveAgent.knowledgeSources,
   );
-  const knowledgeRecommendationsPending = agentDraft?.familyConfiguration.knowledge?.values?.connectionStatus === 'pending';
   const memorySources = configuredKnowledgeSources(
     agentDraft,
     'memory',
@@ -997,15 +993,11 @@ export default function ActionConfigureV2() {
 
   const initialActionCapabilities = () => configuredActionCapabilities(agentDraft, ciscoLiveAgent.actions);
   const [capabilities, setCapabilities] = useState<CapabilityRecord[]>(initialActionCapabilities);
-  const [disabledKnowledge, setDisabledKnowledge] = useState<Record<string, boolean>>(() => (
-    agentDraft?.familyConfiguration.knowledge?.values?.connectionStatus === 'pending'
-      ? Object.fromEntries(knowledgeBases.map(source => [source.name, true]))
-      : {}
-  ));
+  const [disabledKnowledge, setDisabledKnowledge] = useState<Record<string, boolean>>({});
   const toggleKnowledge = (name: string) =>
     setDisabledKnowledge((prev) => ({ ...prev, [name]: !prev[name] }));
   const [rows, setRows] = useState<ActionRow[]>(
-    () => actionRowsFromCapabilities(initialActionCapabilities(), ciscoLiveAgent.updatedBy, actionRecommendationsPending),
+    () => actionRowsFromCapabilities(initialActionCapabilities(), ciscoLiveAgent.updatedBy),
   );
   const [galileoActionControls, setGalileoActionControls] = useState<GalileoActionControlState>(() => (
     readGalileoActionControlState(agentDraft?.familyConfiguration.actions?.values)
@@ -1022,15 +1014,11 @@ export default function ActionConfigureV2() {
     setGalileoActionControls(readGalileoActionControlState(agentDraft?.familyConfiguration.actions?.values));
     const nextCapabilities = configuredActionCapabilities(agentDraft, ciscoLiveAgent.actions);
     setCapabilities(nextCapabilities);
-    setRows(actionRowsFromCapabilities(nextCapabilities, ciscoLiveAgent.updatedBy, actionRecommendationsPending));
-    setDisabledKnowledge(
-      agentDraft?.familyConfiguration.knowledge?.values?.connectionStatus === 'pending'
-        ? Object.fromEntries(configuredKnowledgeSources(agentDraft, 'knowledge', ciscoLiveAgent.knowledgeSources).map(source => [source.name, true]))
-        : {},
-    );
+    setRows(actionRowsFromCapabilities(nextCapabilities, ciscoLiveAgent.updatedBy));
+    setDisabledKnowledge({});
     setGalileoDialogActionId(null);
     setShowRecommendedControls(false);
-  }, [agentDraft, agentId, ciscoLiveAgent.actions, ciscoLiveAgent.updatedBy, actionRecommendationsPending]);
+  }, [agentDraft, agentId, ciscoLiveAgent.actions, ciscoLiveAgent.updatedBy]);
 
   const openGalileoActionControls = (actionId: string) => {
     galileoReturnFocusRef.current = document.activeElement as HTMLElement | null;
@@ -1074,7 +1062,6 @@ export default function ActionConfigureV2() {
     if (!agentId) return;
     const enabledNames = rows.filter(row => row.enabled).map(row => row.name);
     const cap = agentDraft?.familyConfiguration.actions;
-    if (cap?.values?.connectionStatus === 'pending' && enabledNames.length === 0) return;
     const rawSelections = cap?.values?.selections;
     const currentSelections = Array.isArray(rawSelections)
       ? rawSelections.filter((s): s is string => typeof s === 'string')
@@ -1107,7 +1094,6 @@ export default function ActionConfigureV2() {
             values: {
               ...(actionsCap?.values ?? {}),
               selections: enabledNames,
-              connectionStatus: enabledNames.length > 0 ? 'configured' : undefined,
               controlsByActionId: galileoActionControls.controlsByActionId,
               gatesByActionId: galileoActionControls.gatesByActionId,
             },
@@ -1170,7 +1156,6 @@ export default function ActionConfigureV2() {
       .filter((source) => !disabledKnowledge[source.name])
       .map((source) => source.name);
     const cap = agentDraft?.familyConfiguration.knowledge;
-    if (cap?.values?.connectionStatus === 'pending' && enabledNames.length === 0) return;
     const rawSelections = cap?.values?.selections;
     const currentSelections = Array.isArray(rawSelections)
       ? rawSelections.filter((s): s is string => typeof s === 'string')
@@ -1192,11 +1177,7 @@ export default function ActionConfigureV2() {
           knowledge: {
             ...(knowledgeCap as CapabilityState | undefined),
             progress: desiredProgress,
-            values: {
-              ...(knowledgeCap?.values ?? {}),
-              selections: enabledNames,
-              connectionStatus: enabledNames.length > 0 ? 'configured' : undefined,
-            },
+            values: { ...(knowledgeCap?.values ?? {}), selections: enabledNames },
             updatedAt: new Date().toISOString(),
           } as CapabilityState,
         },
@@ -2795,9 +2776,7 @@ export default function ActionConfigureV2() {
                 <div className="knowledge-config-heading">
                   <div>
                     {agentFamily !== 'calling' && <h3>Knowledge bases</h3>}
-                    <p>{knowledgeRecommendationsPending
-                      ? 'Recommended sources to connect before this agent can search them.'
-                      : 'Sources your agent can search to answer questions.'}</p>
+                    <p>Sources your agent can search to answer questions.</p>
                   </div>
                 </div>
                 {knowledgeBases.length === 0 ? (
@@ -2837,11 +2816,9 @@ export default function ActionConfigureV2() {
                               </div>
                             </td>
                             <td className="col-knowledge-description">{source.description}</td>
-                            <td className="col-knowledge-sources">{knowledgeRecommendationsPending ? '—' : source.sources}</td>
+                            <td className="col-knowledge-sources">{source.sources}</td>
                             <td className="col-knowledge-status">
-                              {knowledgeRecommendationsPending
-                                ? <Badge variant="warning">Connection pending</Badge>
-                                : <Badge variant="success">Connected</Badge>}
+                              <Badge variant="success">Connected</Badge>
                             </td>
                           </tr>
                         ))}
@@ -2993,7 +2970,6 @@ export default function ActionConfigureV2() {
                         </div>
                       </td>
                       <td className="col-recurring">
-                        {actionRecommendationsPending && <Badge variant="warning">Connection pending</Badge>}
                         {hasUpdate && (
                           <Tooltip
                             placement="bottom-start"
