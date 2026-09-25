@@ -14,6 +14,11 @@ import {
 } from '../../components/shared';
 import { Icon } from '../../icons';
 import {
+  AMIT_WEBEX_ONE_MERIDIAN_AGENT_ID,
+  AMIT_WEBEX_ONE_SELECTED_360_AGENT_ID,
+} from '../../demo/ciscoLiveSeed';
+import { CISCO_LIVE_PRIMARY_AGENT_ID } from '../../demo/ciscoLiveDemo';
+import {
   FAMILY_METADATA,
   type AgentDraft,
   type AgentFamily,
@@ -48,6 +53,12 @@ const FIGMA_AGENT_PRESENTATION: Record<string, {
     order: 0,
   },
   'golftop-event-operations': {
+    familyLabel: 'AI receptionist',
+    avatarClass: 'event-operations',
+    updatedOn: 'Aug 28, 26',
+    order: 1,
+  },
+  [AMIT_WEBEX_ONE_MERIDIAN_AGENT_ID]: {
     familyLabel: 'AI receptionist',
     avatarClass: 'event-operations',
     updatedOn: 'Aug 28, 26',
@@ -122,7 +133,7 @@ export default function EvaAgentsTable() {
   const agentTiles = useMemo<AgentTile[]>(() => {
     const ids = new Set([...Object.keys(agents), ...Object.keys(agentDrafts)]);
 
-    return Array.from(ids)
+    const allTiles = Array.from(ids)
       .flatMap(id => {
         const contextAgent = agents[id];
         const draft = agentDrafts[id];
@@ -186,6 +197,23 @@ export default function EvaAgentsTable() {
         return right.sortValue.localeCompare(left.sortValue) || left.name.localeCompare(right.name);
       })
       .map(({ sortValue: _sortValue, ...tile }) => tile);
+
+    // The AmitWebexOne list is a three-agent demo. Keep every other saved
+    // agent intact so its existing detail URL and configuration still work.
+    const tilesById = new Map(allTiles.map(tile => [tile.id, tile]));
+    const savedMeridian = tilesById.get('golftop-event-operations');
+    const meridianId = savedMeridian?.name === 'Meridian Aria'
+      && savedMeridian.lifecycle === 'published'
+      ? savedMeridian.id
+      : AMIT_WEBEX_ONE_MERIDIAN_AGENT_ID;
+    return [
+      AMIT_WEBEX_ONE_SELECTED_360_AGENT_ID,
+      meridianId,
+      CISCO_LIVE_PRIMARY_AGENT_ID,
+    ].flatMap(id => {
+      const tile = tilesById.get(id);
+      return tile ? [tile] : [];
+    });
   }, [agentDrafts, agents]);
 
   const openAgentSummary = (tile: AgentTile) => {

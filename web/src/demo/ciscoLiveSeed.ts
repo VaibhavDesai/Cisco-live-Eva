@@ -18,9 +18,12 @@ export const EAGLE_GREEN_LARGE_EVENT_TRANSFER_ACTION_ID = 'transfer-large-event-
 export const EAGLE_GREEN_HANDOVER_ACTION_ID = 'handover-human-agent';
 export const EAGLE_GREEN_HANDOVER_CONTROL_ID = 'handover-human-agent-steer';
 export const AMIT_WEBEX_ONE_360_AGENT_ID = 'amitwebexone-360-feedback-agent';
+export const AMIT_WEBEX_ONE_SELECTED_360_AGENT_ID = 'agent-b305f32f-897c-4e77-b96b-73d7b5b3959f';
+export const AMIT_WEBEX_ONE_MERIDIAN_AGENT_ID = 'amitwebexone-meridian-aria';
 
 const FEEDBACK360_NAME = '360 Feedback Agent';
 const FEEDBACK360_DESCRIPTION = 'Collect confidential 360 feedback from peers, direct reports, and a manager, then prepare an anonymized, themed development summary.';
+const SELECTED_FEEDBACK360_DESCRIPTION = "Configuration draft for a short, structured interview with peers, direct reports, manager. Responses should be combined into de-identified themes for development review. Requested goal: Create a 360 Feedback Agent to collect confidential feedback from a leader's peers, direct reports, and manager, and produce an anonymized, themed summary for development review.";
 const FEEDBACK360_WELCOME = "Hi, I'm collecting confidential feedback for [Leader]'s development review. Thank you for taking the time to complete this — Are you ready to get started?";
 const FEEDBACK360_CONFIDENTIALITY_RULE = 'Combine responses into de-identified themes. Escalate serious harassment, safety, or ethics concerns to a human HR owner.';
 const FEEDBACK360_KNOWLEDGE = [
@@ -473,6 +476,61 @@ export function buildCiscoLiveSeed(): {
     version: 1,
   };
   agentDrafts[AMIT_WEBEX_ONE_360_AGENT_ID] = feedback360Draft;
+
+  // The selected 360 card has this ID in the creator's saved browser data.
+  // Seed the same ID for new visitors; saved configuration still wins by ID.
+  const selectedFeedbackDraft = structuredClone(feedback360Draft);
+  selectedFeedbackDraft.id = AMIT_WEBEX_ONE_SELECTED_360_AGENT_ID;
+  selectedFeedbackDraft.basics = {
+    ...selectedFeedbackDraft.basics,
+    purpose: SELECTED_FEEDBACK360_DESCRIPTION,
+    description: SELECTED_FEEDBACK360_DESCRIPTION,
+  };
+  agents[AMIT_WEBEX_ONE_SELECTED_360_AGENT_ID] = {
+    ...agents[AMIT_WEBEX_ONE_360_AGENT_ID],
+    id: AMIT_WEBEX_ONE_SELECTED_360_AGENT_ID,
+    description: SELECTED_FEEDBACK360_DESCRIPTION,
+    meta: `${SELECTED_FEEDBACK360_DESCRIPTION} • Version 1`,
+    draftId: AMIT_WEBEX_ONE_SELECTED_360_AGENT_ID,
+  };
+  agentDrafts[AMIT_WEBEX_ONE_SELECTED_360_AGENT_ID] = selectedFeedbackDraft;
+
+  const meridianDescription = 'Proactively supports premium travelers through disruptions, coordinates refund and travel credit decisions, and follows every customer promise to resolution.';
+  const meridianDraft = createDraftFromProposal('calling', {
+    name: 'Meridian Aria',
+    purpose: meridianDescription,
+    description: meridianDescription,
+    language: 'English (US)',
+    instructions: `You are Meridian Aria. ${meridianDescription}`,
+    selectedChannels: ['voice'],
+  });
+  meridianDraft.id = AMIT_WEBEX_ONE_MERIDIAN_AGENT_ID;
+  meridianDraft.lifecycle = 'published';
+  meridianDraft.version = 1;
+  meridianDraft.createdAt = '2026-08-28T16:00:00.000Z';
+  meridianDraft.updatedAt = meridianDraft.createdAt;
+  agents[AMIT_WEBEX_ONE_MERIDIAN_AGENT_ID] = {
+    id: AMIT_WEBEX_ONE_MERIDIAN_AGENT_ID,
+    name: 'Meridian Aria',
+    initials: 'MA',
+    description: meridianDescription,
+    gradient: 'linear-gradient(135deg, #f59aaa, #a65d9c)',
+    status: 'Published',
+    statusClass: 'badge-success',
+    sessions: '—',
+    successRate: '—',
+    messages: '—',
+    avgResponse: '—',
+    meta: `${meridianDescription} • Version 1`,
+    createdAt: meridianDraft.createdAt,
+    updatedAt: meridianDraft.updatedAt,
+    agentType: 'Autonomous agent',
+    family: meridianDraft.family,
+    lifecycle: 'published',
+    draftId: AMIT_WEBEX_ONE_MERIDIAN_AGENT_ID,
+    version: 1,
+  };
+  agentDrafts[AMIT_WEBEX_ONE_MERIDIAN_AGENT_ID] = meridianDraft;
 
   return { agents, agentDrafts };
 }
