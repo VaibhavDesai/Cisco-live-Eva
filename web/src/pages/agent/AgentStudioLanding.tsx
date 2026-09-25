@@ -2150,7 +2150,7 @@ Simulation rules:
                                       const guardrailPlot = (
                                         <>
                                           <span className="agent-studio-guardrail-chart__label">
-                                            <small title={guardrail.item}>{is360FeedbackAgent ? 'Confidentiality and anonymization' : guardrail.item}</small>
+                                            <small title={guardrail.item}>{is360FeedbackAgent ? 'Leadership feedback scope' : guardrail.item}</small>
                                             <strong>{guardrail.count}</strong>
                                           </span>
                                           <span
@@ -2175,7 +2175,7 @@ Simulation rules:
                                                 'agent-studio-guardrail-chart__plot',
                                                 guardrailExpanded ? 'is-selected' : '',
                                               ].filter(Boolean).join(' ')}
-                                              aria-label={`${is360FeedbackAgent ? 'Confidentiality and anonymization' : guardrail.item}: ${guardrail.count} trigger${guardrail.count === 1 ? '' : 's'}`}
+                                              aria-label={`${is360FeedbackAgent ? 'Leadership feedback scope' : guardrail.item}: ${guardrail.count} trigger${guardrail.count === 1 ? '' : 's'}`}
                                               aria-expanded={guardrailExpanded}
                                               aria-controls={GUARDRAIL_DETAIL_ID}
                                               onClick={() => {
@@ -2217,7 +2217,7 @@ Simulation rules:
                                 icon={tileId === 'guardrails' ? 'shield' : 'automation'}
                                 className="agent-studio-operational-event-banner agent-studio-connected-event-banner"
                                 title={tileId === 'guardrails'
-                                  ? `${is360FeedbackAgent ? 'Confidentiality and anonymization' : selectedGuardrail?.item ?? 'Guardrail'} triggered`
+                                  ? `${is360FeedbackAgent ? 'Leadership feedback scope' : selectedGuardrail?.item ?? 'Guardrail'} triggered`
                                   : is360FeedbackAgent
                                     ? 'Anonymized summary threshold met'
                                     : actionControlSpotlightUnlocked

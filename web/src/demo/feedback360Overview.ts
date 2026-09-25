@@ -123,10 +123,7 @@ const topicLabel = (channel: string) => (
   channel.toLowerCase() === 'video' ? 'Guided video feedback' : 'Confidential feedback intake'
 );
 
-/**
- * Session rows share the saved channels and action selections. Individual feedback
- * and respondent roles are intentionally absent from the demo transcript.
- */
+/** Session rows share saved channels and actions. The first transcript is a scripted demo. */
 export function createFeedback360DemoSessions({
   agentName = '360 Feedback Agent',
   selectedChannels,
@@ -143,6 +140,108 @@ export function createFeedback360DemoSessions({
   const intakeSession = (index: number, id: string, updated: string, time: string): CiscoLiveSession => {
     const selectedChannel = channelAt(index);
     const guardrailTriggered = index === 0 && Boolean(guardrailName);
+    const scriptClosing = selectedActions.includes('Share Summary in Webex Space')
+      ? "Got it, thank you. I'll send you a transcript and summary of this conversation in a Webex Space for your records. Your responses will be combined and shared as part of [Name]'s review. Appreciate your time."
+      : "Got it, thank you. Your responses will be combined and shared as part of [Name]'s review. Appreciate your time.";
+    const transcript: CiscoLiveSession['transcript'] = index === 0 ? [
+      {
+        id: `${id}-welcome`,
+        kind: 'agent',
+        speaker: agentName,
+        text: "Hi, I'm collecting confidential feedback for [Leader]'s development review. Thank you for taking the time to complete this — Are you ready to get started?",
+        time: '9:42 AM',
+      },
+      {
+        id: `${id}-ready`,
+        kind: 'customer',
+        speaker: 'Anonymous respondent',
+        text: 'Sure, go head.',
+        time: '9:42 AM',
+      },
+      {
+        id: `${id}-pressure-question`,
+        kind: 'agent',
+        speaker: agentName,
+        text: 'Can you describe a time NAME handled a high-pressure situation — well or not so well?',
+        time: '9:43 AM',
+      },
+      {
+        id: `${id}-pressure-answer`,
+        kind: 'customer',
+        speaker: 'Anonymous respondent',
+        text: 'Yeah, actually — during the systems migration last month, things were falling apart and she kept the team calm, made a quick call instead of letting us debate it for hours. That stuck with me.',
+        time: '9:44 AM',
+      },
+      {
+        id: `${id}-improvement-question`,
+        kind: 'agent',
+        speaker: agentName,
+        text: "That's helpful, thank you. Is there anything you'd want NAME to do differently, or start doing more of, as a leader?",
+        time: '9:45 AM',
+      },
+      {
+        id: `${id}-compensation-answer`,
+        kind: 'customer',
+        speaker: 'Anonymous respondent',
+        text: "Honestly, I think she just needs to be promoted. She's carrying a lot and I don't think she's well compensated for everything she does.",
+        time: '9:46 AM',
+        ...(guardrailTriggered ? {
+          annotations: [{ kind: 'compliance' as const, label: 'Guardrail triggered' }],
+        } : {}),
+      },
+      ...(guardrailTriggered ? [{
+        id: `${id}-guardrail`,
+        kind: 'guardrail' as const,
+        speaker: 'Leadership feedback safeguard',
+        title: 'Promotion and compensation feedback excluded',
+        text: 'The respondent raised promotion and compensation. Keep this opinion out of the development review summary and return to leadership behaviors.',
+        detail: 'Triggered by the preceding respondent message',
+        time: '9:46 AM',
+      }] : []),
+      {
+        id: `${id}-scope-response`,
+        kind: 'agent',
+        speaker: agentName,
+        text: "Thank you for sharing that. I'm only collecting feedback on leadership behaviors, so that won't be included in the review summary. Anything else you'd like to add?",
+        time: '9:46 AM',
+      },
+      {
+        id: `${id}-final-answer`,
+        kind: 'customer',
+        speaker: 'Anonymous respondent',
+        text: 'No, she is a great leader.',
+        time: '9:47 AM',
+      },
+      {
+        id: `${id}-closing`,
+        kind: 'agent',
+        speaker: agentName,
+        text: scriptClosing,
+        time: '9:48 AM',
+      },
+    ] : [
+      {
+        id: `${id}-welcome`,
+        kind: 'agent',
+        speaker: agentName,
+        text: 'Thank you for taking part. Your feedback will contribute to an anonymized development summary.',
+        time,
+      },
+      {
+        id: `${id}-consent`,
+        kind: 'customer',
+        speaker: 'Anonymous participant',
+        text: 'I understand and am ready to begin.',
+        time,
+      },
+      {
+        id: `${id}-complete`,
+        kind: 'system',
+        speaker: 'Feedback collection',
+        text: 'Demo intake complete. Individual feedback content is withheld.',
+        time,
+      },
+    ];
     return {
       id,
       consumerId: `ANON-360-${index + 1}`,
@@ -151,59 +250,28 @@ export function createFeedback360DemoSessions({
       topic: topicLabel(selectedChannel),
       updated,
       startedAt: `Today at ${time}`,
-      messages: guardrailTriggered ? 4 : 3,
+      messages: index === 0 ? 9 : 3,
       duration: index === 0 ? '6m 12s' : '5m 34s',
       outcome: 'Resolved',
       guardrailTriggered,
       actionControlTriggered: false,
       transferred: false,
-      summary: guardrailTriggered
-        ? 'Feedback was captured for pooled analysis. A potentially identifying detail was excluded before aggregation.'
+      summary: index === 0
+        ? 'An anonymous respondent described calm decision-making under pressure. Promotion and compensation opinions were kept out of the leadership-behavior summary.'
         : 'Feedback was captured for pooled, anonymized theme analysis. Individual responses are hidden in this demo.',
       ...(guardrailTriggered ? {
         guardrail: {
           id: 'feedback360-confidentiality',
           name: guardrailName ?? 'Participant confidentiality',
-          policy: 'Do not expose participant identity or individual feedback in a development summary.',
-          detected: 'Potentially identifying detail in submitted feedback',
-          action: 'Excluded the detail from pooled theme analysis',
-          result: 'No identifiable response was included in the summary',
+          policy: 'Keep the anonymized development summary focused on leadership behaviors and exclude promotion or compensation opinions.',
+          detected: 'The respondent said the leader should be promoted and better compensated.',
+          action: 'Excluded the opinion from the review summary and redirected the conversation to leadership behaviors.',
+          result: 'The agent acknowledged the comment without including it in the review summary.',
           status: 'Working as designed',
         },
       } : {}),
       connectedSystems: [],
-      transcript: [
-        {
-          id: `${id}-welcome`,
-          kind: 'agent',
-          speaker: agentName,
-          text: 'Thank you for taking part. Your feedback will contribute to an anonymized development summary.',
-          time,
-        },
-        {
-          id: `${id}-consent`,
-          kind: 'customer',
-          speaker: 'Anonymous participant',
-          text: 'I understand and am ready to begin.',
-          time,
-        },
-        ...(guardrailTriggered ? [{
-          id: `${id}-guardrail`,
-          kind: 'guardrail' as const,
-          speaker: 'Confidentiality safeguard',
-          title: 'Identifying detail excluded',
-          text: 'A potentially identifying detail was omitted from pooled theme analysis. The original response is not shown in this demo.',
-          detail: 'Confidentiality safeguard triggered',
-          time,
-        }] : []),
-        {
-          id: `${id}-complete`,
-          kind: 'system',
-          speaker: 'Feedback collection',
-          text: 'Demo intake complete. Individual feedback content is withheld.',
-          time,
-        },
-      ],
+      transcript,
     };
   };
 
