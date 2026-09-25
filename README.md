@@ -59,10 +59,11 @@ npm run preview
 | `npm test` | Run AI agent creation model and journey tests |
 | `npm run preview` | Preview the production build locally    |
 | `npm run lint` | Run ESLint                                 |
-| `npm run deploy -- <target>` | Safely deploy `main`, `New-MVO`, or `Northstar` to its own SQBU Pages area |
+| `npm run deploy -- <target>` | Safely deploy `main`, `New-MVO`, `Northstar`, or `AmitWebexOne` to its own SQBU Pages area |
 | `npm run deploy:main` | Deploy the Pages root while preserving demo directories |
 | `npm run deploy:new-mvo` | Deploy only `/New-MVO/` |
 | `npm run deploy:northstar` | Deploy only `/Northstar/` |
+| `npm run deploy:amit-webex-one` | Deploy only `/AmitWebexOne/` |
 
 ## Project Structure
 
@@ -183,14 +184,15 @@ GitHub Pages uses a shared `gh-pages` branch with isolated deployment areas:
 | Main | `npm run deploy:main` | `/pages/CBABU/Cisco-live-Eva/` |
 | New MVO | `npm run deploy:new-mvo` | `/pages/CBABU/Cisco-live-Eva/New-MVO/` |
 | Northstar | `npm run deploy:northstar` | `/pages/CBABU/Cisco-live-Eva/Northstar/` |
+| AmitWebexOne | `npm run deploy:amit-webex-one` | `/pages/CBABU/Cisco-live-Eva/AmitWebexOne/` |
 
 Run these commands inside `web/`. `npm run deploy` also accepts an explicit
 target, for example `npm run deploy -- New-MVO`. When no target is supplied,
-the current branch name is used if it is one of the three supported targets.
+the current branch name is used if it is one of the four supported targets.
 
 The unified deploy script builds with the target-specific Vite base path, pulls
 the latest `gh-pages`, and synchronizes only the selected area. Main deployment
-explicitly preserves `New-MVO/` and `Northstar/`; demo deployments do not touch
+explicitly preserves `New-MVO/`, `Northstar/`, and `AmitWebexOne/`; demo deployments do not touch
 the root or sibling demo. If two publishes overlap, the losing push reclones
 the latest Pages branch and retries instead of overwriting the other publish.
 

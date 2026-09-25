@@ -12,7 +12,7 @@ MAX_PUSH_ATTEMPTS=3
 
 usage() {
   cat <<'EOF'
-Usage: npm run deploy -- [main|New-MVO|Northstar]
+Usage: npm run deploy -- [main|New-MVO|Northstar|AmitWebexOne]
 
 When no target is supplied, the current Git branch name is used. Each target
 updates only its own area on gh-pages:
@@ -20,6 +20,7 @@ updates only its own area on gh-pages:
   main       -> /
   New-MVO    -> /New-MVO/
   Northstar  -> /Northstar/
+  AmitWebexOne -> /AmitWebexOne/
 EOF
 }
 
@@ -44,6 +45,21 @@ case "$normalized_target" in
     publish_dir="Northstar"
     base_path="$PAGES_ROOT/Northstar/"
     direct_routes=("new-agent")
+    ;;
+  amitwebexone)
+    target="AmitWebexOne"
+    publish_dir="AmitWebexOne"
+    base_path="$PAGES_ROOT/AmitWebexOne/"
+    direct_routes=(
+      "new-agent"
+      "agents"
+      "agents/amitwebexone-360-feedback-agent"
+      "agents/amitwebexone-360-feedback-agent/sessions"
+      "agents/amitwebexone-360-feedback-agent/configure"
+      "agents/360-feedback-agent"
+      "agents/360-feedback-agent/sessions"
+      "agents/360-feedback-agent/configure"
+    )
     ;;
   -h|--help|help)
     usage
@@ -96,6 +112,7 @@ stage_target() {
       --exclude='.git/' \
       --exclude='New-MVO/' \
       --exclude='Northstar/' \
+      --exclude='AmitWebexOne/' \
       "$WEB_DIR/dist/" "$site_dir/"
   else
     mkdir -p "$site_dir/$publish_dir"

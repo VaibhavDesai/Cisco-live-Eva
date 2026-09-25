@@ -17,6 +17,25 @@ export const EAGLE_GREEN_PAYMENT_ACTION_ID = 'send-payment-link';
 export const EAGLE_GREEN_LARGE_EVENT_TRANSFER_ACTION_ID = 'transfer-large-event-vip-concierge';
 export const EAGLE_GREEN_HANDOVER_ACTION_ID = 'handover-human-agent';
 export const EAGLE_GREEN_HANDOVER_CONTROL_ID = 'handover-human-agent-steer';
+export const AMIT_WEBEX_ONE_360_AGENT_ID = 'amitwebexone-360-feedback-agent';
+
+const FEEDBACK360_NAME = '360 Feedback Agent';
+const FEEDBACK360_DESCRIPTION = 'Collect confidential 360 feedback from peers, direct reports, and a manager, then prepare an anonymized, themed development summary.';
+const FEEDBACK360_WELCOME = "Hi, I'm collecting confidential feedback for [Leader]'s development review. Thank you for taking the time to complete this — Are you ready to get started?";
+const FEEDBACK360_CONFIDENTIALITY_RULE = 'Combine responses into de-identified themes. Escalate serious harassment, safety, or ethics concerns to a human HR owner.';
+const FEEDBACK360_KNOWLEDGE = [
+  { name: 'Company Directory & Organizational Chart', description: 'Confirm approved reporting relationships and participant groups.' },
+  { name: 'Company Intranet / Review Cycle Policy', description: 'Use approved review cycle and confidentiality guidance.' },
+  { name: 'Leadership Competency Framework', description: 'Organize feedback around leadership behaviors and impact.' },
+  { name: 'HR System', description: 'Use approved employee and reporting information.' },
+];
+const FEEDBACK360_ACTIONS = [
+  { name: 'Generate Anonymized Theme Summary', provider: '', providerLogoSrc: '', description: 'Combine feedback into de-identified themes for development review.' },
+  { name: 'Escalate to HR (if guardrails flagged)', provider: '', providerLogoSrc: '', description: 'Route serious harassment, safety, or ethics concerns to a human HR owner.' },
+  { name: 'Share Summary in Webex Space', provider: '', providerLogoSrc: '', description: 'Share an approved pooled summary in a Webex space.' },
+  { name: 'Share Summary via Email', provider: '', providerLogoSrc: '', description: 'Send an approved pooled summary by email.' },
+  { name: 'Send Reminder to Incomplete Respondents', provider: '', providerLogoSrc: '', description: 'Remind participants who have not completed their feedback.' },
+];
 
 export const EAGLE_GREEN_ACTION_CONTROL_VALUES = {
   selections: [
@@ -369,6 +388,91 @@ export function buildCiscoLiveSeed(): {
     version: technicalSupportDraft.version,
   };
   agentDrafts[technicalSupportDraft.id] = technicalSupportDraft;
+
+  // This published story agent is part of the AmitWebexOne demo itself. A
+  // first-time visitor can open its Overview without the creator's local data.
+  const feedback360Draft = createDraftFromProposal('contact_center', {
+    name: FEEDBACK360_NAME,
+    purpose: FEEDBACK360_DESCRIPTION,
+    description: FEEDBACK360_DESCRIPTION,
+    language: 'English (US)',
+    instructions: [
+      `#### Role & Identity\nYou are ${FEEDBACK360_NAME}. ${FEEDBACK360_DESCRIPTION}`,
+      '#### Primary Goals\n- Collect confidential feedback from the leader’s peers, direct reports, and manager.\n- Prepare an anonymized, themed summary for development review.',
+      `#### Guardrails\n${FEEDBACK360_CONFIDENTIALITY_RULE}`,
+    ].join('\n\n'),
+    selectedChannels: ['voice', 'digital', 'video'],
+    greetings: {
+      voice: FEEDBACK360_WELCOME,
+      digital: FEEDBACK360_WELCOME,
+      video: FEEDBACK360_WELCOME,
+    },
+  });
+  const feedback360Timestamp = '2026-09-24T16:00:00.000Z';
+  feedback360Draft.id = AMIT_WEBEX_ONE_360_AGENT_ID;
+  feedback360Draft.lifecycle = 'published';
+  feedback360Draft.version = 1;
+  feedback360Draft.createdAt = feedback360Timestamp;
+  feedback360Draft.updatedAt = feedback360Timestamp;
+  feedback360Draft.instructions = { ...feedback360Draft.instructions, applied: true };
+  for (const [capabilityId, values] of Object.entries({
+    channels: {
+      scenario: 'feedback360',
+      creationIntent: 'create',
+      selectedChannels: ['voice', 'digital', 'video'],
+      digitalChannels: ['chat'],
+      digitalChannelAddress: '360-feedback-agent',
+      greetings: {
+        voice: FEEDBACK360_WELCOME,
+        digital: FEEDBACK360_WELCOME,
+        video: FEEDBACK360_WELCOME,
+      },
+      voicePhoneNumber: '',
+      phoneNumberDeferred: true,
+    },
+    knowledge: {
+      selections: FEEDBACK360_KNOWLEDGE.map(item => item.name),
+      catalog: FEEDBACK360_KNOWLEDGE,
+    },
+    actions: {
+      selections: FEEDBACK360_ACTIONS.map(item => item.name),
+      catalog: FEEDBACK360_ACTIONS,
+    },
+    security: { selections: [FEEDBACK360_CONFIDENTIALITY_RULE] },
+  })) {
+    const capability = feedback360Draft.familyConfiguration[capabilityId];
+    if (!capability) continue;
+    feedback360Draft.familyConfiguration[capabilityId] = {
+      ...capability,
+      progress: 'configured',
+      values: { ...(capability.values ?? {}), ...values },
+      updatedAt: feedback360Timestamp,
+    };
+  }
+
+  agents[AMIT_WEBEX_ONE_360_AGENT_ID] = {
+    id: AMIT_WEBEX_ONE_360_AGENT_ID,
+    name: FEEDBACK360_NAME,
+    initials: '3F',
+    description: FEEDBACK360_DESCRIPTION,
+    gradient: 'linear-gradient(135deg, #11998e, #38ef7d)',
+    status: 'Published',
+    statusClass: 'badge-success',
+    sessions: '—',
+    successRate: '—',
+    messages: '—',
+    avgResponse: '—',
+    meta: `${FEEDBACK360_DESCRIPTION} • Version 1`,
+    knowledgeBases: FEEDBACK360_KNOWLEDGE.map(item => item.name),
+    createdAt: feedback360Timestamp,
+    updatedAt: feedback360Timestamp,
+    agentType: 'Autonomous agent',
+    family: feedback360Draft.family,
+    lifecycle: 'published',
+    draftId: AMIT_WEBEX_ONE_360_AGENT_ID,
+    version: 1,
+  };
+  agentDrafts[AMIT_WEBEX_ONE_360_AGENT_ID] = feedback360Draft;
 
   return { agents, agentDrafts };
 }

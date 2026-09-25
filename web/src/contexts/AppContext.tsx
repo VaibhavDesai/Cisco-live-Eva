@@ -477,7 +477,7 @@ const withCiscoLiveSeed = (
   // The story's confidentiality rule was always seeded into that flow; other
   // missing channel, knowledge, and action choices stay unselected.
   Object.entries(mergedAgents).forEach(([id, agent]) => {
-    const existingDraft = migratedDrafts[id];
+    const existingDraft = migratedDrafts[id] ?? seed.agentDrafts[id];
     if (existingDraft?.lifecycle === 'draft'
       && existingDraft.familyConfiguration.channels?.values?.creationIntent) return;
     const isFeedback360 = existingDraft?.familyConfiguration.channels?.values?.scenario === 'feedback360'

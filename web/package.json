@@ -12,7 +12,8 @@
     "deploy": "bash scripts/deploy-pages.sh",
     "deploy:main": "bash scripts/deploy-pages.sh main",
     "deploy:new-mvo": "bash scripts/deploy-pages.sh New-MVO",
-    "deploy:northstar": "bash scripts/deploy-pages.sh Northstar"
+    "deploy:northstar": "bash scripts/deploy-pages.sh Northstar",
+    "deploy:amit-webex-one": "bash scripts/deploy-pages.sh AmitWebexOne"
   },
   "dependencies": {
     "@momentum-design/components": "^0.129.51",
