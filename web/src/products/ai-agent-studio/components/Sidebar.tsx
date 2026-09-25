@@ -1,23 +1,24 @@
-import { useEffect, type ReactNode } from 'react';
-import { Link, useLocation, useNavigate, useSearchParams } from 'react-router-dom';
-import SideNav from '../../../components/shared/SideNav';
+import { type ReactNode } from 'react';
+import { useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import { KnowledgeBookIcon } from '../../../components/shared/ConfigurationCategoryIcon';
-import { Icon } from '../../../icons/Icon';
+import type { IconName } from '../../../icons/types';
 import { useApp } from '../../../contexts/AppContext';
 import { type AgentFamily } from '../../../features/agent-creation/agentCreationModel';
+import { getAgentDisplayType } from '../../../features/agent-creation/agentDisplayType';
+import AssistantControlRail from './AssistantControlRail';
 
 interface NavItem {
   path: string;
   label: string;
-  icon: string;
+  icon: IconName;
 }
 
 const navItems: NavItem[] = [
-  { path: '/new-agent', label: 'Home', icon: 'home-bold' },
-  { path: '/agents', label: 'AI Agents', icon: 'bot-bold' },
-  { path: '/observability', label: 'Observability', icon: 'multiline-chart-regular' },
-  { path: '/knowledge', label: 'Knowledge', icon: 'apps-bold' },
-  { path: '/settings', label: 'AI Engine', icon: 'tools-bold' },
+  { path: '/new-agent', label: 'Home', icon: 'home' },
+  { path: '/agents', label: 'AI Agents', icon: 'bot' },
+  { path: '/observability', label: 'Observability', icon: 'multiline-chart' },
+  { path: '/knowledge', label: 'Knowledge', icon: 'apps' },
+  { path: '/settings', label: 'AI Engine', icon: 'instant-schedule' },
 ];
 
 const ORGANIZATION_NAME = 'Eagle Green';
@@ -80,7 +81,6 @@ interface SidebarProps {
 export default function Sidebar({
   collapsed = false,
   agentPanelOpen = true,
-  onAgentPanelOpenChange,
 }: SidebarProps) {
   const location = useLocation();
   const navigate = useNavigate();
@@ -90,36 +90,56 @@ export default function Sidebar({
   const agentId = parseAgentId(location.pathname);
   const agent = agentId ? agents[agentId] : undefined;
 
-  useEffect(() => {
-    if (!agentId || !agentPanelOpen) return;
-
-    const frame = window.requestAnimationFrame(() => {
-      document
-        .querySelector<HTMLElement>('.sidebar-agent-nav .sidenav__tab--active')
-        ?.scrollIntoView({ block: 'nearest' });
-    });
-
-    return () => window.cancelAnimationFrame(frame);
-  }, [agentId, agentPanelOpen, location.pathname, location.search]);
-
-  const openAgentPanel = (restoreFocus = false) => {
-    onAgentPanelOpenChange?.(true);
-    if (restoreFocus) {
-      window.requestAnimationFrame(() => {
-        document.querySelector<HTMLButtonElement>('.uplift-agent-panel__collapse')?.focus();
-      });
-    }
+  const isActive = (path: string, end = false) => {
+    if (end) return location.pathname === path;
+    return location.pathname === path || location.pathname.startsWith(path + '/');
   };
+
+  const isNewAgentActive = location.pathname === '/new-agent';
+  const railItems = navItems.map((item, index) => {
+    const itemActive =
+      item.path === '/settings'
+        ? location.pathname === '/settings'
+        : item.path === '/observability'
+          ? location.pathname === '/observability' ||
+            location.pathname === '/kpi-dashboard' ||
+            location.pathname.endsWith('/kpi-dashboard')
+          : item.path === '/new-agent'
+            ? isNewAgentActive
+            : isActive(item.path, item.path === '/');
+
+    return {
+      id: item.path,
+      label: item.label,
+      icon: item.icon,
+      active: itemActive,
+      dividerBefore: index === 3,
+      onClick: () => navigate(item.path),
+    };
+  });
 
   /* ── Agent-scoped navigation ─────────────────────────────────────── */
   if (agentId && agent) {
     const family = agent.family ?? agentDrafts[agentId]?.family;
+    const is360FeedbackAgent = agentDrafts[agentId]?.familyConfiguration.channels?.values?.scenario === 'feedback360';
+    const agentDisplayType = getAgentDisplayType({
+      id: agentId,
+      family,
+      displayType: agent.displayType,
+    });
+    const hidesAdvancedConfiguration = ['AI receptionist', 'Personal agent'].includes(agentDisplayType);
     const configureItems = CONFIGURE_ITEMS.filter(
-      item => !item.families || !family || item.families.includes(family),
+      item => (!item.families || !family || item.families.includes(family))
+        && !(hidesAdvancedConfiguration && ['Security', 'Conversation'].includes(item.section)),
     );
-    const deployItems = DEPLOY_ITEMS.filter(
-      item => !item.families || !family || item.families.includes(family),
-    );
+    const hidesDeployment = !is360FeedbackAgent && ['CX concierge', 'CX specialist'].includes(agentDisplayType);
+    const deployItems = hidesDeployment
+      ? []
+      : DEPLOY_ITEMS.filter(
+        item => (!item.families || !family || item.families.includes(family))
+          && !(agentDisplayType === 'Personal agent' && item.section === 'Channels')
+          && !(hidesAdvancedConfiguration && item.section === 'Flow'),
+      );
 
     // The bare /agents/:id route is the agent Overview (agent-name view);
     // configuration sections live under /configure with a ?section= param.
@@ -130,183 +150,131 @@ export default function Sidebar({
       item => location.pathname === `/agents/${agentId}/${item.path}`,
     )?.path;
 
+    const overviewItem = {
+      id: 'overview',
+      label: 'Overview',
+      active: isOverviewRoute,
+      onClick: () => {
+        selectAgent(agentId);
+        navigate(`/agents/${agentId}`);
+      },
+    };
+    const configureNavItems = [
+      ...configureItems.map(item => ({
+        id: `configure-${item.section}`,
+        label: agentDisplayType === 'AI receptionist' && item.section === 'Knowledge'
+          ? 'Knowledge'
+          : item.familyLabels?.[family ?? 'contact_center'] ?? item.label,
+        active: onConfigureRoute && activeSection === item.section,
+        onClick: () => {
+          selectAgent(agentId);
+          navigate(`/agents/${agentId}/configure?section=${item.section}`);
+        },
+      })),
+      ...(family !== 'calling' && !hidesAdvancedConfiguration ? [{
+        id: TESTING_ITEM.path,
+        label: TESTING_ITEM.label,
+        active: activeRoutePath === TESTING_ITEM.path,
+        onClick: () => {
+          selectAgent(agentId);
+          navigate(`/agents/${agentId}/${TESTING_ITEM.path}`);
+        },
+      }] : []),
+    ];
+    const deployNavItems = [
+      ...deployItems.map(item => ({
+        id: `deploy-${item.section}`,
+        label: item.label,
+        active: onConfigureRoute && activeSection === item.section,
+        onClick: () => {
+          selectAgent(agentId);
+          navigate(`/agents/${agentId}/configure?section=${item.section}`);
+        },
+      })),
+    ];
+    const monitorNavItems = MONITOR_ITEMS.map(item => ({
+      id: item.path,
+      label: item.label,
+      active: activeRoutePath === item.path,
+      onClick: () => {
+        selectAgent(agentId);
+        navigate(`/agents/${agentId}/${item.path}`);
+      },
+    }));
+    const navigationGroups = [
+      { label: 'Configure', items: configureNavItems },
+      { label: 'Deploy', items: deployNavItems },
+      { label: 'Monitor', items: monitorNavItems },
+    ].filter(group => group.items.length > 0);
+
     if (!agentPanelOpen) {
       return (
-        <button
-          type="button"
-          className="uplift-agent-panel-handle"
-          aria-label="Open agent navigation"
-          title="Open agent navigation"
-          onClick={() => openAgentPanel(true)}
-        >
-          <span className="uplift-agent-panel__grabber-dots" aria-hidden>
-            <span />
-            <span />
-            <span />
-          </span>
-        </button>
+        <aside className="sidebar agent-shell-navigation agent-shell-navigation--level-one-only">
+          <AssistantControlRail
+            type="Collapsed"
+            contentPanel="Closed"
+            items={railItems}
+            footerLabel={ORGANIZATION_NAME}
+            footerActive={location.pathname === '/settings/organization'}
+            onFooterClick={() => navigate('/settings/organization')}
+          />
+        </aside>
       );
     }
 
     return (
-      <aside className="sidebar uplift-agent-panel">
-        <button
-          type="button"
-          className="uplift-agent-panel__collapse"
-          aria-label="Collapse agent navigation"
-          title="Collapse agent navigation"
-          onClick={() => {
-            onAgentPanelOpenChange?.(false);
-            window.requestAnimationFrame(() => {
-              document.querySelector<HTMLButtonElement>('.uplift-agent-panel-handle')?.focus();
-            });
-          }}
-        >
-          <span className="uplift-agent-panel__grabber-dots" aria-hidden>
-            <span />
-            <span />
-            <span />
-          </span>
-        </button>
-        <div className="sidebar-main">
-          <Link
-            className="sidebar-agent-back-link"
-            to="/agents"
-            onClick={() => onAgentPanelOpenChange?.(false)}
-          >
-            <Icon name="arrow-left" weight="bold" size="xs" />
-            <Icon name="home-bold" weight="bold" size="xs" />
-            <span>Back to AI Agents</span>
-          </Link>
-          <SideNav aria-label="Agent navigation" className="sidebar-agent-nav">
-            <SideNav.Upper>
-              <SideNav.Item
-                icon="dashboard-bold"
-                label="Overview"
-                active={isOverviewRoute}
-                onClick={() => {
-                  selectAgent(agentId);
-                  navigate(`/agents/${agentId}`);
-                }}
-              />
-
-              <SideNav.Section header="Configure">
-                {configureItems.map(item => (
-                  <SideNav.Item
-                    key={item.section}
-                    icon={item.icon}
-                    label={item.familyLabels?.[family ?? 'contact_center'] ?? item.label}
-                    active={onConfigureRoute && activeSection === item.section}
-                    onClick={() => {
-                      selectAgent(agentId);
-                      navigate(`/agents/${agentId}/configure?section=${item.section}`);
-                    }}
-                  />
-                ))}
-                {family !== 'calling' && (
-                  <SideNav.Item
-                    icon={TESTING_ITEM.icon}
-                    label={TESTING_ITEM.label}
-                    active={activeRoutePath === TESTING_ITEM.path}
-                    onClick={() => {
-                      selectAgent(agentId);
-                      navigate(`/agents/${agentId}/${TESTING_ITEM.path}`);
-                    }}
-                  />
-                )}
-              </SideNav.Section>
-
-              <SideNav.Section header="Deploy">
-                {deployItems.map(item => (
-                  <SideNav.Item
-                    key={item.section}
-                    icon={item.icon}
-                    label={item.label}
-                    active={onConfigureRoute && activeSection === item.section}
-                    onClick={() => {
-                      selectAgent(agentId);
-                      navigate(`/agents/${agentId}/configure?section=${item.section}`);
-                    }}
-                  />
-                ))}
-              </SideNav.Section>
-
-              <SideNav.Section header="Monitor">
-                {MONITOR_ITEMS.map(item => (
-                  <SideNav.Item
-                    key={item.path}
-                    icon={item.icon}
-                    label={item.label}
-                    active={activeRoutePath === item.path}
-                    onClick={() => {
-                      selectAgent(agentId);
-                      navigate(`/agents/${agentId}/${item.path}`);
-                    }}
-                  />
-                ))}
-              </SideNav.Section>
-            </SideNav.Upper>
-          </SideNav>
+      <aside className="sidebar agent-shell-navigation">
+        <div className="agent-shell-navigation__level-one">
+          <AssistantControlRail
+            type="Collapsed"
+            contentPanel="Open"
+            items={railItems}
+            footerLabel={ORGANIZATION_NAME}
+            footerActive={location.pathname === '/settings/organization'}
+            onFooterClick={() => navigate('/settings/organization')}
+          />
         </div>
+        <nav className="agent-level-two-nav" aria-label="Agent navigation">
+          <button
+            type="button"
+            className={`agent-level-two-nav__item${overviewItem.active ? ' agent-level-two-nav__item--active' : ''}`}
+            aria-current={overviewItem.active ? 'page' : undefined}
+            onClick={overviewItem.onClick}
+          >
+            {overviewItem.label}
+          </button>
+          {navigationGroups.map(group => (
+            <div className="agent-level-two-nav__section" key={group.label}>
+              <span className="agent-level-two-nav__section-label">{group.label}</span>
+              {group.items.map(item => (
+            <button
+              key={item.id}
+              type="button"
+              className={`agent-level-two-nav__item${item.active ? ' agent-level-two-nav__item--active' : ''}`}
+              aria-current={item.active ? 'page' : undefined}
+              onClick={item.onClick}
+            >
+              {item.label}
+            </button>
+              ))}
+            </div>
+          ))}
+        </nav>
       </aside>
     );
   }
 
   /* ── Workspace navigation ────────────────────────────────────────── */
-  const isActive = (path: string, end = false) => {
-    if (end) return location.pathname === path;
-    return location.pathname === path || location.pathname.startsWith(path + '/');
-  };
-
-  const isNewAgentActive = location.pathname === '/new-agent';
-
   return (
     <aside className={`sidebar${collapsed ? ' sidebar--collapsed' : ''}`}>
-      <div className="sidebar-main">
-        <SideNav collapsed={collapsed} aria-label="Main navigation">
-          <SideNav.Upper>
-            <SideNav.Section>
-              {navItems.map(item => {
-                const itemActive =
-                  item.path === '/settings'
-                    ? location.pathname === '/settings'
-                    : item.path === '/observability'
-                      ? location.pathname === '/observability' ||
-                        location.pathname === '/kpi-dashboard' ||
-                        location.pathname.endsWith('/kpi-dashboard')
-                    : item.path === '/new-agent'
-                      ? isNewAgentActive
-                    : isActive(item.path, item.path === '/');
-
-                return (
-                  <SideNav.Item
-                    key={item.path}
-                    icon={item.icon}
-                    label={item.label}
-                    active={itemActive}
-                    onClick={() => {
-                      navigate(item.path);
-                    }}
-                  />
-                );
-              })}
-            </SideNav.Section>
-          </SideNav.Upper>
-        </SideNav>
-      </div>
-      <div className="sidebar-bottom">
-        <button
-          type="button"
-          className={`sidebar-org-pill${location.pathname === '/settings/organization' ? ' sidebar-org-pill--active' : ''}`}
-          onClick={() => navigate('/settings/organization')}
-          title="Organization settings"
-        >
-          <span className="sidebar-org-pill__icon" aria-hidden>
-            <Icon name="company" size={16} />
-          </span>
-          <span className="sidebar-org-pill__label">{ORGANIZATION_NAME}</span>
-        </button>
-      </div>
+      <AssistantControlRail
+        type={collapsed ? 'Collapsed' : 'Expanded'}
+        contentPanel="Closed"
+        items={railItems}
+        footerLabel={ORGANIZATION_NAME}
+        footerActive={location.pathname === '/settings/organization'}
+        onFooterClick={() => navigate('/settings/organization')}
+      />
     </aside>
   );
 }

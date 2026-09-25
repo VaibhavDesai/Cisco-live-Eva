@@ -18,6 +18,7 @@ import {
   type CiscoLiveSession,
   type CiscoLiveSessionOutcome,
 } from '../../demo/ciscoLiveDemo';
+import { createFeedback360DemoSessions } from '../../demo/feedback360Overview';
 
 function outcomeVariant(outcome: CiscoLiveSessionOutcome) {
   if (outcome === 'Resolved') return 'success';
@@ -117,12 +118,14 @@ const GUARDRAIL_PANEL_ID = 'session-guardrail-evidence';
 
 function SessionDetail({
   session,
+  is360FeedbackAgent,
   backLabel,
   onBack,
   onReviewGuardrail,
   onReviewActionControl,
 }: {
   session: CiscoLiveSession;
+  is360FeedbackAgent?: boolean;
   backLabel: string;
   onBack: () => void;
   onReviewGuardrail: (guardrailId: string) => void;
@@ -209,7 +212,7 @@ function SessionDetail({
                         )}
                       </span>
                     )}
-                    actions={actionControl ? [{
+                    actions={!is360FeedbackAgent && actionControl ? [{
                       label: 'View control',
                       variant: 'outline',
                       onClick: () => showPolicyPanel('action-control'),
@@ -310,20 +313,20 @@ function SessionDetail({
             <div className="agent-session-panel-heading">
               <div>
                 <h2>Session metadata</h2>
-                <p>Captured from the live interaction</p>
+                <p>{is360FeedbackAgent ? 'Illustrative demo session' : 'Captured from the live interaction'}</p>
               </div>
             </div>
             <dl className="agent-session-metadata-list">
               <div><dt>Session ID</dt><dd>{session.id}</dd></div>
-              <div><dt>Consumer</dt><dd>{session.customer}</dd></div>
-              <div><dt>Consumer ID</dt><dd>{session.consumerId}</dd></div>
+              <div><dt>{is360FeedbackAgent ? 'Participant group' : 'Consumer'}</dt><dd>{session.customer}</dd></div>
+              <div><dt>{is360FeedbackAgent ? 'Anonymous group ID' : 'Consumer ID'}</dt><dd>{session.consumerId}</dd></div>
               <div><dt>Started</dt><dd>{session.startedAt}</dd></div>
               <div><dt>Channel</dt><dd>{session.channel}</dd></div>
               <div><dt>Outcome</dt><dd>{session.outcome}</dd></div>
             </dl>
           </Card>
 
-          {actionControl && actionControlExpanded && (
+          {!is360FeedbackAgent && actionControl && actionControlExpanded && (
             <Card
               ref={actionControlCardRef}
               id={ACTION_CONTROL_PANEL_ID}
@@ -441,12 +444,25 @@ export default function AgentSessions() {
   }
 
   const agentDraft = agentDrafts[agent.id];
+  const is360FeedbackAgent = agentDraft?.familyConfiguration.channels?.values?.scenario === 'feedback360'
+    || (/\b360\b/i.test(agent.name) && /\bfeedback\b/i.test(agent.name));
   const isUnpublishedDraft = agentDraft?.lifecycle === 'draft';
   const actionValues = agentDraft?.familyConfiguration.actions?.values;
-  const agentSessions = getCiscoLiveSessions(agent.id, actionValues);
+  const savedSelections = (value: unknown): string[] => Array.isArray(value)
+    ? value.filter((item): item is string => typeof item === 'string' && Boolean(item.trim()))
+    : [];
+  const selectedChannels = savedSelections(agentDraft?.familyConfiguration.channels?.values?.selectedChannels);
+  const agentSessions = is360FeedbackAgent
+    ? createFeedback360DemoSessions({
+        agentName: agent.name,
+        selectedChannels: selectedChannels.length > 0 ? selectedChannels : ['digital'],
+        selectedActions: savedSelections(actionValues?.selections),
+        configuredSecurity: savedSelections(agentDraft?.familyConfiguration.security?.values?.selections),
+      })
+    : getCiscoLiveSessions(agent.id, actionValues);
   const sessions = isUnpublishedDraft
     ? []
-    : agentSessions.length > 0
+    : is360FeedbackAgent || agentSessions.length > 0
       ? agentSessions
       : getCiscoLiveSessions(CISCO_LIVE_PRIMARY_AGENT_ID);
   const activeSession = canonicalSessionId
@@ -509,6 +525,7 @@ export default function AgentSessions() {
         {activeSession ? (
           <SessionDetail
             session={activeSession}
+            is360FeedbackAgent={is360FeedbackAgent}
             backLabel={sessionBackNavigation.label}
             onBack={() => navigate(sessionBackNavigation.path)}
             onReviewGuardrail={(guardrailId) => navigate(
@@ -546,7 +563,7 @@ export default function AgentSessions() {
                     <Icon name="search" weight="regular" size="sm" />
                     <input
                       type="search"
-                      placeholder="Session ID, customer, or topic"
+                      placeholder={is360FeedbackAgent ? 'Session ID, participant group, or topic' : 'Session ID, customer, or topic'}
                       value={searchTerm}
                       onChange={(event) => setSearchTerm(event.target.value)}
                     />
@@ -573,7 +590,7 @@ export default function AgentSessions() {
                   </label>
                   <label>
                     <input type="checkbox" checked={actionControlOnly} onChange={(event) => setActionControlOnly(event.target.checked)} />
-                    <span>Agent control matched</span>
+                    <span>{is360FeedbackAgent ? 'Summary eligibility check met' : 'Agent control matched'}</span>
                   </label>
                   <label>
                     <input type="checkbox" checked={transfersOnly} onChange={(event) => setTransfersOnly(event.target.checked)} />
@@ -604,7 +621,7 @@ export default function AgentSessions() {
                     <TableRow>
                       <TableHeader>Channel</TableHeader>
                       <TableHeader>Session ID</TableHeader>
-                      <TableHeader>Customer</TableHeader>
+                      <TableHeader>{is360FeedbackAgent ? 'Participant group' : 'Customer'}</TableHeader>
                       <TableHeader>Messages</TableHeader>
                       <TableHeader>Updated</TableHeader>
                       <TableHeader>Outcome</TableHeader>
@@ -632,7 +649,7 @@ export default function AgentSessions() {
                         <TableCell>
                           <span className="agent-session-metadata-icons">
                             {sessionHasMatchedActionControl(session) && (
-                              <span className="agent-session-metadata-icons__action-control" title="Agent control matched">
+                              <span className="agent-session-metadata-icons__action-control" title={is360FeedbackAgent ? 'Summary eligibility check met' : 'Agent control matched'}>
                                 <Icon name="automation" weight="bold" size="sm" />
                               </span>
                             )}

@@ -333,5 +333,42 @@ export function buildCiscoLiveSeed(): {
     agentDrafts[definition.id] = draft;
   }
 
+  const technicalSupportProposal: StarterProposal = {
+    name: 'Technical Support Concierge',
+    purpose: 'Help customers troubleshoot common issues and prepare complete escalations.',
+    description: 'A customer-service agent for guided troubleshooting, service updates, and specialist escalation.',
+    language: 'English (US)',
+    instructions: '#### Role & Identity\nYou are a technical support concierge.\n\n#### Primary Goals\nGuide approved troubleshooting and preserve diagnostic context when escalating.\n\n#### Guardrails\nUse approved support content, protect customer data, and never claim an unverified fix.\n\n#### Output Rules\nUse patient, precise steps and summarize the result.',
+    selectedChannels: ['voice', 'digital'],
+  };
+  const technicalSupportDraft = createDraftFromProposal('contact_center', technicalSupportProposal);
+  technicalSupportDraft.id = 'technical-support-concierge';
+  technicalSupportDraft.lifecycle = 'draft';
+  technicalSupportDraft.createdAt = '2026-08-31T16:00:00.000Z';
+  technicalSupportDraft.updatedAt = '2026-08-31T16:00:00.000Z';
+
+  agents[technicalSupportDraft.id] = {
+    id: technicalSupportDraft.id,
+    name: technicalSupportProposal.name,
+    initials: 'TS',
+    description: technicalSupportProposal.description,
+    gradient: 'linear-gradient(135deg, #32d5ad 0%, #148c75 100%)',
+    status: 'Draft',
+    statusClass: 'badge-warning',
+    sessions: '0',
+    successRate: '—',
+    messages: '0',
+    avgResponse: '—',
+    meta: 'Technical support and escalation',
+    createdAt: technicalSupportDraft.createdAt,
+    updatedAt: technicalSupportDraft.updatedAt,
+    agentType: 'Scripted agent',
+    family: technicalSupportDraft.family,
+    lifecycle: technicalSupportDraft.lifecycle,
+    draftId: technicalSupportDraft.id,
+    version: technicalSupportDraft.version,
+  };
+  agentDrafts[technicalSupportDraft.id] = technicalSupportDraft;
+
   return { agents, agentDrafts };
 }

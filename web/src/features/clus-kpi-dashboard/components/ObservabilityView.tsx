@@ -10,7 +10,7 @@ import {
   ActionControlTracePanel,
 } from '../actionControlObservability';
 
-const CARDS_PER_ROW = 4;
+const CARDS_PER_ROW = 3;
 
 interface ObservabilityViewProps {
   filteredKpiData: KPIData[];

@@ -41,7 +41,6 @@ import {
   CISCO_LIVE_BUSINESS_IMPACT_METRICS,
   CISCO_LIVE_OPERATIONAL_HEALTH_METRICS,
   CISCO_LIVE_PRIMARY_AGENT_ID,
-  CISCO_LIVE_PRIMARY_AGENT_NAME,
 } from '../../demo/ciscoLiveDemo';
 import {
   ACTION_CONTROL_OBSERVABILITY_CATEGORY,
@@ -51,14 +50,12 @@ import {
 
 /* Default dashboard state so the Observability page opens scoped to the primary
    demo agent with its key metrics already pinned (matches the design spec). */
-const DEFAULT_DASHBOARD_AGENT_FILTER = CISCO_LIVE_PRIMARY_AGENT_NAME;
+const DEFAULT_DASHBOARD_AGENT_FILTER = 'EAGLE GREEN Event Operations';
 const DEFAULT_PINNED_CARD_IDS = [
   'kp-knowledge-coverage',
   'sec-guardrails-trigger-flag',
   'ce-containment-rate',
   'ap-intent-success-rate',
-  'ac-control-evaluations',
-  'ac-steer-outcomes',
   'bi-autocsat-improvement',
   'ce-csat-predictor',
 ];
@@ -313,6 +310,57 @@ function alignKpiWithCiscoLiveBusinessImpact(
   };
 }
 
+const FIGMA_OBSERVABILITY_VALUES: Record<string, {
+  value: string;
+  change: string;
+  isPositive: boolean;
+  thresholdStatus: 'good' | 'bad';
+}> = {
+  'kp-knowledge-coverage': { value: '94.6%', change: '-3.9%', isPositive: false, thresholdStatus: 'bad' },
+  'sec-guardrails-trigger-flag': { value: '5.6%', change: '+1.2%', isPositive: false, thresholdStatus: 'good' },
+  'ce-containment-rate': { value: '89%', change: '+3.2%', isPositive: true, thresholdStatus: 'bad' },
+  'ap-intent-success-rate': { value: '100%', change: '-1.2%', isPositive: false, thresholdStatus: 'good' },
+  'bi-autocsat-improvement': { value: '89.2%', change: '+5.5%', isPositive: true, thresholdStatus: 'good' },
+  'ce-csat-predictor': { value: '4.2/5', change: '-5.3%', isPositive: false, thresholdStatus: 'good' },
+  'bi-aht-reduction': { value: '100%', change: '-2.8%', isPositive: false, thresholdStatus: 'good' },
+  'bi-first-contact-resolution': { value: '100%', change: '-6.1%', isPositive: false, thresholdStatus: 'good' },
+  'bi-ai-agent-productivity-voice': { value: '85.5%', change: '+4.5%', isPositive: true, thresholdStatus: 'bad' },
+  'bi-ai-agent-productivity-digital': { value: '83.6%', change: '+1.6%', isPositive: true, thresholdStatus: 'good' },
+};
+
+function alignKpiWithFigmaObservability(
+  kpi: KPIData,
+  dateRange: '24h' | 'week' | 'month' | '90d' | 'custom',
+): KPIData {
+  const aligned = FIGMA_OBSERVABILITY_VALUES[kpi.id];
+  if (!aligned) return kpi;
+
+  let value = aligned.value;
+  if (kpi.unit === '%' && value.endsWith('%')) value = value.slice(0, -1);
+  if (kpi.unit === '/5' && value.endsWith('/5')) value = value.slice(0, -2);
+
+  const next = {
+    ...kpi,
+    value,
+    change: aligned.change,
+    isPositive: aligned.isPositive,
+    thresholdStatus: aligned.thresholdStatus,
+  };
+
+  return {
+    ...next,
+    sparklineData: buildReportedTrendSeries(
+      next,
+      value,
+      next.unit,
+      aligned.change,
+      dateRange,
+    ),
+    sparklineType: 'line',
+    sparklineScale: 'relative-change',
+  };
+}
+
 function alignKpiWithCiscoLiveActionControl24h(kpi: KPIData): KPIData {
   const summary = CISCO_LIVE_ACTION_CONTROL_SUMMARY_24H;
   const valuesById: Record<string, { value: string; unit?: string }> = {
@@ -484,7 +532,8 @@ export function ClusKpiDashboardRoot() {
 
     const overviewAlignedKpis = scopedKpis
       .map(kpi => alignKpiWithCiscoLiveOverview(kpi, dateRange))
-      .map(kpi => alignKpiWithCiscoLiveBusinessImpact(kpi, dateRange));
+      .map(kpi => alignKpiWithCiscoLiveBusinessImpact(kpi, dateRange))
+      .map(kpi => alignKpiWithFigmaObservability(kpi, dateRange));
 
     const query = searchQuery.trim().toLowerCase();
     const actionControlKpis = buildEagleActionControlKpis({
@@ -514,14 +563,18 @@ export function ClusKpiDashboardRoot() {
     const withoutActionControls = configuredCategories.filter(
       category => category !== ACTION_CONTROL_OBSERVABILITY_CATEGORY,
     );
-    const actionPerformanceIndex = withoutActionControls.indexOf('Action Performance');
+    const businessImpactFirst = [
+      ...withoutActionControls.filter(category => category === 'Business Impact'),
+      ...withoutActionControls.filter(category => category !== 'Business Impact'),
+    ];
+    const actionPerformanceIndex = businessImpactFirst.indexOf('Action Performance');
     const insertionIndex = actionPerformanceIndex >= 0
       ? actionPerformanceIndex + 1
-      : Math.min(2, withoutActionControls.length);
+      : Math.min(2, businessImpactFirst.length);
     return [
-      ...withoutActionControls.slice(0, insertionIndex),
+      ...businessImpactFirst.slice(0, insertionIndex),
       ACTION_CONTROL_OBSERVABILITY_CATEGORY,
-      ...withoutActionControls.slice(insertionIndex),
+      ...businessImpactFirst.slice(insertionIndex),
     ];
   }, [configuredCategories, dashboardAgentFilter]);
 
@@ -588,22 +641,19 @@ export function ClusKpiDashboardRoot() {
       </div>
 
       {dashboardAgentFilter ? (
-        <div className="mt-3 flex flex-wrap items-center gap-2">
-          <span className="inline-flex items-center gap-2 rounded-full border border-[var(--mds-color-theme-outline-secondary-normal)] bg-[var(--mds-color-theme-background-secondary-normal)] px-3 py-1">
-            <span className="mds-type-body-small-medium">Filtered by agent:</span>
+        <div className="clus-kpi-agent-filter-row mt-3 flex flex-wrap items-center gap-2">
+          <span className="clus-kpi-agent-filter-chip inline-flex items-center gap-2 border border-[var(--mds-color-theme-outline-secondary-normal)] bg-[var(--mds-color-theme-background-secondary-normal)] px-3 py-1">
+            <span className="mds-type-body-small-medium">Filter by agent:</span>
             <span className="mds-type-body-small-medium">{dashboardAgentFilter}</span>
-          </span>
-          <SharedButton
-            type="button"
-            variant="tertiary"
-            size="sm"
-            onClick={() => setDashboardAgentFilter(null)}
-          >
-            <span className="btn-icon" aria-hidden>
+            <button
+              type="button"
+              className="clus-kpi-agent-filter-clear"
+              aria-label="Clear agent filter"
+              onClick={() => setDashboardAgentFilter(null)}
+            >
               <Icon name="cancel" weight="bold" size={16} />
-            </span>
-            Clear filter
-          </SharedButton>
+            </button>
+          </span>
         </div>
       ) : null}
 

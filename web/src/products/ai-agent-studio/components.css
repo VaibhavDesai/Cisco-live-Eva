@@ -397,29 +397,40 @@ html[data-product='ai-agent-studio'] .app-header__menu-row-hint {
   margin-left: 0;
 }
 
-/* Keep the agent identity anchored beneath the fixed app bar. The solid
-   leading strip closes the scroll-container gap so page content never passes
-   behind the header while it is stuck. */
+/* Keep the agent identity in document flow until it reaches the top of the
+   scrolling workspace. The Figma panel-header treatment appears only once
+   the identity is pinned, allowing the aurora to remain visible at rest. */
 .app--ai--agent-context .main > .primary-content > .agent-header-sticky {
   top: 0;
   z-index: 40;
-  background: var(--mds-color-theme-background-solid-primary-normal);
+  isolation: isolate;
+  background: transparent;
 }
 
 .app--ai--agent-context .main > .primary-content > .agent-header-sticky::before {
   content: '';
   position: absolute;
+  z-index: -1;
+  top: -16px;
   right: 0;
-  bottom: 100%;
   left: 0;
-  height: var(--spacing-large);
-  background: var(--mds-color-theme-background-solid-primary-normal);
+  height: 114px;
+  visibility: hidden;
+  background: linear-gradient(
+    180deg,
+    rgba(0, 0, 0, 0.78) 0%,
+    rgba(0, 0, 0, 0.5) 68%,
+    rgba(0, 0, 0, 0) 100%
+  );
+  opacity: 0;
+  backdrop-filter: blur(12.5px);
+  -webkit-backdrop-filter: blur(12.5px);
   pointer-events: none;
+  transition: opacity 160ms ease, visibility 160ms ease;
 }
 
 /* Let the workspace aurora continue behind the agent identity until the
-   identity bar becomes sticky; once scrolling starts, use a solid surface so
-   content cannot pass visually beneath the pinned header. */
+   identity bar becomes sticky. */
 .app--ai--agent-context .main > .primary-content.agent-studio-landing > .agent-header-sticky,
 .app--ai--agent-context .main > .primary-content.agent-studio-landing > .agent-header-sticky::before,
 .app--ai--agent-context .main > .primary-content.agent-workspace-page > .agent-header-sticky,
@@ -427,16 +438,21 @@ html[data-product='ai-agent-studio'] .app-header__menu-row-hint {
   background: transparent;
 }
 
-.app--ai--agent-context .main > .primary-content.agent-studio-landing > .agent-header-sticky::before,
-.app--ai--agent-context .main > .primary-content.agent-workspace-page > .agent-header-sticky::before {
-  transition: background 0.2s ease;
+.app--ai--agent-context .main > .primary-content.agent-studio-landing > .agent-header-sticky.agent-header-stuck,
+.app--ai--agent-context .main > .primary-content.agent-workspace-page > .agent-header-sticky.agent-header-stuck {
+  background: transparent;
 }
 
-.app--ai--agent-context .main > .primary-content.agent-studio-landing > .agent-header-sticky.agent-header-stuck,
 .app--ai--agent-context .main > .primary-content.agent-studio-landing > .agent-header-sticky.agent-header-stuck::before,
-.app--ai--agent-context .main > .primary-content.agent-workspace-page > .agent-header-sticky.agent-header-stuck,
 .app--ai--agent-context .main > .primary-content.agent-workspace-page > .agent-header-sticky.agent-header-stuck::before {
-  background: var(--mds-color-theme-background-solid-primary-normal);
+  visibility: visible;
+  background: linear-gradient(
+    180deg,
+    rgba(0, 0, 0, 0.78) 0%,
+    rgba(0, 0, 0, 0.5) 68%,
+    rgba(0, 0, 0, 0) 100%
+  );
+  opacity: 1;
 }
 
 .app--ai--agent-panel-open .main > .primary-content {
@@ -1516,6 +1532,52 @@ html[data-product='ai-agent-studio'] .app-header__menu-row-hint {
 
 .agent-studio-header-menu.menu-overlay {
   min-width: 264px;
+}
+
+.agent-type-update-modal.modal {
+  gap: var(--spacing-medium);
+}
+
+.agent-type-update-modal .modal-body {
+  overflow: visible;
+}
+
+.agent-type-update-options .radio-group-list {
+  gap: var(--spacing-xx-small);
+}
+
+.agent-type-update-option.radio {
+  width: 100%;
+  min-height: 64px;
+  padding: var(--spacing-x-small);
+  box-sizing: border-box;
+  border: var(--border-width-small) solid var(--border-color);
+  border-radius: var(--border-radius-medium);
+  background: var(--mds-color-theme-background-glass-normal, rgba(255, 255, 255, 0.06));
+  transition: border-color 0.15s ease, background 0.15s ease;
+}
+
+.agent-type-update-option.radio:hover {
+  border-color: var(--outline-input-hover);
+  background: var(--mds-color-theme-background-primary-hover);
+}
+
+.agent-type-update-option.radio:has(.radio-input:checked) {
+  border-color: var(--accent-color);
+  background: color-mix(in srgb, var(--accent-color) 10%, transparent);
+}
+
+.agent-type-update-option.radio.disabled {
+  opacity: 0.48;
+  background: transparent;
+}
+
+.agent-type-update-option .radio-label {
+  gap: var(--spacing-xxx-small);
+}
+
+.agent-type-update-option .radio-label-text {
+  font-weight: var(--font-weight-medium);
 }
 
 .agent-studio-agent-metadata {

@@ -467,11 +467,17 @@ function isGate(value: unknown): value is StoredGalileoActionGate {
 }
 
 /**
- * Reads the shared actions.values contract. Invalid or absent values fall back
- * to the stage-ready EAGLE GREEN control without disturbing other action data.
+ * Reads the shared actions.values contract. The EAGLE GREEN demo can opt into
+ * its stage-ready controls; newly created agents start empty until the user
+ * explicitly adds controls.
  */
-export function readGalileoActionControlState(values: Record<string, unknown> | undefined): GalileoActionControlState {
-  const defaults = createDefaultGalileoActionControlState();
+export function readGalileoActionControlState(
+  values: Record<string, unknown> | undefined,
+  includeDemoDefaults = true,
+): GalileoActionControlState {
+  const defaults = includeDemoDefaults
+    ? createDefaultGalileoActionControlState()
+    : { controlsByActionId: {}, gatesByActionId: {} };
   const rawControls = values?.controlsByActionId;
   const rawGates = values?.gatesByActionId;
 

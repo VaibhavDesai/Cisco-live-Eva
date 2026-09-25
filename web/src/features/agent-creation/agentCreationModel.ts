@@ -479,7 +479,7 @@ export const STARTER_TEMPLATES: Record<AgentFamily, StarterTemplate[]> = {
       id: 'cx-concierge',
       keywords: ['support', 'concierge', 'customer', 'resolve', 'account'],
       proposal: {
-        name: 'CX Concierge',
+        name: 'Customer Service Concierge',
         purpose: 'Resolve customer questions and route requests that need a specialist.',
         description: 'A customer-service agent that answers questions, guides next steps, and hands off with context.',
         language: 'English (US)',

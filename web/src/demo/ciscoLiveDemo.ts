@@ -843,7 +843,7 @@ export interface CiscoLiveSession {
   id: string;
   consumerId: string;
   customer: string;
-  channel: 'Voice' | 'Webex' | 'API';
+  channel: 'Voice' | 'Webex' | 'Video' | 'API';
   topic: string;
   updated: string;
   startedAt: string;

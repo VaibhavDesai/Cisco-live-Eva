@@ -20,7 +20,8 @@ import {
   type AgentLifecycle,
 } from '../agent-creation/agentCreationModel';
 
-type FamilyFilter = 'all' | AgentFamily;
+type AgentDisplayType = 'AI receptionist' | 'CX concierge' | 'CX specialist' | 'Personal agent';
+type AgentTypeFilter = 'all' | AgentDisplayType;
 
 type AgentTile = {
   id: string;
@@ -34,19 +35,51 @@ type AgentTile = {
   draft?: AgentDraft;
 };
 
+const FIGMA_AGENT_PRESENTATION: Record<string, {
+  familyLabel: string;
+  avatarClass: string;
+  updatedOn: string;
+  order: number;
+}> = {
+  'technical-support-concierge': {
+    familyLabel: 'CX specialist',
+    avatarClass: 'technical-support',
+    updatedOn: 'Aug 31, 26',
+    order: 0,
+  },
+  'golftop-event-operations': {
+    familyLabel: 'AI receptionist',
+    avatarClass: 'event-operations',
+    updatedOn: 'Aug 28, 26',
+    order: 1,
+  },
+  'golftop-servicenow-coordinator': {
+    familyLabel: 'Personal agent',
+    avatarClass: 'servicenow',
+    updatedOn: 'Aug 28, 26',
+    order: 2,
+  },
+  'golftop-vip-reservations': {
+    familyLabel: 'CX concierge',
+    avatarClass: 'vip-reservations',
+    updatedOn: 'Aug 28, 26',
+    order: 3,
+  },
+};
+
 const FAMILY_PRESENTATION = {
   calling: {
-    label: FAMILY_METADATA.calling.label,
+    label: 'AI receptionist',
     icon: 'phone',
     avatarClass: 'receptionist',
   },
   contact_center: {
-    label: FAMILY_METADATA.contact_center.label,
+    label: 'CX concierge',
     icon: 'headset',
     avatarClass: 'scripted',
   },
   internal_assistant: {
-    label: FAMILY_METADATA.internal_assistant.label,
+    label: 'Personal agent',
     icon: 'people',
     avatarClass: 'autonomous',
   },
@@ -61,6 +94,12 @@ const LIFECYCLE_STATUS_LABELS: Record<AgentLifecycle, string> = {
 
 const isAgentFamily = (value: unknown): value is AgentFamily =>
   value === 'calling' || value === 'contact_center' || value === 'internal_assistant';
+
+const getAgentDisplayType = (tile: Pick<AgentTile, 'id' | 'family'>): AgentDisplayType => {
+  const presentation = FIGMA_AGENT_PRESENTATION[tile.id];
+  if (presentation?.familyLabel) return presentation.familyLabel as AgentDisplayType;
+  return FAMILY_PRESENTATION[tile.family].label as AgentDisplayType;
+};
 
 const formatUpdatedOn = (value?: string) => {
   const date = value ? new Date(value) : new Date();
@@ -77,7 +116,7 @@ export default function EvaAgentsTable() {
   const { agents, agentDrafts, selectAgent, showToast } = useApp();
   const { setMode: setAgentHomeMode } = useAgentHomeScenario();
   const [searchQuery, setSearchQuery] = useState('');
-  const [familyFilter, setFamilyFilter] = useState<FamilyFilter>('all');
+  const [agentTypeFilter, setAgentTypeFilter] = useState<AgentTypeFilter>('all');
   const [creatorFilter, setCreatorFilter] = useState('All creators');
 
   const agentTiles = useMemo<AgentTile[]>(() => {
@@ -138,12 +177,19 @@ export default function EvaAgentsTable() {
           sortValue: updatedAt ?? '',
         }];
       })
-      .sort((left, right) => right.sortValue.localeCompare(left.sortValue) || left.name.localeCompare(right.name))
+      .sort((left, right) => {
+        const leftOrder = FIGMA_AGENT_PRESENTATION[left.id]?.order;
+        const rightOrder = FIGMA_AGENT_PRESENTATION[right.id]?.order;
+        if (leftOrder !== undefined || rightOrder !== undefined) {
+          return (leftOrder ?? Number.MAX_SAFE_INTEGER) - (rightOrder ?? Number.MAX_SAFE_INTEGER);
+        }
+        return right.sortValue.localeCompare(left.sortValue) || left.name.localeCompare(right.name);
+      })
       .map(({ sortValue: _sortValue, ...tile }) => tile);
   }, [agentDrafts, agents]);
 
   const openAgentSummary = (tile: AgentTile) => {
-    const agent = agents[tile.id] ?? tileToAgent(tile);
+    const agent = tile.agent;
     selectAgent(agent.id);
     navigate(`/agents/${agent.id}/studio`);
   };
@@ -172,12 +218,12 @@ export default function EvaAgentsTable() {
     navigate('/new-agent');
   };
 
-  const familyOptions = useMemo(() => [
-    { value: 'all', label: 'All families', count: agentTiles.length },
-    ...(['calling', 'contact_center', 'internal_assistant'] as AgentFamily[]).map(family => ({
-      value: family,
-      label: FAMILY_PRESENTATION[family].label,
-      count: agentTiles.filter(tile => tile.family === family).length,
+  const agentTypeOptions = useMemo(() => [
+    { value: 'all' as const, label: 'All agent types', count: agentTiles.length },
+    ...(['AI receptionist', 'CX concierge', 'CX specialist', 'Personal agent'] as AgentDisplayType[]).map(agentType => ({
+      value: agentType,
+      label: agentType,
+      count: agentTiles.filter(tile => getAgentDisplayType(tile) === agentType).length,
     })),
   ], [agentTiles]);
 
@@ -192,41 +238,39 @@ export default function EvaAgentsTable() {
     [agentTiles],
   );
 
-  const filteredAgents = agentTiles.filter(({
-    name,
-    description,
-    family,
-    lifecycle,
-    updatedBy,
-  }) => {
+  const filteredAgents = agentTiles.filter(tile => {
+    const {
+      name,
+      description,
+      lifecycle,
+      updatedBy,
+    } = tile;
     const normalizedSearch = searchQuery.trim().toLowerCase();
-    const familyLabel = FAMILY_PRESENTATION[family].label;
+    const agentTypeLabel = getAgentDisplayType(tile);
     const matchesSearch =
       normalizedSearch.length === 0 ||
       name.toLowerCase().includes(normalizedSearch) ||
       description.toLowerCase().includes(normalizedSearch) ||
-      familyLabel.toLowerCase().includes(normalizedSearch) ||
+      agentTypeLabel.toLowerCase().includes(normalizedSearch) ||
       LIFECYCLE_STATUS_LABELS[lifecycle].toLowerCase().includes(normalizedSearch) ||
       updatedBy.toLowerCase().includes(normalizedSearch);
-    const matchesFamily = familyFilter === 'all' || family === familyFilter;
+    const matchesAgentType = agentTypeFilter === 'all' || agentTypeLabel === agentTypeFilter;
     const matchesCreator = creatorFilter === 'All creators' || updatedBy === creatorFilter;
-    return matchesSearch && matchesFamily && matchesCreator;
+    return matchesSearch && matchesAgentType && matchesCreator;
   });
 
   return (
     <div className="primary-content ai-agents-page">
       <div className="page-header ai-agents-header">
         <div>
-          <h1 className="page-title">AI Agents</h1>
+          <h1 className="page-title">AI agents</h1>
         </div>
         <div className="eva-form-builder__compact-header-actions ai-agents-header-actions">
           <Button variant="secondary" onClick={() => showToast('Agent import is not available in this demo.', 'info')}>
-            <Icon name="download" weight="bold" size="sm" />
-            Import agent
+            Import Agent
           </Button>
           <Button onClick={handleCreateAgent}>
-            <Icon name="plus" weight="bold" size="sm" />
-            Create agent
+            Create Agent
           </Button>
         </div>
       </div>
@@ -244,9 +288,9 @@ export default function EvaAgentsTable() {
             className="ai-agents-search-wrap"
           />
           <Dropdown
-            options={familyOptions}
-            value={familyFilter}
-            onChange={value => setFamilyFilter(value as FamilyFilter)}
+            options={agentTypeOptions}
+            value={agentTypeFilter}
+            onChange={value => setAgentTypeFilter(value as AgentTypeFilter)}
             leadingIcon="filter"
           />
           <Dropdown
@@ -260,6 +304,8 @@ export default function EvaAgentsTable() {
           <div className="ai-agents-grid">
             {filteredAgents.map(tile => {
               const family = FAMILY_PRESENTATION[tile.family];
+              const presentation = FIGMA_AGENT_PRESENTATION[tile.id];
+              const agentTypeLabel = getAgentDisplayType(tile);
               return (
               <MomentumCard
                 key={tile.id}
@@ -271,12 +317,12 @@ export default function EvaAgentsTable() {
                   type="button"
                   className="ai-agents-agent-card__hit-area"
                   onClick={() => handleAgentClick(tile)}
-                  aria-label={`Open ${tile.name}, ${family.label}, ${LIFECYCLE_STATUS_LABELS[tile.lifecycle]}`}
+                  aria-label={`Open ${tile.name}, ${agentTypeLabel}, ${LIFECYCLE_STATUS_LABELS[tile.lifecycle]}`}
                 />
                 <div slot="body" className="ai-agents-agent-card-slot">
                   <div className="ai-agents-agent-card-head">
                     <span
-                      className={`ai-agents-agent-avatar ai-agents-agent-avatar--${family.avatarClass}`}
+                      className={`ai-agents-agent-avatar ai-agents-agent-avatar--${presentation?.avatarClass ?? family.avatarClass}`}
                       aria-hidden="true"
                     >
                       <Icon
@@ -301,20 +347,18 @@ export default function EvaAgentsTable() {
                       </div>
                       <div className="ai-agents-agent-labels">
                         <span className={`ai-agents-agent-lifecycle ai-agents-agent-lifecycle--${tile.lifecycle}`}>
-                          <span className="ai-agents-agent-lifecycle-dot" aria-hidden="true" />
                           {LIFECYCLE_STATUS_LABELS[tile.lifecycle]}
                         </span>
+                        <span className="ai-agents-agent-lifecycle-separator" aria-hidden="true">|</span>
+                        <span className="ai-agents-agent-updated">{presentation?.updatedOn ?? tile.updatedOn} by {tile.updatedBy}</span>
                       </div>
                     </div>
                   </div>
+                  <span className="ai-agents-agent-family-chip">{agentTypeLabel}</span>
                   <div className="ai-agents-agent-content">
                     <p className="ai-agents-agent-description">{tile.description}</p>
                   </div>
                   <div className="ai-agents-agent-footer">
-                    <p className="ai-agents-agent-meta">
-                      <span>Updated {tile.updatedOn}</span>
-                      <span>by {tile.updatedBy}</span>
-                    </p>
                     <Button
                       type="button"
                       variant="secondary"

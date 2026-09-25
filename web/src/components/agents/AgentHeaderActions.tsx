@@ -1,12 +1,40 @@
 import { useState, type RefObject } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useApp, type Agent } from '../../contexts/AppContext';
+import {
+  CX_AGENT_DISPLAY_TYPES,
+  getAgentDisplayType,
+  type AgentDisplayType,
+} from '../../features/agent-creation/agentDisplayType';
 import { Icon } from '../../icons';
 import Button from '../shared/Button';
-import { MenuItem, MenuOverlay, useMenu } from '../shared/Menu';
+import { MenuDivider, MenuItem, MenuOverlay, useMenu } from '../shared/Menu';
 import { Modal, ModalBody, ModalFooter, ModalHeader } from '../shared/Modal';
+import { Radio, RadioGroup } from '../shared/Radio';
 
 const CUSTOM_AGENT_TEMPLATE_STORAGE_KEY = 'webex-ai-agent-studio-custom-templates-v1';
+
+const AGENT_TYPE_OPTIONS: Array<{
+  value: AgentDisplayType;
+  description: string;
+}> = [
+  {
+    value: 'CX concierge',
+    description: 'Owns customer conversations, resolves requests, and coordinates handoffs.',
+  },
+  {
+    value: 'CX specialist',
+    description: 'Handles domain-specific work with focused knowledge, actions, and workflows.',
+  },
+  {
+    value: 'AI receptionist',
+    description: 'Answers calls, welcomes customers, and routes them to the right destination.',
+  },
+  {
+    value: 'Personal agent',
+    description: 'Supports individual productivity and coordinates work across tools.',
+  },
+];
 
 interface AgentHeaderActionsProps {
   agent: Agent;
@@ -27,9 +55,19 @@ export default function AgentHeaderActions({
   onRelease,
 }: AgentHeaderActionsProps) {
   const navigate = useNavigate();
-  const { agentDrafts, removeAgent, showToast, toggleAgentPublish } = useApp();
+  const {
+    agentDrafts,
+    removeAgent,
+    showToast,
+    toggleAgentPublish,
+    updateAgentDisplayType,
+  } = useApp();
   const overflowMenu = useMenu();
   const [deleteConfirmationOpen, setDeleteConfirmationOpen] = useState(false);
+  const [updateTypeModalOpen, setUpdateTypeModalOpen] = useState(false);
+  const currentDisplayType = getAgentDisplayType(agent);
+  const [selectedDisplayType, setSelectedDisplayType] = useState<AgentDisplayType>(currentDisplayType);
+  const supportsCxTypeSwitch = CX_AGENT_DISPLAY_TYPES.includes(currentDisplayType);
 
   const handlePreview = () => {
     if (onPreview) {
@@ -74,6 +112,23 @@ export default function AgentHeaderActions({
     } catch {
       showToast('The template could not be saved. Try again.', 'error');
     }
+  };
+
+  const handleUpdateAgentType = () => {
+    overflowMenu.close();
+    setSelectedDisplayType(currentDisplayType);
+    setUpdateTypeModalOpen(true);
+  };
+
+  const handleConfirmAgentType = () => {
+    if (!CX_AGENT_DISPLAY_TYPES.includes(selectedDisplayType)) return;
+    const updated = updateAgentDisplayType(agent.id, selectedDisplayType);
+    if (!updated) {
+      showToast('The agent type could not be updated.', 'error');
+      return;
+    }
+    setUpdateTypeModalOpen(false);
+    showToast(`Agent type updated to ${selectedDisplayType}`, 'success');
   };
 
   const handleDelete = () => {
@@ -133,12 +188,18 @@ export default function AgentHeaderActions({
         className="agent-studio-header-menu"
       >
         <MenuItem
-          label="Make this agent as a template"
+          label="Duplicate this agent as template"
           icon="copy"
           onClick={handleMakeTemplate}
         />
         <MenuItem
-          label="Delete"
+          label="Update agent type"
+          icon="edit"
+          onClick={handleUpdateAgentType}
+        />
+        <MenuDivider />
+        <MenuItem
+          label="Delete agent"
           icon="delete"
           danger
           onClick={() => {
@@ -147,6 +208,56 @@ export default function AgentHeaderActions({
           }}
         />
       </MenuOverlay>
+
+      {updateTypeModalOpen && (
+        <Modal
+          size="sm"
+          className="agent-type-update-modal"
+          onClose={() => setUpdateTypeModalOpen(false)}
+        >
+          <ModalHeader
+            title="Update agent type"
+            description="Switch between compatible CX agent types. Other agent types are shown for reference."
+            onClose={() => setUpdateTypeModalOpen(false)}
+          />
+          <ModalBody>
+            <RadioGroup
+              name={`agent-type-${agent.id}`}
+              value={selectedDisplayType}
+              onChange={value => setSelectedDisplayType(value as AgentDisplayType)}
+              className="agent-type-update-options"
+            >
+              {AGENT_TYPE_OPTIONS.map(option => {
+                const disabled = !supportsCxTypeSwitch
+                  || !CX_AGENT_DISPLAY_TYPES.includes(option.value);
+                return (
+                  <Radio
+                    key={option.value}
+                    value={option.value}
+                    label={option.value}
+                    helperText={disabled ? `${option.description} — Not available for this agent.` : option.description}
+                    disabled={disabled}
+                    className="agent-type-update-option"
+                  />
+                );
+              })}
+            </RadioGroup>
+          </ModalBody>
+          <ModalFooter>
+            <Button type="button" variant="secondary" onClick={() => setUpdateTypeModalOpen(false)}>
+              Cancel
+            </Button>
+            <Button
+              type="button"
+              variant="primary"
+              disabled={!supportsCxTypeSwitch || selectedDisplayType === currentDisplayType}
+              onClick={handleConfirmAgentType}
+            >
+              Update agent type
+            </Button>
+          </ModalFooter>
+        </Modal>
+      )}
 
       {deleteConfirmationOpen && (
         <Modal size="sm" onClose={() => setDeleteConfirmationOpen(false)}>

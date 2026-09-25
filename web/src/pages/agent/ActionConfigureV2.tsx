@@ -45,6 +45,7 @@ import {
 import {
   CISCO_LIVE_AGENTS,
   CISCO_LIVE_ACTION_CATALOG,
+  CISCO_LIVE_PRIMARY_AGENT_ID,
   CISCO_LIVE_VIP_EVENT_CONFIDENTIALITY_GUARDRAIL,
 } from '../../demo/ciscoLiveDemo';
 import { buildCiscoLiveInstructions } from '../../demo/ciscoLiveSeed';
@@ -429,6 +430,7 @@ const configuredActionCapabilities = (
 const actionRowsFromCapabilities = (
   capabilities: CapabilityRecord[],
   createdBy: string,
+  lastUpdated = '07/13/26, at 9:30 AM',
 ): ActionRow[] => capabilities.map(capability => ({
   id: capability.id,
   actionId: getGalileoActionId(capability.sourceActionId, capability.name),
@@ -437,7 +439,7 @@ const actionRowsFromCapabilities = (
   enabled: capability.enabled,
   actionType: capability.type === 'Handoff' ? 'Transfer' : capability.type,
   createdBy,
-  lastUpdated: '07/13/26, at 9:30 AM',
+  lastUpdated,
 }));
 type ConfigurationSection = 'Profile' | 'Channels' | 'Flow' | 'Instructions' | 'Knowledge' | 'Action' | 'Security' | 'Conversation' | 'Language';
 
@@ -717,6 +719,27 @@ const DEFAULT_ADVANCED_GROUPS: AdvancedGuardrailGroup[] = [
   },
 ];
 
+const savedGuardrailNames = (draft: AgentDraft | undefined): Set<string> => {
+  const values = draft?.familyConfiguration.security?.values;
+  const names = [
+    ...(Array.isArray(values?.selections) ? values.selections : []),
+    ...(Array.isArray(values?.guardrails) ? values.guardrails : []),
+  ].filter((name): name is string => typeof name === 'string' && Boolean(name.trim()));
+  return new Set(names);
+};
+
+const is360FeedbackDraft = (draft: AgentDraft | undefined, agentId: string | undefined): boolean => {
+  if (draft?.familyConfiguration.channels?.values?.scenario === 'feedback360') return true;
+  const identity = `${agentId ?? ''} ${draft?.basics.name ?? ''} ${draft?.basics.purpose ?? ''}`;
+  return /\b360\b/i.test(identity) && /\bfeedback\b/i.test(identity);
+};
+
+const formatDraftUpdatedAt = (updatedAt: string | undefined): string => {
+  if (!updatedAt) return '—';
+  const date = new Date(updatedAt);
+  return Number.isNaN(date.getTime()) ? '—' : date.toLocaleString('en-US');
+};
+
 export default function ActionConfigureV2() {
   const { agentId } = useParams();
   const navigate = useNavigate();
@@ -733,6 +756,7 @@ export default function ActionConfigureV2() {
     addAiEngine,
   } = useApp();
   const agentDraft = agentId ? agentDrafts[agentId] : undefined;
+  const is360FeedbackAgent = is360FeedbackDraft(agentDraft, agentId);
   // Resolve the Cisco Live demo definition for this agent (falling back to the
   // primary demo agent) so every configuration screen shows real design-
   // explorations names instead of the generic defaults.
@@ -800,14 +824,14 @@ export default function ActionConfigureV2() {
     ? configuredGreetings.digital
     : typeof configuredGreetings.voice === 'string'
       ? configuredGreetings.voice
-      : ciscoLiveAgent.welcomeMessage;
+      : is360FeedbackAgent ? '' : ciscoLiveAgent.welcomeMessage;
 
   // Profile form state
   const [profileForm, setProfileForm] = useState(() => ({
-    agentName: agentDraft?.basics.name ?? (agentId ? agents[agentId]?.name : undefined) ?? 'Acme Bank Credit Card Assistant',
-    systemId: 'AcmeBankCreditCardAssistant-uah13as',
+    agentName: agentDraft?.basics.name ?? (agentId ? agents[agentId]?.name : undefined) ?? (is360FeedbackAgent ? '' : 'Acme Bank Credit Card Assistant'),
+    systemId: is360FeedbackAgent ? agentId ?? '' : 'AcmeBankCreditCardAssistant-uah13as',
     avatarUrl: 'https://us.webexbotbuilder.com/static/assets/i...',
-    timezone: 'Europe/London',
+    timezone: is360FeedbackAgent ? '' : 'Europe/London',
     language: profileLanguageValue(agentDraft?.language.defaultLanguage),
     voiceName: 'ava',
     aiEngine: 'Webex AI Pro 1.0',
@@ -815,7 +839,7 @@ export default function ActionConfigureV2() {
     agentGoal: agentDraft?.basics.purpose ?? '',
     instructions: agentDraft?.instructions.content?.trim()
       ? agentDraft.instructions.content
-      : buildCiscoLiveInstructions(ciscoLiveAgent),
+      : is360FeedbackAgent ? '' : buildCiscoLiveInstructions(ciscoLiveAgent),
   }));
 
   const updateProfileField = (field: keyof typeof profileForm, value: string) => {
@@ -891,12 +915,18 @@ export default function ActionConfigureV2() {
 
   // Security tab state
   const isPaidUser = true;
+  const persistedGuardrailNames = savedGuardrailNames(agentDraft);
+  const hasPersistedGuardrailSelections = persistedGuardrailNames.size > 0;
   const [advancedDefaultGroups, setAdvancedDefaultGroups] = useState<AdvancedGuardrailGroup[]>(() =>
     DEFAULT_ADVANCED_GROUPS.map(group => ({
       ...group,
       items: group.items.map(guardrail => ({
         ...guardrail,
-        enabled: agentDraft ? false : ciscoLiveAgent.prebuiltGuardrailIds.includes(guardrail.id),
+        enabled: hasPersistedGuardrailSelections
+          ? persistedGuardrailNames.has(guardrail.name) || persistedGuardrailNames.has(guardrail.id)
+          : agentDraft && agentId !== CISCO_LIVE_PRIMARY_AGENT_ID
+            ? false
+            : ciscoLiveAgent.prebuiltGuardrailIds.includes(guardrail.id),
       })),
     })),
   );
@@ -914,7 +944,9 @@ export default function ActionConfigureV2() {
       versions: [],
     }));
     const storedItems = agentDraft?.familyConfiguration.security?.values?.customGuardrails;
-    if (!Array.isArray(storedItems)) return agentDraft ? [] : seededItems;
+    if (!Array.isArray(storedItems)) {
+      return agentDraft && agentId !== CISCO_LIVE_PRIMARY_AGENT_ID ? [] : seededItems;
+    }
 
     const validItems = storedItems.filter((item): item is CustomGuardrailItem => {
       if (!item || typeof item !== 'object' || Array.isArray(item)) return false;
@@ -928,7 +960,11 @@ export default function ActionConfigureV2() {
         && Boolean(candidate.overview)
         && Array.isArray(candidate.versions);
     });
-    return validItems.length > 0 ? structuredClone(validItems) : agentDraft ? [] : seededItems;
+    return validItems.length > 0
+      ? structuredClone(validItems)
+      : agentDraft && agentId !== CISCO_LIVE_PRIMARY_AGENT_ID
+        ? []
+        : seededItems;
   });
   const [pendingAdvancedEnable, setPendingAdvancedEnable] = useState<{ groupId: string; itemIds: string[]; label: string } | null>(null);
   const [hasAcknowledgedAdvancedPricing, setHasAcknowledgedAdvancedPricing] = useState(false);
@@ -945,7 +981,6 @@ export default function ActionConfigureV2() {
   const [prebuiltSearch, setPrebuiltSearch] = useState('');
   const [searchOpen, setSearchOpen] = useState(false);
   const [guardrailMode, setGuardrailMode] = useState<'custom' | 'prebuilt'>('custom');
-  const [customSectionOpen, setCustomSectionOpen] = useState(true);
   const [showPolicyStudio, setShowPolicyStudio] = useState(false);
   const [editingProfileId, setEditingProfileId] = useState<string | null>(null);
   const [defaultCustomProfileState, setDefaultCustomProfileState] = useState<'idle' | 'generating' | 'complete'>('idle');
@@ -959,7 +994,6 @@ export default function ActionConfigureV2() {
     if (handledGuardrailDeepLinkRef.current === requestKey) return;
     handledGuardrailDeepLinkRef.current = requestKey;
     setGuardrailMode('custom');
-    setCustomSectionOpen(true);
     setExpandedRails(current => new Set(current).add(guardrailId));
     window.requestAnimationFrame(() => window.requestAnimationFrame(() => {
       const target = document.getElementById(`${guardrailId}-header`);
@@ -992,15 +1026,20 @@ export default function ActionConfigureV2() {
   }, [profileForm.instructions, showToast]);
 
   const initialActionCapabilities = () => configuredActionCapabilities(agentDraft, ciscoLiveAgent.actions);
+  const actionCreatedBy = is360FeedbackAgent ? '—' : ciscoLiveAgent.updatedBy;
+  const actionLastUpdated = is360FeedbackAgent ? formatDraftUpdatedAt(agentDraft?.updatedAt) : undefined;
   const [capabilities, setCapabilities] = useState<CapabilityRecord[]>(initialActionCapabilities);
   const [disabledKnowledge, setDisabledKnowledge] = useState<Record<string, boolean>>({});
   const toggleKnowledge = (name: string) =>
     setDisabledKnowledge((prev) => ({ ...prev, [name]: !prev[name] }));
   const [rows, setRows] = useState<ActionRow[]>(
-    () => actionRowsFromCapabilities(initialActionCapabilities(), ciscoLiveAgent.updatedBy),
+    () => actionRowsFromCapabilities(initialActionCapabilities(), actionCreatedBy, actionLastUpdated),
   );
   const [galileoActionControls, setGalileoActionControls] = useState<GalileoActionControlState>(() => (
-    readGalileoActionControlState(agentDraft?.familyConfiguration.actions?.values)
+    readGalileoActionControlState(
+      agentDraft?.familyConfiguration.actions?.values,
+      agentId === CISCO_LIVE_PRIMARY_AGENT_ID,
+    )
   ));
   const galileoAgentIdRef = useRef(agentId);
   const [galileoDialogActionId, setGalileoDialogActionId] = useState<string | null>(null);
@@ -1011,14 +1050,17 @@ export default function ActionConfigureV2() {
   useEffect(() => {
     if (galileoAgentIdRef.current === agentId) return;
     galileoAgentIdRef.current = agentId;
-    setGalileoActionControls(readGalileoActionControlState(agentDraft?.familyConfiguration.actions?.values));
+    setGalileoActionControls(readGalileoActionControlState(
+      agentDraft?.familyConfiguration.actions?.values,
+      agentId === CISCO_LIVE_PRIMARY_AGENT_ID,
+    ));
     const nextCapabilities = configuredActionCapabilities(agentDraft, ciscoLiveAgent.actions);
     setCapabilities(nextCapabilities);
-    setRows(actionRowsFromCapabilities(nextCapabilities, ciscoLiveAgent.updatedBy));
+    setRows(actionRowsFromCapabilities(nextCapabilities, actionCreatedBy, actionLastUpdated));
     setDisabledKnowledge({});
     setGalileoDialogActionId(null);
     setShowRecommendedControls(false);
-  }, [agentDraft, agentId, ciscoLiveAgent.actions, ciscoLiveAgent.updatedBy]);
+  }, [agentDraft, agentId, ciscoLiveAgent.actions, actionCreatedBy, actionLastUpdated]);
 
   const openGalileoActionControls = (actionId: string) => {
     galileoReturnFocusRef.current = document.activeElement as HTMLElement | null;
@@ -1109,7 +1151,7 @@ export default function ActionConfigureV2() {
     if (!agentId) return;
     // Every enabled guardrail counts toward what the overview shows, regardless
     // of which tier the Security screen is currently displaying.
-    const enabledGuardrailNames = [
+    const enabledInEditor = [
       ...advancedDefaultGroups.flatMap(group => group.items.filter(item => item.enabled).map(item => item.name)),
       ...advancedCustomItems.filter(item => item.enabled).map(item => item.name),
     ];
@@ -1118,6 +1160,16 @@ export default function ActionConfigureV2() {
     const currentSelections = Array.isArray(rawSelections)
       ? rawSelections.filter((s): s is string => typeof s === 'string')
       : [];
+    const editorGuardrailNames = new Set([
+      ...advancedDefaultGroups.flatMap(group => group.items.map(item => item.name)),
+      ...advancedCustomItems.map(item => item.name),
+    ]);
+    // Conversational drafts may have a selected safeguard that has not yet
+    // been built as an adaptive or prebuilt guardrail. Keep that exact text.
+    const draftOnlyNames = is360FeedbackAgent
+      ? [...savedGuardrailNames(agentDraft)].filter(name => !editorGuardrailNames.has(name))
+      : [];
+    const enabledGuardrailNames = [...new Set([...enabledInEditor, ...draftOnlyNames])];
     const desiredProgress = enabledGuardrailNames.length > 0 ? 'configured' : 'not_started';
     const rawCustomGuardrails = cap?.values?.customGuardrails;
     const customGuardrailsUnchanged = JSON.stringify(rawCustomGuardrails ?? [])
@@ -1147,7 +1199,7 @@ export default function ActionConfigureV2() {
         },
       };
     });
-  }, [advancedDefaultGroups, advancedCustomItems, agentId, agentDraft, updateAgentDraft]);
+  }, [advancedDefaultGroups, advancedCustomItems, agentId, agentDraft, is360FeedbackAgent, updateAgentDraft]);
 
   // Reflect the enabled knowledge bases into the shared agent draft (knowledge row).
   useEffect(() => {
@@ -1512,9 +1564,22 @@ export default function ActionConfigureV2() {
   const voiceLocation = typeof channelConfigurationValues?.voiceLocation === 'string'
     ? channelConfigurationValues.voiceLocation
     : '';
-  const voicePhoneNumber = typeof channelConfigurationValues?.voicePhoneNumber === 'string'
+  const phoneNumberDeferred = channelConfigurationValues?.phoneNumberDeferred === true;
+  const storedPhoneNumber = typeof channelConfigurationValues?.voicePhoneNumber === 'string'
     ? channelConfigurationValues.voicePhoneNumber
-    : '';
+    : typeof channelConfigurationValues?.phoneNumber === 'string'
+      ? channelConfigurationValues.phoneNumber
+      : '';
+  const voicePhoneNumber = phoneNumberDeferred ? '' : storedPhoneNumber;
+  const voicePhoneNumberOptions = is360FeedbackAgent
+    ? [
+        { value: '', label: 'No Preference' },
+        ...(voicePhoneNumber && !VOICE_PHONE_NUMBER_OPTIONS.some(option => option.value === voicePhoneNumber)
+          ? [{ value: voicePhoneNumber, label: voicePhoneNumber }]
+          : []),
+        ...VOICE_PHONE_NUMBER_OPTIONS,
+      ]
+    : VOICE_PHONE_NUMBER_OPTIONS;
   const voiceExtension = typeof channelConfigurationValues?.voiceExtension === 'string'
     ? channelConfigurationValues.voiceExtension
     : '';
@@ -1698,6 +1763,9 @@ export default function ActionConfigureV2() {
             values: {
               ...(channelsCap?.values ?? {}),
               [field]: value,
+              ...(is360FeedbackAgent && field === 'voicePhoneNumber'
+                ? { phoneNumber: value, phoneNumberDeferred: value === '' }
+                : {}),
             },
             updatedAt: new Date().toISOString(),
           } as CapabilityState,
@@ -1717,6 +1785,12 @@ export default function ActionConfigureV2() {
     item.name.toLowerCase().includes(prebuiltQuery) ||
     item.description.toLowerCase().includes(prebuiltQuery);
   const visibleCustomItems = advancedCustomItems.filter(customItemMatches);
+  const feedbackDraftSafeguards = is360FeedbackAgent
+    ? [...persistedGuardrailNames].filter(name => (
+        !advancedDefaultGroups.some(group => group.items.some(item => item.name === name))
+        && !advancedCustomItems.some(item => item.name === name)
+      ))
+    : [];
   // While searching, results span BOTH custom and prebuilt guardrails
   // regardless of the selected mode; only sections with matches are shown.
   const isGuardrailSearching = Boolean(prebuiltQuery);
@@ -1743,6 +1817,7 @@ export default function ActionConfigureV2() {
   const customProfileCardCount = (defaultCustomProfileState === 'generating' ? 1 : 0) + advancedCustomItems.length;
   const customProfileLimit = 3;
   const customGuardrailCapacityLabel = `${customProfileAppliedCount} enabled · ${customProfileCardCount} of ${customProfileLimit} slots used`;
+  const customGuardrailCreatedLabel = `${customProfileCardCount} of ${customProfileLimit} created`;
   const customProfileLimitReached = customProfileCardCount >= customProfileLimit;
   const createCustomProfileDisabled = !isPaidUser || customProfileLimitReached;
 
@@ -2072,11 +2147,32 @@ export default function ActionConfigureV2() {
   ) : undefined;
 
   const pageActions = actionPageActions ?? securityPageActions;
+  const showPageHeading = !(['Profile', 'Channels', 'Flow', 'Knowledge', 'Conversation'] as ConfigurationSection[]).includes(activeSection);
+  const instructionGuidance = activeSection === 'Instructions' ? (
+    <Tooltip
+      placement="bottom-start"
+      content={(
+        <>
+          Describe what the agent does and which actions it can take.<br />
+          Use markdown headers to organize role, goals, guardrails, and output rules.<br />
+          Set the tone, personality, and response style for the agent.<br />
+          Include error handling, escalation paths, and integration steps.<br />
+          Insert dynamic content with {'{{variable}}'} syntax.<br />
+          Try the optimize tool to tighten and restructure your instructions.
+        </>
+      )}
+      className="instructions-guidance-tooltip"
+    >
+      <button type="button" className="instructions-guidance-info" aria-label="Instructions guidance">
+        <Icon name="info-circle" weight="bold" size={16} />
+      </button>
+    </Tooltip>
+  ) : undefined;
 
   return (
     <div className="primary-content action-config-v2-page agent-workspace-page">
       <AgentHeader agent={agent} activeTab="configure" showPublishButton={false} showTabs={false} headerRight={headerActions} />
-      <AgentWorkspacePageHeading title={pageTitle} actions={pageActions} />
+      {showPageHeading && <AgentWorkspacePageHeading title={pageTitle} titleAccessory={instructionGuidance} actions={pageActions} />}
 
       <div className="action-config-v2-shell agent-workspace-section-canvas">
         <div className="action-config-v2-card">
@@ -2086,7 +2182,9 @@ export default function ActionConfigureV2() {
               {agentFamily !== 'calling' && (
                 <>
                   <div className="v2-channels__intro">
-                    <p className="v2-channels__desc">Choose the customer channels this agent supports.</p>
+                    <p className="v2-channels__desc">{is360FeedbackAgent
+                      ? 'Choose which feedback channels this agent supports.'
+                      : 'Choose the customer channels this agent supports.'}</p>
                   </div>
                   <div className="v2-channels__grid">
                     {EVA_CHANNEL_SELECTION_OPTIONS.map((option) => {
@@ -2119,7 +2217,9 @@ export default function ActionConfigureV2() {
                 <fieldset className="v2-voice-channel-fields">
                   <legend>{agentFamily === 'calling' ? 'Phone number' : 'Voice details'}</legend>
                   <p className="v2-voice-channel-fields__description">
-                    Choose the location and phone number callers use to reach this agent.
+                    {is360FeedbackAgent
+                      ? 'Choose a phone number for voice feedback, or keep No Preference.'
+                      : 'Choose the location and phone number callers use to reach this agent.'}
                   </p>
                   <div className="v2-voice-channel-fields__grid">
                     <Dropdown
@@ -2134,10 +2234,10 @@ export default function ActionConfigureV2() {
                     <Dropdown
                       id="voice-phone-number"
                       label="Phone number"
-                      hint="Choose an available number for this agent"
-                      options={VOICE_PHONE_NUMBER_OPTIONS}
+                      hint={is360FeedbackAgent ? 'Choose a number or keep No Preference' : 'Choose an available number for this agent'}
+                      options={voicePhoneNumberOptions}
                       value={voicePhoneNumber}
-                      placeholder="Select phone number"
+                      placeholder={is360FeedbackAgent ? 'No Preference' : 'Select phone number'}
                       onChange={(value) => updateVoiceChannelField('voicePhoneNumber', value)}
                     />
                     <Input
@@ -2197,6 +2297,7 @@ export default function ActionConfigureV2() {
                       { value: 'UTC', label: 'UTC' },
                     ]}
                     value={profileForm.timezone}
+                    placeholder={is360FeedbackAgent ? 'Select time zone' : undefined}
                     onChange={(val) => updateProfileField('timezone', val)}
                   />
                 </div>
@@ -2361,16 +2462,6 @@ export default function ActionConfigureV2() {
           {activeSection === 'Instructions' && (
             <div className="instructions-section">
             <div className="instructions-layout">
-              <aside className="instructions-sidebar">
-                <ul className="instructions-guidelines">
-                  <li>Describe what the agent does and which actions it can take.</li>
-                  <li>Use markdown headers to organize role, goals, guardrails, and output rules.</li>
-                  <li>Set the tone, personality, and response style for the agent.</li>
-                  <li>Include error handling, escalation paths, and integration steps.</li>
-                  <li>Insert dynamic content with {'{{variable}}'} syntax.</li>
-                  <li>Try the optimize tool to tighten and restructure your instructions.</li>
-                </ul>
-              </aside>
               <div className="instructions-editor">
                 <div className="instructions-toolbar">
                   <div className="instructions-toolbar-left">
@@ -2434,12 +2525,20 @@ export default function ActionConfigureV2() {
           )}
 
           {activeSection === 'Security' && (
-            <div className="guardrails-layout">
+            <div className={`guardrails-layout guardrails-layout--${guardrailMode}`}>
               <div className="guardrails-header">
                 <p className="guardrails-subtitle">
                   Use adaptive guardrails for business-specific privacy, safety, and security rules. Use prebuilt guardrails for common risks. Triggered guardrails appear in Sessions.
                 </p>
               </div>
+
+              {feedbackDraftSafeguards.length > 0 && (
+                <Banner
+                  type="info"
+                  title="Safeguards selected during creation"
+                  subtitle={feedbackDraftSafeguards.join(' · ')}
+                />
+              )}
 
               {!isGuardrailSearching && (
               <div className="security-tier-selector">
@@ -2471,41 +2570,6 @@ export default function ActionConfigureV2() {
               )}
 
               <section className="security-prebuilt-section">
-                {showCustomSection && (
-                <div className="security-prebuilt-toolbar">
-                  <div className="security-prebuilt-toolbar-actions">
-                    {customProfileLimitReached ? (
-                      <Tooltip
-                        content="You can create up to 3 adaptive guardrails for this agent. Delete a guardrail to create another."
-                        placement="top"
-                      >
-                        <span
-                          className="security-custom-profiles-create-tooltip-anchor"
-                          tabIndex={0}
-                          aria-label="Create adaptive guardrail unavailable. You can create up to 3 adaptive guardrails for this agent."
-                        >
-                          <Button
-                            variant="primary"
-                            disabled
-                            onClick={() => { setEditingProfileId(null); setShowPolicyStudio(true); }}
-                          >
-                            <Icon name="plus" weight="bold" size={16} />Create guardrail
-                          </Button>
-                        </span>
-                      </Tooltip>
-                    ) : (
-                      <Button
-                        variant="primary"
-                        disabled={createCustomProfileDisabled}
-                        onClick={() => { setEditingProfileId(null); setShowPolicyStudio(true); }}
-                      >
-                        <Icon name="plus" weight="bold" size={16} />Create guardrail
-                      </Button>
-                    )}
-                  </div>
-                </div>
-                )}
-
                 {!isPaidUser && (
                   <Banner
                     type="info"
@@ -2514,29 +2578,54 @@ export default function ActionConfigureV2() {
                   />
                 )}
 
-                <AccordionGroup type="contained" className="security-prebuilt-groups">
-                  {showCustomSection && (
-                    <AccordionItem
-                      className="security-prebuilt-custom-item"
-                      expanded={isGuardrailSearching || customSectionOpen}
-                      onExpandedChange={setCustomSectionOpen}
-                      title={
-                        <div className="security-prebuilt-category-heading security-prebuilt-category-heading--custom">
+                {showCustomSection && (
+                  <section className="security-prebuilt-custom-section" aria-labelledby="adaptive-guardrails-heading">
+                    <div className="security-prebuilt-category-heading security-prebuilt-category-heading--custom">
                           <div className="security-prebuilt-category-copy">
                             <div className="security-prebuilt-category-title">
                               <Icon name="sparkle" weight="bold" size={18} />
-                              <span>Adaptive guardrails</span>
+                              <span id="adaptive-guardrails-heading">Adaptive guardrails</span>
                               <Badge variant="success" className="security-tier-badge">Powered by AI Defense</Badge>
                             </div>
-                            <span className="security-prebuilt-category-meta">{customGuardrailCapacityLabel}</span>
+                            <span className="security-prebuilt-category-meta">{customGuardrailCreatedLabel}</span>
                             <span className="security-prebuilt-category-desc">
-                              Create rules for this agent&apos;s business-specific privacy, safety, and security risks. Adaptive guardrails can evaluate prompts, responses, or both.
+                              Create guardrails that understand this agent&apos;s real business rules, like identity verification bypasses, approved service flows, and policy exceptions.
                             </span>
                           </div>
-                        </div>
-                      }
-                    >
-                      <div className="security-prebuilt-group-body security-prebuilt-group-body--custom">
+                    </div>
+                    <div className="security-prebuilt-toolbar">
+                      <div className="security-prebuilt-toolbar-actions">
+                        {customProfileLimitReached ? (
+                          <Tooltip
+                            content="You can create up to 3 adaptive guardrails for this agent. Delete a guardrail to create another."
+                            placement="top"
+                          >
+                            <span
+                              className="security-custom-profiles-create-tooltip-anchor"
+                              tabIndex={0}
+                              aria-label="Create adaptive guardrail unavailable. You can create up to 3 adaptive guardrails for this agent."
+                            >
+                              <Button
+                                variant="primary"
+                                disabled
+                                onClick={() => { setEditingProfileId(null); setShowPolicyStudio(true); }}
+                              >
+                                <Icon name="plus" weight="bold" size={16} />Create new
+                              </Button>
+                            </span>
+                          </Tooltip>
+                        ) : (
+                          <Button
+                            variant="primary"
+                            disabled={createCustomProfileDisabled}
+                            onClick={() => { setEditingProfileId(null); setShowPolicyStudio(true); }}
+                          >
+                            <Icon name="plus" weight="bold" size={16} />Create new
+                          </Button>
+                        )}
+                      </div>
+                    </div>
+                    <div className="security-prebuilt-group-body security-prebuilt-group-body--custom">
                 {((defaultCustomProfileState === 'generating' && !prebuiltQuery) || visibleCustomItems.length > 0) ? (
                   <AccordionGroup type="borderless" className="security-prebuilt-rail-list">
                     {defaultCustomProfileState === 'generating' && !prebuiltQuery && (
@@ -2573,9 +2662,10 @@ export default function ActionConfigureV2() {
                     <span>No adaptive guardrails. Create one for a business-specific privacy, safety, or security risk.</span>
                   </div>
                 )}
-                      </div>
-                    </AccordionItem>
-                  )}
+                    </div>
+                  </section>
+                )}
+                <AccordionGroup type="contained" className="security-prebuilt-groups">
                   {showPrebuiltSection && (
                     <div className="security-prebuilt-default-groups" role="group" aria-label="Prebuilt guardrails">
                       <div id="prebuilt-default-groups-panel" className="security-prebuilt-default-group-list">
@@ -2816,9 +2906,11 @@ export default function ActionConfigureV2() {
                               </div>
                             </td>
                             <td className="col-knowledge-description">{source.description}</td>
-                            <td className="col-knowledge-sources">{source.sources}</td>
+                            <td className="col-knowledge-sources">{is360FeedbackAgent ? '—' : source.sources}</td>
                             <td className="col-knowledge-status">
-                              <Badge variant="success">Connected</Badge>
+                              <Badge variant={is360FeedbackAgent ? 'default' : 'success'}>
+                                {is360FeedbackAgent ? 'Selected' : 'Connected'}
+                              </Badge>
                             </td>
                           </tr>
                         ))}

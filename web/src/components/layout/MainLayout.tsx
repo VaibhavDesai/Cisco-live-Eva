@@ -2,6 +2,8 @@ import { useEffect, useState, type CSSProperties } from 'react';
 import { Outlet, useLocation } from 'react-router-dom';
 import Header from '../../products/ai-agent-studio/components/Header';
 import Sidebar from '../../products/ai-agent-studio/components/Sidebar';
+import DialogOsHeader from '../../products/ai-agent-studio/components/DialogOsHeader';
+import DialogOsSidebar from '../../products/ai-agent-studio/components/DialogOsSidebar';
 import AiAssistantPanel from '../../products/ai-agent-studio/components/AiAssistantPanel';
 import { useToast } from '../shared/Toast';
 import CreateAgentModal from '../agents/CreateAgentModal';
@@ -64,16 +66,21 @@ export default function MainLayout() {
   const isObservability = /^\/observability\/?$/.test(location.pathname);
   const isNewAgent = /^\/new-agent\/?$/.test(location.pathname);
   const isDialogOsLanding = isNewAgent && homeScenarioMode === 'first-time';
+  const isProtectedLandingRoute = isNewAgent;
   const welcome = useAgentStudioWelcome(isDialogOsLanding);
   const usesStudioAurora =
     isAgentsList || isAgentOverview || isAgentConfigure || isAgentTesting || isObservability || isNewAgent;
 
   useEffect(() => {
     if (isAgentContext) {
-      setSidebarCollapsed(false);
+      setSidebarCollapsed(true);
       setAgentPanelOpen(true);
     }
   }, [isAgentContext]);
+
+  useEffect(() => {
+    if (isObservability) setSidebarCollapsed(false);
+  }, [isObservability]);
 
   const welcomeStyle = isDialogOsLanding
     ? ({
@@ -92,35 +99,50 @@ export default function MainLayout() {
       }}
     >
       <div
-        className={`app--ai__bg${usesStudioAurora ? ' app--ai__bg--studio-aurora' : ''}`}
+        className={`app--ai__bg${usesStudioAurora ? ' app--ai__bg--studio-aurora' : ''}${isProtectedLandingRoute ? '' : ' app--ai__bg--minimized'}`}
         data-motion-system={isDialogOsLanding ? 'v1' : undefined}
         data-agent-studio-welcome={isDialogOsLanding ? welcome.phase : undefined}
         aria-hidden
       />
       {isDialogOsLanding && <AgentStudioShaderBackground mode="home" />}
-      <Header
-        onMenuClick={() => {
-          if (isAgentContext) {
-            setAgentPanelOpen(prev => !prev);
-          } else {
-            setSidebarCollapsed(prev => !prev);
-          }
-        }}
-        onAiClick={() => setAiPanelOpen(prev => !prev)}
-      />
+      {isProtectedLandingRoute ? (
+        <DialogOsHeader
+          onMenuClick={() => setSidebarCollapsed(prev => !prev)}
+          onAiClick={() => setAiPanelOpen(prev => !prev)}
+        />
+      ) : (
+        <Header
+          onMenuClick={() => {
+            if (isAgentContext) {
+              setAgentPanelOpen(prev => !prev);
+            } else {
+              setSidebarCollapsed(prev => !prev);
+            }
+          }}
+          onAiClick={() => setAiPanelOpen(prev => !prev)}
+        />
+      )}
       <div
         className={`app app--ai${sidebarCollapsed ? ' app--ai--sidebar-collapsed' : ''}${isAgentContext ? ' app--ai--agent-context' : ''}${usesStudioAurora ? ' app--ai--studio-aurora' : ''}${isAgentContext && agentPanelOpen ? ' app--ai--agent-panel-open' : ''}${aiPanelOpen ? ' app--ai--assistant-open' : ''}`}
         data-motion-system={isDialogOsLanding ? 'v1' : undefined}
-        data-dialogos-landing={isDialogOsLanding ? 'true' : undefined}
+        data-dialogos-landing={isProtectedLandingRoute ? 'true' : undefined}
         data-agent-studio-welcome={isDialogOsLanding ? welcome.phase : undefined}
         onAnimationEnd={isDialogOsLanding ? welcome.onAnimationEnd : undefined}
         style={welcomeStyle}
       >
-        <Sidebar
-          collapsed={sidebarCollapsed}
-          agentPanelOpen={agentPanelOpen}
-          onAgentPanelOpenChange={setAgentPanelOpen}
-        />
+        {isProtectedLandingRoute ? (
+          <DialogOsSidebar
+            collapsed={sidebarCollapsed}
+            agentPanelOpen={agentPanelOpen}
+            onAgentPanelOpenChange={setAgentPanelOpen}
+          />
+        ) : (
+          <Sidebar
+            collapsed={sidebarCollapsed}
+            agentPanelOpen={agentPanelOpen}
+            onAgentPanelOpenChange={setAgentPanelOpen}
+          />
+        )}
         <main className="main">
           <Outlet />
         </main>

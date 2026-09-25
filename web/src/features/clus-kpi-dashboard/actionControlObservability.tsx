@@ -33,7 +33,7 @@ const HOUR_MS = 60 * 60 * 1000;
 const DAY_MS = 24 * HOUR_MS;
 
 export function isEagleGreenObservabilityAgent(agentName: string | null | undefined): boolean {
-  return Boolean(agentName?.trim().toLowerCase().startsWith('eagle green vip reservation'));
+  return Boolean(agentName?.trim().toLowerCase().startsWith('eagle green'));
 }
 
 function percentile95(values: number[]): number {

@@ -4,6 +4,10 @@ import Badge from '../shared/Badge';
 import Button from '../shared/Button';
 import Tabs, { Tab } from '../shared/Tabs';
 import { useApp } from '../../contexts/AppContext';
+import {
+  getAgentDisplayType,
+  getAgentDisplayTypeClass,
+} from '../../features/agent-creation/agentDisplayType';
 
 export default function AgentHeader({ agent, activeTab, showPublishButton = true, showTabs = true, headerRight = null, statusContent = null, children = null }) {
   const navigate = useNavigate();
@@ -14,22 +18,14 @@ export default function AgentHeader({ agent, activeTab, showPublishButton = true
   useEffect(() => {
     const el = stickyRef.current;
     if (!el) return;
+    const scrollRoot = el.closest('.primary-content');
+    if (!scrollRoot) return;
 
-    const observer = new IntersectionObserver(
-      ([entry]) => setIsStuck(!entry.isIntersecting),
-      { root: el.closest('.main'), threshold: 1, rootMargin: '-1px 0px 0px 0px' }
-    );
+    const syncStickyState = () => setIsStuck(scrollRoot.scrollTop > 0);
+    syncStickyState();
+    scrollRoot.addEventListener('scroll', syncStickyState, { passive: true });
 
-    const sentinel = document.createElement('div');
-    sentinel.style.height = '1px';
-    sentinel.style.marginBottom = '-1px';
-    el.parentNode.insertBefore(sentinel, el);
-    observer.observe(sentinel);
-
-    return () => {
-      observer.disconnect();
-      sentinel.remove();
-    };
+    return () => scrollRoot.removeEventListener('scroll', syncStickyState);
   }, []);
 
   const getBadgeVariant = (statusClass) => {
@@ -63,6 +59,12 @@ export default function AgentHeader({ agent, activeTab, showPublishButton = true
         <div className="agent-info">
           <div className="agent-name-row">
             <span className="agent-name">{agent.name}</span>
+            <Badge
+              variant="default"
+              className={`agent-type-badge ${getAgentDisplayTypeClass(getAgentDisplayType(agent))}`}
+            >
+              {getAgentDisplayType(agent)}
+            </Badge>
             {statusContent ?? (
               <Badge variant={getBadgeVariant(agent.statusClass)}>
                 {agent.status}

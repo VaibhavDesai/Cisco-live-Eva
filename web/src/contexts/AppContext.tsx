@@ -9,6 +9,7 @@ import {
 } from 'react';
 import {
   ALL_LICENSED_ENTITLEMENTS,
+  createDraftFromProposal,
   duplicateDraftAs,
   getActionableStoredRecommendations,
   getRecommendationSourceRevision,
@@ -20,6 +21,7 @@ import {
   type CapabilityProgress,
   type EntitlementState,
 } from '../features/agent-creation/agentCreationModel';
+import type { AgentDisplayType } from '../features/agent-creation/agentDisplayType';
 import {
   buildCiscoLiveInstructions,
   buildDefaultCiscoLiveInstructions,
@@ -57,6 +59,7 @@ export interface Agent {
   createdAt?: string;
   updatedAt?: string;
   agentType?: 'Autonomous agent' | 'Scripted agent';
+  displayType?: AgentDisplayType;
   family?: AgentFamily;
   lifecycle?: AgentLifecycle;
   draftId?: string;
@@ -95,6 +98,7 @@ export interface AppContextValue {
   goToAgent: (agentId: string) => void;
   closeAgentNav: (agentId: string) => void;
   removeAgent: (agentId: string) => boolean;
+  updateAgentDisplayType: (agentId: string, displayType: AgentDisplayType) => boolean;
   addAgent: (newAgent: Partial<Agent>) => Agent;
   createAgentDraft: (draft: AgentDraft) => Agent;
   updateAgentDraft: (agentId: string, update: AgentDraftUpdate) => void;
@@ -231,7 +235,7 @@ const migratePrimaryDemoDraft = (draft: AgentDraft, storedSchemaVersion: number)
     const actionValues = actions.values ?? {};
     const hasStoredSelections = Array.isArray(actionValues.selections);
     const existingSelections = hasStoredSelections
-      ? actionValues.selections.filter((item): item is string => typeof item === 'string')
+      ? (actionValues.selections as unknown[]).filter((item): item is string => typeof item === 'string')
       : [];
     const normalizedSelections = hasStoredSelections
       ? existingSelections.map((item) => {
@@ -458,6 +462,7 @@ const withCiscoLiveSeed = (
   storedSchemaVersion = 0,
 ): PersistedAgentState => {
   const seed = buildCiscoLiveSeed();
+  const mergedAgents = { ...seed.agents, ...agents };
   const migratedDrafts = { ...agentDrafts };
   const primaryDraft = migratedDrafts[CISCO_LIVE_PRIMARY_AGENT_ID];
   if (primaryDraft) {
@@ -466,9 +471,95 @@ const withCiscoLiveSeed = (
       storedSchemaVersion,
     );
   }
+
+  // Early 360 story runs saved only the list record. Give those records a
+  // draft-backed Overview without replacing their saved name or selections.
+  // The story's confidentiality rule was always seeded into that flow; other
+  // missing channel, knowledge, and action choices stay unselected.
+  Object.entries(mergedAgents).forEach(([id, agent]) => {
+    const existingDraft = migratedDrafts[id];
+    if (existingDraft?.lifecycle === 'draft'
+      && existingDraft.familyConfiguration.channels?.values?.creationIntent) return;
+    const isFeedback360 = existingDraft?.familyConfiguration.channels?.values?.scenario === 'feedback360'
+      || /^360-feedback-agent(?:-\d+)?$/i.test(id)
+      || /\b360\s+feedback\b/i.test(agent.name)
+      || /\b360\s+feedback\b/i.test(agent.description);
+    if (!isFeedback360) return;
+
+    const now = new Date().toISOString();
+    const draft = existingDraft ?? createDraftFromProposal('contact_center', {
+      name: agent.name,
+      purpose: agent.description || 'Collect confidential 360 feedback for a development review.',
+      description: agent.description || 'Collect confidential 360 feedback for a development review.',
+      language: 'English (US)',
+      instructions: [
+        `#### Role & Identity\nYou are ${agent.name}. ${agent.description || 'Collect confidential 360 feedback for a development review.'}`,
+        '#### Guardrails\nCombine responses into de-identified themes. Escalate serious harassment, safety, or ethics concerns to a human HR owner.',
+      ].join('\n\n'),
+    });
+    const channels = draft.familyConfiguration.channels;
+    const security = draft.familyConfiguration.security;
+    const storyRule = 'Combine responses into de-identified themes. Escalate serious harassment, safety, or ethics concerns to a human HR owner.';
+    const securitySelections = security?.values?.selections;
+    const needsStorySecurity = !existingDraft || (
+      !channels?.values?.creationIntent
+      && (!Array.isArray(securitySelections) || securitySelections.length === 0)
+    );
+    const knowledgeSelections = Array.isArray(agent.knowledgeBases)
+      ? agent.knowledgeBases.filter((name): name is string => typeof name === 'string')
+      : [];
+    const knowledge = draft.familyConfiguration.knowledge;
+    migratedDrafts[id] = {
+      ...draft,
+      id,
+      lifecycle: 'published',
+      version: draft.version || 1,
+      createdAt: existingDraft?.createdAt || agent.createdAt || draft.createdAt || now,
+      updatedAt: existingDraft?.updatedAt || agent.updatedAt || draft.updatedAt || now,
+      familyConfiguration: {
+        ...draft.familyConfiguration,
+        ...(channels ? {
+          channels: {
+            ...channels,
+            values: {
+              ...(channels.values ?? {}),
+              scenario: 'feedback360',
+              creationIntent: channels.values?.creationIntent || 'legacy',
+            },
+          },
+        } : {}),
+        ...(knowledge && !existingDraft && knowledgeSelections.length > 0 ? {
+          knowledge: {
+            ...knowledge,
+            progress: 'configured',
+            values: { ...(knowledge.values ?? {}), selections: knowledgeSelections },
+          },
+        } : {}),
+        ...(security && needsStorySecurity ? {
+          security: {
+            ...security,
+            progress: 'configured',
+            values: {
+              ...(security.values ?? {}),
+              selections: [storyRule],
+            },
+          },
+        } : {}),
+      },
+    };
+    mergedAgents[id] = {
+      ...agent,
+      family: migratedDrafts[id].family,
+      lifecycle: 'published',
+      status: 'Published',
+      statusClass: 'badge-success',
+      draftId: id,
+      version: migratedDrafts[id].version,
+    };
+  });
   return {
     schemaVersion: 14,
-    agents: { ...seed.agents, ...agents },
+    agents: mergedAgents,
     agentDrafts: { ...seed.agentDrafts, ...migratedDrafts },
   };
 };
@@ -559,6 +650,7 @@ const agentFromDraft = (draft: AgentDraft, existing?: Agent): Agent => {
     createdAt: existing?.createdAt ?? draft.createdAt,
     updatedAt: now,
     agentType: existing?.agentType ?? 'Autonomous agent',
+    displayType: existing?.displayType,
     family: draft.family,
     lifecycle: draft.lifecycle,
     draftId: draft.id,
@@ -717,6 +809,29 @@ export function AppProvider({ children }: AppProviderProps) {
     return true;
   }, [replaceAgentState]);
 
+  const updateAgentDisplayType = useCallback((agentId: string, displayType: AgentDisplayType) => {
+    if (displayType !== 'CX concierge' && displayType !== 'CX specialist') return false;
+    const nextState = updateAgentState(current => {
+      const existingAgent = current.agents[agentId];
+      if (!existingAgent) return current;
+      return {
+        ...current,
+        agents: {
+          ...current.agents,
+          [agentId]: {
+            ...existingAgent,
+            displayType,
+            updatedAt: new Date().toISOString(),
+          },
+        },
+      };
+    });
+    const updatedAgent = nextState.agents[agentId];
+    if (!updatedAgent || updatedAgent.displayType !== displayType) return false;
+    setCurrentAgent(current => current?.id === agentId ? updatedAgent : current);
+    return true;
+  }, [updateAgentState]);
+
   const showToast = useCallback((message: string, type?: 'default' | 'info' | 'success' | 'warning' | 'error') => {
     setToast({ message, type });
     setTimeout(() => setToast(null), 3000);
@@ -746,6 +861,7 @@ export function AppProvider({ children }: AppProviderProps) {
       createdAt,
       updatedAt: newAgent.updatedAt ?? createdAt,
       agentType: newAgent.agentType ?? 'Autonomous agent',
+      displayType: newAgent.displayType,
       family: newAgent.family,
       lifecycle: newAgent.lifecycle,
       draftId: newAgent.draftId,
@@ -976,6 +1092,7 @@ export function AppProvider({ children }: AppProviderProps) {
     goToAgent,
     closeAgentNav,
     removeAgent,
+    updateAgentDisplayType,
     addAgent,
     createAgentDraft,
     updateAgentDraft,

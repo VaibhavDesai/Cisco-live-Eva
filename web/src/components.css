@@ -3970,6 +3970,39 @@ tbody tr:focus-visible {
   gap: 10px;
 }
 
+.agent-name-row .agent-type-badge.alert-chip {
+  min-height: 18px;
+  padding: 1px 6px;
+  border-radius: 4px;
+  font-size: 11px;
+  font-weight: 500;
+  line-height: 14px;
+}
+
+.agent-name-row .agent-type-badge--ai-receptionist.alert-chip {
+  background: rgba(245, 180, 0, 0.16);
+  border-color: #f5b400;
+  color: #ffe7a0;
+}
+
+.agent-name-row .agent-type-badge--cx-concierge.alert-chip {
+  background: rgba(199, 165, 250, 0.16);
+  border-color: #c7a5fa;
+  color: #eadfff;
+}
+
+.agent-name-row .agent-type-badge--cx-specialist.alert-chip {
+  background: rgba(60, 194, 154, 0.16);
+  border-color: #3cc29a;
+  color: #cbf7e8;
+}
+
+.agent-name-row .agent-type-badge--personal-agent.alert-chip {
+  background: rgba(34, 199, 214, 0.16);
+  border-color: #22c7d6;
+  color: #cdf9fc;
+}
+
 .agent-name {
   font-size: 20px;
   font-weight: 600;
@@ -5308,6 +5341,136 @@ button.view-btn.active {
   justify-content: flex-end;
   gap: var(--spacing-xx-small);
   padding-top: var(--spacing-xx-small);
+}
+
+/* ── Quick agent creation — choose a starting type ───────────────── */
+.quick-create-agent-modal.modal {
+  gap: var(--spacing-medium);
+}
+
+.quick-create-agent-modal__body {
+  padding-right: 2px;
+}
+
+.quick-create-agent-modal__form {
+  display: grid;
+  gap: var(--spacing-medium);
+}
+
+.quick-create-agent-modal__type-fieldset {
+  display: grid;
+  gap: var(--spacing-xx-small);
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.quick-create-agent-modal__type-fieldset legend {
+  padding: 0;
+  color: var(--text-primary);
+  font-size: var(--font-size-body-midsize);
+  font-weight: var(--font-weight-bold);
+  line-height: var(--font-lineheight-body-midsize);
+}
+
+.quick-create-agent-modal__type-fieldset legend span {
+  color: var(--error-color, #e35151);
+}
+
+.quick-create-agent-modal__type-fieldset > p {
+  margin: 0;
+  color: var(--text-secondary);
+  font-size: var(--font-size-body-small);
+  line-height: var(--font-lineheight-body-small);
+}
+
+.quick-create-agent-modal__type-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--spacing-small);
+  margin-top: var(--spacing-xx-small);
+}
+
+.quick-create-agent-modal__type-card {
+  --mdc-card-width: 100%;
+  min-width: 0;
+  width: 100%;
+  min-height: 144px;
+}
+
+.quick-create-agent-modal__type-card::part(body) {
+  padding: var(--spacing-medium);
+}
+
+.quick-create-agent-modal__type-card::part(header) {
+  align-items: flex-start;
+}
+
+.quick-create-agent-modal__type-title {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-small);
+  min-width: 0;
+  color: var(--text-primary);
+  font-size: var(--font-size-body-midsize);
+  font-weight: var(--font-weight-bold);
+  line-height: var(--font-lineheight-body-midsize);
+}
+
+.quick-create-agent-modal__type-icon {
+  display: inline-flex;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border-radius: var(--border-radius-small);
+  background: color-mix(in srgb, var(--accent-color) 14%, transparent);
+  color: var(--accent-color);
+}
+
+.quick-create-agent-modal__type-card--cx_specialist .quick-create-agent-modal__type-icon {
+  color: var(--success-color);
+  background: color-mix(in srgb, var(--success-color) 14%, transparent);
+}
+
+.quick-create-agent-modal__type-card--ai_receptionist .quick-create-agent-modal__type-icon {
+  color: var(--warning-color);
+  background: color-mix(in srgb, var(--warning-color) 14%, transparent);
+}
+
+.quick-create-agent-modal__type-card--personal_agent .quick-create-agent-modal__type-icon {
+  color: var(--informative-color, #5ea5ff);
+  background: color-mix(in srgb, var(--informative-color, #5ea5ff) 14%, transparent);
+}
+
+.quick-create-agent-modal__type-description {
+  display: block;
+  color: var(--text-secondary);
+  font-size: var(--font-size-body-small);
+  line-height: var(--font-lineheight-body-small);
+}
+
+.quick-create-agent-modal__details {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--spacing-small);
+}
+
+.quick-create-agent-modal__details .form-field {
+  margin-bottom: 0;
+}
+
+@media (max-width: 640px) {
+  .quick-create-agent-modal__type-grid,
+  .quick-create-agent-modal__details {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .quick-create-agent-modal__type-card {
+    min-height: 0;
+  }
 }
 
 /* ── Momentum Announcement Dialog ─────────────────────────────────── */

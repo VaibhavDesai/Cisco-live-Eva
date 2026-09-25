@@ -55,6 +55,16 @@ import {
   summarizeCiscoLiveActionControlDecisions,
 } from '../../demo/ciscoLiveDemo';
 import {
+  FEEDBACK360_ACTION_CONTROL_SUMMARY_24H,
+  FEEDBACK360_ACTION_CONTROL_SUMMARY_6H,
+  FEEDBACK360_OVERVIEW_DEMO_LABEL,
+  FEEDBACK360_OVERVIEW_HEALTH,
+  createFeedback360DemoSessions,
+  getFeedback360ActionPerformance,
+  getFeedback360GuardrailActivity,
+  getFeedback360OverviewMetrics,
+} from '../../demo/feedback360Overview';
+import {
   type AgentDraft,
   type AgentFamily,
   type AgentLifecycle,
@@ -66,6 +76,7 @@ import {
   persistAgentReleaseState,
   type AgentReleaseState,
 } from './agentReleaseState';
+import { getGalileoActionId } from './ActionControls';
 
 type PreviewCallStatus = 'idle' | 'connecting' | 'listening' | 'speaking' | 'paused' | 'ended' | 'error';
 type OverviewIntervention = 'action_control' | 'guardrail';
@@ -233,10 +244,6 @@ const OPERATIONAL_HEALTH = {
   signals: 8,
 } as const;
 
-const OPERATIONAL_HEALTH_GAP = Number(
-  (OPERATIONAL_HEALTH.score - OPERATIONAL_HEALTH.target).toFixed(1),
-);
-
 const OPERATIONAL_HEALTH_METRICS = CISCO_LIVE_OPERATIONAL_HEALTH_METRICS;
 
 const OPERATIONAL_TIME_RANGE_OPTIONS = [
@@ -281,9 +288,31 @@ const sessionOutcomeVariant = (outcome: string): 'success' | 'warning' | 'info' 
 const capabilitySelectionLabels = (draft: AgentDraft | undefined, capabilityId: string): string[] => {
   const values = draft?.familyConfiguration[capabilityId]?.values;
   const selections = values?.selections;
-  return Array.isArray(selections)
+  const selectionLabels = Array.isArray(selections)
     ? selections.filter((selection): selection is string => typeof selection === 'string' && Boolean(selection.trim()))
     : [];
+  if (capabilityId !== 'security') return Array.from(new Set(selectionLabels));
+
+  const savedGuardrails = values?.guardrails;
+  const guardrailLabels = Array.isArray(savedGuardrails)
+    ? savedGuardrails.filter((guardrail): guardrail is string => typeof guardrail === 'string' && Boolean(guardrail.trim()))
+    : [];
+  const customGuardrails = values?.customGuardrails;
+  const customGuardrailLabels = Array.isArray(customGuardrails)
+    ? customGuardrails.flatMap(item => {
+        if (!item || typeof item !== 'object' || Array.isArray(item)) return [];
+        const guardrail = item as { name?: unknown; enabled?: unknown };
+        return typeof guardrail.name === 'string' && guardrail.enabled !== false
+          ? [guardrail.name]
+          : [];
+      })
+    : [];
+
+  return Array.from(new Set([
+    ...selectionLabels,
+    ...guardrailLabels,
+    ...customGuardrailLabels,
+  ]));
 };
 
 const configuredCapabilityLabels = (
@@ -292,9 +321,12 @@ const configuredCapabilityLabels = (
   fallbackLabels: string[] = [],
 ): string[] => {
   const capability = draft?.familyConfiguration[capabilityId];
-  if (capability?.progress !== 'configured') return [];
   const selections = capabilitySelectionLabels(draft, capabilityId);
+  // Persisted selections are the source of truth for the Overview count. This
+  // also repairs older conversational drafts whose progress flag fell behind
+  // even though their selected resources were saved correctly.
   if (selections.length > 0) return selections;
+  if (capability?.progress !== 'configured') return [];
   if (fallbackLabels.length > 0) return fallbackLabels;
   return [capability.label];
 };
@@ -416,7 +448,7 @@ export default function AgentStudioLanding() {
   const [operationalTimeRange, setOperationalTimeRange] = useState('6h');
   const [selectedGuardrailActivity, setSelectedGuardrailActivity] = useState<string | null | undefined>(undefined);
   const [selectedOverviewIntervention, setSelectedOverviewIntervention] = useState<OverviewIntervention | null>(
-    () => (agentId === CISCO_LIVE_PRIMARY_AGENT_ID ? 'action_control' : null),
+    null,
   );
   const [overviewCardOrder, setOverviewCardOrder] = useState<OverviewCardId[]>(
     () => readOverviewTileOrder(agentId, 'cards', DEFAULT_OVERVIEW_CARD_ORDER),
@@ -470,7 +502,7 @@ export default function AgentStudioLanding() {
     setDraggedOverviewTile(null);
     setOverviewDropTarget(null);
     setSelectedGuardrailActivity(undefined);
-    setSelectedOverviewIntervention(agentId === CISCO_LIVE_PRIMARY_AGENT_ID ? 'action_control' : null);
+    setSelectedOverviewIntervention(null);
     setPreviewChatMessages([]);
     setPreviewChatDraft('');
     setPreviewChatThinking(false);
@@ -499,6 +531,8 @@ export default function AgentStudioLanding() {
   }
 
   const agentDraft = agentDrafts[agent.id];
+  const is360FeedbackAgent = agentDraft?.familyConfiguration.channels?.values?.scenario === 'feedback360'
+    || (/\b360\b/i.test(agent.name) && /\bfeedback\b/i.test(agent.name));
   const family = agentDraft?.family ?? agent.family;
   const lifecycle = agentDraft?.lifecycle ?? agent.lifecycle ?? 'draft';
   const summary = getConfiguredSummary(agent, agentDraft);
@@ -1113,8 +1147,15 @@ Simulation rules:
     : summary.actions;
   const configuredHandoff = configuredCapabilityLabels(agentDraft, 'handoff');
   // Surface triggered guardrails first; a stable sort keeps the rest as configured.
-  const configuredSecurity = configuredCapabilityLabels(agentDraft, 'security')
-    .map((item, index) => ({ item, index, count: getCiscoLiveGuardrailTriggerCount(item, agent.id) }))
+  const configuredSecurityLabels = configuredCapabilityLabels(agentDraft, 'security');
+  const feedback360GuardrailActivity = is360FeedbackAgent
+    ? getFeedback360GuardrailActivity(configuredSecurityLabels)
+    : [];
+  const guardrailTriggerCount = (label: string) => is360FeedbackAgent
+    ? feedback360GuardrailActivity.find(activity => activity.item === label)?.count ?? 0
+    : getCiscoLiveGuardrailTriggerCount(label, agent.id);
+  const configuredSecurity = configuredSecurityLabels
+    .map((item, index) => ({ item, index, count: guardrailTriggerCount(item) }))
     .sort((a, b) => b.count - a.count || a.index - b.index)
     .map(entry => entry.item);
   const ciscoLiveAgentDefinition = CISCO_LIVE_AGENTS.find(definition => definition.id === agent.id);
@@ -1130,13 +1171,33 @@ Simulation rules:
     configuredSecurity.length - configuredAdaptiveGuardrailCount,
   );
   const configuredOrchestration = [...configuredActions, ...configuredHandoff];
+  const feedback360Sessions = is360FeedbackAgent
+    ? createFeedback360DemoSessions({
+        agentName: agent.name,
+        selectedChannels: previewChannels.length > 0 ? previewChannels : ['digital'],
+        selectedActions: configuredActions,
+        configuredSecurity,
+      })
+    : [];
   const actionConfigurationValues = agentDraft?.familyConfiguration.actions?.values;
   const rawActionControls = actionConfigurationValues?.controlsByActionId;
+  const configuredActionIds = new Set(configuredOrchestration.map(action => (
+    getGalileoActionId(undefined, action)
+  )));
   const configuredActionControlCount = rawActionControls
     && typeof rawActionControls === 'object'
     && !Array.isArray(rawActionControls)
-    ? Object.values(rawActionControls).reduce(
-        (total, value) => total + (Array.isArray(value) ? value.length : 0),
+    ? Object.entries(rawActionControls).reduce(
+        (total, [actionId, value]) => total + (
+          configuredActionIds.has(actionId) && Array.isArray(value)
+            ? value.filter(control => (
+                control
+                && typeof control === 'object'
+                && !Array.isArray(control)
+                && (control as { status?: unknown }).status !== 'disabled'
+              )).length
+            : 0
+        ),
         0,
       )
     : 0;
@@ -1148,6 +1209,8 @@ Simulation rules:
     + configuredSecurity.length;
   const hasConnectedResources = connectedCapabilityCount > 0;
   const usesEagleGreenShowcaseMetrics = agent.id === 'golftop-vip-reservations';
+  const usesShowcaseControlFlow = usesEagleGreenShowcaseMetrics
+    || (is360FeedbackAgent && configuredActions.includes('Generate Anonymized Theme Summary'));
   const actionPerformanceItems = usesEagleGreenShowcaseMetrics
     ? [
         'Check Availability',
@@ -1156,7 +1219,9 @@ Simulation rules:
         'Handover',
       ]
     : configuredActions;
-  const connectedActionPerformance = actionPerformanceItems.map(item => {
+  const connectedActionPerformance = is360FeedbackAgent
+    ? getFeedback360ActionPerformance(configuredActions)
+    : actionPerformanceItems.map(item => {
     const metric = getCiscoLiveActionMetric(item);
     return {
       item,
@@ -1169,22 +1234,26 @@ Simulation rules:
     ? connectedActionPerformance.reduce((total, item) => total + item.rate, 0) / connectedActionPerformance.length
     : 0;
   const connectedCapabilityTotals = {
-    knowledge: usesEagleGreenShowcaseMetrics ? 14 : configuredKnowledge.length,
+    knowledge: configuredKnowledge.length,
     memory: configuredMemory.length,
-    actions: usesEagleGreenShowcaseMetrics ? 4 : configuredOrchestration.length,
-    actionControls: usesEagleGreenShowcaseMetrics ? 2 : configuredActionControlCount,
+    actions: configuredOrchestration.length,
+    actionControls: configuredActionControlCount,
     guardrails: configuredSecurity.length,
   } as const;
+  const configuredTransferCount = configuredOrchestration.filter(action => (
+    /\b(transfer|handoff|handover|escalat)/i.test(action)
+  )).length;
+  const configuredMcpActionCount = configuredOrchestration.length - configuredTransferCount;
   const connectedGuardrailActivity = configuredSecurity.map(item => ({
     item,
-    count: getCiscoLiveGuardrailTriggerCount(item, agent.id),
+    count: guardrailTriggerCount(item),
   }));
   const defaultSelectedGuardrailName = connectedGuardrailActivity.find(guardrail => guardrail.count > 0)?.item
     ?? connectedGuardrailActivity[0]?.item
     ?? null;
   const defaultTriggeredGuardrailName = connectedGuardrailActivity.find(guardrail => guardrail.count > 0)?.item
     ?? null;
-  const selectedGuardrailName = usesEagleGreenShowcaseMetrics
+  const selectedGuardrailName = usesShowcaseControlFlow
     && selectedOverviewIntervention !== 'guardrail'
     ? null
     : selectedGuardrailActivity === undefined
@@ -1199,7 +1268,12 @@ Simulation rules:
   const showSelectedGuardrailDecision = selectedOverviewIntervention === 'guardrail'
     && Boolean(selectedGuardrail && selectedGuardrail.count > 0);
   const guardrailTriggerTotal = connectedGuardrailActivity.reduce((total, item) => total + item.count, 0);
-  const allAgentSessions = getCiscoLiveSessions(agent.id, actionConfigurationValues);
+  const visibleOverviewChartOrder = overviewChartOrder.filter(
+    tileId => tileId !== 'guardrails' || guardrailTriggerTotal > 0 || is360FeedbackAgent,
+  );
+  const allAgentSessions = is360FeedbackAgent
+    ? feedback360Sessions
+    : getCiscoLiveSessions(agent.id, actionConfigurationValues);
   const parsedSessionCount = Number.parseInt(agent.sessions.replace(/,/g, ''), 10);
   const hasRuntimeUsage = allAgentSessions.length > 0
     || (Number.isFinite(parsedSessionCount) && parsedSessionCount > 0);
@@ -1207,10 +1281,10 @@ Simulation rules:
   const primaryConfiguredAction = configuredActions[0] ?? configuredHandoff[0] ?? 'the connected action';
   const connectedExperience = [
     configuredKnowledge.length > 0
-      ? `${configuredKnowledge.length} connected knowledge source${configuredKnowledge.length === 1 ? '' : 's'}`
+      ? `${configuredKnowledge.length} ${is360FeedbackAgent ? 'selected' : 'connected'} knowledge source${configuredKnowledge.length === 1 ? '' : 's'}`
       : null,
     configuredOrchestration.length > 0
-      ? `${configuredOrchestration.length} connected action${configuredOrchestration.length === 1 ? '' : 's'}`
+      ? `${configuredOrchestration.length} ${is360FeedbackAgent ? 'selected' : 'connected'} action${configuredOrchestration.length === 1 ? '' : 's'}`
       : null,
   ].filter(Boolean).join(' and ');
   const phoneReceptionistNextSteps: OverviewNextStep[] = family === 'calling' ? [
@@ -1329,11 +1403,30 @@ Simulation rules:
     .filter((step): step is OverviewNextStep => Boolean(step))
     .slice(0, 3);
   const operationalTimeRangeHours = OPERATIONAL_TIME_RANGE_HOURS[operationalTimeRange] ?? 6;
-  const actionControlDecisions = (usesEagleGreenShowcaseMetrics
-    ? getCiscoLiveActionControlDecisions(agent.id, actionConfigurationValues)
-    : [])
+  const feedback360ActionControlDecisions = feedback360Sessions.flatMap(session => session.transcript.flatMap(event => (
+    event.kind === 'action_control' && event.actionControl
+      ? [{
+          ...event.actionControl,
+          agentId: agent.id,
+          sessionId: session.id,
+          timestamp: event.time,
+          occurredAt: new Date().toISOString(),
+        }]
+      : []
+  )));
+  const actionControlDecisions = (is360FeedbackAgent
+    ? feedback360ActionControlDecisions
+    : usesEagleGreenShowcaseMetrics
+      ? getCiscoLiveActionControlDecisions(agent.id, actionConfigurationValues)
+      : [])
     .filter(decision => actionControlDecisionAgeHours(decision.occurredAt) <= operationalTimeRangeHours);
-  const actionControlFlow = usesEagleGreenShowcaseMetrics
+  const actionControlFlow = is360FeedbackAgent && feedback360ActionControlDecisions.length > 0
+    ? operationalTimeRange === '6h'
+      ? FEEDBACK360_ACTION_CONTROL_SUMMARY_6H
+      : operationalTimeRange === '24h'
+        ? FEEDBACK360_ACTION_CONTROL_SUMMARY_24H
+        : summarizeCiscoLiveActionControlDecisions(actionControlDecisions)
+    : usesEagleGreenShowcaseMetrics
     ? operationalTimeRange === '6h'
       ? CISCO_LIVE_ACTION_CONTROL_SUMMARY_6H
       : operationalTimeRange === '24h'
@@ -1353,35 +1446,37 @@ Simulation rules:
   const actionControlSpotlightActionName = actionControlSpotlightDecision?.actionName === 'Check Availability'
     ? 'Check availability'
     : actionControlSpotlightDecision?.actionName ?? '';
-  const actionControlFlowLabel = `${actionControlFlow.evaluated} controls were evaluated. ${actionControlFlow.actionRan} attached action${actionControlFlow.actionRan === 1 ? '' : 's'} completed. ${actionControlFlow.matched} matched and ${actionControlFlow.notMatched} did not match; ${actionControlFlow.steered} redirected the next step and ${actionControlFlow.unlocked} gated action${actionControlFlow.unlocked === 1 ? '' : 's'} unlocked. Match rate ${actionControlFlow.matchRate} percent.`;
+  const actionControlFlowLabel = is360FeedbackAgent
+    ? `${actionControlFlow.evaluated} summary eligibility checks were evaluated. ${actionControlFlow.matched} met the response threshold; ${actionControlFlow.notMatched} did not. ${actionControlFlow.actionRan} anonymized summaries completed.`
+    : `${actionControlFlow.evaluated} controls were evaluated. ${actionControlFlow.actionRan} attached action${actionControlFlow.actionRan === 1 ? '' : 's'} completed. ${actionControlFlow.matched} matched and ${actionControlFlow.notMatched} did not match; ${actionControlFlow.steered} redirected the next step and ${actionControlFlow.unlocked} gated action${actionControlFlow.unlocked === 1 ? '' : 's'} unlocked. Match rate ${actionControlFlow.matchRate} percent.`;
   const guardedSessionRate = allAgentSessions.length > 0
     ? Math.round((allAgentSessions.filter(session => session.guardrailTriggered).length / allAgentSessions.length) * 100)
     : 0;
   const connectedCapabilitySignals = [
     {
       id: 'knowledge',
-      label: 'Knowledge referenced',
+      label: is360FeedbackAgent ? 'Approved sources referenced' : 'Knowledge referenced',
       value: configuredKnowledge.length > 0 ? Math.min(100, 68 + configuredKnowledge.length * 8) : 0,
       count: connectedCapabilityTotals.knowledge,
       type: 'knowledge' as ConfigurationCategory,
     },
     {
       id: 'memory',
-      label: 'Memory assisted',
+      label: is360FeedbackAgent ? 'Review context assisted' : 'Memory assisted',
       value: configuredMemory.length > 0 ? Math.min(100, 54 + configuredMemory.length * 8) : 0,
       count: connectedCapabilityTotals.memory,
       type: 'memory' as ConfigurationCategory,
     },
     {
       id: 'actions',
-      label: 'Action success',
+      label: is360FeedbackAgent ? 'Feedback action success' : 'Action success',
       value: Math.round(averageActionSuccess),
       count: connectedCapabilityTotals.actions,
       type: 'action' as ConfigurationCategory,
     },
     {
       id: 'security',
-      label: 'Guardrail intervention',
+      label: is360FeedbackAgent ? 'Confidentiality intervention' : 'Guardrail intervention',
       value: configuredSecurity.length > 0 ? guardedSessionRate : 0,
       count: connectedCapabilityTotals.guardrails,
       type: 'guardrail' as ConfigurationCategory,
@@ -1392,7 +1487,9 @@ Simulation rules:
   // A live preview session stays on this agent; otherwise resolve to the demo
   // session that actually carries the designed transcript (guardrail first) so
   // "View session" always opens the transcript with its guardrail markers.
-  const operationalSessionLocator = knownSessionId
+  const operationalSessionLocator = is360FeedbackAgent && feedback360Sessions.length > 0
+    ? { agentId: agent.id, sessionId: knownSessionId || feedback360Sessions[0].id }
+    : knownSessionId
     ? { agentId: agent.id, sessionId: knownSessionId }
     : getCiscoLiveSessionLocator(agent.id, getCiscoLiveObservability(agent.id).sessionId);
   const operationalSessionPath = `/agents/${encodeURIComponent(operationalSessionLocator.agentId)}/sessions?sessionId=${encodeURIComponent(operationalSessionLocator.sessionId)}&source=observability`;
@@ -1416,9 +1513,14 @@ Simulation rules:
   const operationalTimeRangeLabel = OPERATIONAL_TIME_RANGE_OPTIONS.find(
     option => option.value === operationalTimeRange,
   )?.label ?? 'Past 6 hours';
-  const operationalSessions = getCiscoLiveSessions(agent.id, actionConfigurationValues)
+  const operationalSessions = allAgentSessions
     .filter(session => sessionAgeHours(session.updated) <= operationalTimeRangeHours)
     .slice(0, 3);
+  const operationalHealth = is360FeedbackAgent ? FEEDBACK360_OVERVIEW_HEALTH : OPERATIONAL_HEALTH;
+  const operationalHealthGap = Number((operationalHealth.score - operationalHealth.target).toFixed(1));
+  const operationalHealthMetrics = is360FeedbackAgent
+    ? getFeedback360OverviewMetrics(configuredSecurity, configuredActions)
+    : OPERATIONAL_HEALTH_METRICS;
   const studioHeaderAgent = { ...agent, meta: agent.description };
   const previewTranscriptButton = (
     <Button
@@ -1607,7 +1709,9 @@ Simulation rules:
                   <strong>Capability usage</strong>
                   <small>
                     {hasConnectedResources
-                      ? 'Knowledge, memory, actions, and protection'
+                      ? is360FeedbackAgent
+                        ? 'Feedback sources, actions, and confidentiality safeguards'
+                        : 'Knowledge, memory, actions, and protection'
                       : 'Nothing connected yet'}
                   </small>
                 </span>
@@ -1621,7 +1725,9 @@ Simulation rules:
                           id: 'knowledge' as OverviewSummaryTileId,
                           label: 'Knowledge',
                           value: connectedCapabilityTotals.knowledge,
-                          status: configuredKnowledge.length > 0 ? 'All sources synced · 8 min ago' : null,
+                          status: configuredKnowledge.length > 0
+                            ? is360FeedbackAgent ? 'Selected during creation' : 'All sources synced · 8 min ago'
+                            : null,
                           type: 'knowledge' as ConfigurationCategory,
                         },
                         {
@@ -1635,29 +1741,31 @@ Simulation rules:
                           id: 'actions' as OverviewSummaryTileId,
                           label: 'Actions',
                           value: connectedCapabilityTotals.actions,
-                          status: usesEagleGreenShowcaseMetrics
-                            ? '2 Transfers, 2 MCPs'
-                            : configuredOrchestration.length > 0
-                              ? `${configuredActions.length} actions · ${configuredHandoff.length} MCPs`
-                              : null,
+                          status: configuredOrchestration.length > 0
+                            ? is360FeedbackAgent
+                              ? `${configuredOrchestration.length} selected`
+                              : `${configuredTransferCount} transfers · ${configuredMcpActionCount} MCPs`
+                            : null,
                           type: 'action' as ConfigurationCategory,
                         },
                         {
                           id: 'actionControl' as OverviewSummaryTileId,
                           label: 'Agent control',
                           value: connectedCapabilityTotals.actionControls,
-                          status: usesEagleGreenShowcaseMetrics ? '2 active · Steer' : null,
+                          status: configuredActionControlCount > 0
+                            ? `${configuredActionControlCount} configured`
+                            : null,
                           type: 'action-control' as ConfigurationCategory,
                         },
                         {
                           id: 'guardrails' as OverviewSummaryTileId,
                           label: 'Guardrails',
                           value: connectedCapabilityTotals.guardrails,
-                          status: usesEagleGreenShowcaseMetrics
-                            ? `${configuredPrebuiltGuardrailCount} prebuilt · ${configuredAdaptiveGuardrailCount} adaptive`
-                            : configuredSecurity.length > 0
-                              ? `${configuredSecurity.length} configured`
-                              : null,
+                          status: configuredSecurity.length > 0
+                            ? is360FeedbackAgent
+                              ? `${configuredSecurity.length} selected`
+                              : `${configuredPrebuiltGuardrailCount} prebuilt · ${configuredAdaptiveGuardrailCount} adaptive`
+                            : null,
                           type: 'guardrail' as ConfigurationCategory,
                         },
                       ]
@@ -1715,13 +1823,17 @@ Simulation rules:
                     </div>
 
                     {hasRuntimeUsage && (
-                      <div className="agent-studio-connected-chart-grid">
-                      {overviewChartOrder.map((tileId, index) => {
+                      <div className={[
+                        'agent-studio-connected-chart-grid',
+                        visibleOverviewChartOrder.length === 2 ? 'agent-studio-connected-chart-grid--two-up' : '',
+                        showSelectedActionControlDecision ? 'agent-studio-connected-chart-grid--action-expanded' : '',
+                      ].filter(Boolean).join(' ')}>
+                      {visibleOverviewChartOrder.map((tileId, index) => {
                         const tileLabel = tileId === 'signals'
                           ? 'Capability signals'
                           : tileId === 'actions'
-                            ? usesEagleGreenShowcaseMetrics
-                              ? 'Agent control activity'
+                            ? usesShowcaseControlFlow
+                              ? is360FeedbackAgent ? 'Summary eligibility checks' : 'Agent control activity'
                               : 'Action performance'
                             : 'Guardrail activity';
                         const labelledBy = `agent-studio-${tileId}-chart-title`;
@@ -1735,7 +1847,7 @@ Simulation rules:
                           : tileId === 'guardrails'
                             ? 'guardrail'
                             : null;
-                        const isDetailInteractive = usesEagleGreenShowcaseMetrics
+                        const isDetailInteractive = usesShowcaseControlFlow
                           && detailSelectionType !== null;
                         const detailId = tileId === 'actions'
                           ? ACTION_CONTROL_DETAIL_ID
@@ -1778,7 +1890,7 @@ Simulation rules:
                                 type="button"
                                 className="agent-studio-connected-chart__disclosure"
                                 aria-label={tileId === 'actions'
-                                  ? 'Agent control activity, latest matched decision'
+                                  ? is360FeedbackAgent ? 'Summary eligibility checks, latest eligible cohort' : 'Agent control activity, latest matched decision'
                                   : 'Guardrail activity, latest trigger'}
                                 aria-expanded={isDetailSelected}
                                 aria-controls={detailId}
@@ -1799,12 +1911,18 @@ Simulation rules:
                                   setSelectedGuardrailActivity(nextGuardrail);
                                   setSelectedOverviewIntervention(nextGuardrail ? 'guardrail' : null);
                                 }}
-                              />
+                              >
+                                <Icon
+                                  name={isDetailSelected ? 'fit-to-window-shrink' : 'fit-to-window-expand'}
+                                  weight="bold"
+                                  size="lg"
+                                />
+                              </button>
                             )}
                             <button
                               type="button"
                               className="agent-studio-overview-tile__drag-handle"
-                              aria-label={`Reorder ${tileLabel}. Position ${index + 1} of ${overviewChartOrder.length}`}
+                              aria-label={`Reorder ${tileLabel}. Position ${index + 1} of ${visibleOverviewChartOrder.length}`}
                               title="Drag to reorder. Use arrow keys to move this tile."
                               draggable
                               onDragStart={event => handleOverviewTileDragStart(event, 'charts', tileId)}
@@ -1834,13 +1952,15 @@ Simulation rules:
                                       </div>
                                       <div
                                         className={`agent-studio-capability-signal__track agent-studio-capability-signal__track--${signal.type}`}
+                                        style={{ gridTemplateColumns: `${signal.value}fr ${100 - signal.value}fr` }}
                                         role="progressbar"
                                         aria-label={`${signal.label}: ${signal.value} percent`}
                                         aria-valuemin={0}
                                         aria-valuemax={100}
                                         aria-valuenow={signal.value}
                                       >
-                                        <span style={{ width: `${signal.value}%` }} />
+                                        <span />
+                                        <span aria-hidden="true" />
                                       </div>
                                       <small>{signal.count} configured</small>
                                     </div>
@@ -1854,21 +1974,23 @@ Simulation rules:
                                 <div className="agent-studio-connected-chart__header">
                                   <div>
                                     <h3 id={labelledBy}>
-                                      {usesEagleGreenShowcaseMetrics ? 'Agent control activity' : 'Action performance'}
+                                      {usesShowcaseControlFlow
+                                        ? is360FeedbackAgent ? 'Summary eligibility checks' : 'Agent control activity'
+                                        : 'Action performance'}
                                     </h3>
                                     <p>
-                                      {usesEagleGreenShowcaseMetrics
-                                        ? `Agent control activity during ${operationalTimeRangeLabel.toLowerCase()}`
+                                      {usesShowcaseControlFlow
+                                        ? operationalTimeRangeLabel
                                         : 'Success rate against a 95% target'}
                                     </p>
                                   </div>
-                                  {!usesEagleGreenShowcaseMetrics && (
+                                  {!usesShowcaseControlFlow && (
                                     <strong className="agent-studio-connected-chart__headline">
                                       {averageActionSuccess.toFixed(1)}%
                                     </strong>
                                   )}
                                 </div>
-                                {usesEagleGreenShowcaseMetrics ? (
+                                {usesShowcaseControlFlow ? (
                                   <figure
                                     className="agent-studio-action-control-flow"
                                     aria-labelledby="agent-studio-action-control-flow-caption"
@@ -1906,23 +2028,23 @@ Simulation rules:
                                             >
                                               <div className="agent-studio-action-control-flow__outcomes">
                                                 <div className="agent-studio-action-control-flow__action-item">
-                                                  <span>{actionControlSpotlightActionName}</span>
+                                                  <span>{is360FeedbackAgent ? 'Minimum response threshold' : actionControlSpotlightActionName}</span>
                                                   <StaticChip
                                                     className="agent-studio-action-control-flow__chip"
                                                     color="lime"
                                                     iconName="automation-bold"
-                                                    label="Steered"
+                                                    label={is360FeedbackAgent ? 'Met' : 'Steered'}
                                                   />
                                                 </div>
                                                 <span className="agent-studio-action-control-flow__outcome-connector" aria-hidden="true">
                                                   <img src={actionControlArrow} alt="" />
                                                 </span>
                                                 <div className="agent-studio-action-control-flow__action-item">
-                                                  <span>{actionControlSpotlightUnlockedName}</span>
+                                                  <span>{is360FeedbackAgent ? actionControlSpotlightActionName : actionControlSpotlightUnlockedName}</span>
                                                   <StaticChip
                                                     className="agent-studio-action-control-flow__chip"
                                                     color="cobalt"
-                                                    label="Unlocked"
+                                                    label={is360FeedbackAgent ? 'Allowed' : 'Unlocked'}
                                                   />
                                                 </div>
                                               </div>
@@ -1960,6 +2082,52 @@ Simulation rules:
                                     )}
                                   </div>
                                 )}
+                                {usesShowcaseControlFlow && showSelectedActionControlDecision && (
+                                  <aside
+                                    id={ACTION_CONTROL_DETAIL_ID}
+                                    className="agent-studio-action-control-detail"
+                                    aria-label={is360FeedbackAgent
+                                      ? 'Latest summary eligibility check details'
+                                      : 'Latest agent control decision details'}
+                                  >
+                                    <h4>
+                                      {is360FeedbackAgent
+                                        ? 'Anonymized summary threshold met'
+                                        : actionControlSpotlightUnlocked
+                                        ? 'Large event transfer unlocked'
+                                        : 'Standard path redirected'}
+                                    </h4>
+                                    <p className="agent-studio-action-control-detail__meta">
+                                      {actionControlSpotlightDecision?.sessionId} · {actionControlSpotlightDecision?.timestamp} · {actionControlSpotlightDecision?.timing === 'post_tool'
+                                        ? `Evaluated after ${actionControlSpotlightDecision.actionName}`
+                                        : `Evaluated before ${actionControlSpotlightDecision?.actionName}`}
+                                    </p>
+                                    <p>
+                                      {actionControlSpotlightDecision?.timing === 'post_tool'
+                                        && `${actionControlSpotlightDecision.actionName} completed. `}
+                                      {actionControlSpotlightUnlocked
+                                        ? `${actionControlSpotlightUnlockedName} was unlocked`
+                                        : actionControlSpotlightDecision?.toolExecuted
+                                          ? `${actionControlSpotlightDecision?.actionName} continued`
+                                          : `${actionControlSpotlightDecision?.actionName} was skipped`}
+                                      {actionControlSpotlightEvidence
+                                        ? ` after ${actionControlSpotlightEvidence.field} ${Number(actionControlSpotlightEvidence.actual).toLocaleString('en-US')} exceeded ${Number(actionControlSpotlightEvidence.expected).toLocaleString('en-US')}.`
+                                        : is360FeedbackAgent
+                                          ? ' after the minimum response threshold was met.'
+                                          : ' after the configured control matched.'}
+                                      {actionControlSpotlightDecision?.timing === 'post_tool'
+                                        && actionControlSpotlightDecision.matched
+                                        && ' The standard automated path stopped.'}
+                                    </p>
+                                    <Button
+                                      variant="secondary"
+                                      size="sm"
+                                      onClick={() => navigate(eagleActionControlSessionPath)}
+                                    >
+                                      View session →
+                                    </Button>
+                                  </aside>
+                                )}
                               </>
                             )}
 
@@ -1982,11 +2150,16 @@ Simulation rules:
                                       const guardrailPlot = (
                                         <>
                                           <span className="agent-studio-guardrail-chart__label">
-                                            <small title={guardrail.item}>{guardrail.item}</small>
+                                            <small title={guardrail.item}>{is360FeedbackAgent ? 'Confidentiality and anonymization' : guardrail.item}</small>
                                             <strong>{guardrail.count}</strong>
                                           </span>
-                                          <span className="agent-studio-guardrail-chart__track" aria-hidden="true">
-                                            <i style={{ width: `${width}%` }} />
+                                          <span
+                                            className="agent-studio-guardrail-chart__track"
+                                            style={{ gridTemplateColumns: `${width}fr ${100 - width}fr` }}
+                                            aria-hidden="true"
+                                          >
+                                            <i />
+                                            <span />
                                           </span>
                                         </>
                                       );
@@ -2002,7 +2175,7 @@ Simulation rules:
                                                 'agent-studio-guardrail-chart__plot',
                                                 guardrailExpanded ? 'is-selected' : '',
                                               ].filter(Boolean).join(' ')}
-                                              aria-label={`${guardrail.item}: ${guardrail.count} trigger${guardrail.count === 1 ? '' : 's'}`}
+                                              aria-label={`${is360FeedbackAgent ? 'Confidentiality and anonymization' : guardrail.item}: ${guardrail.count} trigger${guardrail.count === 1 ? '' : 's'}`}
                                               aria-expanded={guardrailExpanded}
                                               aria-controls={GUARDRAIL_DETAIL_ID}
                                               onClick={() => {
@@ -2028,7 +2201,7 @@ Simulation rules:
                             )}
                           </section>
 
-                          {isDetailInteractive && detailId && (
+                          {isDetailInteractive && detailId && tileId === 'guardrails' && (
                             <div
                               id={detailId}
                               className="agent-studio-connected-chart-detail"
@@ -2044,8 +2217,10 @@ Simulation rules:
                                 icon={tileId === 'guardrails' ? 'shield' : 'automation'}
                                 className="agent-studio-operational-event-banner agent-studio-connected-event-banner"
                                 title={tileId === 'guardrails'
-                                  ? `${selectedGuardrail?.item ?? 'Guardrail'} triggered`
-                                  : actionControlSpotlightUnlocked
+                                  ? `${is360FeedbackAgent ? 'Confidentiality and anonymization' : selectedGuardrail?.item ?? 'Guardrail'} triggered`
+                                  : is360FeedbackAgent
+                                    ? 'Anonymized summary threshold met'
+                                    : actionControlSpotlightUnlocked
                                     ? 'Large event transfer unlocked'
                                     : 'Standard path redirected'}
                                 subtitle={tileId === 'actions' ? (
@@ -2069,7 +2244,7 @@ Simulation rules:
                                       {actionControlSpotlightDecision?.timing === 'post_tool'
                                         && actionControlSpotlightDecision.matched
                                         && ' The standard automated path stopped.'}
-                                      {!actionControlSpotlightUnlocked && ' No gated action was unlocked.'}
+                                      {!is360FeedbackAgent && !actionControlSpotlightUnlocked && ' No gated action was unlocked.'}
                                     </span>
                                   </>
                                 ) : (
@@ -2099,7 +2274,7 @@ Simulation rules:
                       </div>
                     )}
 
-                    {hasRuntimeUsage && !usesEagleGreenShowcaseMetrics && selectedGuardrail && selectedGuardrail.count > 0 ? (
+                    {hasRuntimeUsage && !usesShowcaseControlFlow && selectedGuardrail && selectedGuardrail.count > 0 ? (
                       <Banner
                         type="success"
                         icon="shield"
@@ -2273,13 +2448,17 @@ Simulation rules:
                   </span>
                   <span>
                     <strong>Operational status</strong>
-                    <small>Published version and runtime availability</small>
+                    <small>{is360FeedbackAgent ? `Published version · ${FEEDBACK360_OVERVIEW_DEMO_LABEL}` : 'Published version and runtime availability'}</small>
                   </span>
                 </div>
                 <div className="agent-studio-operational-toolbar" role="group" aria-label="Operational tools">
-                  <Button variant="secondary" size="sm" onClick={() => navigate(observabilityPath)}>
+                  <Button
+                    variant="secondary"
+                    size="sm"
+                    onClick={() => navigate(is360FeedbackAgent ? `${sessionsPath}?source=overview` : observabilityPath)}
+                  >
                     <Icon name="multiline-chart" weight="bold" size="sm" />
-                    View observability dashboard
+                    {is360FeedbackAgent ? 'View 360 session data' : 'View observability dashboard'}
                   </Button>
                 </div>
               </CardHeader>
@@ -2292,7 +2471,7 @@ Simulation rules:
                     <div
                       className="agent-studio-health-gauge__dial"
                       role="img"
-                      aria-label={`Aggregate health ${OPERATIONAL_HEALTH.score} percent`}
+                      aria-label={`Aggregate health ${operationalHealth.score} percent`}
                     >
                       <svg viewBox="0 0 208 108" aria-hidden="true">
                         <path
@@ -2308,12 +2487,12 @@ Simulation rules:
                           fill="none"
                           pathLength="100"
                           strokeWidth="5"
-                          strokeDasharray={`${OPERATIONAL_HEALTH.score} 100`}
+                          strokeDasharray={`${operationalHealth.score} 100`}
                         />
                       </svg>
                       <div className="agent-studio-health-gauge__reading">
                         <span className="agent-studio-health-gauge__reading-inner">
-                          <strong>{OPERATIONAL_HEALTH.score}</strong>
+                          <strong>{operationalHealth.score}</strong>
                           <span className="agent-studio-health-gauge__pct">%</span>
                         </span>
                       </div>
@@ -2322,15 +2501,15 @@ Simulation rules:
                     <dl className="agent-studio-health-gauge__stats">
                       <div>
                         <dt>Target</dt>
-                        <dd>{OPERATIONAL_HEALTH.target}%</dd>
+                        <dd>{operationalHealth.target}%</dd>
                       </div>
                       <div>
                         <dt>Gap</dt>
-                        <dd className="is-positive">+{OPERATIONAL_HEALTH_GAP}</dd>
+                        <dd className="is-positive">+{operationalHealthGap}</dd>
                       </div>
                       <div>
                         <dt>Signals</dt>
-                        <dd>{OPERATIONAL_HEALTH.signals}</dd>
+                        <dd>{operationalHealth.signals}</dd>
                       </div>
                     </dl>
                   </div>
@@ -2345,7 +2524,7 @@ Simulation rules:
                         </tr>
                       </thead>
                       <tbody>
-                        {OPERATIONAL_HEALTH_METRICS.map(metric => (
+                        {operationalHealthMetrics.map(metric => (
                           <tr key={metric.id}>
                             <th scope="row">
                               <span className="agent-studio-metric-name">
@@ -2378,7 +2557,7 @@ Simulation rules:
                       <Button
                         variant="secondary"
                         size="sm"
-                        onClick={() => navigate(`${sessionsPath}?source=observability`)}
+                        onClick={() => navigate(`${sessionsPath}?source=${is360FeedbackAgent ? 'overview' : 'observability'}`)}
                       >
                         <Icon name="transcript" weight="bold" size="sm" />
                         Open Sessions
@@ -2390,7 +2569,7 @@ Simulation rules:
                       <TableRow>
                         <TableHeader>Channel</TableHeader>
                         <TableHeader>Session ID</TableHeader>
-                        <TableHeader>Customer</TableHeader>
+                        <TableHeader>{is360FeedbackAgent ? 'Participant group' : 'Customer'}</TableHeader>
                         <TableHeader>Messages</TableHeader>
                         <TableHeader>Updated</TableHeader>
                         <TableHeader>Outcome</TableHeader>
@@ -2407,7 +2586,7 @@ Simulation rules:
                         <TableRow
                           key={session.id}
                           onClick={() => navigate(
-                            `${sessionsPath}?sessionId=${encodeURIComponent(session.id)}&source=observability`,
+                            `${sessionsPath}?sessionId=${encodeURIComponent(session.id)}&source=${is360FeedbackAgent ? 'overview' : 'observability'}`,
                           )}
                         >
                           <TableCell>

@@ -54,6 +54,7 @@ import {
   type AgentCreationSection,
   type AdaptiveIntakeQuestion,
   type AgentFamily,
+  type CustomerChannel,
   type StarterProposal,
 } from '../agent-creation/agentCreationModel';
 import {
@@ -1689,6 +1690,9 @@ export default function EvaChatExperience({
       ? [RETAIL_VOICE_LABEL, RETAIL_DIGITAL_LABEL, RETAIL_VIDEO_LABEL]
       : [RETAIL_VOICE_LABEL],
   );
+  const retailSelectedChannelsLabel = retailSelectedChannels.length > 1
+    ? `${retailSelectedChannels.slice(0, -1).join(', ')} and ${retailSelectedChannels.at(-1)}`
+    : retailSelectedChannels[0] || RETAIL_VOICE_LABEL;
   const [retailSelectedPhoneNumber, setRetailSelectedPhoneNumber] = useState<string | null>(null);
   const [phoneNumberDeferred, setPhoneNumberDeferred] = useState(restoredEvaSession?.phoneNumberDeferred ?? false);
   const [retailDiscoveryProgress, setRetailDiscoveryProgress] = useState(0);
@@ -3462,9 +3466,98 @@ export default function EvaChatExperience({
     ]);
   };
 
+  const create360FeedbackAgentDraft = (publish = false) => {
+    if (activeDraftAgentId && agentDrafts[activeDraftAgentId]?.familyConfiguration.channels?.values?.scenario === 'feedback360') {
+      const existingAgent = agents[activeDraftAgentId];
+      if (existingAgent) {
+        if (publish && agentDrafts[activeDraftAgentId].lifecycle === 'draft') {
+          const published = publishAgentVersion(activeDraftAgentId);
+          if (published) return { ...existingAgent, status: 'Published', statusClass: 'badge-success', lifecycle: 'published' as const };
+        }
+        return existingAgent;
+      }
+    }
+
+    const name = agentName.trim() || FEEDBACK360_WORKFLOW_CONTEXT.agentName;
+    const description = agentDescription.trim() || FEEDBACK360_WORKFLOW_CONTEXT.description;
+    const channels = selectedChannels.filter((channel): channel is CustomerChannel => (
+      channel === 'voice' || channel === 'digital' || channel === 'video'
+    ));
+    const instructions = [
+      `#### Role & Identity\nYou are ${name}. ${description}`,
+      `#### Primary Goals\n${draft.goals.map(goal => `- ${goal}`).join('\n')}`,
+      `#### Guardrails\n${customRules.join('\n')}`,
+    ].join('\n\n');
+    const nextDraft = createDraftFromProposal('contact_center', {
+      name,
+      purpose: description,
+      description,
+      language: draft.language || 'English (US)',
+      instructions,
+      selectedChannels: channels,
+      greetings: {
+        ...(channels.includes('voice') ? { voice: welcomeMessage } : {}),
+        ...(channels.includes('digital') ? { digital: welcomeMessage } : {}),
+        ...(channels.includes('video') ? { video: welcomeMessage } : {}),
+      },
+    }, messages.map((message, index) => ({
+      id: `chat-${index}`,
+      role: message.role,
+      text: message.text,
+      createdAt: message.timestamp ?? new Date().toISOString(),
+    })));
+    nextDraft.id = '360-feedback-agent';
+    nextDraft.lifecycle = publish ? 'published' : 'draft';
+
+    const now = new Date().toISOString();
+    const updateCapability = (id: 'channels' | 'knowledge' | 'actions' | 'security', values: Record<string, unknown>, configured: boolean) => {
+      const capability = nextDraft.familyConfiguration[id];
+      if (!capability) return;
+      nextDraft.familyConfiguration[id] = {
+        ...capability,
+        progress: configured ? 'configured' : 'not_started',
+        values: { ...(capability.values ?? {}), ...values },
+        updatedAt: now,
+      };
+    };
+    updateCapability('channels', {
+      scenario: 'feedback360',
+      creationIntent: publish ? 'create' : 'configure',
+      selectedChannels: channels,
+      digitalChannels: channels.includes('digital') ? selectedDigitalChannels : [],
+      digitalChannelAddress: channels.includes('digital') ? digitalChannelAddress : '',
+      greetings: Object.fromEntries(channels.map(channel => [channel, welcomeMessage])),
+      voicePhoneNumber: channels.includes('voice') && !phoneNumberDeferred ? channelPhoneNumber : '',
+      phoneNumberDeferred,
+    }, channels.length > 0);
+    updateCapability('knowledge', {
+      selections: [...selectedKnowledgeBases],
+      catalog: FEEDBACK360_RECOMMENDED_KNOWLEDGE_BASES.filter(item => selectedKnowledgeBases.includes(item.name)),
+    }, selectedKnowledgeBases.length > 0);
+    updateCapability('actions', {
+      selections: [...selectedActions],
+      catalog: FEEDBACK360_RECOMMENDED_ACTIONS.filter(item => selectedActions.includes(item.name)),
+    }, selectedActions.length > 0);
+    updateCapability('security', {
+      selections: [...customRules],
+    }, customRules.length > 0);
+    if (channels.includes('voice') && !phoneNumberDeferred && channelPhoneNumber.trim()) {
+      nextDraft.deploymentReferences = [{
+        id: 'feedback360-phone-number',
+        kind: 'phone_number',
+        label: channelPhoneNumber,
+        status: 'connected',
+      }];
+    }
+
+    const agent = createAgentDraft(nextDraft);
+    setActiveDraftAgentId(agent.id);
+    return agent;
+  };
+
   const completeRetailReceptionistAgent = () => {
     const nextAgentName = agentName.trim() || retailWorkflowContext.agentName;
-    const agent = addAgent({
+    const agent = is360FeedbackWorkflow ? create360FeedbackAgentDraft(true) : addAgent({
       name: nextAgentName,
       description: agentDescription.trim() || retailWorkflowContext.description,
       gradient: 'linear-gradient(135deg, #0051af, #00bceb)',
@@ -3585,7 +3678,7 @@ export default function EvaChatExperience({
 
       addOnboardingAssistantMessage(
         is360FeedbackWorkflow
-          ? 'Voice, Digital and Video are selected. Continue with these channels or change the selection.'
+          ? `${retailSelectedChannelsLabel} ${retailSelectedChannels.length === 1 ? 'is' : 'are'} selected. Continue with these channels or change the selection.`
           : 'Voice is selected by default. Add Digital or Video too, then continue with the selected channels.',
         undefined,
         'retail-channel-choice',
@@ -3600,7 +3693,7 @@ export default function EvaChatExperience({
         setRetailPrototypeStep('ready-to-preview');
         addOnboardingAssistantMessage(
           is360FeedbackWorkflow
-            ? `${agentName} is ready with Voice, Digital and Video and your welcome message. No phone number is selected. Review the knowledge and action recommendations, then preview or create the agent.`
+            ? `${agentName} is ready with ${retailSelectedChannelsLabel} and your welcome message. No phone number is selected. Review the knowledge and action recommendations, then preview or create the agent.`
             : `No problem. ${agentName} is ready with the connected knowledge bases, recommended actions, voice channel, ${retailWorkflowContext.escalationSummary}, and your selected greeting. I will flag the phone number connection as a go-live step. Preview the agent next or skip to creation.`,
           undefined,
           'retail-final-actions',
@@ -3616,7 +3709,7 @@ export default function EvaChatExperience({
       setRetailPrototypeStep('ready-to-preview');
       addOnboardingAssistantMessage(
         is360FeedbackWorkflow
-          ? `${agentName} is ready with Voice, Digital and Video, your welcome message, and ${nextPhoneNumber}. Review the knowledge and action recommendations, then preview or create the agent.`
+          ? `${agentName} is ready with ${retailSelectedChannelsLabel}, your welcome message, and ${nextPhoneNumber}. Review the knowledge and action recommendations, then preview or create the agent.`
           : `Perfect. ${agentName} is ready with the connected knowledge bases, recommended actions, voice channel, ${nextPhoneNumber}, ${retailWorkflowContext.escalationSummary}, and your selected greeting. Preview the agent next or skip to creation.`,
         undefined,
         'retail-final-actions',
@@ -3878,7 +3971,7 @@ export default function EvaChatExperience({
   };
 
   const enterRetailAgentStudio = () => {
-    const agent = createOrSelectDraftAgent({
+    const agent = is360FeedbackWorkflow ? create360FeedbackAgentDraft() : createOrSelectDraftAgent({
       name: agentName.trim() || retailWorkflowContext.agentName,
       description: agentDescription.trim() || retailWorkflowContext.description,
       gradient,
@@ -7538,7 +7631,7 @@ ${previewTranscript}`,
                         <strong>{`Your ${agentName} draft is ready.`}</strong>
                         <span>
                           {is360FeedbackWorkflow
-                            ? 'I saved Voice, Digital and Video and the welcome message. The knowledge and action recommendations are ready for review.'
+                            ? `I saved ${retailSelectedChannelsLabel} and the welcome message. The knowledge and action recommendations are ready for review.`
                             : 'I saved the voice channel, selected knowledge sources, selected actions, escalation rules, and greeting.'}
                         </span>
                       </div>

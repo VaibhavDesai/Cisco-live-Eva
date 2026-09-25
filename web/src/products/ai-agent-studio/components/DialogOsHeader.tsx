@@ -1,9 +1,10 @@
 import type { ReactNode } from 'react';
 import { useNavigate } from 'react-router-dom';
+import ThemeToggle from '../../../components/shared/ThemeToggle';
 import AppHeader from '../../../components/shared/AppHeader';
 import Toggle from '../../../components/shared/Toggle';
 import Icon from '../../../components/shared/Icon';
-import austenJonesAvatar from '../../../assets/austen-jones.png';
+import webexAiAgentStudioWordmark from '../../../assets/webex-ai-agent-studio-wordmark.svg';
 import { useReview } from '../../../features/review/ReviewProvider';
 import { useAgentHomeScenario } from '../../../features/agent-home/AgentHomeScenarioContext';
 import type { DemoHomeMode } from '../../../features/agent-home/agentHomeModel';
@@ -33,12 +34,12 @@ export default function Header({ onAiClick, onMenuClick, centerContent }: Studio
     <AppHeader
       fixed
       className="app-header--agent-studio-brand"
-      productName="AI Agent Studio"
+      wordmarkSvg={webexAiAgentStudioWordmark}
+      wordmarkAlt="AI Agent Studio"
       showSearch={false}
-      showAiButton={false}
       centerContent={centerContent}
       alertCount={0}
-      avatarSrc={austenJonesAvatar}
+      avatarSrc="https://i.pravatar.cc/64?img=12"
       avatarName="Austen Jones"
       onAiClick={onAiClick}
       onMenuClick={onMenuClick}
@@ -105,6 +106,8 @@ export default function Header({ onAiClick, onMenuClick, centerContent }: Studio
           </section>
         </>
       )}
-    />
+    >
+      <ThemeToggle />
+    </AppHeader>
   );
 }

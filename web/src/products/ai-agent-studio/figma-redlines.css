@@ -1,0 +1,2406 @@
+/*
+ * AI Agent Studio redline layer
+ * Figma source: AI Agent Studio — Redlines (1280 × 720 reference frames).
+ * Loaded after the product layer so the permanent components own the final
+ * expanded/collapsed geometry and shared visual states.
+ */
+
+html[data-product='ai-agent-studio']:not(:has(.app[data-dialogos-landing='true'])) {
+  --studio-header-height: 44px;
+  --studio-rail-expanded-width: 232px;
+  --studio-rail-collapsed-width: 60px;
+  --studio-shell-gutter: 8px;
+  background: #000;
+}
+
+html[data-product='ai-agent-studio']:not(:has(.app[data-dialogos-landing='true'])) .app--ai__bg {
+  inset: 0;
+  overflow: hidden;
+  background: #000 url('../../assets/figma-redlines-app-background.svg') no-repeat center calc(50% - 14px) / 115% 130%;
+  box-shadow: none;
+}
+
+html[data-product='ai-agent-studio']:not(:has(.app[data-dialogos-landing='true'])) .app--ai__bg::before {
+  position: absolute;
+  inset: 0;
+  display: block;
+  background: #000 url('../../assets/figma-redlines-app-background-minimized.svg') no-repeat calc(50% + 12px) calc(50% - 20px) / 115% 130%;
+  content: '';
+  opacity: 0;
+  transform: translateY(6%) scale(0.9);
+  transform-origin: center 72%;
+  will-change: opacity, transform;
+  transition:
+    opacity 900ms cubic-bezier(0.22, 1, 0.36, 1),
+    transform 1600ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+html[data-product='ai-agent-studio']:not(:has(.app[data-dialogos-landing='true'])) .app--ai__bg--minimized::before {
+  opacity: 1;
+  transform: translateY(0) scale(1);
+}
+
+html[data-product='ai-agent-studio']:not(:has(.app[data-dialogos-landing='true'])) .app--ai__bg::after {
+  position: absolute;
+  inset: 0;
+  display: block;
+  background: #000 url('../../assets/figma-redlines-app-background.svg') no-repeat calc(50% + 20px) calc(50% - 14px) / 115% 130%;
+  content: '';
+  opacity: 1;
+  transform: translateY(0) scale(1);
+  transform-origin: center 72%;
+  will-change: opacity, transform;
+  transition:
+    opacity 860ms cubic-bezier(0.22, 1, 0.36, 1),
+    transform 1600ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+/* The first painted frame closes the full-screen Aurora into the compact
+   workspace field. Two image layers preserve both Figma endpoints while
+   giving the change a legible sense of depth instead of a static asset swap. */
+html[data-product='ai-agent-studio']:not(:has(.app[data-dialogos-landing='true'])) .app--ai__bg--minimized::after {
+  opacity: 0;
+  transform: translateY(-8%) scale(0.78);
+}
+
+/* Global header */
+html[data-product='ai-agent-studio']:not(:has(.app[data-dialogos-landing='true'])) .app-header {
+  height: var(--studio-header-height);
+  padding: 2px var(--studio-shell-gutter);
+}
+
+html[data-product='ai-agent-studio']:not(:has(.app[data-dialogos-landing='true'])) .app-header__leading {
+  gap: 0;
+}
+
+html[data-product='ai-agent-studio']:not(:has(.app[data-dialogos-landing='true'])) .app-header__wordmark {
+  height: 25px;
+  padding-left: 12px;
+}
+
+html[data-product='ai-agent-studio']:not(:has(.app[data-dialogos-landing='true'])) .app-header--agent-studio-brand .app-header__product-name {
+  color: rgba(255, 255, 255, 0.96);
+  font-size: 20px;
+  font-weight: 500;
+  letter-spacing: -0.035em;
+  line-height: 25px;
+}
+
+html[data-product='ai-agent-studio']:not(:has(.app[data-dialogos-landing='true'])) .app-header--agent-studio-brand .app-header__wordmark-logo {
+  width: 222px;
+  height: 25px;
+  aspect-ratio: 222 / 25;
+  -webkit-mask-size: 222px 25px;
+  mask-size: 222px 25px;
+  -webkit-mask-position: left center;
+  mask-position: left center;
+}
+
+html[data-product='ai-agent-studio']:not(:has(.app[data-dialogos-landing='true'])) .app-header__trailing,
+html[data-product='ai-agent-studio']:not(:has(.app[data-dialogos-landing='true'])) .app-header__btn-group {
+  gap: 8px;
+}
+
+/* Shared level-one shell */
+html[data-product='ai-agent-studio']:not(:has(.app[data-dialogos-landing='true'])) .app--ai .main {
+  height: calc(100vh - var(--studio-header-height));
+  height: calc(100dvh - var(--studio-header-height));
+  margin-top: var(--studio-header-height);
+  margin-left: calc(var(--studio-rail-expanded-width) + var(--studio-shell-gutter));
+}
+
+html[data-product='ai-agent-studio']:not(:has(.app[data-dialogos-landing='true'])) .app--ai--sidebar-collapsed .main {
+  margin-left: calc(var(--studio-rail-collapsed-width) + var(--studio-shell-gutter));
+}
+
+html[data-product='ai-agent-studio']:not(:has(.app[data-dialogos-landing='true'])) .app--ai:not(.app--ai--agent-context) > .sidebar {
+  top: var(--studio-header-height);
+  bottom: var(--studio-shell-gutter);
+  left: var(--studio-shell-gutter);
+  width: var(--studio-rail-expanded-width);
+  overflow: hidden;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.1);
+}
+
+html[data-product='ai-agent-studio']:not(:has(.app[data-dialogos-landing='true'])) .app--ai:not(.app--ai--agent-context) > .sidebar--collapsed {
+  width: var(--studio-rail-collapsed-width);
+}
+
+html[data-product='ai-agent-studio']:not(:has(.app[data-dialogos-landing='true'])) .app--ai--agent-context .main {
+  margin-left: 0;
+}
+
+html[data-product='ai-agent-studio']:not(:has(.app[data-dialogos-landing='true'])) .app--ai--agent-context > .sidebar {
+  top: var(--studio-header-height);
+}
+
+/* AssistantControlRail — permanent component */
+html[data-product='ai-agent-studio']:not(:has(.app[data-dialogos-landing='true'])) .assistant-control-rail {
+  display: flex;
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+  flex-direction: column;
+  color: rgba(255, 255, 255, 0.95);
+  font-family: var(--mds-font-family-primary, 'CiscoSansTT', sans-serif);
+}
+
+html[data-product='ai-agent-studio']:not(:has(.app[data-dialogos-landing='true'])) .assistant-control-rail__items {
+  display: flex;
+  min-height: 0;
+  flex: 1 1 auto;
+  flex-direction: column;
+  gap: 8px;
+  padding-top: 12px;
+}
+
+html[data-product='ai-agent-studio']:not(:has(.app[data-dialogos-landing='true'])) .assistant-control-rail__item-wrap {
+  flex: 0 0 auto;
+}
+
+html[data-product='ai-agent-studio']:not(:has(.app[data-dialogos-landing='true'])) .assistant-control-rail__item {
+  display: grid;
+  height: 40px;
+  grid-template-columns: 4px minmax(0, 1fr);
+  align-items: center;
+  gap: 8px;
+}
+
+html[data-product='ai-agent-studio']:not(:has(.app[data-dialogos-landing='true'])) .assistant-control-rail__marker {
+  width: 4px;
+  height: 16px;
+  border-radius: 0 4px 4px 0;
+  background: transparent;
+}
+
+html[data-product='ai-agent-studio']:not(:has(.app[data-dialogos-landing='true'])) .assistant-control-rail__item--active .assistant-control-rail__marker {
+  background: rgba(255, 255, 255, 0.95);
+}
+
+html[data-product='ai-agent-studio']:not(:has(.app[data-dialogos-landing='true'])) .assistant-control-rail__button,
+html[data-product='ai-agent-studio']:not(:has(.app[data-dialogos-landing='true'])) .assistant-control-rail__customer {
+  display: flex;
+  min-width: 0;
+  height: 40px;
+  align-items: center;
+  gap: 8px;
+  border: 0;
+  border-radius: 20px;
+  background: transparent;
+  color: rgba(255, 255, 255, 0.74);
+  font-family: inherit;
+  font-size: 14px;
+  font-weight: 400;
+  line-height: 20px;
+  text-align: left;
+  cursor: pointer;
+  transition: background-color 140ms ease, color 140ms ease;
+}
+
+html[data-product='ai-agent-studio']:not(:has(.app[data-dialogos-landing='true'])) .assistant-control-rail__button {
+  margin-right: 16px;
+  padding: 8px 12px;
+}
+
+html[data-product='ai-agent-studio']:not(:has(.app[data-dialogos-landing='true'])) .assistant-control-rail__button:hover,
+html[data-product='ai-agent-studio']:not(:has(.app[data-dialogos-landing='true'])) .assistant-control-rail__customer:hover {
+  background: rgba(255, 255, 255, 0.08);
+  color: rgba(255, 255, 255, 0.95);
+}
+
+html[data-product='ai-agent-studio']:not(:has(.app[data-dialogos-landing='true'])) .assistant-control-rail__button:focus-visible,
+html[data-product='ai-agent-studio']:not(:has(.app[data-dialogos-landing='true'])) .assistant-control-rail__customer:focus-visible {
+  outline: 2px solid #64b5f6;
+  outline-offset: 1px;
+}
+
+html[data-product='ai-agent-studio']:not(:has(.app[data-dialogos-landing='true'])) .assistant-control-rail__item--active .assistant-control-rail__button,
+html[data-product='ai-agent-studio']:not(:has(.app[data-dialogos-landing='true'])) .assistant-control-rail__customer--active {
+  background: rgba(255, 255, 255, 0.2);
+  color: rgba(255, 255, 255, 0.95);
+  font-weight: 600;
+}
+
+html[data-product='ai-agent-studio']:not(:has(.app[data-dialogos-landing='true'])) .assistant-control-rail__button > .mds-icon-inline-svg,
+html[data-product='ai-agent-studio']:not(:has(.app[data-dialogos-landing='true'])) .assistant-control-rail__customer > .mds-icon-inline-svg {
+  flex: 0 0 24px;
+}
+
+html[data-product='ai-agent-studio']:not(:has(.app[data-dialogos-landing='true'])) .assistant-control-rail__label {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+html[data-product='ai-agent-studio']:not(:has(.app[data-dialogos-landing='true'])) .assistant-control-rail__divider {
+  display: none;
+}
+
+html[data-product='ai-agent-studio']:not(:has(.app[data-dialogos-landing='true'])) .assistant-control-rail__customer {
+  flex: 0 0 40px;
+  margin: 0 16px 16px 20px;
+  padding: 8px 12px;
+}
+
+html[data-product='ai-agent-studio']:not(:has(.app[data-dialogos-landing='true'])) .assistant-control-rail--collapsed .assistant-control-rail__item {
+  grid-template-columns: 4px 40px;
+  gap: 6px;
+}
+
+html[data-product='ai-agent-studio']:not(:has(.app[data-dialogos-landing='true'])) .assistant-control-rail--collapsed .assistant-control-rail__button {
+  width: 40px;
+  margin: 0;
+  justify-content: center;
+  padding: 8px;
+}
+
+html[data-product='ai-agent-studio']:not(:has(.app[data-dialogos-landing='true'])) .assistant-control-rail--collapsed .assistant-control-rail__label {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+html[data-product='ai-agent-studio']:not(:has(.app[data-dialogos-landing='true'])) .assistant-control-rail--collapsed .assistant-control-rail__item--active .assistant-control-rail__button {
+  border-radius: 50%;
+}
+
+html[data-product='ai-agent-studio']:not(:has(.app[data-dialogos-landing='true'])) .assistant-control-rail--collapsed .assistant-control-rail__customer {
+  width: 40px;
+  margin: 0 10px 16px;
+  justify-content: center;
+  padding: 8px;
+}
+
+/* Top-level page surfaces use the background itself, not another glass pane. */
+html[data-product='ai-agent-studio']:not(:has(.app[data-dialogos-landing='true'])) .app--ai--studio-aurora .primary-content.ai-agents-page {
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+}
+
+/* AI agents */
+.ai-agents-page.primary-content {
+  padding: 16px 8px 8px 12px;
+  overflow-y: auto;
+}
+
+.ai-agents-page .ai-agents-header {
+  min-height: 32px;
+  margin-bottom: 20px;
+  align-items: flex-start;
+  flex-wrap: nowrap;
+}
+
+.ai-agents-page .page-title {
+  margin: 0;
+  color: rgba(255, 255, 255, 0.95);
+  font-size: 24px;
+  font-weight: 600;
+  line-height: 32px;
+}
+
+.ai-agents-page .ai-agents-header-actions {
+  gap: 8px;
+  flex-wrap: nowrap;
+}
+
+.ai-agents-page .ai-agents-header-actions .btn {
+  height: 28px;
+  min-height: 28px;
+  padding: 2px 12px;
+  font-size: 14px;
+  line-height: 20px;
+}
+
+.ai-agents-page .ai-agents-header-actions .btn-primary {
+  border-color: transparent;
+  background: #0353a8;
+  color: rgba(255, 255, 255, 0.95);
+}
+
+.ai-agents-page .ai-agents-dashboard {
+  gap: 12px;
+}
+
+.ai-agents-page .ai-agents-toolbar {
+  display: grid;
+  height: 32px;
+  grid-template-columns: minmax(0, 1fr) 154px 154px;
+  gap: 13px;
+  align-items: stretch;
+}
+
+.ai-agents-page .ai-agents-toolbar > .form-group,
+.ai-agents-page .ai-agents-search-wrap.form-group {
+  width: 100%;
+  min-width: 0;
+}
+
+.ai-agents-page .ai-agents-toolbar .form-input-wrapper,
+.ai-agents-page .ai-agents-toolbar .form-input,
+.ai-agents-page .ai-agents-toolbar .dropdown-trigger {
+  height: 32px;
+  min-height: 32px;
+}
+
+.ai-agents-page .ai-agents-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px 14px;
+  width: 100%;
+}
+
+.secondary-content.ai-agents-dashboard mdc-card.ai-agents-agent-card {
+  --ai-agents-agent-card-surface: rgba(255, 255, 255, 0.11);
+  height: 260px;
+  min-height: 260px;
+  border: 0;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.11);
+  box-shadow: none;
+}
+
+.secondary-content.ai-agents-dashboard mdc-card.ai-agents-agent-card::part(body) {
+  padding: 19px 24px 24px;
+  background: transparent;
+}
+
+.secondary-content.ai-agents-dashboard mdc-card.ai-agents-agent-card--clickable:hover,
+.secondary-content.ai-agents-dashboard mdc-card.ai-agents-agent-card--clickable:focus-within {
+  border: 0;
+  background: rgba(255, 255, 255, 0.14);
+  box-shadow: none;
+}
+
+.ai-agents-page .ai-agents-agent-card-slot {
+  position: relative;
+  gap: 12px;
+}
+
+.ai-agents-page .ai-agents-agent-card-head {
+  min-height: 40px;
+  align-items: flex-start;
+  gap: 8px;
+}
+
+.ai-agents-page .ai-agents-agent-avatar {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  color: #07120f;
+}
+
+.ai-agents-page .ai-agents-agent-avatar--technical-support { background: #3cc29a; }
+.ai-agents-page .ai-agents-agent-avatar--event-operations { background: #fc8b98; }
+.ai-agents-page .ai-agents-agent-avatar--servicenow { background: #22c7d6; }
+.ai-agents-page .ai-agents-agent-avatar--vip-reservations { background: #c7a5fa; }
+
+.ai-agents-page .ai-agents-agent-card-head-text {
+  gap: 0;
+}
+
+.ai-agents-page .ai-agents-agent-name-button {
+  max-width: 100%;
+  color: rgba(255, 255, 255, 0.95);
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 20px;
+}
+
+.ai-agents-page .ai-agents-agent-labels {
+  gap: 8px;
+  flex-wrap: nowrap;
+  color: rgba(255, 255, 255, 0.62);
+  font-size: 12px;
+  line-height: 16px;
+}
+
+.ai-agents-page .ai-agents-agent-lifecycle {
+  gap: 0;
+  font-size: 12px;
+  line-height: 16px;
+}
+
+.ai-agents-page .ai-agents-agent-lifecycle--draft { color: #f5b400; }
+.ai-agents-page .ai-agents-agent-lifecycle--published,
+.ai-agents-page .ai-agents-agent-lifecycle--deployed,
+.ai-agents-page .ai-agents-agent-lifecycle--live { color: #64b5f6; }
+
+.ai-agents-page .ai-agents-agent-updated,
+.ai-agents-page .ai-agents-agent-lifecycle-separator {
+  color: rgba(255, 255, 255, 0.62);
+  white-space: nowrap;
+}
+
+.ai-agents-page .ai-agents-agent-family-chip {
+  display: inline-flex;
+  width: fit-content;
+  height: 24px;
+  align-items: center;
+  padding: 2px 8px;
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  border-radius: 8px;
+  color: rgba(255, 255, 255, 0.9);
+  font-size: 14px;
+  line-height: 20px;
+}
+
+.ai-agents-page .ai-agents-agent-description {
+  min-height: 60px;
+  color: rgba(255, 255, 255, 0.9);
+  font-size: 14px;
+  line-height: 20px;
+  -webkit-line-clamp: 3;
+}
+
+.ai-agents-page .ai-agents-agent-content {
+  margin-top: 8px;
+}
+
+.ai-agents-page .ai-agents-agent-footer {
+  justify-content: flex-start;
+  align-items: flex-end;
+  margin-top: auto;
+}
+
+.ai-agents-page .ai-agents-agent-footer .btn {
+  height: 32px;
+  min-height: 32px;
+  padding: 4px 12px;
+  font-size: 14px;
+  line-height: 20px;
+}
+
+.ai-agents-page .ai-agents-agent-actions {
+  position: absolute;
+  top: -4px;
+  right: -4px;
+  opacity: 0;
+  transition: opacity 120ms ease;
+}
+
+.ai-agents-page .ai-agents-agent-card:hover .ai-agents-agent-actions,
+.ai-agents-page .ai-agents-agent-actions:focus-within {
+  opacity: 1;
+}
+
+@media (max-width: 900px) {
+  .ai-agents-page .ai-agents-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+
+@media (max-width: 680px) {
+  .ai-agents-page .ai-agents-toolbar,
+  .ai-agents-page .ai-agents-grid {
+    height: auto;
+    grid-template-columns: 1fr;
+  }
+
+}
+
+/* Individual agent shell — Figma level-one + level-two navigation */
+html[data-product='ai-agent-studio']:not(:has(.app[data-dialogos-landing='true'])) .app--ai--agent-context > .sidebar.agent-shell-navigation {
+  position: fixed !important;
+  inset: var(--studio-header-height) auto var(--studio-shell-gutter) var(--studio-shell-gutter) !important;
+  display: grid;
+  width: 260px !important;
+  height: auto !important;
+  grid-template-columns: var(--studio-rail-collapsed-width) 184px;
+  gap: 16px;
+  padding: 0 !important;
+  overflow: visible !important;
+  border: 0 !important;
+  border-radius: 0 !important;
+  background: transparent !important;
+  box-shadow: none !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+}
+
+html[data-product='ai-agent-studio']:not(:has(.app[data-dialogos-landing='true'])) .agent-shell-navigation__level-one,
+html[data-product='ai-agent-studio']:not(:has(.app[data-dialogos-landing='true'])) .agent-shell-navigation--level-one-only {
+  overflow: hidden;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.1);
+}
+
+html[data-product='ai-agent-studio']:not(:has(.app[data-dialogos-landing='true'])) .agent-shell-navigation--level-one-only {
+  display: block !important;
+  width: var(--studio-rail-collapsed-width) !important;
+}
+
+.agent-level-two-nav {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  align-self: start;
+  gap: 16px;
+  padding-top: 16px;
+}
+
+.agent-level-two-nav__section {
+  display: flex;
+  width: 100%;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 8px;
+}
+
+.agent-level-two-nav__section-label {
+  display: block;
+  width: 100%;
+  height: 15px;
+  padding: 0;
+  color: rgba(255, 255, 255, 0.7);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.7245px;
+  line-height: 16.5px;
+  opacity: 0.7;
+  text-align: left;
+  text-transform: uppercase;
+}
+
+.agent-level-two-nav__item {
+  position: relative;
+  display: flex;
+  width: 100%;
+  height: 32px;
+  min-height: 32px;
+  align-items: center;
+  padding: 6px 12px;
+  border: 0;
+  border-left: 2px solid transparent;
+  background: transparent;
+  color: rgba(255, 255, 255, 0.68);
+  font: inherit;
+  font-size: 14px;
+  font-weight: 400;
+  line-height: 20px;
+  text-align: left;
+  cursor: pointer;
+}
+
+.agent-level-two-nav__item:hover {
+  color: rgba(255, 255, 255, 0.95);
+}
+
+.agent-level-two-nav__item:focus-visible {
+  border-radius: 2px;
+  outline: 2px solid #64b5f6;
+  outline-offset: -2px;
+}
+
+.agent-level-two-nav__item--active {
+  border-left-color: rgba(255, 255, 255, 0.95);
+  color: rgba(255, 255, 255, 0.95);
+  font-weight: 600;
+}
+
+html[data-product='ai-agent-studio']:not(:has(.app[data-dialogos-landing='true'])) .app--ai--agent-context .main {
+  margin-left: 280px;
+}
+
+html[data-product='ai-agent-studio']:not(:has(.app[data-dialogos-landing='true'])) .app--ai--agent-context:has(.agent-shell-navigation--level-one-only) .main {
+  margin-left: calc(var(--studio-rail-collapsed-width) + var(--studio-shell-gutter));
+}
+
+html[data-product='ai-agent-studio']:not(:has(.app[data-dialogos-landing='true'])) .app--ai--agent-context .main > .primary-content {
+  box-sizing: border-box;
+  width: 100%;
+  height: 100%;
+  padding: 16px 8px 32px 16px !important;
+  border: 0;
+  border-radius: 0;
+  background: transparent !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+}
+
+html[data-product='ai-agent-studio']:not(:has(.app[data-dialogos-landing='true'])) .app--ai--agent-context:has(.agent-shell-navigation--testing) .main > .primary-content {
+  padding-left: 12px !important;
+}
+
+html[data-product='ai-agent-studio']:not(:has(.app[data-dialogos-landing='true'])) .app--ai--agent-panel-open .main > .primary-content {
+  padding-left: 16px;
+}
+
+html[data-product='ai-agent-studio']:not(:has(.app[data-dialogos-landing='true'])) .app--ai--agent-panel-open .main > .primary-content > .agent-header-sticky {
+  margin-left: 0;
+}
+
+/* Figma agent identity header */
+html[data-product='ai-agent-studio']:not(:has(.app[data-dialogos-landing='true'])) .app--ai--agent-context .agent-header-sticky {
+  position: sticky;
+  top: 0;
+  z-index: 40;
+  flex: 0 0 auto;
+  isolation: isolate;
+  margin: 0;
+  padding: 0;
+  overflow: visible;
+  border-radius: 0;
+  background: transparent !important;
+}
+
+html[data-product='ai-agent-studio']:not(:has(.app[data-dialogos-landing='true'])) .app--ai--agent-context .agent-header-sticky::before {
+  display: block;
+  top: -16px;
+  right: 0;
+  left: 0;
+  height: 114px;
+  backdrop-filter: blur(12.5px);
+  -webkit-backdrop-filter: blur(12.5px);
+}
+
+html[data-product='ai-agent-studio']:not(:has(.app[data-dialogos-landing='true'])) .app--ai--agent-context .agent-header {
+  height: 48px;
+  min-height: 48px;
+  margin-bottom: 0 !important;
+}
+
+html[data-product='ai-agent-studio']:not(:has(.app[data-dialogos-landing='true'])) .app--ai--agent-context .agent-avatar {
+  width: 48px;
+  height: 48px;
+  flex: 0 0 48px;
+  margin-right: 16px;
+  background: rgba(255, 255, 255, 0.24) !important;
+  color: transparent;
+  font-size: 0;
+}
+
+html[data-product='ai-agent-studio']:not(:has(.app[data-dialogos-landing='true'])) .app--ai--agent-context .agent-info {
+  min-width: 0;
+}
+
+html[data-product='ai-agent-studio']:not(:has(.app[data-dialogos-landing='true'])) .app--ai--agent-context .agent-name-row {
+  gap: 8px;
+}
+
+html[data-product='ai-agent-studio']:not(:has(.app[data-dialogos-landing='true'])) .app--ai--agent-context .agent-name-row > :not(.agent-name):not(.agent-type-badge) {
+  display: none;
+}
+
+html[data-product='ai-agent-studio']:not(:has(.app[data-dialogos-landing='true'])) .app--ai--agent-context .agent-name-row .agent-type-badge {
+  display: inline-flex;
+}
+
+html[data-product='ai-agent-studio']:not(:has(.app[data-dialogos-landing='true'])) .app--ai--agent-context .agent-name {
+  overflow: hidden;
+  color: rgba(255, 255, 255, 0.95);
+  font-size: 24px;
+  font-weight: 600;
+  line-height: 32px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+html[data-product='ai-agent-studio']:not(:has(.app[data-dialogos-landing='true'])) .app--ai--agent-context .agent-meta {
+  overflow: hidden;
+  color: rgba(255, 255, 255, 0.64);
+  font-size: 12px;
+  line-height: 16px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+html[data-product='ai-agent-studio']:not(:has(.app[data-dialogos-landing='true'])) .app--ai--agent-context .agent-studio-header-actions {
+  margin-left: 16px;
+  gap: 8px;
+}
+
+html[data-product='ai-agent-studio']:not(:has(.app[data-dialogos-landing='true'])) .app--ai--agent-context .agent-studio-header-actions .btn {
+  height: 28px;
+  min-height: 28px;
+  padding: 2px 12px;
+  border-radius: 999px;
+  background: transparent;
+  color: rgba(255, 255, 255, 0.95);
+  font-size: 14px;
+  font-weight: 400;
+  line-height: 20px;
+}
+
+html[data-product='ai-agent-studio']:not(:has(.app[data-dialogos-landing='true'])) .app--ai--agent-context .agent-studio-header-actions .btn-primary {
+  border-color: transparent;
+  background: #0353a8;
+  color: rgba(255, 255, 255, 0.95);
+}
+
+html[data-product='ai-agent-studio']:not(:has(.app[data-dialogos-landing='true'])) .app--ai--agent-context .agent-studio-header-actions .btn-primary:hover:not(:disabled) {
+  background: #1677c8;
+}
+
+/* Individual agent overview — redline cards and runtime surface */
+html[data-product='ai-agent-studio']:not(:has(.app[data-dialogos-landing='true'])) .app--ai--agent-context .agent-studio-landing {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+  overflow-x: hidden;
+}
+
+html[data-product='ai-agent-studio']:not(:has(.app[data-dialogos-landing='true'])) .app--ai--agent-context .agent-studio-landing > div:empty:first-child {
+  display: none;
+}
+
+html[data-product='ai-agent-studio']:not(:has(.app[data-dialogos-landing='true'])) .app--ai--agent-context .agent-studio-hero,
+html[data-product='ai-agent-studio']:not(:has(.app[data-dialogos-landing='true'])) .app--ai--agent-context .agent-studio-grid--published {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 12px;
+}
+
+html[data-product='ai-agent-studio']:not(:has(.app[data-dialogos-landing='true'])) .app--ai--agent-context .agent-studio-grid--published {
+  gap: 24px;
+}
+
+html[data-product='ai-agent-studio']:not(:has(.app[data-dialogos-landing='true'])) .app--ai--agent-context .agent-studio-hero__header {
+  display: none;
+}
+
+html[data-product='ai-agent-studio']:not(:has(.app[data-dialogos-landing='true'])) .app--ai--agent-context .agent-studio-card--unused-next.card {
+  height: auto;
+  min-height: 288px;
+  padding-inline: 0;
+}
+
+html[data-product='ai-agent-studio']:not(:has(.app[data-dialogos-landing='true'])) .app--ai--agent-context .agent-studio-card--connections,
+html[data-product='ai-agent-studio']:not(:has(.app[data-dialogos-landing='true'])) .app--ai--agent-context .agent-studio-card--operational {
+  overflow: visible;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+}
+
+html[data-product='ai-agent-studio']:not(:has(.app[data-dialogos-landing='true'])) .app--ai--agent-context .agent-studio-card--connections > .card-header,
+html[data-product='ai-agent-studio']:not(:has(.app[data-dialogos-landing='true'])) .app--ai--agent-context .agent-studio-card--operational > .card-header {
+  min-height: 38px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+}
+
+html[data-product='ai-agent-studio']:not(:has(.app[data-dialogos-landing='true'])) .app--ai--agent-context .agent-studio-card--connections > .card-body,
+html[data-product='ai-agent-studio']:not(:has(.app[data-dialogos-landing='true'])) .app--ai--agent-context .agent-studio-card--operational > .card-body {
+  padding: 0;
+}
+
+html[data-product='ai-agent-studio']:not(:has(.app[data-dialogos-landing='true'])) .app--ai--agent-context .agent-studio-card-heading {
+  display: flex;
+  align-items: flex-start;
+  gap: 0;
+}
+
+html[data-product='ai-agent-studio']:not(:has(.app[data-dialogos-landing='true'])) .app--ai--agent-context .agent-studio-card-heading__icon,
+html[data-product='ai-agent-studio']:not(:has(.app[data-dialogos-landing='true'])) .app--ai--agent-context .agent-studio-overview-card__drag-handle,
+html[data-product='ai-agent-studio']:not(:has(.app[data-dialogos-landing='true'])) .app--ai--agent-context .agent-studio-overview-tile__drag-handle {
+  display: none;
+}
+
+html[data-product='ai-agent-studio']:not(:has(.app[data-dialogos-landing='true'])) .app--ai--agent-context .agent-studio-card-heading > span:last-child {
+  display: flex;
+  flex-direction: column;
+}
+
+html[data-product='ai-agent-studio']:not(:has(.app[data-dialogos-landing='true'])) .app--ai--agent-context .agent-studio-card-heading strong {
+  color: rgba(255, 255, 255, 0.95);
+  font-size: 16px;
+  font-weight: 600;
+  line-height: 20px;
+}
+
+html[data-product='ai-agent-studio']:not(:has(.app[data-dialogos-landing='true'])) .app--ai--agent-context .agent-studio-card-heading small {
+  color: rgba(255, 255, 255, 0.64);
+  font-size: 12px;
+  font-weight: 400;
+  line-height: 16px;
+}
+
+html[data-product='ai-agent-studio']:not(:has(.app[data-dialogos-landing='true'])) .app--ai--agent-context .agent-studio-connected-metrics {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+html[data-product='ai-agent-studio']:not(:has(.app[data-dialogos-landing='true'])) .app--ai--agent-context .agent-studio-connected-summary {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 12px;
+}
+
+html[data-product='ai-agent-studio']:not(:has(.app[data-dialogos-landing='true'])) .app--ai--agent-context .agent-studio-connected-summary__item {
+  position: relative;
+  min-width: 0;
+  height: 92px;
+  overflow: hidden;
+  border: 0;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.11);
+  box-shadow: none;
+}
+
+html[data-product='ai-agent-studio']:not(:has(.app[data-dialogos-landing='true'])) .app--ai--agent-context .agent-studio-connected-summary__link {
+  display: flex;
+  box-sizing: border-box;
+  width: 100%;
+  height: 100%;
+  align-items: flex-start;
+  padding: 16px 24px;
+  color: inherit;
+  text-decoration: none;
+}
+
+html[data-product='ai-agent-studio']:not(:has(.app[data-dialogos-landing='true'])) .app--ai--agent-context .agent-studio-connected-summary__link:focus-visible {
+  border-radius: 8px;
+  outline: 2px solid #64b5f6;
+  outline-offset: -2px;
+}
+
+html[data-product='ai-agent-studio']:not(:has(.app[data-dialogos-landing='true'])) .app--ai--agent-context .agent-studio-connected-summary__icon {
+  display: none;
+}
+
+html[data-product='ai-agent-studio']:not(:has(.app[data-dialogos-landing='true'])) .app--ai--agent-context .agent-studio-connected-summary__link > span:last-child {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  align-items: flex-start;
+}
+
+html[data-product='ai-agent-studio']:not(:has(.app[data-dialogos-landing='true'])) .app--ai--agent-context .agent-studio-connected-summary__item strong {
+  color: rgba(255, 255, 255, 0.95);
+  font-size: 16px;
+  font-weight: 600;
+  line-height: 20px;
+}
+
+html[data-product='ai-agent-studio']:not(:has(.app[data-dialogos-landing='true'])) .app--ai--agent-context .agent-studio-connected-summary__item small,
+html[data-product='ai-agent-studio']:not(:has(.app[data-dialogos-landing='true'])) .app--ai--agent-context .agent-studio-connected-summary__status {
+  overflow: hidden;
+  max-width: 100%;
+  margin: 0;
+  color: rgba(255, 255, 255, 0.64);
+  font-size: 12px;
+  font-weight: 400;
+  line-height: 16px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+html[data-product='ai-agent-studio']:not(:has(.app[data-dialogos-landing='true'])) .app--ai--agent-context .agent-studio-connected-summary__status::before {
+  display: none;
+}
+
+html[data-product='ai-agent-studio']:not(:has(.app[data-dialogos-landing='true'])) .app--ai--agent-context .agent-studio-connected-summary__item--knowledge small {
+  color: #64b5f6;
+}
+
+html[data-product='ai-agent-studio']:not(:has(.app[data-dialogos-landing='true'])) .app--ai--agent-context .agent-studio-connected-summary__item--memory small {
+  color: #c7a5fa;
+}
+
+html[data-product='ai-agent-studio']:not(:has(.app[data-dialogos-landing='true'])) .app--ai--agent-context .agent-studio-connected-summary__item--action small {
+  color: #22c7d6;
+}
+
+html[data-product='ai-agent-studio']:not(:has(.app[data-dialogos-landing='true'])) .app--ai--agent-context .agent-studio-connected-summary__item--action-control small {
+  color: #53dfc1;
+}
+
+html[data-product='ai-agent-studio']:not(:has(.app[data-dialogos-landing='true'])) .app--ai--agent-context .agent-studio-connected-summary__item--guardrail small {
+  color: #f5b400;
+}
+
+html[data-product='ai-agent-studio']:not(:has(.app[data-dialogos-landing='true'])) .app--ai--agent-context .agent-studio-connected-chart-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-auto-rows: minmax(315px, max-content);
+  gap: 12px;
+}
+
+html[data-product='ai-agent-studio']:not(:has(.app[data-dialogos-landing='true'])) .app--ai--agent-context .agent-studio-connected-chart-grid--two-up {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+html[data-product='ai-agent-studio']:not(:has(.app[data-dialogos-landing='true'])) .app--ai--agent-context .agent-studio-connected-chart-grid--action-expanded {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+html[data-product='ai-agent-studio']:not(:has(.app[data-dialogos-landing='true'])) .app--ai--agent-context .agent-studio-connected-chart-grid--action-expanded .agent-studio-connected-chart.is-detail-selected--action-control {
+  grid-column: 3 / span 2 !important;
+}
+
+html[data-product='ai-agent-studio']:not(:has(.app[data-dialogos-landing='true'])) .app--ai--agent-context .agent-studio-connected-chart {
+  position: relative;
+  box-sizing: border-box;
+  min-width: 0;
+  min-height: 315px;
+  height: auto;
+  padding: 16px 24px;
+  overflow: hidden;
+  border: 0;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.11);
+  box-shadow: none;
+}
+
+html[data-product='ai-agent-studio']:not(:has(.app[data-dialogos-landing='true'])) .app--ai--agent-context .agent-studio-connected-chart.is-detail-interactive,
+html[data-product='ai-agent-studio']:not(:has(.app[data-dialogos-landing='true'])) .app--ai--agent-context .agent-studio-connected-chart.is-detail-selected {
+  border: 0;
+  box-shadow: none;
+}
+
+html[data-product='ai-agent-studio']:not(:has(.app[data-dialogos-landing='true'])) .app--ai--agent-context .agent-studio-connected-chart__header {
+  display: flex;
+  min-height: 52px;
+  align-items: flex-start;
+  justify-content: space-between;
+  padding: 0 0 12px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.16);
+}
+
+html[data-product='ai-agent-studio']:not(:has(.app[data-dialogos-landing='true'])) .app--ai--agent-context .agent-studio-connected-chart__header h3 {
+  margin: 0;
+  color: rgba(255, 255, 255, 0.95);
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 20px;
+}
+
+html[data-product='ai-agent-studio']:not(:has(.app[data-dialogos-landing='true'])) .app--ai--agent-context .agent-studio-connected-chart__header p {
+  margin: 0;
+  color: rgba(255, 255, 255, 0.64);
+  font-size: 14px;
+  font-weight: 400;
+  line-height: 20px;
+}
+
+html[data-product='ai-agent-studio']:not(:has(.app[data-dialogos-landing='true'])) .app--ai--agent-context .agent-studio-connected-chart__headline {
+  font-size: 20px;
+  line-height: 28px;
+}
+
+html[data-product='ai-agent-studio']:not(:has(.app[data-dialogos-landing='true'])) .app--ai--agent-context .agent-studio-connected-chart__disclosure {
+  position: absolute;
+  top: 16px;
+  right: 24px;
+  bottom: auto;
+  left: auto;
+  z-index: 2;
+  display: inline-flex;
+  width: 24px;
+  height: 24px;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  border: 0;
+  border-radius: 4px;
+  background: transparent;
+  color: rgba(255, 255, 255, 0.95);
+}
+
+html[data-product='ai-agent-studio']:not(:has(.app[data-dialogos-landing='true'])) .app--ai--agent-context .agent-studio-connected-chart.is-detail-interactive--guardrail > .agent-studio-connected-chart__disclosure {
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}
+
+html[data-product='ai-agent-studio']:not(:has(.app[data-dialogos-landing='true'])) .app--ai--agent-context .agent-studio-connected-chart.is-detail-interactive--guardrail > .agent-studio-connected-chart__disclosure > * {
+  display: none !important;
+}
+
+html[data-product='ai-agent-studio']:not(:has(.app[data-dialogos-landing='true'])) .app--ai--agent-context .agent-studio-connected-chart__disclosure:hover {
+  background: rgba(255, 255, 255, 0.08);
+}
+
+html[data-product='ai-agent-studio']:not(:has(.app[data-dialogos-landing='true'])) .app--ai--agent-context .agent-studio-capability-signals {
+  padding-top: 12px;
+}
+
+html[data-product='ai-agent-studio']:not(:has(.app[data-dialogos-landing='true'])) .app--ai--agent-context .agent-studio-guardrail-chart {
+  flex: 0 0 auto;
+  min-height: 0;
+  padding-top: 12px;
+}
+
+html[data-product='ai-agent-studio']:not(:has(.app[data-dialogos-landing='true'])) .app--ai--agent-context .agent-studio-capability-signals:has(> .agent-studio-capability-signal:nth-child(4)) {
+  gap: 8px;
+  padding-top: 8px;
+}
+
+html[data-product='ai-agent-studio']:not(:has(.app[data-dialogos-landing='true'])) .app--ai--agent-context .agent-studio-capability-signals:has(> .agent-studio-capability-signal:nth-child(4)) .agent-studio-capability-signal {
+  margin-bottom: 4px;
+}
+
+html[data-product='ai-agent-studio']:not(:has(.app[data-dialogos-landing='true'])) .app--ai--agent-context .agent-studio-action-performance {
+  justify-content: flex-start;
+  gap: 12px;
+  padding-top: 11px;
+}
+
+html[data-product='ai-agent-studio']:not(:has(.app[data-dialogos-landing='true'])) .app--ai--agent-context .agent-studio-action-performance__row {
+  min-height: 40px;
+  gap: 3px;
+}
+
+html[data-product='ai-agent-studio']:not(:has(.app[data-dialogos-landing='true'])) .app--ai--agent-context .agent-studio-action-performance__track {
+  height: 4px;
+}
+
+html[data-product='ai-agent-studio']:not(:has(.app[data-dialogos-landing='true'])) .app--ai--agent-context .agent-studio-capability-signal {
+  gap: 3px;
+  margin-bottom: 8px;
+}
+
+html[data-product='ai-agent-studio']:not(:has(.app[data-dialogos-landing='true'])) .app--ai--agent-context .agent-studio-capability-signal__label {
+  color: rgba(255, 255, 255, 0.82);
+  font-size: 12px;
+  line-height: 16px;
+}
+
+html[data-product='ai-agent-studio']:not(:has(.app[data-dialogos-landing='true'])) .app--ai--agent-context .agent-studio-capability-signal__label .configuration-category-icon {
+  display: none;
+}
+
+html[data-product='ai-agent-studio']:not(:has(.app[data-dialogos-landing='true'])) .app--ai--agent-context .agent-studio-capability-signal__track {
+  display: grid;
+  gap: 4px;
+  background: transparent;
+  height: 4px;
+  border-radius: 100px;
+}
+
+html[data-product='ai-agent-studio']:not(:has(.app[data-dialogos-landing='true'])) .app--ai--agent-context .agent-studio-capability-signal__track > span {
+  height: 4px;
+  border-radius: 100px;
+}
+
+html[data-product='ai-agent-studio']:not(:has(.app[data-dialogos-landing='true'])) .app--ai--agent-context .agent-studio-capability-signal__track > span:not(:first-child) {
+  background: rgba(255, 255, 255, 0.46);
+}
+
+html[data-product='ai-agent-studio']:not(:has(.app[data-dialogos-landing='true'])) .app--ai--agent-context .agent-studio-guardrail-chart__track {
+  display: grid;
+  gap: 4px;
+  height: 4px;
+  border-radius: 100px;
+  background: transparent;
+}
+
+html[data-product='ai-agent-studio']:not(:has(.app[data-dialogos-landing='true'])) .app--ai--agent-context .agent-studio-guardrail-chart__track > i,
+html[data-product='ai-agent-studio']:not(:has(.app[data-dialogos-landing='true'])) .app--ai--agent-context .agent-studio-guardrail-chart__track > span {
+  height: 4px;
+  border-radius: 100px;
+}
+
+html[data-product='ai-agent-studio']:not(:has(.app[data-dialogos-landing='true'])) .app--ai--agent-context .agent-studio-guardrail-chart__track > i {
+  background: #ffb000;
+}
+
+html[data-product='ai-agent-studio']:not(:has(.app[data-dialogos-landing='true'])) .app--ai--agent-context .agent-studio-guardrail-chart__track > span {
+  background: rgba(255, 255, 255, 0.46);
+}
+
+html[data-product='ai-agent-studio']:not(:has(.app[data-dialogos-landing='true'])) .app--ai--agent-context .agent-studio-capability-signal small {
+  color: rgba(255, 255, 255, 0.52);
+  font-size: 10px;
+  line-height: 14px;
+}
+
+html[data-product='ai-agent-studio']:not(:has(.app[data-dialogos-landing='true'])) .app--ai--agent-context .agent-studio-guardrail-chart__item {
+  margin-bottom: 15px;
+}
+
+html[data-product='ai-agent-studio']:not(:has(.app[data-dialogos-landing='true'])) .app--ai--agent-context .agent-studio-guardrail-chart__label {
+  color: rgba(255, 255, 255, 0.64);
+  font-size: 12px;
+  line-height: 16px;
+}
+
+html[data-product='ai-agent-studio']:not(:has(.app[data-dialogos-landing='true'])) .app--ai--agent-context .agent-studio-guardrail-chart__track > i {
+  background: #ffb000;
+}
+
+html[data-product='ai-agent-studio']:not(:has(.app[data-dialogos-landing='true'])) .app--ai--agent-context .agent-studio-action-control-flow {
+  gap: 8px;
+  margin: 0;
+  padding-top: 12px;
+}
+
+html[data-product='ai-agent-studio']:not(:has(.app[data-dialogos-landing='true'])) .app--ai--agent-context .agent-studio-action-control-flow__caption {
+  display: none;
+}
+
+html[data-product='ai-agent-studio']:not(:has(.app[data-dialogos-landing='true'])) .app--ai--agent-context .agent-studio-action-control-flow__summary,
+html[data-product='ai-agent-studio']:not(:has(.app[data-dialogos-landing='true'])) .app--ai--agent-context .agent-studio-action-control-flow__matched-heading {
+  min-height: 39px;
+  align-items: center;
+  padding: 0;
+  color: rgba(255, 255, 255, 0.82);
+  font-size: 12px;
+  line-height: 16px;
+}
+
+html[data-product='ai-agent-studio']:not(:has(.app[data-dialogos-landing='true'])) .app--ai--agent-context .agent-studio-action-control-flow__summary-value,
+html[data-product='ai-agent-studio']:not(:has(.app[data-dialogos-landing='true'])) .app--ai--agent-context .agent-studio-action-control-flow__matched-heading > strong:last-child {
+  color: rgba(255, 255, 255, 0.95);
+  font-size: 20px;
+  font-weight: 400;
+  line-height: 28px;
+}
+
+html[data-product='ai-agent-studio']:not(:has(.app[data-dialogos-landing='true'])) .app--ai--agent-context .agent-studio-action-control-flow__divider {
+  margin: 0;
+  border-color: rgba(255, 255, 255, 0.16);
+}
+
+html[data-product='ai-agent-studio']:not(:has(.app[data-dialogos-landing='true'])) .app--ai--agent-context .agent-studio-action-control-flow__matched-content {
+  gap: 4px;
+  padding-top: 8px;
+}
+
+html[data-product='ai-agent-studio']:not(:has(.app[data-dialogos-landing='true'])) .app--ai--agent-context .agent-studio-action-control-flow__outcomes {
+  gap: 3px;
+}
+
+html[data-product='ai-agent-studio']:not(:has(.app[data-dialogos-landing='true'])) .app--ai--agent-context .agent-studio-action-control-flow__action-item {
+  min-width: 0;
+  min-height: 32px;
+  padding: 6px 12px;
+  border: 0;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.1);
+  font-size: 12px;
+  line-height: 16px;
+}
+
+html[data-product='ai-agent-studio']:not(:has(.app[data-dialogos-landing='true'])) .app--ai--agent-context .agent-studio-connected-chart.is-detail-selected--action-control {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  grid-template-rows: auto minmax(0, 1fr);
+  column-gap: 24px;
+}
+
+html[data-product='ai-agent-studio']:not(:has(.app[data-dialogos-landing='true'])) .app--ai--agent-context .agent-studio-connected-chart.is-detail-selected--action-control > .agent-studio-connected-chart__header {
+  grid-column: 1 / -1;
+}
+
+html[data-product='ai-agent-studio']:not(:has(.app[data-dialogos-landing='true'])) .app--ai--agent-context .agent-studio-connected-chart.is-detail-selected--action-control > .agent-studio-action-control-flow {
+  grid-column: 1;
+}
+
+html[data-product='ai-agent-studio']:not(:has(.app[data-dialogos-landing='true'])) .app--ai--agent-context .agent-studio-action-control-detail {
+  grid-column: 2;
+  align-self: start;
+  min-width: 0;
+  padding-top: 0;
+}
+
+html[data-product='ai-agent-studio']:not(:has(.app[data-dialogos-landing='true'])) .app--ai--agent-context .agent-studio-action-control-detail h4 {
+  margin: 0 0 4px;
+  color: rgba(255, 255, 255, 0.95);
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 16px;
+}
+
+html[data-product='ai-agent-studio']:not(:has(.app[data-dialogos-landing='true'])) .app--ai--agent-context .agent-studio-action-control-detail p {
+  margin: 0 0 8px;
+  color: rgba(255, 255, 255, 0.78);
+  font-size: 12px;
+  line-height: 16px;
+}
+
+html[data-product='ai-agent-studio']:not(:has(.app[data-dialogos-landing='true'])) .app--ai--agent-context .agent-studio-action-control-detail__meta {
+  color: #64b5f6 !important;
+}
+
+html[data-product='ai-agent-studio']:not(:has(.app[data-dialogos-landing='true'])) .app--ai--agent-context .agent-studio-action-control-detail .btn {
+  height: 28px;
+  min-height: 28px;
+  padding: 2px 12px;
+  border-radius: 999px;
+  font-size: 12px;
+  line-height: 16px;
+}
+
+/* The expanded Figma card reflows below its 488px natural width. */
+@media (max-width: 1200px) {
+  html[data-product='ai-agent-studio']:not(:has(.app[data-dialogos-landing='true'])) .app--ai--agent-context .agent-studio-action-control-detail h4 {
+    margin-bottom: 2px;
+  }
+
+  html[data-product='ai-agent-studio']:not(:has(.app[data-dialogos-landing='true'])) .app--ai--agent-context .agent-studio-action-control-detail p {
+    margin-bottom: 4px;
+  }
+}
+
+/* Operational status intentionally continues below the overview viewport. */
+html[data-product='ai-agent-studio']:not(:has(.app[data-dialogos-landing='true'])) .app--ai--agent-context .agent-studio-card--operational {
+  margin-top: 0;
+}
+
+html[data-product='ai-agent-studio']:not(:has(.app[data-dialogos-landing='true'])) .app--ai--agent-context .agent-studio-card--operational .agent-studio-operational-toolbar,
+html[data-product='ai-agent-studio']:not(:has(.app[data-dialogos-landing='true'])) .app--ai--agent-context .agent-studio-card--operational .agent-studio-card-heading__icon {
+  display: none;
+}
+
+html[data-product='ai-agent-studio']:not(:has(.app[data-dialogos-landing='true'])) .app--ai--agent-context .agent-studio-operational-body {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+  padding-top: 12px !important;
+}
+
+html[data-product='ai-agent-studio']:not(:has(.app[data-dialogos-landing='true'])) .app--ai--agent-context .agent-studio-operational-overview {
+  display: grid;
+  grid-template-columns: 338px minmax(0, 1fr);
+  align-items: start;
+  gap: 21px;
+}
+
+html[data-product='ai-agent-studio']:not(:has(.app[data-dialogos-landing='true'])) .app--ai--agent-context .agent-studio-health-gauge {
+  align-items: center;
+  padding: 0 14px;
+}
+
+html[data-product='ai-agent-studio']:not(:has(.app[data-dialogos-landing='true'])) .app--ai--agent-context .agent-studio-health-gauge__dial {
+  width: 280px;
+  height: 142px;
+}
+
+html[data-product='ai-agent-studio']:not(:has(.app[data-dialogos-landing='true'])) .app--ai--agent-context .agent-studio-health-gauge__dial svg {
+  width: 280px;
+  height: 146px;
+}
+
+html[data-product='ai-agent-studio']:not(:has(.app[data-dialogos-landing='true'])) .app--ai--agent-context .agent-studio-health-gauge__reading {
+  bottom: 7px;
+}
+
+html[data-product='ai-agent-studio']:not(:has(.app[data-dialogos-landing='true'])) .app--ai--agent-context .agent-studio-health-gauge__reading strong {
+  font-size: 40px;
+  font-weight: 600;
+  line-height: 48px;
+}
+
+html[data-product='ai-agent-studio']:not(:has(.app[data-dialogos-landing='true'])) .app--ai--agent-context .agent-studio-health-gauge__pct {
+  font-size: 32px;
+  line-height: 40px;
+}
+
+html[data-product='ai-agent-studio']:not(:has(.app[data-dialogos-landing='true'])) .app--ai--agent-context .agent-studio-health-gauge__label {
+  margin: 2px 0 4px;
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 20px;
+}
+
+html[data-product='ai-agent-studio']:not(:has(.app[data-dialogos-landing='true'])) .app--ai--agent-context .agent-studio-health-gauge__stats {
+  width: 238px;
+  margin: 0;
+}
+
+html[data-product='ai-agent-studio']:not(:has(.app[data-dialogos-landing='true'])) .app--ai--agent-context .agent-studio-health-gauge__stats dt {
+  font-size: 12px;
+  line-height: 16px;
+}
+
+html[data-product='ai-agent-studio']:not(:has(.app[data-dialogos-landing='true'])) .app--ai--agent-context .agent-studio-health-gauge__stats dd {
+  font-size: 20px;
+  line-height: 28px;
+}
+
+html[data-product='ai-agent-studio']:not(:has(.app[data-dialogos-landing='true'])) .app--ai--agent-context .agent-studio-operational-metrics-table-wrap {
+  overflow: hidden;
+  padding-top: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+}
+
+html[data-product='ai-agent-studio']:not(:has(.app[data-dialogos-landing='true'])) .app--ai--agent-context .agent-studio-operational-metrics-table {
+  width: 100%;
+  table-layout: fixed;
+  border-collapse: collapse;
+  color: rgba(255, 255, 255, 0.72);
+  font-size: 12px;
+  line-height: 16px;
+}
+
+html[data-product='ai-agent-studio']:not(:has(.app[data-dialogos-landing='true'])) .app--ai--agent-context .agent-studio-operational-metrics-table th,
+html[data-product='ai-agent-studio']:not(:has(.app[data-dialogos-landing='true'])) .app--ai--agent-context .agent-studio-operational-metrics-table td {
+  height: 23px;
+  padding: 3px 0;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.16);
+}
+
+html[data-product='ai-agent-studio']:not(:has(.app[data-dialogos-landing='true'])) .app--ai--agent-context .agent-studio-operational-metrics-table thead th {
+  color: rgba(255, 255, 255, 0.52);
+  font-weight: 400;
+  text-align: right;
+}
+
+html[data-product='ai-agent-studio']:not(:has(.app[data-dialogos-landing='true'])) .app--ai--agent-context .agent-studio-operational-metrics-table thead th:first-child {
+  text-align: left;
+}
+
+html[data-product='ai-agent-studio']:not(:has(.app[data-dialogos-landing='true'])) .app--ai--agent-context .agent-studio-operational-metrics-table th:first-child {
+  width: 60%;
+}
+
+html[data-product='ai-agent-studio']:not(:has(.app[data-dialogos-landing='true'])) .app--ai--agent-context .agent-studio-operational-metrics-table th:nth-child(2),
+html[data-product='ai-agent-studio']:not(:has(.app[data-dialogos-landing='true'])) .app--ai--agent-context .agent-studio-operational-metrics-table td:nth-child(2) {
+  width: 16%;
+}
+
+html[data-product='ai-agent-studio']:not(:has(.app[data-dialogos-landing='true'])) .app--ai--agent-context .agent-studio-metric-name {
+  gap: 8px;
+  font-weight: 400;
+}
+
+html[data-product='ai-agent-studio']:not(:has(.app[data-dialogos-landing='true'])) .app--ai--agent-context .agent-studio-metric-dot {
+  width: 7px;
+  height: 7px;
+  background: #4fddbd;
+}
+
+html[data-product='ai-agent-studio']:not(:has(.app[data-dialogos-landing='true'])) .app--ai--agent-context .agent-studio-metric-value,
+html[data-product='ai-agent-studio']:not(:has(.app[data-dialogos-landing='true'])) .app--ai--agent-context .agent-studio-metric-change {
+  color: rgba(255, 255, 255, 0.68);
+  font-weight: 400;
+}
+
+html[data-product='ai-agent-studio']:not(:has(.app[data-dialogos-landing='true'])) .app--ai--agent-context .agent-studio-session-events {
+  overflow: visible;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+}
+
+html[data-product='ai-agent-studio']:not(:has(.app[data-dialogos-landing='true'])) .app--ai--agent-context .agent-studio-session-events__header {
+  min-height: 40px;
+  padding: 0 0 12px;
+}
+
+html[data-product='ai-agent-studio']:not(:has(.app[data-dialogos-landing='true'])) .app--ai--agent-context .agent-studio-session-events__header > div:first-child {
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+}
+
+html[data-product='ai-agent-studio']:not(:has(.app[data-dialogos-landing='true'])) .app--ai--agent-context .agent-studio-session-events__header strong {
+  font-size: 14px;
+  line-height: 20px;
+}
+
+html[data-product='ai-agent-studio']:not(:has(.app[data-dialogos-landing='true'])) .app--ai--agent-context .agent-studio-session-events__header span {
+  font-size: 12px;
+  line-height: 16px;
+}
+
+html[data-product='ai-agent-studio']:not(:has(.app[data-dialogos-landing='true'])) .app--ai--agent-context .agent-studio-session-events__actions .btn {
+  height: 28px;
+  min-height: 28px;
+  padding: 2px 12px;
+  border-radius: 999px;
+  font-size: 12px;
+  line-height: 16px;
+}
+
+html[data-product='ai-agent-studio']:not(:has(.app[data-dialogos-landing='true'])) .app--ai--agent-context .agent-studio-session-events__actions .mds-icon-inline-svg {
+  display: none;
+}
+
+html[data-product='ai-agent-studio']:not(:has(.app[data-dialogos-landing='true'])) .app--ai--agent-context .agent-studio-session-events__table {
+  width: 100%;
+  overflow: visible;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  font-size: 12px;
+  line-height: 16px;
+}
+
+html[data-product='ai-agent-studio']:not(:has(.app[data-dialogos-landing='true'])) .app--ai--agent-context .agent-studio-session-events__table table {
+  width: 100%;
+  min-width: 0;
+  table-layout: fixed;
+}
+
+html[data-product='ai-agent-studio']:not(:has(.app[data-dialogos-landing='true'])) .app--ai--agent-context .agent-studio-session-events__table th:nth-child(1) { width: 10%; }
+html[data-product='ai-agent-studio']:not(:has(.app[data-dialogos-landing='true'])) .app--ai--agent-context .agent-studio-session-events__table th:nth-child(2) { width: 17%; }
+html[data-product='ai-agent-studio']:not(:has(.app[data-dialogos-landing='true'])) .app--ai--agent-context .agent-studio-session-events__table th:nth-child(3) { width: 15%; }
+html[data-product='ai-agent-studio']:not(:has(.app[data-dialogos-landing='true'])) .app--ai--agent-context .agent-studio-session-events__table th:nth-child(4) { width: 8%; }
+html[data-product='ai-agent-studio']:not(:has(.app[data-dialogos-landing='true'])) .app--ai--agent-context .agent-studio-session-events__table th:nth-child(5) { width: 13%; }
+html[data-product='ai-agent-studio']:not(:has(.app[data-dialogos-landing='true'])) .app--ai--agent-context .agent-studio-session-events__table th:nth-child(6) { width: 12%; }
+html[data-product='ai-agent-studio']:not(:has(.app[data-dialogos-landing='true'])) .app--ai--agent-context .agent-studio-session-events__table th:nth-child(7) { width: 25%; }
+
+html[data-product='ai-agent-studio']:not(:has(.app[data-dialogos-landing='true'])) .app--ai--agent-context .agent-studio-session-events__table td {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+html[data-product='ai-agent-studio']:not(:has(.app[data-dialogos-landing='true'])) .app--ai--agent-context .agent-studio-session-events__table .agent-session-metadata-icons {
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+html[data-product='ai-agent-studio']:not(:has(.app[data-dialogos-landing='true'])) .app--ai--agent-context .agent-studio-session-events__table thead {
+  background: rgba(255, 255, 255, 0.06);
+}
+
+html[data-product='ai-agent-studio']:not(:has(.app[data-dialogos-landing='true'])) .app--ai--agent-context .agent-studio-session-events__table th,
+html[data-product='ai-agent-studio']:not(:has(.app[data-dialogos-landing='true'])) .app--ai--agent-context .agent-studio-session-events__table td {
+  height: 32px;
+  padding: 4px 8px;
+  border-color: rgba(255, 255, 255, 0.16);
+}
+
+/* Testing — Figma overview tab */
+html[data-product='ai-agent-studio']:not(:has(.app[data-dialogos-landing='true'])) .agent-testing-workspace-page {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+
+html[data-product='ai-agent-studio']:not(:has(.app[data-dialogos-landing='true'])) .agent-testing-workspace-page > .agent-workspace-page-heading {
+  display: none;
+}
+
+html[data-product='ai-agent-studio']:not(:has(.app[data-dialogos-landing='true'])) .agent-testing-page--builder.agent-workspace-section-canvas {
+  width: 100%;
+  margin: 20px 0 0;
+  padding: 0;
+  overflow: visible;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+}
+
+html[data-product='ai-agent-studio']:not(:has(.app[data-dialogos-landing='true'])) .agent-testing-page--builder > mdc-themeprovider,
+html[data-product='ai-agent-studio']:not(:has(.app[data-dialogos-landing='true'])) .agent-testing-page--builder > mdc-themeprovider > mdc-iconprovider {
+  display: block;
+  width: 100%;
+}
+
+html[data-product='ai-agent-studio']:not(:has(.app[data-dialogos-landing='true'])) .agent-testing-page--builder > mdc-themeprovider > mdc-iconprovider > .tabs {
+  height: 32px;
+  margin: 0;
+  gap: 8px;
+  padding-left: 4px;
+}
+
+html[data-product='ai-agent-studio']:not(:has(.app[data-dialogos-landing='true'])) .agent-testing-page--builder > mdc-themeprovider > mdc-iconprovider > .tabs .tab {
+  height: 32px;
+  padding: 6px 12px;
+  color: rgba(255, 255, 255, 0.68);
+  font-size: 14px;
+  font-weight: 500;
+  line-height: 20px;
+}
+
+html[data-product='ai-agent-studio']:not(:has(.app[data-dialogos-landing='true'])) .agent-testing-page--builder > mdc-themeprovider > mdc-iconprovider > .tabs .tab.active {
+  background: rgba(255, 255, 255, 0.2);
+  color: rgba(255, 255, 255, 0.95);
+  font-weight: 600;
+}
+
+html[data-product='ai-agent-studio']:not(:has(.app[data-dialogos-landing='true'])) .agent-testing-page__cloned-panel {
+  margin-top: 24px;
+}
+
+html[data-product='ai-agent-studio']:not(:has(.app[data-dialogos-landing='true'])) .agent-testing-page__cloned-panel > .space-y-8 {
+  display: flex;
+  flex-direction: column;
+  gap: 28px;
+}
+
+html[data-product='ai-agent-studio']:not(:has(.app[data-dialogos-landing='true'])) .agent-testing-page__cloned-panel > .space-y-8 > * {
+  margin-top: 0;
+  margin-bottom: 0;
+}
+
+html[data-product='ai-agent-studio']:not(:has(.app[data-dialogos-landing='true'])) .agent-testing-page__cloned-panel > .space-y-8 > section:nth-of-type(n + 3),
+html[data-product='ai-agent-studio']:not(:has(.app[data-dialogos-landing='true'])) .agent-testing-page__cloned-panel > .space-y-8 > footer {
+  display: none;
+}
+
+html[data-product='ai-agent-studio']:not(:has(.app[data-dialogos-landing='true'])) .agent-testing-page__cloned-panel h2.clus-kpi-section-heading {
+  margin: 0;
+  padding: 0;
+  color: rgba(255, 255, 255, 0.95);
+  font-size: 16px;
+  font-weight: 600;
+  line-height: 20px;
+  letter-spacing: 0;
+  text-transform: none;
+}
+
+html[data-product='ai-agent-studio']:not(:has(.app[data-dialogos-landing='true'])) .agent-testing-page__cloned-panel section > .mb-4 {
+  margin-bottom: 12px;
+}
+
+html[data-product='ai-agent-studio']:not(:has(.app[data-dialogos-landing='true'])) .agent-testing-page__cloned-panel .mb-4:has(> .flex > #clus-top-failure-reasons-heading) {
+  margin-bottom: 11px;
+}
+
+html[data-product='ai-agent-studio']:not(:has(.app[data-dialogos-landing='true'])) .agent-testing-page__cloned-panel h2 + mdc-icon,
+html[data-product='ai-agent-studio']:not(:has(.app[data-dialogos-landing='true'])) .agent-testing-page__cloned-panel h2 ~ mdc-icon {
+  display: none;
+}
+
+html[data-product='ai-agent-studio']:not(:has(.app[data-dialogos-landing='true'])) .agent-testing-page__cloned-panel .kpi-card-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 12px;
+}
+
+html[data-product='ai-agent-studio']:not(:has(.app[data-dialogos-landing='true'])) .agent-testing-page__cloned-panel .kpi-card {
+  height: 84px;
+  overflow: hidden;
+  border: 0;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.11);
+  box-shadow: none;
+}
+
+html[data-product='ai-agent-studio']:not(:has(.app[data-dialogos-landing='true'])) .agent-testing-page__cloned-panel .kpi-card__primary,
+html[data-product='ai-agent-studio']:not(:has(.app[data-dialogos-landing='true'])) .agent-testing-page__cloned-panel .kpi-card__inner {
+  width: 100%;
+  height: 84px;
+  min-height: 84px;
+}
+
+html[data-product='ai-agent-studio']:not(:has(.app[data-dialogos-landing='true'])) .agent-testing-page__cloned-panel .kpi-card__inner {
+  box-sizing: border-box;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 12px 24px;
+}
+
+html[data-product='ai-agent-studio']:not(:has(.app[data-dialogos-landing='true'])) .agent-testing-page__cloned-panel .kpi-card__title {
+  color: rgba(255, 255, 255, 0.82);
+  font-size: 12px;
+  font-weight: 400;
+  line-height: 16px;
+}
+
+html[data-product='ai-agent-studio']:not(:has(.app[data-dialogos-landing='true'])) .agent-testing-page__cloned-panel .kpi-card__value-row {
+  min-height: 32px;
+  gap: 6px;
+}
+
+html[data-product='ai-agent-studio']:not(:has(.app[data-dialogos-landing='true'])) .agent-testing-page__cloned-panel .kpi-card__value {
+  color: rgba(255, 255, 255, 0.95);
+  font-size: 24px;
+  font-weight: 400;
+  line-height: 32px;
+  letter-spacing: 0;
+}
+
+html[data-product='ai-agent-studio']:not(:has(.app[data-dialogos-landing='true'])) .agent-testing-page__cloned-panel .kpi-card__sparkline svg {
+  width: 48px;
+  height: 20px;
+}
+
+html[data-product='ai-agent-studio']:not(:has(.app[data-dialogos-landing='true'])) .agent-testing-page__cloned-panel .kpi-card__delta {
+  font-size: 10px;
+  line-height: 14px;
+}
+
+html[data-product='ai-agent-studio']:not(:has(.app[data-dialogos-landing='true'])) .agent-testing-page__cloned-panel .clus-kpi-table-card {
+  overflow: visible;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+}
+
+html[data-product='ai-agent-studio']:not(:has(.app[data-dialogos-landing='true'])) .agent-testing-page__cloned-panel .clus-kpi-table-scroll {
+  overflow: visible;
+}
+
+html[data-product='ai-agent-studio']:not(:has(.app[data-dialogos-landing='true'])) .agent-testing-page__cloned-panel .clus-kpi-agent-table {
+  width: 100%;
+  table-layout: fixed;
+  border-collapse: collapse;
+  color: rgba(255, 255, 255, 0.82);
+  font-size: 12px;
+  line-height: 16px;
+}
+
+html[data-product='ai-agent-studio']:not(:has(.app[data-dialogos-landing='true'])) .agent-testing-page__cloned-panel .clus-kpi-table-thead {
+  position: static;
+  background: rgba(255, 255, 255, 0.06);
+}
+
+html[data-product='ai-agent-studio']:not(:has(.app[data-dialogos-landing='true'])) .agent-testing-page__cloned-panel .clus-kpi-table-th {
+  height: 36px;
+  padding: 10px 12px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+  color: rgba(255, 255, 255, 0.64);
+  font-size: 12px;
+  font-weight: 400;
+  line-height: 16px;
+}
+
+html[data-product='ai-agent-studio']:not(:has(.app[data-dialogos-landing='true'])) .agent-testing-page__cloned-panel .clus-kpi-table-th svg {
+  display: none;
+}
+
+html[data-product='ai-agent-studio']:not(:has(.app[data-dialogos-landing='true'])) .agent-testing-page__cloned-panel .clus-kpi-table-th mdc-icon {
+  display: none;
+}
+
+html[data-product='ai-agent-studio']:not(:has(.app[data-dialogos-landing='true'])) .agent-testing-page__cloned-panel button.clus-kpi-eval-id-link {
+  display: inline;
+  min-height: 0;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  color: rgba(255, 255, 255, 0.82);
+  font-size: 12px;
+  font-weight: 400;
+  line-height: 16px;
+}
+
+html[data-product='ai-agent-studio']:not(:has(.app[data-dialogos-landing='true'])) .agent-testing-page__cloned-panel button.clus-kpi-eval-id-link:hover,
+html[data-product='ai-agent-studio']:not(:has(.app[data-dialogos-landing='true'])) .agent-testing-page__cloned-panel button.clus-kpi-eval-id-link:active,
+html[data-product='ai-agent-studio']:not(:has(.app[data-dialogos-landing='true'])) .agent-testing-page__cloned-panel button.clus-kpi-eval-id-link:focus {
+  background: transparent;
+  color: #64b5f6;
+}
+
+html[data-product='ai-agent-studio']:not(:has(.app[data-dialogos-landing='true'])) .agent-testing-page__cloned-panel .clus-kpi-failure-reason-group:nth-of-type(n + 5) {
+  display: none;
+}
+
+html[data-product='ai-agent-studio']:not(:has(.app[data-dialogos-landing='true'])) .agent-testing-page__cloned-panel .clus-kpi-table-tr {
+  height: 48px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.16);
+  background: transparent;
+}
+
+html[data-product='ai-agent-studio']:not(:has(.app[data-dialogos-landing='true'])) .agent-testing-page__cloned-panel .clus-kpi-agent-table tbody tr,
+html[data-product='ai-agent-studio']:not(:has(.app[data-dialogos-landing='true'])) .agent-testing-page__cloned-panel .clus-kpi-agent-table tbody td {
+  box-sizing: border-box;
+  height: 48px;
+}
+
+html[data-product='ai-agent-studio']:not(:has(.app[data-dialogos-landing='true'])) .agent-testing-page__cloned-panel .clus-kpi-table-tr:hover {
+  background: rgba(255, 255, 255, 0.04);
+}
+
+html[data-product='ai-agent-studio']:not(:has(.app[data-dialogos-landing='true'])) .agent-testing-page__cloned-panel .clus-kpi-table-td {
+  min-height: 48px;
+  padding: 8px 12px;
+  color: rgba(255, 255, 255, 0.82);
+  font-size: 12px;
+  line-height: 16px;
+}
+
+html[data-product='ai-agent-studio']:not(:has(.app[data-dialogos-landing='true'])) .agent-testing-page__cloned-panel .clus-kpi-failure-reason-group .btn {
+  width: 32px;
+  min-width: 32px;
+  height: 32px;
+  min-height: 32px;
+  padding: 0;
+  background: transparent;
+}
+
+html[data-product='ai-agent-studio']:not(:has(.app[data-dialogos-landing='true'])) .agent-testing-page__cloned-panel .clus-kpi-table-td .badge,
+html[data-product='ai-agent-studio']:not(:has(.app[data-dialogos-landing='true'])) .agent-testing-page__cloned-panel .clus-kpi-table-td mdc-badge {
+  font-size: 12px;
+}
+
+/* Security — adaptive/prebuilt guardrail selector and grouped protections */
+html[data-product='ai-agent-studio']:not(:has(.app[data-dialogos-landing='true'])) .action-config-v2-page:has(.guardrails-layout) {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+
+html[data-product='ai-agent-studio']:not(:has(.app[data-dialogos-landing='true'])) .action-config-v2-page:has(.guardrails-layout) > .agent-workspace-page-heading {
+  margin: 16px 0 0;
+}
+
+html[data-product='ai-agent-studio']:not(:has(.app[data-dialogos-landing='true'])) .action-config-v2-page:has(.guardrails-layout) > .action-config-v2-shell {
+  width: 100%;
+  margin: 12px 0 0;
+  padding: 0;
+  overflow: visible;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+}
+
+html[data-product='ai-agent-studio']:not(:has(.app[data-dialogos-landing='true'])) .action-config-v2-page:has(.guardrails-layout) .action-config-v2-card {
+  gap: 0;
+}
+
+html[data-product='ai-agent-studio']:not(:has(.app[data-dialogos-landing='true'])) .action-config-v2-page .guardrails-layout {
+  display: flex;
+  width: min(760px, 100%);
+  min-height: 0;
+  flex-direction: column;
+  gap: 24px;
+}
+
+html[data-product='ai-agent-studio']:not(:has(.app[data-dialogos-landing='true'])) .action-config-v2-page .guardrails-header,
+html[data-product='ai-agent-studio']:not(:has(.app[data-dialogos-landing='true'])) .action-config-v2-page .guardrails-subtitle {
+  width: 100%;
+  max-width: none;
+  margin: 0;
+}
+
+html[data-product='ai-agent-studio']:not(:has(.app[data-dialogos-landing='true'])) .action-config-v2-page .guardrails-header {
+  position: relative;
+  top: 4px;
+}
+
+html[data-product='ai-agent-studio']:not(:has(.app[data-dialogos-landing='true'])) .action-config-v2-page .guardrails-subtitle {
+  color: rgba(255, 255, 255, 0.72);
+  font-size: 12px;
+  line-height: 16px;
+}
+
+html[data-product='ai-agent-studio']:not(:has(.app[data-dialogos-landing='true'])) .action-config-v2-page .security-tier-selector {
+  display: grid;
+  width: 100%;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+  margin-top: 1px;
+}
+
+html[data-product='ai-agent-studio']:not(:has(.app[data-dialogos-landing='true'])) .action-config-v2-page .security-tier-card.card {
+  position: relative;
+  box-sizing: border-box;
+  height: 148px;
+  margin: 0;
+  padding: 0;
+  overflow: hidden;
+  border: 1px solid rgba(255, 255, 255, 0.22);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.11);
+  box-shadow: none;
+}
+
+html[data-product='ai-agent-studio']:not(:has(.app[data-dialogos-landing='true'])) .action-config-v2-page .security-tier-card.card:hover {
+  border-color: rgba(255, 255, 255, 0.42);
+  background: rgba(255, 255, 255, 0.14);
+}
+
+html[data-product='ai-agent-studio']:not(:has(.app[data-dialogos-landing='true'])) .action-config-v2-page .security-tier-card.card-selected {
+  border: 2px solid rgba(255, 255, 255, 0.56);
+  background: rgba(255, 255, 255, 0.11);
+}
+
+html[data-product='ai-agent-studio']:not(:has(.app[data-dialogos-landing='true'])) .action-config-v2-page .security-tier-card.card::after {
+  position: absolute;
+  top: 19px;
+  right: 27px;
+  box-sizing: border-box;
+  width: 16px;
+  height: 16px;
+  border: 1px solid rgba(255, 255, 255, 0.54);
+  border-radius: 50%;
+  background: transparent;
+  content: '';
+  pointer-events: none;
+}
+
+html[data-product='ai-agent-studio']:not(:has(.app[data-dialogos-landing='true'])) .action-config-v2-page .security-tier-card.card-selected::after {
+  border: 5px solid #64b5f6;
+  background: #1d2738;
+}
+
+html[data-product='ai-agent-studio']:not(:has(.app[data-dialogos-landing='true'])) .action-config-v2-page .security-tier-card .card-body {
+  box-sizing: border-box;
+  height: 100%;
+  padding: 16px 24px;
+}
+
+html[data-product='ai-agent-studio']:not(:has(.app[data-dialogos-landing='true'])) .action-config-v2-page .security-tier-card-inner {
+  display: grid;
+  grid-template-columns: 24px minmax(0, 1fr);
+  align-items: start;
+  gap: 8px;
+}
+
+html[data-product='ai-agent-studio']:not(:has(.app[data-dialogos-landing='true'])) .action-config-v2-page .security-tier-card-inner > .icon {
+  margin-top: 1px;
+  color: rgba(255, 255, 255, 0.9);
+}
+
+html[data-product='ai-agent-studio']:not(:has(.app[data-dialogos-landing='true'])) .action-config-v2-page .security-tier-card-text {
+  display: contents;
+}
+
+html[data-product='ai-agent-studio']:not(:has(.app[data-dialogos-landing='true'])) .action-config-v2-page .security-tier-card-title {
+  grid-column: 2;
+  color: rgba(255, 255, 255, 0.95);
+  font-size: 16px;
+  font-weight: 600;
+  line-height: 24px;
+}
+
+html[data-product='ai-agent-studio']:not(:has(.app[data-dialogos-landing='true'])) .action-config-v2-page .security-tier-card-desc {
+  grid-column: 1 / -1;
+  color: rgba(255, 255, 255, 0.82);
+  font-size: 14px;
+  line-height: 20px;
+}
+
+html[data-product='ai-agent-studio']:not(:has(.app[data-dialogos-landing='true'])) .action-config-v2-page .security-tier-card-count {
+  grid-column: 1 / -1;
+  margin-top: 0;
+  color: #64b5f6;
+  font-size: 12px;
+  font-weight: 400;
+  line-height: 16px;
+}
+
+html[data-product='ai-agent-studio']:not(:has(.app[data-dialogos-landing='true'])) .action-config-v2-page .security-prebuilt-section {
+  display: block;
+  width: 100%;
+  margin: 4px 0 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+}
+
+html[data-product='ai-agent-studio']:not(:has(.app[data-dialogos-landing='true'])) .action-config-v2-page .security-prebuilt-custom-section .security-prebuilt-toolbar {
+  position: absolute;
+  top: 16px;
+  right: 24px;
+  display: flex;
+  justify-content: flex-end;
+  margin: 0;
+  padding: 0;
+}
+
+html[data-product='ai-agent-studio']:not(:has(.app[data-dialogos-landing='true'])) .action-config-v2-page .security-prebuilt-toolbar-actions {
+  margin-left: auto;
+}
+
+html[data-product='ai-agent-studio']:not(:has(.app[data-dialogos-landing='true'])) .action-config-v2-page .security-prebuilt-groups {
+  display: block;
+  width: 100%;
+}
+
+html[data-product='ai-agent-studio']:not(:has(.app[data-dialogos-landing='true'])) .action-config-v2-page .security-prebuilt-default-group-list {
+  display: flex;
+  width: 100%;
+  flex-direction: column;
+  gap: 12px;
+}
+
+html[data-product='ai-agent-studio']:not(:has(.app[data-dialogos-landing='true'])) .action-config-v2-page .security-prebuilt-default-group-list > .accordion + .accordion {
+  border-top: 0;
+}
+
+html[data-product='ai-agent-studio']:not(:has(.app[data-dialogos-landing='true'])) .action-config-v2-page .security-prebuilt-default-groups .security-prebuilt-default-item {
+  min-height: 104px;
+  overflow: hidden;
+  border: 0;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.11);
+}
+
+html[data-product='ai-agent-studio']:not(:has(.app[data-dialogos-landing='true'])) .action-config-v2-page .security-prebuilt-default-item .accordion__header {
+  position: relative;
+  box-sizing: border-box;
+  width: 100%;
+  min-height: 104px;
+  align-items: flex-start;
+  padding: 12px 24px;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+}
+
+html[data-product='ai-agent-studio']:not(:has(.app[data-dialogos-landing='true'])) .action-config-v2-page .security-prebuilt-custom-section {
+  position: relative;
+  width: 100%;
+  margin-bottom: 12px;
+  padding: 16px 24px;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.11);
+}
+
+html[data-product='ai-agent-studio']:not(:has(.app[data-dialogos-landing='true'])) .action-config-v2-page .security-prebuilt-custom-section .security-prebuilt-category-heading {
+  display: flex;
+  width: 100%;
+  flex-direction: column;
+  align-items: flex-start;
+  padding-right: 176px;
+}
+
+html[data-product='ai-agent-studio']:not(:has(.app[data-dialogos-landing='true'])) .action-config-v2-page > .agent-workspace-page-heading h1 {
+  font-size: 16px;
+  font-weight: 600;
+  line-height: 24px;
+  letter-spacing: 0;
+}
+
+/* Instructions is already introduced by its compact page heading. Let the
+ * guideline/editor canvas begin immediately beneath it rather than adding a
+ * second visual top inset. */
+html[data-product='ai-agent-studio']:not(:has(.app[data-dialogos-landing='true'])) .action-config-v2-page:has(.instructions-section) > .action-config-v2-shell {
+  padding-top: 0;
+}
+
+html[data-product='ai-agent-studio']:not(:has(.app[data-dialogos-landing='true'])) .action-config-v2-page:has(.action-config-v2-table--actions) > .action-config-v2-shell,
+html[data-product='ai-agent-studio']:not(:has(.app[data-dialogos-landing='true'])) .action-config-v2-page:has(.v2-channels) > .action-config-v2-shell {
+  padding-top: 0;
+}
+
+/* Workspace canvases are edge-aligned across Configure, Deploy, and Monitor.
+ * Individual cards retain their own internal spacing; the canvas itself does
+ * not introduce a second horizontal gutter. */
+html[data-product='ai-agent-studio']:not(:has(.app[data-dialogos-landing='true'])) .agent-workspace-page > .agent-workspace-section-canvas {
+  padding-inline: 0;
+}
+
+html[data-product='ai-agent-studio']:not(:has(.app[data-dialogos-landing='true'])) .action-config-v2-page:has(.instructions-section) .instructions-layout {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+html[data-product='ai-agent-studio']:not(:has(.app[data-dialogos-landing='true'])) .agent-workspace-page-heading h1 {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+html[data-product='ai-agent-studio']:not(:has(.app[data-dialogos-landing='true'])) .instructions-guidance-info {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: transparent;
+  color: rgba(255, 255, 255, 0.72);
+  cursor: help;
+}
+
+html[data-product='ai-agent-studio']:not(:has(.app[data-dialogos-landing='true'])) .instructions-guidance-info:hover,
+html[data-product='ai-agent-studio']:not(:has(.app[data-dialogos-landing='true'])) .instructions-guidance-info:focus-visible {
+  color: #64b5f6;
+  outline: none;
+}
+
+html[data-product='ai-agent-studio']:not(:has(.app[data-dialogos-landing='true'])) .instructions-guidance-tooltip {
+  max-width: 360px;
+}
+
+html[data-product='ai-agent-studio']:not(:has(.app[data-dialogos-landing='true'])) .action-config-v2-page .security-prebuilt-custom-section .security-prebuilt-group-body--custom {
+  margin-top: 16px;
+}
+
+html[data-product='ai-agent-studio']:not(:has(.app[data-dialogos-landing='true'])) .action-config-v2-page .security-prebuilt-default-item .accordion__header:hover {
+  background: rgba(255, 255, 255, 0.04);
+}
+
+html[data-product='ai-agent-studio']:not(:has(.app[data-dialogos-landing='true'])) .action-config-v2-page .security-prebuilt-default-item .accordion__header-text,
+html[data-product='ai-agent-studio']:not(:has(.app[data-dialogos-landing='true'])) .action-config-v2-page .security-prebuilt-default-item .security-prebuilt-category-heading,
+html[data-product='ai-agent-studio']:not(:has(.app[data-dialogos-landing='true'])) .action-config-v2-page .security-prebuilt-default-item .security-prebuilt-category-copy {
+  display: flex;
+  min-width: 0;
+  width: 100%;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0;
+}
+
+html[data-product='ai-agent-studio']:not(:has(.app[data-dialogos-landing='true'])) .action-config-v2-page .security-prebuilt-default-item .security-prebuilt-category-title {
+  color: rgba(255, 255, 255, 0.95);
+  font-size: 16px;
+  font-weight: 600;
+  line-height: 20px;
+}
+
+html[data-product='ai-agent-studio']:not(:has(.app[data-dialogos-landing='true'])) .action-config-v2-page .security-prebuilt-default-item .security-prebuilt-category-title > .icon {
+  display: none;
+}
+
+html[data-product='ai-agent-studio']:not(:has(.app[data-dialogos-landing='true'])) .action-config-v2-page .security-prebuilt-default-item .security-prebuilt-category-title > span:first-child:has(.mds-icon-inline-svg) {
+  display: none !important;
+}
+
+html[data-product='ai-agent-studio']:not(:has(.app[data-dialogos-landing='true'])) .action-config-v2-page .security-prebuilt-default-item .security-prebuilt-category-meta {
+  margin: 0;
+  color: rgba(255, 255, 255, 0.64);
+  font-size: 12px;
+  font-weight: 400;
+  line-height: 16px;
+}
+
+html[data-product='ai-agent-studio']:not(:has(.app[data-dialogos-landing='true'])) .action-config-v2-page .security-prebuilt-default-item .security-prebuilt-category-desc {
+  display: block;
+  max-width: calc(100% - 36px);
+  margin-top: 4px;
+  color: rgba(255, 255, 255, 0.64);
+  font-size: 12px;
+  line-height: 16px;
+}
+
+html[data-product='ai-agent-studio']:not(:has(.app[data-dialogos-landing='true'])) .action-config-v2-page .security-prebuilt-default-item .text-link {
+  color: rgba(255, 255, 255, 0.64);
+  text-decoration: none;
+}
+
+html[data-product='ai-agent-studio']:not(:has(.app[data-dialogos-landing='true'])) .action-config-v2-page .security-prebuilt-default-item .accordion__chevron {
+  position: absolute;
+  top: 17px;
+  right: 24px;
+  color: rgba(255, 255, 255, 0.82);
+}
+
+html[data-product='ai-agent-studio']:not(:has(.app[data-dialogos-landing='true'])) .action-config-v2-page .security-prebuilt-default-item .accordion__chevron .mds-icon-inline-svg svg + svg {
+  display: none;
+}
+
+html[data-product='ai-agent-studio']:not(:has(.app[data-dialogos-landing='true'])) .action-config-v2-page .security-prebuilt-custom-section .security-rail-panel .accordion__panel-content {
+  padding: 16px 0 12px 50px;
+}
+
+html[data-product='ai-agent-studio']:not(:has(.app[data-dialogos-landing='true'])) .action-config-v2-page .security-prebuilt-custom-section .custom-guardrail-controls {
+  padding: 0;
+}
+
+html[data-product='ai-agent-studio']:not(:has(.app[data-dialogos-landing='true'])) .action-config-v2-page .security-prebuilt-default-item .accordion__panel {
+  border-top: 1px solid rgba(255, 255, 255, 0.16);
+  background: rgba(0, 0, 0, 0.14);
+}
+
+/* Observability — metric dashboard and redline color strategy */
+html[data-product='ai-agent-studio']:not(:has(.app[data-dialogos-landing='true'])) .clus-kpi-dashboard-root {
+  box-sizing: border-box;
+  width: 100%;
+  min-height: 100%;
+  padding: 16px 8px 32px 12px;
+  overflow: visible;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+}
+
+html[data-product='ai-agent-studio']:not(:has(.app[data-dialogos-landing='true'])) .clus-kpi-dashboard-bg,
+html[data-product='ai-agent-studio']:not(:has(.app[data-dialogos-landing='true'])) .clus-kpi-observability-subtitle {
+  display: none;
+}
+
+html[data-product='ai-agent-studio']:not(:has(.app[data-dialogos-landing='true'])) .clus-kpi-dashboard-body {
+  display: flex;
+  width: 100%;
+  flex-direction: column;
+  gap: 20px;
+}
+
+html[data-product='ai-agent-studio']:not(:has(.app[data-dialogos-landing='true'])) .clus-kpi-page-header {
+  margin: 0;
+}
+
+html[data-product='ai-agent-studio']:not(:has(.app[data-dialogos-landing='true'])) .clus-kpi-page-header .screen-title {
+  margin: 0;
+  color: rgba(255, 255, 255, 0.95);
+  font-size: 24px;
+  font-weight: 600;
+  line-height: 32px;
+}
+
+html[data-product='ai-agent-studio']:not(:has(.app[data-dialogos-landing='true'])) .clus-kpi-observability-tablist {
+  height: 32px;
+  margin: 0;
+  gap: 8px;
+  padding-left: 4px;
+}
+
+html[data-product='ai-agent-studio']:not(:has(.app[data-dialogos-landing='true'])) .clus-kpi-observability-tablist .tab {
+  height: 32px;
+  padding: 6px 12px;
+  color: rgba(255, 255, 255, 0.68);
+  font-size: 14px;
+  font-weight: 500;
+  line-height: 20px;
+}
+
+html[data-product='ai-agent-studio']:not(:has(.app[data-dialogos-landing='true'])) .clus-kpi-observability-tablist.tabs-glass .tab.active {
+  background: rgba(255, 255, 255, 0.2);
+  color: rgba(255, 255, 255, 0.95);
+  font-weight: 600;
+}
+
+html[data-product='ai-agent-studio']:not(:has(.app[data-dialogos-landing='true'])) .clus-kpi-dashboard-body > .space-y-6 {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 16px;
+}
+
+html[data-product='ai-agent-studio']:not(:has(.app[data-dialogos-landing='true'])) .clus-kpi-dashboard-body > .space-y-6 > * {
+  margin-top: 0;
+  margin-bottom: 0;
+}
+
+html[data-product='ai-agent-studio']:not(:has(.app[data-dialogos-landing='true'])) .clus-kpi-toolbar {
+  display: grid;
+  width: 100%;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  align-items: center;
+  gap: 12px;
+}
+
+html[data-product='ai-agent-studio']:not(:has(.app[data-dialogos-landing='true'])) .clus-kpi-toolbar > .btn,
+html[data-product='ai-agent-studio']:not(:has(.app[data-dialogos-landing='true'])) .clus-kpi-toolbar > button,
+html[data-product='ai-agent-studio']:not(:has(.app[data-dialogos-landing='true'])) .clus-kpi-toolbar .clus-kpi-search-wrap,
+html[data-product='ai-agent-studio']:not(:has(.app[data-dialogos-landing='true'])) .clus-kpi-toolbar .clus-kpi-date-select-wrap {
+  width: 100%;
+  min-width: 0;
+  max-width: none;
+}
+
+html[data-product='ai-agent-studio']:not(:has(.app[data-dialogos-landing='true'])) .clus-kpi-toolbar > .btn,
+html[data-product='ai-agent-studio']:not(:has(.app[data-dialogos-landing='true'])) .clus-kpi-toolbar > button {
+  height: 32px;
+  min-height: 32px;
+  justify-content: flex-start;
+  padding: 6px 12px;
+  border-radius: 8px;
+  background: rgba(0, 0, 0, 0.28);
+  color: rgba(255, 255, 255, 0.68);
+  font-size: 14px;
+  font-weight: 400;
+  line-height: 20px;
+}
+
+html[data-product='ai-agent-studio']:not(:has(.app[data-dialogos-landing='true'])) .clus-kpi-toolbar .input,
+html[data-product='ai-agent-studio']:not(:has(.app[data-dialogos-landing='true'])) .clus-kpi-toolbar input,
+html[data-product='ai-agent-studio']:not(:has(.app[data-dialogos-landing='true'])) .clus-kpi-toolbar select,
+html[data-product='ai-agent-studio']:not(:has(.app[data-dialogos-landing='true'])) .clus-kpi-toolbar .dropdown-trigger {
+  height: 32px;
+  min-height: 32px;
+  border-radius: 8px;
+  background: rgba(0, 0, 0, 0.28);
+  font-size: 14px;
+  line-height: 20px;
+}
+
+html[data-product='ai-agent-studio']:not(:has(.app[data-dialogos-landing='true'])) .clus-kpi-agent-filter-row {
+  margin: 0;
+}
+
+html[data-product='ai-agent-studio']:not(:has(.app[data-dialogos-landing='true'])) .clus-kpi-agent-filter-chip {
+  box-sizing: border-box;
+  height: 32px;
+  max-width: 100%;
+  gap: 4px;
+  padding: 6px 12px;
+  border: 1px solid rgba(255, 255, 255, 0.22);
+  border-radius: 8px;
+  background: rgba(0, 0, 0, 0.28);
+  color: rgba(255, 255, 255, 0.9);
+  font-size: 14px;
+  line-height: 20px;
+}
+
+html[data-product='ai-agent-studio']:not(:has(.app[data-dialogos-landing='true'])) .clus-kpi-agent-filter-chip .mds-type-body-small-medium {
+  font-size: 14px;
+  font-weight: 400;
+  line-height: 20px;
+}
+
+html[data-product='ai-agent-studio']:not(:has(.app[data-dialogos-landing='true'])) .clus-kpi-agent-filter-clear {
+  display: inline-flex;
+  width: 20px;
+  height: 20px;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  border: 0;
+  border-radius: 4px;
+  background: transparent;
+  color: rgba(255, 255, 255, 0.78);
+}
+
+html[data-product='ai-agent-studio']:not(:has(.app[data-dialogos-landing='true'])) .clus-kpi-agent-filter-clear:hover {
+  background: rgba(255, 255, 255, 0.08);
+}
+
+html[data-product='ai-agent-studio']:not(:has(.app[data-dialogos-landing='true'])) .clus-kpi-split,
+html[data-product='ai-agent-studio']:not(:has(.app[data-dialogos-landing='true'])) .clus-kpi-split-main {
+  display: block;
+  width: 100%;
+  min-width: 0;
+}
+
+html[data-product='ai-agent-studio']:not(:has(.app[data-dialogos-landing='true'])) .clus-kpi-split-main > .space-y-8 {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding-top: 4px;
+}
+
+html[data-product='ai-agent-studio']:not(:has(.app[data-dialogos-landing='true'])) .clus-kpi-split-main > .space-y-8 > * {
+  margin-top: 0;
+  margin-bottom: 0;
+}
+
+html[data-product='ai-agent-studio']:not(:has(.app[data-dialogos-landing='true'])) .clus-kpi-split-main > .space-y-8 > div:nth-child(n + 3) {
+  margin-top: 18px;
+}
+
+html[data-product='ai-agent-studio']:not(:has(.app[data-dialogos-landing='true'])) .clus-kpi-dashboard-root .clus-kpi-section-heading {
+  margin: 0 0 10px;
+  padding: 0;
+  color: rgba(255, 255, 255, 0.52);
+  font-size: 10px;
+  font-weight: 600;
+  line-height: 14px;
+  letter-spacing: 0.72px;
+  text-transform: uppercase;
+}
+
+html[data-product='ai-agent-studio']:not(:has(.app[data-dialogos-landing='true'])) .clus-kpi-dashboard-root .kpi-card-grid {
+  display: grid;
+  width: 100%;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+}
+
+html[data-product='ai-agent-studio']:not(:has(.app[data-dialogos-landing='true'])) .clus-kpi-dashboard-root .kpi-card {
+  height: 84px;
+  overflow: hidden;
+  border: 0;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.11);
+  box-shadow: none;
+}
+
+html[data-product='ai-agent-studio']:not(:has(.app[data-dialogos-landing='true'])) .clus-kpi-dashboard-root .kpi-card--active {
+  outline: 2px solid #64b5f6;
+  outline-offset: -2px;
+}
+
+html[data-product='ai-agent-studio']:not(:has(.app[data-dialogos-landing='true'])) .clus-kpi-dashboard-root .kpi-card__primary,
+html[data-product='ai-agent-studio']:not(:has(.app[data-dialogos-landing='true'])) .clus-kpi-dashboard-root .kpi-card__inner {
+  width: 100%;
+  height: 84px;
+  min-height: 84px;
+}
+
+html[data-product='ai-agent-studio']:not(:has(.app[data-dialogos-landing='true'])) .clus-kpi-dashboard-root .kpi-card__inner {
+  box-sizing: border-box;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 12px 24px;
+}
+
+html[data-product='ai-agent-studio']:not(:has(.app[data-dialogos-landing='true'])) .clus-kpi-dashboard-root .kpi-card__title {
+  color: rgba(255, 255, 255, 0.82);
+  font-size: 12px;
+  font-weight: 400;
+  line-height: 16px;
+}
+
+html[data-product='ai-agent-studio']:not(:has(.app[data-dialogos-landing='true'])) .clus-kpi-dashboard-root .kpi-card__header--reserve-pin {
+  padding-right: 24px;
+}
+
+html[data-product='ai-agent-studio']:not(:has(.app[data-dialogos-landing='true'])) .clus-kpi-dashboard-root .kpi-card__value-row {
+  min-height: 32px;
+  gap: 6px;
+}
+
+html[data-product='ai-agent-studio']:not(:has(.app[data-dialogos-landing='true'])) .clus-kpi-dashboard-root .kpi-card__value {
+  color: rgba(255, 255, 255, 0.95) !important;
+  font-size: 24px;
+  font-weight: 400;
+  line-height: 32px;
+  letter-spacing: 0;
+}
+
+html[data-product='ai-agent-studio']:not(:has(.app[data-dialogos-landing='true'])) .clus-kpi-dashboard-root .kpi-card__sparkline svg {
+  width: 64px;
+  height: 20px;
+}
+
+html[data-product='ai-agent-studio']:not(:has(.app[data-dialogos-landing='true'])) .clus-kpi-dashboard-root .kpi-card__delta {
+  font-size: 10px;
+  line-height: 14px;
+}
+
+html[data-product='ai-agent-studio']:not(:has(.app[data-dialogos-landing='true'])) .clus-kpi-dashboard-root .kpi-card__pin-hit {
+  top: 12px;
+  right: 16px;
+  width: 20px;
+  height: 20px;
+}
+
+html[data-product='ai-agent-studio']:not(:has(.app[data-dialogos-landing='true'])) .clus-kpi-dashboard-root .kpi-card__threshold-icon {
+  margin-left: auto;
+}
+
+html[data-product='ai-agent-studio']:not(:has(.app[data-dialogos-landing='true'])) .clus-kpi-dashboard-root .clus-kpi-agent-table-section {
+  margin-top: 0;
+}
+
+@media (prefers-reduced-motion: reduce) {
+html[data-product='ai-agent-studio']:not(:has(.app[data-dialogos-landing='true'])) .app--ai__bg::before,
+html[data-product='ai-agent-studio']:not(:has(.app[data-dialogos-landing='true'])) .app--ai__bg::after {
+    transition: none;
+  }
+}
+
+html[data-product='ai-agent-studio']:not(:has(.app[data-dialogos-landing='true'])) .app--ai--agent-context .agent-studio-header-actions .btn:first-child > .mds-icon-inline-svg {
+  display: none;
+}
+
+html[data-product='ai-agent-studio']:not(:has(.app[data-dialogos-landing='true'])) .app--ai--agent-context .agent-studio-header-actions .btn:first-child > .icon,
+html[data-product='ai-agent-studio']:not(:has(.app[data-dialogos-landing='true'])) .app--ai--agent-context .agent-studio-header-actions .btn:first-child > svg,
+html[data-product='ai-agent-studio']:not(:has(.app[data-dialogos-landing='true'])) .app--ai--agent-context .agent-studio-header-actions .btn:first-child > span:first-child:has(.mds-icon-inline-svg) {
+  display: none;
+}
+
+html[data-product='ai-agent-studio']:not(:has(.app[data-dialogos-landing='true'])) .app--ai--agent-context .agent-studio-header-more-button {
+  display: inline-flex;
+  width: 28px;
+  min-width: 28px;
+  height: 28px;
+  border-color: rgba(255, 255, 255, 0.52);
+  color: rgba(255, 255, 255, 0.95);
+}
+
+@media (max-width: 900px) {
+  html[data-product='ai-agent-studio']:not(:has(.app[data-dialogos-landing='true'])) .app--ai--agent-context .main {
+    margin-left: calc(var(--studio-rail-collapsed-width) + var(--studio-shell-gutter));
+  }
+
+  html[data-product='ai-agent-studio']:not(:has(.app[data-dialogos-landing='true'])) .agent-level-two-nav {
+    display: none;
+  }
+}
+
+html[data-product='ai-agent-studio']:not(:has(.app[data-dialogos-landing='true'])) .app--ai--agent-context .main > .primary-content.agent-studio-landing {
+  padding-bottom: 220px !important;
+}
