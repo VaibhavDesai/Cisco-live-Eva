@@ -4300,6 +4300,11 @@ button.agent-studio-guardrail-chart__plot.is-selected .agent-studio-guardrail-ch
   color: var(--mds-color-theme-outline-label-gold, var(--warning-color));
 }
 
+.agent-session-detail-page--feedback360 .agent-session-message__annotation--compliance,
+.agent-session-detail-page--feedback360 .agent-session-message__annotation--compliance .configuration-category-icon--guardrail {
+  color: var(--warning-color);
+}
+
 .agent-session-detail-page .agent-session-chip.alert-chip {
   min-height: 18px;
   padding: 1px 5px;

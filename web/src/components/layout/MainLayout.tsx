@@ -3,7 +3,6 @@ import { Outlet, useLocation } from 'react-router-dom';
 import Header from '../../products/ai-agent-studio/components/Header';
 import Sidebar from '../../products/ai-agent-studio/components/Sidebar';
 import DialogOsHeader from '../../products/ai-agent-studio/components/DialogOsHeader';
-import DialogOsSidebar from '../../products/ai-agent-studio/components/DialogOsSidebar';
 import AiAssistantPanel from '../../products/ai-agent-studio/components/AiAssistantPanel';
 import { useToast } from '../shared/Toast';
 import CreateAgentModal from '../agents/CreateAgentModal';
@@ -130,19 +129,11 @@ export default function MainLayout() {
         onAnimationEnd={isDialogOsLanding ? welcome.onAnimationEnd : undefined}
         style={welcomeStyle}
       >
-        {isProtectedLandingRoute ? (
-          <DialogOsSidebar
-            collapsed={sidebarCollapsed}
-            agentPanelOpen={agentPanelOpen}
-            onAgentPanelOpenChange={setAgentPanelOpen}
-          />
-        ) : (
-          <Sidebar
-            collapsed={sidebarCollapsed}
-            agentPanelOpen={agentPanelOpen}
-            onAgentPanelOpenChange={setAgentPanelOpen}
-          />
-        )}
+        <Sidebar
+          collapsed={sidebarCollapsed}
+          agentPanelOpen={agentPanelOpen}
+          onAgentPanelOpenChange={setAgentPanelOpen}
+        />
         <main className="main">
           <Outlet />
         </main>

@@ -161,7 +161,7 @@ function SessionDetail({
   const guardrailExpanded = expandedPolicyPanel === 'guardrail';
 
   return (
-    <div className="agent-session-detail-page">
+    <div className={`agent-session-detail-page${is360FeedbackAgent ? ' agent-session-detail-page--feedback360' : ''}`}>
       <div className="agent-session-detail-topbar">
         <Button variant="tertiary" size="sm" onClick={onBack}>
           <Icon name="arrow-left" weight="bold" size="sm" />
@@ -231,10 +231,13 @@ function SessionDetail({
                     key={event.id}
                     type="warning"
                     icon="shield"
-                    title={`${event.title} · ${event.time}`}
+                    title={is360FeedbackAgent ? event.title ?? 'Guardrail triggered' : `${event.title} · ${event.time}`}
                     subtitle={(
                       <span className="agent-session-guardrail-banner__body">
                         <span>{event.text}</span>
+                        {is360FeedbackAgent && (
+                          <time className="agent-session-guardrail-banner__detail">{event.time}</time>
+                        )}
                         {event.detail && (
                           <span className="agent-session-guardrail-banner__detail">{event.detail}</span>
                         )}
@@ -374,7 +377,7 @@ function SessionDetail({
               className="agent-session-policy-card"
             >
               <div className="agent-session-policy-card__header">
-                <ConfigurationCategoryIcon type="guardrail" size={20} />
+                {!is360FeedbackAgent && <ConfigurationCategoryIcon type="guardrail" size={20} />}
                 <div>
                   <h2 id={`${GUARDRAIL_PANEL_ID}-heading`}>{session.guardrail.name}</h2>
                 </div>

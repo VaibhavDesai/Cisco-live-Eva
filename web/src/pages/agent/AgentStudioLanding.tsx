@@ -604,7 +604,9 @@ export default function AgentStudioLanding() {
       ? overviewCardOrder
       : group === 'summary'
         ? overviewSummaryOrder
-        : overviewChartOrder;
+        : is360FeedbackAgent
+          ? overviewChartOrder.filter(tileId => tileId !== 'actions')
+          : overviewChartOrder;
     const currentIndex = order.indexOf(tileId);
     const targetIndex = Math.min(order.length - 1, Math.max(0, currentIndex + offset));
     if (currentIndex < 0 || currentIndex === targetIndex) return;
@@ -1269,7 +1271,8 @@ Simulation rules:
     && Boolean(selectedGuardrail && selectedGuardrail.count > 0);
   const guardrailTriggerTotal = connectedGuardrailActivity.reduce((total, item) => total + item.count, 0);
   const visibleOverviewChartOrder = overviewChartOrder.filter(
-    tileId => tileId !== 'guardrails' || guardrailTriggerTotal > 0 || is360FeedbackAgent,
+    tileId => (tileId !== 'guardrails' || guardrailTriggerTotal > 0 || is360FeedbackAgent)
+      && (tileId !== 'actions' || !is360FeedbackAgent),
   );
   const allAgentSessions = is360FeedbackAgent
     ? feedback360Sessions
@@ -1436,7 +1439,8 @@ Simulation rules:
   const actionControlSpotlightDecision = [...actionControlDecisions]
     .filter(decision => decision.matched)
     .sort((a, b) => Date.parse(b.occurredAt) - Date.parse(a.occurredAt))[0];
-  const showSelectedActionControlDecision = selectedOverviewIntervention === 'action_control'
+  const showSelectedActionControlDecision = !is360FeedbackAgent
+    && selectedOverviewIntervention === 'action_control'
     && Boolean(actionControlSpotlightDecision);
   const actionControlSpotlightEvidence = actionControlSpotlightDecision?.evidence.find(evidence => (
     typeof evidence.actual === 'number'
@@ -1455,29 +1459,37 @@ Simulation rules:
   const connectedCapabilitySignals = [
     {
       id: 'knowledge',
-      label: is360FeedbackAgent ? 'Approved sources referenced' : 'Knowledge referenced',
-      value: configuredKnowledge.length > 0 ? Math.min(100, 68 + configuredKnowledge.length * 8) : 0,
+      label: 'Knowledge referenced',
+      value: configuredKnowledge.length > 0
+        ? is360FeedbackAgent ? 92 : Math.min(100, 68 + configuredKnowledge.length * 8)
+        : 0,
       count: connectedCapabilityTotals.knowledge,
       type: 'knowledge' as ConfigurationCategory,
     },
     {
       id: 'memory',
-      label: is360FeedbackAgent ? 'Review context assisted' : 'Memory assisted',
-      value: configuredMemory.length > 0 ? Math.min(100, 54 + configuredMemory.length * 8) : 0,
+      label: 'Memory assisted',
+      value: configuredMemory.length > 0
+        ? is360FeedbackAgent ? 85 : Math.min(100, 54 + configuredMemory.length * 8)
+        : 0,
       count: connectedCapabilityTotals.memory,
       type: 'memory' as ConfigurationCategory,
     },
     {
       id: 'actions',
-      label: is360FeedbackAgent ? 'Feedback action success' : 'Action success',
-      value: Math.round(averageActionSuccess),
+      label: 'Action success',
+      value: is360FeedbackAgent
+        ? configuredOrchestration.length > 0 ? 96 : 0
+        : Math.round(averageActionSuccess),
       count: connectedCapabilityTotals.actions,
       type: 'action' as ConfigurationCategory,
     },
     {
       id: 'security',
-      label: is360FeedbackAgent ? 'Confidentiality intervention' : 'Guardrail intervention',
-      value: configuredSecurity.length > 0 ? guardedSessionRate : 0,
+      label: 'Guardrail intervention',
+      value: configuredSecurity.length > 0
+        ? is360FeedbackAgent ? 40 : guardedSessionRate
+        : 0,
       count: connectedCapabilityTotals.guardrails,
       type: 'guardrail' as ConfigurationCategory,
     },
@@ -1826,6 +1838,7 @@ Simulation rules:
                       <div className={[
                         'agent-studio-connected-chart-grid',
                         visibleOverviewChartOrder.length === 2 ? 'agent-studio-connected-chart-grid--two-up' : '',
+                        is360FeedbackAgent ? 'agent-studio-connected-chart-grid--feedback360' : '',
                         showSelectedActionControlDecision ? 'agent-studio-connected-chart-grid--action-expanded' : '',
                       ].filter(Boolean).join(' ')}>
                       {visibleOverviewChartOrder.map((tileId, index) => {
@@ -1865,6 +1878,9 @@ Simulation rules:
                             className={[
                               'agent-studio-connected-chart',
                               'agent-studio-overview-tile',
+                              is360FeedbackAgent && tileId === 'guardrails'
+                                ? 'agent-studio-connected-chart--feedback360-guardrails'
+                                : '',
                               draggedOverviewTile?.group === 'charts' && draggedOverviewTile.id === tileId
                                 ? 'is-dragging'
                                 : '',

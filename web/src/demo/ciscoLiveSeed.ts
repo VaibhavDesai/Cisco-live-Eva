@@ -24,13 +24,19 @@ export const AMIT_WEBEX_ONE_MERIDIAN_AGENT_ID = 'amitwebexone-meridian-aria';
 const FEEDBACK360_NAME = '360 Feedback Agent';
 const FEEDBACK360_DESCRIPTION = 'Collect confidential 360 feedback from peers, direct reports, and a manager, then prepare an anonymized, themed development summary.';
 const SELECTED_FEEDBACK360_DESCRIPTION = "Configuration draft for a short, structured interview with peers, direct reports, manager. Responses should be combined into de-identified themes for development review. Requested goal: Create a 360 Feedback Agent to collect confidential feedback from a leader's peers, direct reports, and manager, and produce an anonymized, themed summary for development review.";
-const FEEDBACK360_WELCOME = "Hi, I'm collecting confidential feedback for [Leader]'s development review. Thank you for taking the time to complete this — Are you ready to get started?";
-const FEEDBACK360_CONFIDENTIALITY_RULE = 'Combine responses into de-identified themes. Escalate serious harassment, safety, or ethics concerns to a human HR owner.';
+const FEEDBACK360_WELCOME = "Hi, I'm collecting confidential feedback for Amit's development review. Thank you for taking the time to complete this — Are you ready to get started?";
+export const FEEDBACK360_CONFIDENTIALITY_RULE = 'Combine responses into de-identified themes. Escalate serious harassment, safety, or ethics concerns to a human HR owner.';
+export const FEEDBACK360_GUARDRAIL_NAME = 'Leadership feedback scope';
 const FEEDBACK360_KNOWLEDGE = [
   { name: 'Company Directory & Organizational Chart', description: 'Confirm approved reporting relationships and participant groups.' },
   { name: 'Company Intranet / Review Cycle Policy', description: 'Use approved review cycle and confidentiality guidance.' },
   { name: 'Leadership Competency Framework', description: 'Organize feedback around leadership behaviors and impact.' },
   { name: 'HR System', description: 'Use approved employee and reporting information.' },
+];
+const FEEDBACK360_MEMORY = [
+  { name: 'Participation and consent', description: 'Track consent and completion under an anonymous participant token, without respondent identity or answers.' },
+  { name: 'Interview progress', description: 'Resume an unfinished interview from an anonymous session marker, without raw feedback or identifying details.' },
+  { name: 'De-identified development themes', description: 'Retain only pooled leadership themes after anonymization, without individual responses or identifying quotes.' },
 ];
 const FEEDBACK360_ACTIONS = [
   { name: 'Generate Anonymized Theme Summary', provider: '', providerLogoSrc: '', description: 'Combine feedback into de-identified themes for development review.' },
@@ -434,14 +440,18 @@ export function buildCiscoLiveSeed(): {
       phoneNumberDeferred: true,
     },
     knowledge: {
-      selections: FEEDBACK360_KNOWLEDGE.map(item => item.name),
+      selections: FEEDBACK360_KNOWLEDGE.slice(0, 3).map(item => item.name),
       catalog: FEEDBACK360_KNOWLEDGE,
     },
+    memory: {
+      selections: FEEDBACK360_MEMORY.map(item => item.name),
+      catalog: FEEDBACK360_MEMORY,
+    },
     actions: {
-      selections: FEEDBACK360_ACTIONS.map(item => item.name),
+      selections: FEEDBACK360_ACTIONS.slice(0, 3).map(item => item.name),
       catalog: FEEDBACK360_ACTIONS,
     },
-    security: { selections: [FEEDBACK360_CONFIDENTIALITY_RULE] },
+    security: { selections: [FEEDBACK360_GUARDRAIL_NAME] },
   })) {
     const capability = feedback360Draft.familyConfiguration[capabilityId];
     if (!capability) continue;
@@ -466,7 +476,7 @@ export function buildCiscoLiveSeed(): {
     messages: '—',
     avgResponse: '—',
     meta: `${FEEDBACK360_DESCRIPTION} • Version 1`,
-    knowledgeBases: FEEDBACK360_KNOWLEDGE.map(item => item.name),
+    knowledgeBases: FEEDBACK360_KNOWLEDGE.slice(0, 3).map(item => item.name),
     createdAt: feedback360Timestamp,
     updatedAt: feedback360Timestamp,
     agentType: 'Autonomous agent',

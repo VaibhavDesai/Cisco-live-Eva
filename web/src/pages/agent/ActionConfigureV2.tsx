@@ -48,7 +48,12 @@ import {
   CISCO_LIVE_PRIMARY_AGENT_ID,
   CISCO_LIVE_VIP_EVENT_CONFIDENTIALITY_GUARDRAIL,
 } from '../../demo/ciscoLiveDemo';
-import { buildCiscoLiveInstructions } from '../../demo/ciscoLiveSeed';
+import {
+  AMIT_WEBEX_ONE_SELECTED_360_AGENT_ID,
+  FEEDBACK360_CONFIDENTIALITY_RULE,
+  FEEDBACK360_GUARDRAIL_NAME,
+  buildCiscoLiveInstructions,
+} from '../../demo/ciscoLiveSeed';
 import {
   type UpdateStatus,
   type RiskLevel,
@@ -657,6 +662,37 @@ Allows
   }],
 };
 
+const FEEDBACK360_LEADERSHIP_SCOPE_GUARDRAIL: CustomGuardrailItem = {
+  id: 'feedback360-confidentiality',
+  name: FEEDBACK360_GUARDRAIL_NAME,
+  description: 'Keep the anonymized development summary focused on leadership behaviors. Exclude promotion and compensation opinions while protecting respondent confidentiality.',
+  enabled: true,
+  action: 'steer',
+  direction: 'both',
+  createdBy: 'Agent setup',
+  createdAt: 'September 24, 2026',
+  overview: {
+    blocked: [
+      { text: 'Include promotion or compensation opinions in the development review summary' },
+      { text: 'Expose an individual respondent or attribute feedback to a named person' },
+    ],
+    allowed: [
+      { text: 'Collect feedback about leadership behaviors and their impact' },
+      { text: 'Combine responses into de-identified themes for development review' },
+    ],
+    edgeCases: [
+      { text: 'Acknowledge out-of-scope promotion or compensation feedback, exclude it from the summary, and return to leadership behaviors' },
+      { text: 'Escalate serious harassment, safety, or ethics concerns to a human HR owner' },
+    ],
+  },
+  policyText: `# Leadership feedback scope
+
+Keep the anonymized development summary focused on leadership behaviors and exclude promotion or compensation opinions.
+
+${FEEDBACK360_CONFIDENTIALITY_RULE}`,
+  versions: [],
+};
+
 const DEFAULT_ADVANCED_GROUPS: AdvancedGuardrailGroup[] = [
   {
     id: 'security',
@@ -944,11 +980,7 @@ export default function ActionConfigureV2() {
       versions: [],
     }));
     const storedItems = agentDraft?.familyConfiguration.security?.values?.customGuardrails;
-    if (!Array.isArray(storedItems)) {
-      return agentDraft && agentId !== CISCO_LIVE_PRIMARY_AGENT_ID ? [] : seededItems;
-    }
-
-    const validItems = storedItems.filter((item): item is CustomGuardrailItem => {
+    const validItems = (Array.isArray(storedItems) ? storedItems : []).filter((item): item is CustomGuardrailItem => {
       if (!item || typeof item !== 'object' || Array.isArray(item)) return false;
       const candidate = item as Partial<CustomGuardrailItem>;
       return typeof candidate.id === 'string'
@@ -960,12 +992,25 @@ export default function ActionConfigureV2() {
         && Boolean(candidate.overview)
         && Array.isArray(candidate.versions);
     });
-    return validItems.length > 0
+    const restoredItems = validItems.length > 0
       ? structuredClone(validItems)
       : agentDraft && agentId !== CISCO_LIVE_PRIMARY_AGENT_ID
         ? []
         : seededItems;
+    // Older 360 drafts saved the creation safeguard as plain text, so the
+    // Security editor displayed an empty adaptive tier even though Sessions
+    // linked to this policy. Restore it once without replacing authored items.
+    const needsFeedbackPolicy = agentId === AMIT_WEBEX_ONE_SELECTED_360_AGENT_ID
+      && (persistedGuardrailNames.has(FEEDBACK360_CONFIDENTIALITY_RULE)
+        || persistedGuardrailNames.has(FEEDBACK360_GUARDRAIL_NAME))
+      && !restoredItems.some(item => item.id === FEEDBACK360_LEADERSHIP_SCOPE_GUARDRAIL.id)
+      && restoredItems.length < 3;
+    return needsFeedbackPolicy
+      ? [...restoredItems, structuredClone(FEEDBACK360_LEADERSHIP_SCOPE_GUARDRAIL)]
+      : restoredItems;
   });
+  const canShowFeedbackPolicyInEditor = advancedCustomItems.length < 3
+    || advancedCustomItems.some(item => item.id === FEEDBACK360_LEADERSHIP_SCOPE_GUARDRAIL.id);
   const [pendingAdvancedEnable, setPendingAdvancedEnable] = useState<{ groupId: string; itemIds: string[]; label: string } | null>(null);
   const [hasAcknowledgedAdvancedPricing, setHasAcknowledgedAdvancedPricing] = useState(false);
   const [expandedRails, setExpandedRails] = useState<Set<string>>(() => {
@@ -1167,7 +1212,13 @@ export default function ActionConfigureV2() {
     // Conversational drafts may have a selected safeguard that has not yet
     // been built as an adaptive or prebuilt guardrail. Keep that exact text.
     const draftOnlyNames = is360FeedbackAgent
-      ? [...savedGuardrailNames(agentDraft)].filter(name => !editorGuardrailNames.has(name))
+      ? [...savedGuardrailNames(agentDraft)].filter(name => (
+          !editorGuardrailNames.has(name)
+          && !(agentId === AMIT_WEBEX_ONE_SELECTED_360_AGENT_ID
+            && canShowFeedbackPolicyInEditor
+            && (name === FEEDBACK360_CONFIDENTIALITY_RULE
+              || name === FEEDBACK360_GUARDRAIL_NAME))
+        ))
       : [];
     const enabledGuardrailNames = [...new Set([...enabledInEditor, ...draftOnlyNames])];
     const desiredProgress = enabledGuardrailNames.length > 0 ? 'configured' : 'not_started';
@@ -1199,7 +1250,7 @@ export default function ActionConfigureV2() {
         },
       };
     });
-  }, [advancedDefaultGroups, advancedCustomItems, agentId, agentDraft, is360FeedbackAgent, updateAgentDraft]);
+  }, [advancedDefaultGroups, advancedCustomItems, agentId, agentDraft, canShowFeedbackPolicyInEditor, is360FeedbackAgent, updateAgentDraft]);
 
   // Reflect the enabled knowledge bases into the shared agent draft (knowledge row).
   useEffect(() => {
@@ -1789,6 +1840,10 @@ export default function ActionConfigureV2() {
     ? [...persistedGuardrailNames].filter(name => (
         !advancedDefaultGroups.some(group => group.items.some(item => item.name === name))
         && !advancedCustomItems.some(item => item.name === name)
+        && !(agentId === AMIT_WEBEX_ONE_SELECTED_360_AGENT_ID
+          && canShowFeedbackPolicyInEditor
+          && (name === FEEDBACK360_CONFIDENTIALITY_RULE
+            || name === FEEDBACK360_GUARDRAIL_NAME))
       ))
     : [];
   // While searching, results span BOTH custom and prebuilt guardrails

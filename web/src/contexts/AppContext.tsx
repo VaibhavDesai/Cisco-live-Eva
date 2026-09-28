@@ -23,6 +23,8 @@ import {
 } from '../features/agent-creation/agentCreationModel';
 import type { AgentDisplayType } from '../features/agent-creation/agentDisplayType';
 import {
+  AMIT_WEBEX_ONE_360_AGENT_ID,
+  AMIT_WEBEX_ONE_SELECTED_360_AGENT_ID,
   buildCiscoLiveInstructions,
   buildDefaultCiscoLiveInstructions,
   buildCiscoLiveSeed,
@@ -32,6 +34,8 @@ import {
   EAGLE_GREEN_HANDOVER_ACTION_ID,
   EAGLE_GREEN_HANDOVER_CONTROL_ID,
   EAGLE_GREEN_LEGACY_VIP_RESERVATION_INSTRUCTIONS,
+  FEEDBACK360_CONFIDENTIALITY_RULE,
+  FEEDBACK360_GUARDRAIL_NAME,
 } from '../demo/ciscoLiveSeed';
 import {
   CISCO_LIVE_AGENTS,
@@ -125,7 +129,7 @@ export interface AppContextValue {
 }
 
 interface PersistedAgentState {
-  schemaVersion: 14;
+  schemaVersion: 15;
   agents: AgentsMap;
   agentDrafts: AgentDraftsMap;
 }
@@ -133,7 +137,7 @@ interface PersistedAgentState {
 export const APP_AGENT_STORAGE_KEY = 'webex-ai-agent-studio-agents-v1';
 
 const emptyAgentState = (): PersistedAgentState => ({
-  schemaVersion: 14,
+  schemaVersion: 15,
   agents: {},
   agentDrafts: {},
 });
@@ -557,8 +561,91 @@ const withCiscoLiveSeed = (
       version: migratedDrafts[id].version,
     };
   });
+
+  // Refresh only the bundled 360 demo's old defaults. Keep any selections
+  // changed by the user, while aligning the saved demo with the creation flow.
+  const withAmit = (value: string) => value.replaceAll("[Leader]'s", "Amit's");
+  const catalogNames = (catalog: unknown): string[] => Array.isArray(catalog)
+    ? catalog.flatMap(item => isRecord(item) && typeof item.name === 'string' ? [item.name] : [])
+    : [];
+  const matchesNames = (value: unknown, names: readonly string[]) => Array.isArray(value)
+    && value.length === names.length
+    && value.every((name, index) => name === names[index]);
+
+  for (const id of [AMIT_WEBEX_ONE_360_AGENT_ID, AMIT_WEBEX_ONE_SELECTED_360_AGENT_ID]) {
+    const existing = migratedDrafts[id] ?? seed.agentDrafts[id];
+    if (!existing) continue;
+    const draft = structuredClone(existing);
+    draft.basics.purpose = withAmit(draft.basics.purpose);
+    draft.basics.description = withAmit(draft.basics.description);
+    draft.instructions.content = withAmit(draft.instructions.content);
+
+    const channels = draft.familyConfiguration.channels;
+    const greetings = channels?.values?.greetings;
+    if (channels && isRecord(greetings)) {
+      channels.values = {
+        ...channels.values,
+        greetings: Object.fromEntries(Object.entries(greetings).map(([channel, greeting]) => [
+          channel,
+          typeof greeting === 'string' ? withAmit(greeting) : greeting,
+        ])),
+      };
+    }
+
+    for (const capabilityId of ['knowledge', 'actions'] as const) {
+      const capability = draft.familyConfiguration[capabilityId];
+      const names = catalogNames(capability?.values?.catalog);
+      if (capability && names.length > 3 && matchesNames(capability.values?.selections, names)) {
+        capability.values = { ...capability.values, selections: names.slice(0, 3) };
+      }
+    }
+
+    // Add the new 360 demo memories to older saved defaults only once. A
+    // nonempty selection or a saved catalog indicates that this agent's memory
+    // was customized, so retain it instead of replacing the user's choices.
+    const memory = draft.familyConfiguration.memory;
+    const seededMemory = seed.agentDrafts[id]?.familyConfiguration.memory;
+    const seededMemorySelections = seededMemory?.values?.selections;
+    const storedMemorySelections = memory?.values?.selections;
+    const hasConfiguredMemory = Array.isArray(storedMemorySelections)
+      && storedMemorySelections.some(name => typeof name === 'string' && name.length > 0);
+    const hasCustomMemoryCatalog = catalogNames(memory?.values?.catalog).length > 0;
+    if (storedSchemaVersion < 15
+      && memory && seededMemory && Array.isArray(seededMemorySelections)
+      && !hasConfiguredMemory && !hasCustomMemoryCatalog) {
+      draft.familyConfiguration.memory = {
+        ...memory,
+        progress: 'configured',
+        values: {
+          ...(memory.values ?? {}),
+          selections: seededMemorySelections.filter((name): name is string => typeof name === 'string'),
+          catalog: structuredClone(seededMemory.values?.catalog),
+        },
+        updatedAt: new Date().toISOString(),
+      };
+    }
+
+    const security = draft.familyConfiguration.security;
+    if (security && matchesNames(security.values?.selections, [FEEDBACK360_CONFIDENTIALITY_RULE])) {
+      security.values = { ...security.values, selections: [FEEDBACK360_GUARDRAIL_NAME] };
+    }
+    migratedDrafts[id] = draft;
+
+    const agent = mergedAgents[id];
+    if (agent) {
+      const knowledgeNames = catalogNames(draft.familyConfiguration.knowledge?.values?.catalog);
+      mergedAgents[id] = {
+        ...agent,
+        description: withAmit(agent.description),
+        meta: withAmit(agent.meta),
+        knowledgeBases: matchesNames(agent.knowledgeBases, knowledgeNames)
+          ? knowledgeNames.slice(0, 3)
+          : agent.knowledgeBases,
+      };
+    }
+  }
   return {
-    schemaVersion: 14,
+    schemaVersion: 15,
     agents: mergedAgents,
     agentDrafts: { ...seed.agentDrafts, ...migratedDrafts },
   };

@@ -649,10 +649,15 @@ const RETAIL_TRANSITION_PROMPT = 'transition';
 const STUDIO_TRANSITION_MS = 420;
 
 const is360FeedbackAgentPrompt = (prompt: string) => {
-  const text = prompt.normalize('NFKC').toLowerCase();
-  return /\b(?:360|three[\s-]*sixty)\b/.test(text)
-    && /\bfeedback\b/.test(text)
-    && /\b(?:agent|assistant)\b/.test(text);
+  const text = prompt.normalize('NFKC').toLowerCase().replace(/\s+/g, ' ').trim();
+  const references360Agent = /\b(?:360|three[\s-]*sixty)(?:[\s-]+(?:degree|feedback)){0,2}[\s-]+(?:agent|assistant)\b/.test(text);
+  const referencesFeedbackAgent = /\bfeedback[\s-]+(?:agent|assistant)\b/.test(text);
+  if (!references360Agent && !referencesFeedbackAgent) return false;
+
+  // A plain "feedback agent" starts this flow, while explicit customer-facing
+  // feedback requests belong to a different agent-creation path.
+  const isCustomerFeedback = /\b(?:customer|client|product|store|shopper|retail|travel|reservation)\b/.test(text);
+  return references360Agent || !isCustomerFeedback;
 };
 
 const RETAIL_PHONE_NUMBER_OPTIONS = [
@@ -744,6 +749,7 @@ type RetailWorkflowContext = {
   knowledgeBases: string[];
   customRule: string;
   escalationSummary: string;
+  discoveryAcknowledgement?: string;
   discoveryAssistantName: string;
   discoveryContent: string;
   discoveryCompleteText: string;
@@ -780,13 +786,14 @@ const FEEDBACK360_WORKFLOW_CONTEXT: RetailWorkflowContext = {
   targetDescription: '360 feedback for a leader',
   agentName: '360 Feedback Agent',
   description: 'Collect confidential 360 feedback from peers, direct reports, and a manager, then prepare an anonymized, themed development summary.',
-  welcomeMessage: "Hi, I'm collecting confidential feedback for [Leader]'s development review. Thank you for taking the time to complete this — Are you ready to get started?",
+  welcomeMessage: "Hi, I'm collecting confidential feedback for Amit's development review. Thank you for taking the time to complete this — Are you ready to get started?",
   knowledgeBases: [],
   customRule: 'Combine responses into de-identified themes. Escalate serious harassment, safety, or ethics concerns to a human HR owner.',
   escalationSummary: 'HR escalation safeguards',
+  discoveryAcknowledgement: "I understand you want a 360 Feedback Agent for Amit's development review. I'll shape a draft that collects confidential feedback and brings it together in an anonymized, themed summary.",
   discoveryAssistantName: 'AI Assistant is reviewing 360 feedback sources...',
-  discoveryContent: 'Check the Following:',
-  discoveryCompleteText: 'I identified the sources to review for this 360 Feedback Agent. Include Voice, Digital and Video.',
+  discoveryContent: "I'm identifying the HR and review sources to recommend before we choose how people can respond.",
+  discoveryCompleteText: "I've identified the HR System / Org Chart, Employee Handbook, and Prior Review Cycle Summary as sources to review. Voice, Digital, and Video are selected. Choose the channels you want this agent to support.",
 };
 
 const titleCaseShortBusinessName = (value: string) => value
@@ -853,6 +860,8 @@ const FEEDBACK360_DISCOVERY_ROWS = [
   },
 ];
 
+const FEEDBACK360_DISCOVERY_ITEM_DURATION_MS = 2000;
+
 const VIP_LOGISTICS_DISCOVERY_ROWS = [
   {
     title: 'Hours of operation',
@@ -893,6 +902,9 @@ const FEEDBACK360_RECOMMENDED_KNOWLEDGE_BASES = [
   { name: 'Leadership Competency Framework', description: 'Organize feedback around leadership behaviors and impact.' },
   { name: 'HR System', description: 'Use approved employee and reporting information.' },
 ];
+const FEEDBACK360_CONNECTED_KNOWLEDGE_BASES = FEEDBACK360_RECOMMENDED_KNOWLEDGE_BASES
+  .slice(0, 3)
+  .map(item => item.name);
 
 const VIP_LOGISTICS_RECOMMENDED_KNOWLEDGE_BASES = [
   {
@@ -933,6 +945,9 @@ const FEEDBACK360_RECOMMENDED_ACTIONS = [
   { name: 'Share Summary via Email', provider: '', providerLogoSrc: '', description: 'Send an approved pooled summary by email.' },
   { name: 'Send Reminder to Incomplete Respondents', provider: '', providerLogoSrc: '', description: 'Remind participants who have not completed their feedback.' },
 ];
+const FEEDBACK360_CONNECTED_ACTIONS = FEEDBACK360_RECOMMENDED_ACTIONS
+  .slice(0, 3)
+  .map(item => item.name);
 
 const VIP_LOGISTICS_CONNECTED_ACTIONS = ['Check Escalation Status'];
 
@@ -3363,8 +3378,8 @@ export default function EvaChatExperience({
     setSelectedDigitalChannels(['chat']);
     setChannelPhoneNumber(feedback360 ? '' : CHANNEL_PHONE_NUMBER_OPTIONS[0].value);
     setPhoneNumberDeferred(feedback360);
-    setSelectedKnowledgeBases(context.knowledgeBases);
-    setSelectedActions(feedback360 ? [] : ['Inventory lookup', 'Create support case']);
+    setSelectedKnowledgeBases(feedback360 ? FEEDBACK360_CONNECTED_KNOWLEDGE_BASES : context.knowledgeBases);
+    setSelectedActions(feedback360 ? FEEDBACK360_CONNECTED_ACTIONS : ['Inventory lookup', 'Create support case']);
     setCustomRules([context.customRule]);
     setRetailAgentNameInput(context.agentName);
     setRetailAgentNameInputVisible(false);
@@ -3379,6 +3394,8 @@ export default function EvaChatExperience({
   const beginRetailReceptionistStory = (intent?: EvaVoiceAgentWorkflowIntent, feedback360 = false) => {
     const context = seedRetailReceptionistDraft(intent, feedback360);
     const discoveryRows = feedback360 ? FEEDBACK360_DISCOVERY_ROWS : RETAIL_DISCOVERY_ROWS;
+    const discoveryIntervalMs = feedback360 ? FEEDBACK360_DISCOVERY_ITEM_DURATION_MS : 700;
+    const discoveryCompletionDelayMs = feedback360 ? FEEDBACK360_DISCOVERY_ITEM_DURATION_MS : 2450;
     setGuidanceVisible(false);
     setEvaThinking(false);
     setFreeChatActive(true);
@@ -3390,13 +3407,14 @@ export default function EvaChatExperience({
       : [RETAIL_VOICE_LABEL]);
     setRetailSelectedPhoneNumber(null);
     setPhoneNumberDeferred(feedback360);
-    setRetailDiscoveryProgress(0);
+    setRetailDiscoveryProgress(feedback360 ? 1 : 0);
     setConversationalOnboardingStep('idle');
     if (retailDiscoveryTimerRef.current) {
       window.clearInterval(retailDiscoveryTimerRef.current);
     }
-    if (intent?.acknowledgement) {
-      setMessages(prev => [...prev, { role: 'assistant', text: intent.acknowledgement }]);
+    const acknowledgement = intent?.acknowledgement ?? context.discoveryAcknowledgement;
+    if (acknowledgement) {
+      setMessages(prev => [...prev, { role: 'assistant', text: acknowledgement }]);
     }
     retailDiscoveryTimerRef.current = window.setInterval(() => {
       setRetailDiscoveryProgress(prev => {
@@ -3411,11 +3429,11 @@ export default function EvaChatExperience({
               undefined,
               'retail-channel-choice',
             );
-          }, 2450);
+          }, discoveryCompletionDelayMs);
         }
         return next;
       });
-    }, 700);
+    }, discoveryIntervalMs);
   };
 
   const feedback360AutoStartRef = useRef(false);
@@ -3576,7 +3594,7 @@ export default function EvaChatExperience({
     setRetailPrototypeStep('phone');
     addOnboardingAssistantMessage(
       is360FeedbackWorkflow
-        ? 'Connected Phone Number: No Preference. Choose a connected number if needed, or continue with No Preference.'
+        ? 'Choose a connected number if needed, or continue with No Preference.'
         : 'Which connected phone number should this agent answer before we preview it?',
       CHANNEL_PHONE_NUMBER_OPTIONS.map(option => option.label),
       'retail-phone-choice',
@@ -3653,7 +3671,7 @@ export default function EvaChatExperience({
       setMessages(prev => [...prev, { role: 'user', text: channelCopy }]);
     }
     addOnboardingAssistantMessage(
-      `${channelCopy} ${channels.length === 1 ? 'is' : 'are'} selected for this agent. What should we name the agent?`,
+      `${channelCopy} ${channels.length === 1 ? 'is' : 'are'} selected for this agent.${is360FeedbackWorkflow ? '\n' : ' '}What should we name the agent?`,
       [retailWorkflowContext.agentName],
       'retail-agent-name',
     );
@@ -7644,7 +7662,11 @@ ${previewTranscript}`,
                           : 'To change anything, ask me or open advanced configuration.'}</p>
                       </div>
                     </div>
-                  ) : message.text}
+                  ) : isRetailPhonePrompt && is360FeedbackWorkflow
+                    ? message.text.replace(/^Connected Phone Number: No Preference\.\s*/, '')
+                    : isRetailAgentNamePrompt && is360FeedbackWorkflow
+                    ? message.text.replace(/\. What should we name the agent\?$/, '.\nWhat should we name the agent?')
+                    : message.text}
                   followups={isRetailChannelChoice || isRetailPhonePrompt || isRetailAgentNamePrompt || isRetailWelcomePrompt || isRetailKnowledgePrompt || isRetailActionsPrompt || isRetailFinalActions || isRetailCompleteActions || isRetailInlinePreview || isFamilyChoicePrompt || isUnifiedChannelPrompt || isUnifiedGoalPrompt || isFamilyProposalPrompt || isContactCenterChannelPrompt || isFamilyNamePrompt || isFamilyGreetingPrompt || isCallingDestinationPrompt || isFamilyKnowledgePrompt || isFamilyActionPrompt || isFamilyGuardrailPrompt || (isFamilyIntakePrompt && (!isLatestFamilyIntakePrompt || evaThinking)) ? [] : followups}
                   onFollowup={handleLlmFollowupClick}
                 >
@@ -8544,7 +8566,7 @@ ${previewTranscript}`,
                       <div className="eva-retail-recommendation-section">
                         <span className="eva-retail-recommendation-eyebrow">
                           <Icon name="sparkle" weight="bold" size={14} />
-                          {is360FeedbackWorkflow ? 'Selected knowledge bases' : 'Connected knowledge bases'}
+                          Connected knowledge bases
                         </span>
                         <div className="eva-retail-connected-list">
                           {selectedKnowledgeBases.map(item => (
@@ -8567,30 +8589,32 @@ ${previewTranscript}`,
                       <div className="eva-retail-recommendation-section">
                         <span className="eva-retail-recommendation-eyebrow">Recommended knowledge bases</span>
                         <div className="eva-retail-recommendation-list">
-                          {retailRecommendedKnowledgeBases.map(option => {
-                            const isSelected = selectedKnowledgeBases.includes(option.name);
-                            return (
-                              <Card
-                                key={option.name}
-                                clickable
-                                selected={isSelected}
-                                disabled={isRetailKnowledgeLocked}
-                                className="eva-retail-recommendation-card card-selectable"
-                                aria-label={`${option.name}. ${option.description}`}
-                                aria-pressed={isSelected}
-                                onClick={() => handleLlmFollowupClick(option.name)}
-                              >
-                                <span className="card-select-icon eva-retail-recommendation-card__select" aria-hidden="true">
-                                  <Icon name={isSelected ? 'check-circle-filled' : 'check-circle'} weight="bold" size={20} />
-                                </span>
-                                <span className="eva-retail-recommendation-card__icon" aria-hidden="true">
-                                  <Icon name="files" weight="regular" size={24} />
-                                </span>
-                                <strong>{option.name}</strong>
-                                <span className="eva-retail-recommendation-card__description">{option.description}</span>
-                              </Card>
-                            );
-                          })}
+                          {retailRecommendedKnowledgeBases
+                            .filter(option => !is360FeedbackWorkflow || !selectedKnowledgeBases.includes(option.name))
+                            .map(option => {
+                              const isSelected = selectedKnowledgeBases.includes(option.name);
+                              return (
+                                <Card
+                                  key={option.name}
+                                  clickable
+                                  selected={isSelected}
+                                  disabled={isRetailKnowledgeLocked}
+                                  className="eva-retail-recommendation-card card-selectable"
+                                  aria-label={`${option.name}. ${option.description}`}
+                                  aria-pressed={isSelected}
+                                  onClick={() => handleLlmFollowupClick(option.name)}
+                                >
+                                  <span className="card-select-icon eva-retail-recommendation-card__select" aria-hidden="true">
+                                    <Icon name={isSelected ? 'check-circle-filled' : 'check-circle'} weight="bold" size={20} />
+                                  </span>
+                                  <span className="eva-retail-recommendation-card__icon" aria-hidden="true">
+                                    <Icon name="files" weight="regular" size={24} />
+                                  </span>
+                                  <strong>{option.name}</strong>
+                                  <span className="eva-retail-recommendation-card__description">{option.description}</span>
+                                </Card>
+                              );
+                            })}
                         </div>
                       </div>
                       {!isRetailKnowledgeLocked && (
@@ -8610,7 +8634,7 @@ ${previewTranscript}`,
                       <div className="eva-retail-recommendation-section">
                         <span className="eva-retail-recommendation-eyebrow">
                           <Icon name="sparkle" weight="bold" size={14} />
-                          {is360FeedbackWorkflow ? 'Selected actions' : 'Connected actions'}
+                          Connected actions
                         </span>
                         <div className="eva-retail-connected-list">
                           {selectedActions.map(item => (
@@ -8633,37 +8657,39 @@ ${previewTranscript}`,
                       <div className="eva-retail-recommendation-section">
                         <span className="eva-retail-recommendation-eyebrow">Recommended actions</span>
                         <div className="eva-retail-recommendation-list">
-                          {retailRecommendedActions.map(option => {
-                            const isSelected = selectedActions.includes(option.name);
-                            return (
-                              <Card
-                                key={option.name}
-                                clickable
-                                selected={isSelected}
-                                disabled={isRetailActionsLocked}
-                                className="eva-retail-recommendation-card card-selectable"
-                                aria-label={`${option.name}. ${option.provider ? `${option.provider}. ` : ''}${option.description}`}
-                                aria-pressed={isSelected}
-                                onClick={() => handleLlmFollowupClick(option.name)}
-                              >
-                                <span className="card-select-icon eva-retail-recommendation-card__select" aria-hidden="true">
-                                  <Icon name={isSelected ? 'check-circle-filled' : 'check-circle'} weight="bold" size={20} />
-                                </span>
-                                <span
-                                  className="eva-retail-recommendation-card__icon eva-provider-chip__logo eva-provider-chip__logo--brand"
-                                  aria-hidden="true"
+                          {retailRecommendedActions
+                            .filter(option => !is360FeedbackWorkflow || !selectedActions.includes(option.name))
+                            .map(option => {
+                              const isSelected = selectedActions.includes(option.name);
+                              return (
+                                <Card
+                                  key={option.name}
+                                  clickable
+                                  selected={isSelected}
+                                  disabled={isRetailActionsLocked}
+                                  className="eva-retail-recommendation-card card-selectable"
+                                  aria-label={`${option.name}. ${option.provider ? `${option.provider}. ` : ''}${option.description}`}
+                                  aria-pressed={isSelected}
+                                  onClick={() => handleLlmFollowupClick(option.name)}
                                 >
-                                  {option.providerLogoSrc
-                                    ? <img className="eva-provider-chip__logo-image" src={option.providerLogoSrc} alt="" />
-                                    : <Icon name="automation" weight="regular" size={24} />}
-                                </span>
-                                <strong>{option.name}</strong>
-                                <span className="eva-retail-recommendation-card__description">
-                                  {option.provider ? `${option.provider}. ${option.description}` : option.description}
-                                </span>
-                              </Card>
-                            );
-                          })}
+                                  <span className="card-select-icon eva-retail-recommendation-card__select" aria-hidden="true">
+                                    <Icon name={isSelected ? 'check-circle-filled' : 'check-circle'} weight="bold" size={20} />
+                                  </span>
+                                  <span
+                                    className="eva-retail-recommendation-card__icon eva-provider-chip__logo eva-provider-chip__logo--brand"
+                                    aria-hidden="true"
+                                  >
+                                    {option.providerLogoSrc
+                                      ? <img className="eva-provider-chip__logo-image" src={option.providerLogoSrc} alt="" />
+                                      : <Icon name="automation" weight="regular" size={24} />}
+                                  </span>
+                                  <strong>{option.name}</strong>
+                                  <span className="eva-retail-recommendation-card__description">
+                                    {option.provider ? `${option.provider}. ${option.description}` : option.description}
+                                  </span>
+                                </Card>
+                              );
+                            })}
                         </div>
                       </div>
                       {!isRetailActionsLocked && (
