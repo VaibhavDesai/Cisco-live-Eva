@@ -235,10 +235,7 @@ function SessionDetail({
                     subtitle={(
                       <span className="agent-session-guardrail-banner__body">
                         <span>{event.text}</span>
-                        {is360FeedbackAgent && (
-                          <time className="agent-session-guardrail-banner__detail">{event.time}</time>
-                        )}
-                        {event.detail && (
+                        {!is360FeedbackAgent && event.detail && (
                           <span className="agent-session-guardrail-banner__detail">{event.detail}</span>
                         )}
                       </span>

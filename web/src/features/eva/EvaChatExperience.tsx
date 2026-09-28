@@ -786,15 +786,20 @@ const FEEDBACK360_WORKFLOW_CONTEXT: RetailWorkflowContext = {
   targetDescription: '360 feedback for a leader',
   agentName: '360 Feedback Agent',
   description: 'Collect confidential 360 feedback from peers, direct reports, and a manager, then prepare an anonymized, themed development summary.',
-  welcomeMessage: "Hi, I'm collecting confidential feedback for Amit's development review. Thank you for taking the time to complete this — Are you ready to get started?",
+  welcomeMessage: "Hi, I'm collecting confidential feedback for a leader's development review. Thank you for taking the time to complete this — Are you ready to get started?",
   knowledgeBases: [],
   customRule: 'Combine responses into de-identified themes. Escalate serious harassment, safety, or ethics concerns to a human HR owner.',
   escalationSummary: 'HR escalation safeguards',
-  discoveryAcknowledgement: "I understand you want a 360 Feedback Agent for Amit's development review. I'll shape a draft that collects confidential feedback and brings it together in an anonymized, themed summary.",
+  discoveryAcknowledgement: "I understand you want a 360 Feedback Agent for a leader's development review. I'll shape a draft that collects confidential feedback and brings it together in an anonymized, themed summary.",
   discoveryAssistantName: 'AI Assistant is reviewing 360 feedback sources...',
   discoveryContent: "I'm identifying the HR and review sources to recommend before we choose how people can respond.",
   discoveryCompleteText: "I've identified the HR System / Org Chart, Employee Handbook, and Prior Review Cycle Summary as sources to review. Voice, Digital, and Video are selected. Choose the channels you want this agent to support.",
 };
+
+const generic360LeaderCopy = (value: string) => value
+  .replaceAll("[Leader]'s", "a leader's")
+  .replaceAll("Amit's", "a leader's")
+  .replace(/\bAmit\b/g, 'the leader');
 
 const titleCaseShortBusinessName = (value: string) => value
   .replace(/^(an?|the)\s+/i, '')
@@ -1738,6 +1743,12 @@ export default function EvaChatExperience({
   const [retailAgentNameInputVisible, setRetailAgentNameInputVisible] = useState(false);
   const [retailWelcomeInput, setRetailWelcomeInput] = useState(RETAIL_RECOMMENDED_WELCOME_MESSAGES[0].text);
   const [retailWelcomeInputVisible, setRetailWelcomeInputVisible] = useState(false);
+
+  useEffect(() => {
+    if (!is360FeedbackWorkflow) return;
+    setRetailWelcomeInput(previous => generic360LeaderCopy(previous));
+  }, [is360FeedbackWorkflow]);
+
   const [retailPhoneDropdownOpen, setRetailPhoneDropdownOpen] = useState(false);
   const [retailPhoneSearch, setRetailPhoneSearch] = useState('');
   /* Local-only flag — when the user clicks the "View other options"
@@ -7615,6 +7626,9 @@ ${previewTranscript}`,
                 : baseFollowups.length > 0 && !isControlledPrototypePrompt
                 ? [...baseFollowups, OTHER_TEMPLATES_LABEL]
                 : baseFollowups;
+              const displayMessageText = is360FeedbackWorkflow
+                ? generic360LeaderCopy(message.text)
+                : message.text;
               return (
                 <AiResponseMessage
                   key={`free-${index}`}
@@ -7638,7 +7652,7 @@ ${previewTranscript}`,
                   assistantName="AI Assistant"
                   content={isRetailChannelChoice ? (
                     <>
-                      <p>{message.text}</p>
+                      <p>{displayMessageText}</p>
                       {renderRetailDiscoveryTrace(
                         message.text === VIP_LOGISTICS_WORKFLOW_CONTEXT.discoveryCompleteText,
                       )}
@@ -7663,10 +7677,10 @@ ${previewTranscript}`,
                       </div>
                     </div>
                   ) : isRetailPhonePrompt && is360FeedbackWorkflow
-                    ? message.text.replace(/^Connected Phone Number: No Preference\.\s*/, '')
+                    ? displayMessageText.replace(/^Connected Phone Number: No Preference\.\s*/, '')
                     : isRetailAgentNamePrompt && is360FeedbackWorkflow
-                    ? message.text.replace(/\. What should we name the agent\?$/, '.\nWhat should we name the agent?')
-                    : message.text}
+                    ? displayMessageText.replace(/\. What should we name the agent\?$/, '.\nWhat should we name the agent?')
+                    : displayMessageText}
                   followups={isRetailChannelChoice || isRetailPhonePrompt || isRetailAgentNamePrompt || isRetailWelcomePrompt || isRetailKnowledgePrompt || isRetailActionsPrompt || isRetailFinalActions || isRetailCompleteActions || isRetailInlinePreview || isFamilyChoicePrompt || isUnifiedChannelPrompt || isUnifiedGoalPrompt || isFamilyProposalPrompt || isContactCenterChannelPrompt || isFamilyNamePrompt || isFamilyGreetingPrompt || isCallingDestinationPrompt || isFamilyKnowledgePrompt || isFamilyActionPrompt || isFamilyGuardrailPrompt || (isFamilyIntakePrompt && (!isLatestFamilyIntakePrompt || evaThinking)) ? [] : followups}
                   onFollowup={handleLlmFollowupClick}
                 >

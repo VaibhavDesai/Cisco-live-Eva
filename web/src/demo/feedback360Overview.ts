@@ -141,14 +141,14 @@ export function createFeedback360DemoSessions({
     const selectedChannel = channelAt(index);
     const guardrailTriggered = index === 0 && Boolean(guardrailName);
     const scriptClosing = selectedActions.includes('Share Summary in Webex Space')
-      ? "Got it, thank you. I'll send you a transcript and summary of this conversation in a Webex Space for your records. Your responses will be combined and shared as part of Amit's review. Appreciate your time."
-      : "Got it, thank you. Your responses will be combined and shared as part of Amit's review. Appreciate your time.";
+      ? "Got it, thank you. I'll send you a transcript and summary of this conversation in a Webex Space for your records. Your responses will be combined and shared as part of the leader's review. Appreciate your time."
+      : "Got it, thank you. Your responses will be combined and shared as part of the leader's review. Appreciate your time.";
     const transcript: CiscoLiveSession['transcript'] = index === 0 ? [
       {
         id: `${id}-welcome`,
         kind: 'agent',
         speaker: agentName,
-        text: "Hi, I'm collecting confidential feedback for Amit's development review. Thank you for taking the time to complete this — Are you ready to get started?",
+        text: "Hi, I'm collecting confidential feedback for a leader's development review. Thank you for taking the time to complete this — Are you ready to get started?",
         time: '9:42 AM',
       },
       {
@@ -162,7 +162,7 @@ export function createFeedback360DemoSessions({
         id: `${id}-pressure-question`,
         kind: 'agent',
         speaker: agentName,
-        text: 'Can you describe a time Amit handled a high-pressure situation — well or not so well?',
+        text: 'Can you describe a time the leader handled a high-pressure situation — well or not so well?',
         time: '9:43 AM',
       },
       {
@@ -176,7 +176,7 @@ export function createFeedback360DemoSessions({
         id: `${id}-improvement-question`,
         kind: 'agent',
         speaker: agentName,
-        text: "That's helpful, thank you. Is there anything you'd want Amit to do differently, or start doing more of, as a leader?",
+        text: "That's helpful, thank you. Is there anything you'd want the leader to do differently, or start doing more of, as a leader?",
         time: '9:45 AM',
       },
       {

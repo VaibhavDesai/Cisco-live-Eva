@@ -564,7 +564,10 @@ const withCiscoLiveSeed = (
 
   // Refresh only the bundled 360 demo's old defaults. Keep any selections
   // changed by the user, while aligning the saved demo with the creation flow.
-  const withAmit = (value: string) => value.replaceAll("[Leader]'s", "Amit's");
+  const withGenericLeader = (value: string) => value
+    .replaceAll("[Leader]'s", "a leader's")
+    .replaceAll("Amit's", "a leader's")
+    .replace(/\bAmit\b/g, 'the leader');
   const catalogNames = (catalog: unknown): string[] => Array.isArray(catalog)
     ? catalog.flatMap(item => isRecord(item) && typeof item.name === 'string' ? [item.name] : [])
     : [];
@@ -576,9 +579,9 @@ const withCiscoLiveSeed = (
     const existing = migratedDrafts[id] ?? seed.agentDrafts[id];
     if (!existing) continue;
     const draft = structuredClone(existing);
-    draft.basics.purpose = withAmit(draft.basics.purpose);
-    draft.basics.description = withAmit(draft.basics.description);
-    draft.instructions.content = withAmit(draft.instructions.content);
+    draft.basics.purpose = withGenericLeader(draft.basics.purpose);
+    draft.basics.description = withGenericLeader(draft.basics.description);
+    draft.instructions.content = withGenericLeader(draft.instructions.content);
 
     const channels = draft.familyConfiguration.channels;
     const greetings = channels?.values?.greetings;
@@ -587,7 +590,7 @@ const withCiscoLiveSeed = (
         ...channels.values,
         greetings: Object.fromEntries(Object.entries(greetings).map(([channel, greeting]) => [
           channel,
-          typeof greeting === 'string' ? withAmit(greeting) : greeting,
+          typeof greeting === 'string' ? withGenericLeader(greeting) : greeting,
         ])),
       };
     }
@@ -636,8 +639,8 @@ const withCiscoLiveSeed = (
       const knowledgeNames = catalogNames(draft.familyConfiguration.knowledge?.values?.catalog);
       mergedAgents[id] = {
         ...agent,
-        description: withAmit(agent.description),
-        meta: withAmit(agent.meta),
+        description: withGenericLeader(agent.description),
+        meta: withGenericLeader(agent.meta),
         knowledgeBases: matchesNames(agent.knowledgeBases, knowledgeNames)
           ? knowledgeNames.slice(0, 3)
           : agent.knowledgeBases,

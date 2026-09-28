@@ -4351,6 +4351,13 @@ button.agent-studio-guardrail-chart__plot.is-selected .agent-studio-guardrail-ch
   align-self: stretch;
 }
 
+.agent-session-detail-page--feedback360 .agent-session-guardrail-banner .banner-action-outline {
+  height: 28px;
+  padding-inline: var(--spacing-x-small);
+  font-size: var(--font-size-body-small);
+  line-height: var(--font-lineheight-body-small);
+}
+
 .agent-session-action-control-banner {
   align-self: stretch;
 }
@@ -7767,11 +7774,10 @@ button.agent-studio-guardrail-chart__plot.is-selected .agent-studio-guardrail-ch
   margin-left: auto;
   margin-right: auto;
   min-height: 0;
-  padding-bottom: calc(142px + var(--spacing-large));
+  padding-bottom: var(--spacing-large);
   overflow-y: auto;
   scrollbar-gutter: auto;
-  scrollbar-width: none;
-  -ms-overflow-style: none;
+  scrollbar-width: thin;
 }
 
 /* Free-chat can temporarily share the `--generated` modifier while Eva is
@@ -7787,22 +7793,20 @@ button.agent-studio-guardrail-chart__plot.is-selected .agent-studio-guardrail-ch
   margin-left: auto;
   margin-right: auto;
   min-height: 0;
-  padding-bottom: calc(142px + var(--spacing-large));
+  padding-bottom: var(--spacing-large);
   overflow-y: auto;
   scrollbar-gutter: auto;
-  scrollbar-width: none;
-  -ms-overflow-style: none;
+  scrollbar-width: thin;
 }
 
 .eva-first-interface--free-chat .eva-first-interface__free-chat::-webkit-scrollbar,
 .eva-first-interface--generated.eva-first-interface--free-chat .eva-first-interface__free-chat::-webkit-scrollbar {
-  width: 0;
-  height: 0;
+  width: 6px;
 }
 
 .eva-first-interface--free-chat .eva-first-interface__free-chat:hover,
 .eva-first-interface--generated.eva-first-interface--free-chat .eva-first-interface__free-chat:hover {
-  scrollbar-color: transparent transparent;
+  scrollbar-color: var(--mds-color-theme-scrollbar-background-secondary-normal, rgba(255, 255, 255, 0.18)) transparent;
 }
 
 .eva-free-chat-new-thread.btn {
@@ -7844,7 +7848,7 @@ button.agent-studio-guardrail-chart__plot.is-selected .agent-studio-guardrail-ch
 
 .eva-first-interface--free-chat .eva-first-interface__free-chat--dense-bottom,
 .eva-first-interface--generated.eva-first-interface--free-chat .eva-first-interface__free-chat--dense-bottom {
-  padding-bottom: max(calc(142px + var(--spacing-large)), clamp(72px, 14vh, 140px));
+  padding-bottom: var(--spacing-large);
 }
 
 .eva-first-interface--free-chat .eva-first-interface__free-chat--active-prompt-focus,
@@ -7889,23 +7893,17 @@ button.agent-studio-guardrail-chart__plot.is-selected .agent-studio-guardrail-ch
   margin-right: auto !important;
 }
 
-/* Keep the build-flow composer in one stable viewport position. Previously
-   the component only added `--sticky` while Eva was thinking or showing
-   guidance, so settled steps (knowledge, actions, phone, and final review)
-   dropped the composer back into normal document flow. Anchor the free-chat
-   composer to the padded bottom edge and reserve transcript space so content
-   can scroll behind neither the input nor its disclaimer. */
+/* Keep the composer in the shell's flex flow so the transcript ends above it.
+   The transcript then owns all scrolling, including at short viewport heights. */
 .eva-agents-landing .eva-first-interface.eva-first-interface--free-chat .eva-first-interface__chat--sticky {
-  position: absolute;
-  left: var(--spacing-large);
-  right: var(--spacing-large);
-  bottom: var(--spacing-large);
+  position: relative;
+  inset: auto;
   z-index: 4;
   width: min(calc(100% - (var(--spacing-large) * 2)), 960px) !important;
 }
 
 .eva-first-interface--free-chat .eva-first-interface__free-chat {
-  scroll-padding-bottom: calc(142px + var(--spacing-large));
+  scroll-padding-bottom: var(--spacing-large);
   overflow-anchor: none;
 }
 
@@ -15082,6 +15080,15 @@ button.eva-retail-preview-card::before {
   width: min(100%, calc(720px + (var(--spacing-small) * 2)));
   height: 100%;
   margin-inline: auto;
+  scroll-padding-bottom: calc(142px + var(--spacing-large));
+}
+
+.eva-first-interface--guided-intake .eva-first-interface__free-chat:not(:is(
+  .eva-first-interface__free-chat--active-prompt-focus,
+  .eva-first-interface__free-chat--phone-focus,
+  .eva-first-interface__free-chat--agent-name-focus
+)) {
+  padding-bottom: calc(142px + var(--spacing-large));
 }
 
 /* The intake footer shares the conversation column. When Progress reserves a
